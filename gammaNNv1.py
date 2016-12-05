@@ -1,43 +1,6 @@
 
 from keras.models import Sequential
 from keras.layers import Convolution2D, Activation, MaxPooling2D, Flatten, Dense, Dropout
-from keras.preprocessing.image import ImageDataGenerator
-
-
-#data augmentation/preprocessing
-################################
-
-#processing training data
-training_preprocess = ImageDataGenerator(
-        featurewise_center=True,
-        featurewise_std_normalization=True,
-        rotation_range=360)
-
-#processing validation data
-validation_preprocess = ImageDataGenerator()
-
-#generator for training data
-training_generator = training_preprocess.flow_from_directory(
-        'data/train',
-        target_size=(120, 120),
-        color_mode='grayscale',
-        batch_size=32,
-        class_mode='binary',
-        classes=['gamma','proton'],
-        save_to_dir='data/train_augmented',
-        save_prefix="[AUG]",
-        save_format="png")
-
-#generator for validation data
-validation_generator = validation_preprocess.flow_from_directory(
-        'data/validation',
-        target_size=(120, 120),
-        color_mode='grayscale',
-        batch_size=32,
-        class_mode='binary',
-        classes=['gamma','proton'],
-        )
-
 
 #model construction
 ###################
@@ -78,13 +41,16 @@ model.add(Activation('sigmoid'))
 #accuracy and crossentropy metrics
 model.compile(optimizer='adam',loss='binary_crossentropy',metrics=['binary_accuracy','binary_crossentropy'])
 
+#save model
+model.save('gammaNNv1.h5')
+
 #train model
 ############
 
-model.fit_generator(training_generator,samples_per_epoch=2000,nb_epoch=50,validation_data=validation_generator,nb_val_samples=800)
+#model.fit_generator(training_generator,samples_per_epoch=5000,nb_epoch=50,validation_data=validation_generator,nb_val_samples=1000)
 
 #save weights
 #############
 
-model.save_weights('NNv1RunWeights1.h5')
+#model.save_weights('gammaNNv1RunWeights.h5')
 
