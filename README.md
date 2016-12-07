@@ -19,17 +19,17 @@ NOTE: Trained on Theano, image dimension ordering = 'th'
 
 Input: (32,1,120,120) => batch of 32 depth-1 (grayscale), 120x120 images
 
-Convolution2D(32,3,3) => 32 filters of size 3x3
-Activation('relu') => activation using ReLU
-MaxPooling2D(2, 2) => max-pooling with pools of size 2x2 
+Convolution2D(32,3,3) => 32 filters of size 3x3  
+Activation('relu') => activation using ReLU  
+MaxPooling2D(2, 2) => max-pooling with pools of size 2x2   
 
-Convolution2D(32,3,3) => 32 filters of size 3x3
-Activation('relu') => activation using ReLU
-MaxPooling2D(2, 2) => max-pooling with pools of size 2x2 
+Convolution2D(32,3,3) => 32 filters of size 3x3  
+Activation('relu') => activation using ReLU  
+MaxPooling2D(2, 2) => max-pooling with pools of size 2x2   
 
-Convolution2D(64,3,3) => 64 filters of size 3x3
-Activation('relu') => activation using ReLU
-MaxPooling2D(2, 2) => max-pooling with pools of size 2x2 
+Convolution2D(64,3,3) => 64 filters of size 3x3   
+Activation('relu') => activation using ReLU   
+MaxPooling2D(2, 2) => max-pooling with pools of size 2x2     
 
 Flatten() => flattens input to linear output vector 
 Dense(64) => standard NN layer with 64 nodes
