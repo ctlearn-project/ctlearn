@@ -31,17 +31,17 @@ Convolution2D(64,3,3) => 64 filters of size 3x3
 Activation('relu') => activation using ReLU   
 MaxPooling2D(2, 2) => max-pooling with pools of size 2x2     
 
-Flatten() => flattens input to linear output vector 
-Dense(64) => standard NN layer with 64 nodes
-Activation('relu') => activation using ReLU
-Dropout(0.5) => 50% dropout during train time
-Dense(1) => standard NN layer with 1 node
-Activation('sigmoid') => activation using sigmoid function to generate binary classification log probabilities
+Flatten() => flattens input to linear output vector   
+Dense(64) => standard NN layer with 64 nodes  
+Activation('relu') => activation using ReLU  
+Dropout(0.5) => 50% dropout during train time  
+Dense(1) => standard NN layer with 1 node  
+Activation('sigmoid') => activation using sigmoid function to generate binary classification log probabilities  
 
 ### Hyperparameters:
 
-optimizer: adam
-learning rate: 
+optimizer: adam  
+learning rate:   
 
 
 
