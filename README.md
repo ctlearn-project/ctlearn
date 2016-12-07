@@ -40,7 +40,8 @@ Activation('sigmoid') => activation using sigmoid function to generate binary cl
 
 ### Hyperparameters:
 
-
+optimizer: adam
+learning rate: 
 
 
 
