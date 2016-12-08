@@ -1,9 +1,13 @@
 
 from keras.models import load_model
 from keras.preprocessing.image import ImageDataGenerator
+import matplotlib.pyplot as plt
+import numpy
+
+from keras.callbacks import CSVLogger
 
 #load saved model
-model = load_model('gammaNNv1.h5')
+model = load_model('gammaNNv1[nadam,1e-07].h5')
 
 #data augmentation/preprocessing
 ################################
@@ -40,30 +44,34 @@ validation_generator = validation_preprocess.flow_from_directory(
 #train model
 ############
 
-history = model.fit_generator(training_generator,samples_per_epoch=1024,nb_epoch=50,validation_data=validation_generator,nb_val_samples=1000)
+logger = CSVLogger('gNNv1[nadam,1e-07].log')
+
+history = model.fit_generator(training_generator,samples_per_epoch=10240,nb_epoch=100,callbacks =[logger], validation_data=validation_generator,nb_val_samples=800)
 
 # list all data in history
 print(history.history.keys())
 # summarize history for accuracy
-plt.plot(history.history['acc'])
-plt.plot(history.history['val_acc'])
+plt.plot(history.history['binary_accuracy'])
+plt.plot(history.history['val_binary_accuracy'])
 plt.title('model accuracy')
 plt.ylabel('accuracy')
 plt.xlabel('epoch')
-plt.legend(['train', 'test'], loc='upper left')
+plt.legend(['train', 'validation'], loc='upper left')
 plt.show()
+plt.savefig('accuracy[run2].png', bbox_inches='tight')
 # summarize history for loss
 plt.plot(history.history['loss'])
 plt.plot(history.history['val_loss'])
 plt.title('model loss')
 plt.ylabel('loss')
 plt.xlabel('epoch')
-plt.legend(['train', 'test'], loc='upper left')
+plt.legend(['train', 'validation'], loc='upper left')
 plt.show()
+plt.savefig('loss[run2].png', bbox_inches='tight')
 
 #save weights
 #############
 
-model.save('gammaNNv1.h5')
+model.save('gNNv1[nadam,1e-07].h5')
 
 
