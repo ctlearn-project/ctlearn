@@ -1,7 +1,7 @@
 
 from keras.models import Sequential
 from keras.layers import Convolution2D, Activation, MaxPooling2D, Flatten, Dense, Dropout
-
+from keras.optimizers import Nadam, SGD
 #model construction
 ###################
 
@@ -39,10 +39,14 @@ model.add(Activation('sigmoid'))
 #adam gradient descent
 #binary crossentropy loss
 #accuracy and crossentropy metrics
-model.compile(optimizer='adam',loss='binary_crossentropy',metrics=['binary_accuracy','binary_crossentropy'])
+
+sgd = SGD(lr=0.01, clipnorm=1.)
+nadam = Nadam(lr=1e-07, beta_1=0.9, beta_2=0.999, epsilon=1e-08, schedule_decay=0.004)
+
+model.compile(optimizer=nadam,loss='binary_crossentropy',metrics=['binary_accuracy'])
 
 #save model
-model.save('gammaNNv1.h5')
+model.save('gammaNNv1[nadam,1e-07].h5')
 
 #train model
 ############
