@@ -46,7 +46,7 @@ nadam = Nadam(lr=1e-07, beta_1=0.9, beta_2=0.999, epsilon=1e-08, schedule_decay=
 model.compile(optimizer=nadam,loss='binary_crossentropy',metrics=['binary_accuracy'])
 
 #save model
-model.save('gammaNNv1[nadam,1e-07].h5')
+model.save('NNv1.h5')
 
 #train model
 ############
