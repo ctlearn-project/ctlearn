@@ -1,21 +1,18 @@
 # Deep Learning Networks on VERITAS and CTA Image Data
 
-## gammaNNv1
+##Models
 
-### Files
+### gammaNNv1
 
+#### **Description:** 
 
+Simple CNN for binary classification of telescope data
 
-### **Description:** 
-
-A first attempt at a simple CNN for binary classification of telescope data
-images (gamma events vs proton events)
-
-Creates and compiles network, then saves to file.
+Credit to: 
 
 NOTE: Trained on Theano, image dimension ordering = 'th'
 
-### Network Architecture Overview
+#### Network Architecture Overview
 
 Input: (32,1,120,120) => batch of 32 depth-1 (grayscale), 120x120 images
 
@@ -38,10 +35,63 @@ Dropout(0.5) => 50% dropout during train time
 Dense(1) => standard NN layer with 1 node  
 Activation('sigmoid') => activation using sigmoid function to generate binary classification log probabilities  
 
-### Hyperparameters:
+#### Hyperparameters:
 
 optimizer: adam  
 learning rate:   
+
+### AlexNet
+
+Additional modifications made to network and to preprocessing to suit our dataset.
+
+Further details at: https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf
+
+Credit to: Alex Krizhevsky, Ilya Sutskever, Geoffrey E. Hinton (U. of Toronto)
+
+Credit to: Heuritech, Leonard Blier, https://github.com/heuritech/convnets-keras
+
+### GoogLeNet (Inception V1)
+
+Credit to:
+
+### VGG16
+
+Credit to:
+
+### VGG19
+
+Credit to:
+
+### ResNet50
+
+Credit to:
+
+### Inception v3
+
+Credit to:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+##Useful Scripts
+
+### train.py
+
+### plot.py
+
+### evaluate.py
+
 
 
 
