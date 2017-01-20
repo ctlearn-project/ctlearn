@@ -1,10 +1,25 @@
 # Deep Learning Networks on VERITAS and CTA Image Data
 
-##Models
+##Description
 
-### gammaNNv1
+This repository contains useful scripts for training and analysis of image classification on VERITAS event images. A small library of network models which were tried/tested is also provided. 
+Note that in many cases they are configured/modified to work on this particular classificaiton problem.
 
-#### **Description:** 
+
+##General overview of training/testing pipline
+
+The general procedure for training is as follows:
+
+
+
+
+##Files
+
+###Models
+
+#### testNet
+
+##### **Description:** 
 
 Simple CNN for binary classification of telescope data
 
@@ -12,7 +27,7 @@ Credit to:
 
 NOTE: Trained on Theano, image dimension ordering = 'th'
 
-#### Network Architecture Overview
+##### Network Architecture Overview
 
 Input: (32,1,120,120) => batch of 32 depth-1 (grayscale), 120x120 images
 
@@ -35,12 +50,12 @@ Dropout(0.5) => 50% dropout during train time
 Dense(1) => standard NN layer with 1 node  
 Activation('sigmoid') => activation using sigmoid function to generate binary classification log probabilities  
 
-#### Hyperparameters:
+##### Hyperparameters:
 
 optimizer: adam  
 learning rate:   
 
-### AlexNet
+#### AlexNet
 
 Additional modifications made to network and to preprocessing to suit our dataset.
 
@@ -50,23 +65,23 @@ Credit to: Alex Krizhevsky, Ilya Sutskever, Geoffrey E. Hinton (U. of Toronto)
 
 Credit to: Heuritech, Leonard Blier, https://github.com/heuritech/convnets-keras
 
-### GoogLeNet (Inception V1)
+#### GoogLeNet (Inception V1)
 
 Credit to:
 
-### VGG16
+#### VGG16
 
 Credit to:
 
-### VGG19
+#### VGG19
 
 Credit to:
 
-### ResNet50
+#### ResNet50
 
 Credit to:
 
-### Inception v3
+#### Inception v3
 
 Credit to:
 
@@ -84,15 +99,14 @@ Credit to:
 
 
 
-##Useful Scripts
+###Useful Scripts
 
-### train.py
+#### train.py
 
-### plot.py
+#### plot.py
 
-### evaluate.py
+#### evaluate.py
 
-
-
+#### train_old.py
 
 
