@@ -63,8 +63,8 @@ image_y_dim= 120
 
 #processing training data
 training_preprocess = ImageDataGenerator(
-        #horizontal_flip=True,
-        #vertical_flip=True,
+        horizontal_flip=True,
+        vertical_flip=True,
         )
 
 #processing validation data
@@ -89,7 +89,6 @@ validation_generator = validation_preprocess.flow_from_directory(
         )
 
 
-
 #train model
 ############
 
@@ -99,5 +98,8 @@ earlystoploss = EarlyStopping(monitor='val_loss', min_delta=0.00001, patience=10
 earlystopacc = EarlyStopping(monitor='val_binary_accuracy', min_delta=0.001, patience=5, verbose=0, mode='auto')
 reducelr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, verbose=0, mode='auto', epsilon=0.0001, cooldown=0, min_lr=0)
 
-history = model.fit_generator(training_generator,samples_per_epoch=args.samples,nb_epoch=args.epochs,callbacks =[logger,checkpoint], validation_data=validation_generator,nb_val_samples=800)
+#class weights
+#class_weight = {0:17,1:83}
+
+history = model.fit_generator(training_generator,samples_per_epoch=args.samples,nb_epoch=args.epochs,callbacks =[logger,checkpoint], validation_data=validation_generator,nb_val_samples=1000,class_weight='auto')
 

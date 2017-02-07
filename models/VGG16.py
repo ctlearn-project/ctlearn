@@ -1,39 +1,50 @@
 
-from keras.applications.vgg16 import VGG16 
-from keras.preprocessing import image
-from keras.models import Model
-from keras.layers import Dense, GlobalAveragePooling2D, Flatten
-from keras import backend as K
+from keras.layers.convolutional import Convolution2D, MaxPooling2D, ZeroPadding2D
+from keras.layers.core import Dense, Dropout, Flatten
+from keras.models import Sequential
+from keras.optimizers import SGD
 
-# create the base pre-trained model with imagenet weights
-base_model = VGG16(weights=None, include_top=False, input_tensor=None, input_shape=(3,120,120))
+model = Sequential()
 
-#input_shape=(1, 120, 120)
+model.add(ZeroPadding2D((1,1),input_shape=(3,224,224)))
+model.add(Convolution2D(64, 3, 3, activation='relu'))
+model.add(ZeroPadding2D((1,1)))
+model.add(Convolution2D(64, 3, 3, activation='relu'))
+model.add(MaxPooling2D((2,2), strides=(2,2)))
 
-x = base_model.output
+model.add(ZeroPadding2D((1,1)))
+model.add(Convolution2D(128, 3, 3, activation='relu'))
+model.add(ZeroPadding2D((1,1)))
+model.add(Convolution2D(128, 3, 3, activation='relu'))
+model.add(MaxPooling2D((2,2), strides=(2,2)))
 
-#pooling + fully connected + binary classification layers
-#x = GlobalAveragePooling2D()(x)
-#x = Dense(1024, activation='relu')(x)
-#predictions = Dense(2, activation='softmax')(x)
+model.add(ZeroPadding2D((1,1)))
+model.add(Convolution2D(256, 3, 3, activation='relu'))
+model.add(ZeroPadding2D((1,1)))
+model.add(Convolution2D(256, 3, 3, activation='relu'))
+model.add(ZeroPadding2D((1,1)))
+model.add(Convolution2D(256, 3, 3, activation='relu'))
+model.add(MaxPooling2D((2,2), strides=(2,2)))
 
-# classification layers
-x = Flatten(name='flatten')(x)
-x = Dense(4096, activation='relu', name='fc1')(x)
-x = Dense(4096, activation='relu', name='fc2')(x)
-predictions = Dense(1, activation='sigmoid', name='predictions')(x)
+model.add(ZeroPadding2D((1,1)))
+model.add(Convolution2D(512, 3, 3, activation='relu'))
+model.add(ZeroPadding2D((1,1)))
+model.add(Convolution2D(512, 3, 3, activation='relu'))
+model.add(ZeroPadding2D((1,1)))
+model.add(Convolution2D(512, 3, 3, activation='relu'))
+model.add(MaxPooling2D((2,2), strides=(2,2)))
 
-# combined model
-model = Model(input=base_model.input, output=predictions)
+model.add(ZeroPadding2D((1,1)))
+model.add(Convolution2D(512, 3, 3, activation='relu'))
+model.add(ZeroPadding2D((1,1)))
+model.add(Convolution2D(512, 3, 3, activation='relu'))
+model.add(ZeroPadding2D((1,1)))
+model.add(Convolution2D(512, 3, 3, activation='relu'))
+model.add(MaxPooling2D((2,2), strides=(2,2)))
 
-# freeze all layers in base VGG16 model, only train classifier on top
-#for layer in base_model.layers:
-    #layer.trainable = False
-
-model.compile(optimizer='nadam', loss='binary_crossentropy',metrics=['binary_accuracy'])
-
-# save model for training
-model.save('VGG16[r2].h5')
-
-
-
+model.add(Flatten())
+model.add(Dense(4096, activation='relu'))
+model.add(Dropout(0.5))
+model.add(Dense(4096, activation='relu'))
+model.add(Dropout(0.5))
+model.add(Dense(1000, activation='softmax'))

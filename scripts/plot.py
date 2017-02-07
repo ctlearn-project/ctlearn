@@ -1,3 +1,13 @@
+############################################################################################################################
+#
+#Script for visualization of network training. Uses data in log file (.log) in csv format to generate plots using pyplot. 
+#
+#Takes as an argument the desired log file and, optionally, the output directory
+#
+#Currently coded for log files with format epoch,acc,loss,val_acc,val_loss
+#
+###########################################################################################################################
+
 import argparse
 import os
 import matplotlib.pyplot as plt
