@@ -156,23 +156,33 @@ Credit to: Francois Chollet (https://github.com/fchollet/deep-learning-models/bl
 
 #### VGG19
 
-Credit to:
+Credit to: K. Simonyan, A. Zisserman (Very Deep Convolutional Networks for Large-Scale Image Recognition)
+
+Credit to: Lorenzo Baraldi (https://gist.github.com/baraldilorenzo/8d096f48a1be4a2d660d)
 
 #### VGG19 (Keras, pretrained)
 
+Credit to: K. Simonyan, A. Zisserman (Very Deep Convolutional Networks for Large-Scale Image Recognition)
+
+Credit to: Francois Chollet (https://github.com/fchollet/deep-learning-models/blob/master/vgg19.py)
+
 #### ResNet50
 
-Credit to:
+Credit to: Kaiming He, Xiangyu Zhang, Shaoqing Ren, Jian Sun (Deep Residual Learning for Image Recognition)
+
+Credit to: 
 
 #### GoogLeNet (Inception V1)
 
-Credit to:
+Credit to: Christian Szegedy, Wei Liu, Yangqing Jia, et. al. (Going Deeper with Convolutions)
+
+Credit to: 
 
 #### Inception v3
 
+Credit to: Christian Szegedy, Vincent Vanhoucke, Sergey Ioffe, Jonathon Shlens, Zbigniew Wojna (Rethinking the Inception Architecture for Computer Vision) 
+
 Credit to:
-
-
 
 
 

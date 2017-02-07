@@ -1,15 +1,13 @@
-#Full VGG16 architecture from paper
 
-from keras.layers.convolutional import Convolution2D, MaxPooling2D, ZeroPadding2D
-from keras.layers.core import Dense, Dropout, Flatten
 from keras.models import Sequential
-from keras.optimizers import SGD
+from keras.layers import Flatten, Dense, Input, Dropout
+from keras.layers import Convolution2D, MaxPooling2D, ZeroPadding2D
 
-#construct model architecture
+#construct model
 
 model = Sequential()
-
-model.add(ZeroPadding2D((1,1),input_shape=(1,120,120)))
+    
+model.add(ZeroPadding2D((1,1),input_shape=(3,224,224)))
 model.add(Convolution2D(64, 3, 3, activation='relu'))
 model.add(ZeroPadding2D((1,1)))
 model.add(Convolution2D(64, 3, 3, activation='relu'))
@@ -27,6 +25,8 @@ model.add(ZeroPadding2D((1,1)))
 model.add(Convolution2D(256, 3, 3, activation='relu'))
 model.add(ZeroPadding2D((1,1)))
 model.add(Convolution2D(256, 3, 3, activation='relu'))
+model.add(ZeroPadding2D((1,1)))
+model.add(Convolution2D(256, 3, 3, activation='relu'))
 model.add(MaxPooling2D((2,2), strides=(2,2)))
 
 model.add(ZeroPadding2D((1,1)))
@@ -35,8 +35,12 @@ model.add(ZeroPadding2D((1,1)))
 model.add(Convolution2D(512, 3, 3, activation='relu'))
 model.add(ZeroPadding2D((1,1)))
 model.add(Convolution2D(512, 3, 3, activation='relu'))
+model.add(ZeroPadding2D((1,1)))
+model.add(Convolution2D(512, 3, 3, activation='relu'))
 model.add(MaxPooling2D((2,2), strides=(2,2)))
 
+model.add(ZeroPadding2D((1,1)))
+model.add(Convolution2D(512, 3, 3, activation='relu'))
 model.add(ZeroPadding2D((1,1)))
 model.add(Convolution2D(512, 3, 3, activation='relu'))
 model.add(ZeroPadding2D((1,1)))
@@ -66,6 +70,6 @@ model.add(Dense(1, activation='sigmoid'))
 model.compile(optimizer='nadam',loss='binary_crossentropy',metrics=['binary_accuracy'])
 
 #save model
-model.save('VGG16[r1].h5')
+model.save('VGG19[r1].h5')
 
 

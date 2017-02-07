@@ -1,6 +1,6 @@
 
 from keras.models import Sequential
-from keras.layers import Convolution2D, Activation, MaxPooling2D, Flatten, Dense, Dropout
+from keras.layers import Convolution2D, Activation, MaxPooling2D, Flatten, Dense, Dropout, BatchNormalization
 from keras.optimizers import Nadam, SGD
 
 #model construction
@@ -11,14 +11,17 @@ model = Sequential()
 # three sets of Convolution layers (32, 32, 64 filters of size 3x3) followed by relu activation filters and
 # pooling layers (pooling size 2x2)
 model.add(Convolution2D(32, 3, 3, border_mode='same', input_shape=(1,120,120)))
+model.add(BatchNormalization())
 model.add(Activation('relu'))
 model.add(MaxPooling2D(pool_size=(2, 2)))
 
 model.add(Convolution2D(32, 3, 3))
+model.add(BatchNormalization())
 model.add(Activation('relu'))
 model.add(MaxPooling2D(pool_size=(2, 2)))
 
 model.add(Convolution2D(64, 3, 3))
+model.add(BatchNormalization())
 model.add(Activation('relu'))
 model.add(MaxPooling2D(pool_size=(2, 2)))
 

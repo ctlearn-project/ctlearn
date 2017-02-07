@@ -1,13 +1,12 @@
-#Keras VGG16 network with input dimensions (3,120,120) -> color mode = rgb (3 color channels)
 
-from keras.applications.vgg16 import VGG16 
+from keras.applications.vgg19 import VGG19
 from keras.preprocessing import image
 from keras.models import Model
 from keras.layers import Dense, GlobalAveragePooling2D, Flatten
 from keras import backend as K
 
 # create the base pre-trained model with imagenet weights
-base_model = VGG16(weights='imagenet', include_top=False, input_tensor=None, input_shape=(3,120,120))
+base_model = VGG19(weights='imagenet', include_top=False, input_tensor=None, input_shape=(3,120,120))
 
 #input_shape=(1, 120, 120)
 
@@ -34,7 +33,7 @@ model = Model(input=base_model.input, output=predictions)
 model.compile(optimizer='nadam', loss='binary_crossentropy',metrics=['binary_accuracy'])
 
 # save model for training
-model.save('VGG16_pretrained[r1].h5')
+model.save('VGG19[r1].h5')
 
 
 
