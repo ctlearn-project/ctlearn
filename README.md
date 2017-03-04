@@ -66,8 +66,6 @@ metrics: binary accuracy
 
 weight initialization: glorot normal
 
-
-
 #### AlexNet
 
 ##### **Description:** 
