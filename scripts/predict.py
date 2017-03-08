@@ -16,6 +16,7 @@ from shutil import copyfile
 parser = argparse.ArgumentParser(description='Predict classification of data from the indicated directory using the given network. Print outputs.')
 parser.add_argument('model', help='path to saved model (ex. model.h5)')
 parser.add_argument('predict_data_dir', help='path to directory containing images for prediction')
+parser.add_argument('--weights', help='path to saved model weights')
 #parser.add_argument('output_name', help='name used for output log file')
 #parser.add_argument('output_dir', help='directory to save output log file in')
 
@@ -23,6 +24,11 @@ args = parser.parse_args()
 
 model_path = os.path.abspath(args.model)
 predict_data_path = os.path.abspath(args.predict_data_dir)
+
+#load saved weights
+if args.weights is not None:
+    model_weights_path = os.path.abspath(args.weights)
+    model.load_weights(model_weights_path)
 
 #Image Generator
 
@@ -46,4 +52,5 @@ model = load_model(model_path)
 
 # predict the dataset using the model
 predictions = model.predict_generator(predict_generator)
-print(predictions)
+
+numpy.savetxt('predictions.txt',predictions)
