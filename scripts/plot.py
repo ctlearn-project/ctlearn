@@ -25,7 +25,8 @@ args = parser.parse_args()
 
 data = np.genfromtxt(args.log_file, delimiter=',', skip_header=1, names=['epoch', 'acc', 'loss', 'val_acc', 'val_loss'])
 
-run_name, ext = args.log_file.split(".", 1)
+file_name = os.path.basename(args.log_file)
+run_name, ext = file_name.split(".")
 
 #plot accuracy history
 
@@ -38,6 +39,7 @@ plt.legend(['train', 'validation'], loc='center right')
 
 acc_plot_name ='accuracy[' + run_name + '].png'
 plt.savefig(os.path.join(args.output_dir,acc_plot_name), bbox_inches='tight')
+plt.gcf().clear()
 
 # plot loss history
 plt.plot(data['epoch'],data['loss'])

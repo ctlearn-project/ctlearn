@@ -50,7 +50,7 @@ model.add(Activation('sigmoid'))
 model.compile(optimizer='nadam',loss='binary_crossentropy',metrics=['binary_accuracy'])
 
 #save model
-model.save('testNet[r4].h5')
+model.save('testNet[r5].h5')
 
 #train model
 ############
