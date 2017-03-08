@@ -63,9 +63,9 @@ model.add(Dense(1, activation='sigmoid'))
 #sgd = SGD(lr=0.01, clipnorm=1.)
 #nadam = Nadam(lr=0.0000002, beta_1=0.9, beta_2=0.999, epsilon=1e-08, schedule_decay=0.004)
 
-model.compile(optimizer='nadam',loss='binary_crossentropy',metrics=['binary_accuracy'])
+model.compile(optimizer='sgd',loss='binary_crossentropy',metrics=['binary_accuracy'])
 
 #save model
-model.save('VGG16[r1].h5')
+model.save('VGG16[r5].h5')
 
 

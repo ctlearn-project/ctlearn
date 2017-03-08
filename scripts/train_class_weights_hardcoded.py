@@ -103,7 +103,7 @@ earlystopacc = EarlyStopping(monitor='val_binary_accuracy', min_delta=0.001, pat
 reducelr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, verbose=0, mode='auto', epsilon=0.0001, cooldown=0, min_lr=0)
 
 #class weights
-#class_weight = {0:17,1:83}
+class_weight = {0:1,1:5.406}
 
-history = model.fit_generator(training_generator,samples_per_epoch=args.samples,nb_epoch=args.epochs,callbacks =[logger,checkpoint], validation_data=validation_generator,nb_val_samples=30742,class_weight='auto')
+history = model.fit_generator(training_generator,samples_per_epoch=args.samples,nb_epoch=args.epochs,callbacks =[logger,checkpoint], validation_data=validation_generator,nb_val_samples=30742,class_weight=class_weight)
 
