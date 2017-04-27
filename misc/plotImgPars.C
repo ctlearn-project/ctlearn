@@ -13,7 +13,7 @@ using namespace std;
 
 bool plotHistos(TH1F *h1, TH1F *h2, bool bnorm, bool bsave, bool blog, TString label, TString label1, TString label2, TString tag,bool debug);
 
-int plotImgPars(TString mypath1, TString mypath2, TString label1, TString mypath3, TString mypath4, TString label2, TString tag,int teltoana)
+int plotImgPars(TString mypath1, TString label1, TString mypath2, TString label2, TString tag,int teltoana)
 {
   //int plotImgPars(TString mypath1 = "/Users/nieto/tmp/plotImgPars/mpik/*root", TString mypath2 = "/Users/nieto/tmp/plotImgPars/gtech/*root"){
 
@@ -212,10 +212,8 @@ int plotImgPars(TString mypath1, TString mypath2, TString label1, TString mypath
 
     TChain ch1(st);
     ch1.Add(mypath1);
-    ch1.Add(mypath2);
     TChain ch2(st);
-    ch2.Add(mypath3);
-    ch2.Add(mypath4);
+    ch2.Add(mypath2);
 
     ch1.Draw("log10(size)>>sizeaux","size>0");
     size1->Add(sizeaux);
@@ -300,10 +298,8 @@ int plotImgPars(TString mypath1, TString mypath2, TString label1, TString mypath
 
     TChain ch1(st);
     ch1.Add(mypath1);
-    ch1.Add(mypath2);
     TChain ch2(st);
-    ch2.Add(mypath3);
-    ch2.Add(mypath4);    
+    ch2.Add(mypath2);    
     
     ch1.Draw("MCe0>>MCe0aux");
     MCe01->Add(MCe0aux);
@@ -380,9 +376,15 @@ int plotImgPars(TString mypath1, TString mypath2, TString label1, TString mypath
   if (!plotHistos(MCe01,MCe02,false,true,false,tellabel,label1,label2,tag,false)) return -1;
   if (!plotHistos(MCe01,MCe02,true,true,false,tellabel,label1,label2,tag,false)) return -1;
   if (!plotHistos(MCxcore1,MCxcore2,false,true,false,tellabel,label1,label2,tag,false)) return -1;
+  if (!plotHistos(MCxcore1,MCxcore2,true,true,false,tellabel,label1,label2,tag,false)) return -1;
+  if (!plotHistos(MCycore1,MCycore2,false,true,false,tellabel,label1,label2,tag,false)) return -1;
   if (!plotHistos(MCycore1,MCycore2,true,true,false,tellabel,label1,label2,tag,false)) return -1;
   if (!plotHistos(MCxoff1,MCxoff2,false,true,false,tellabel,label1,label2,tag,false)) return -1;
+  if (!plotHistos(MCxoff1,MCxoff2,true,true,false,tellabel,label1,label2,tag,false)) return -1;
+  if (!plotHistos(MCyoff1,MCyoff2,false,true,false,tellabel,label1,label2,tag,false)) return -1;
   if (!plotHistos(MCyoff1,MCyoff2,true,true,false,tellabel,label1,label2,tag,false)) return -1;
+
+
 
   /*  size1->Reset();  
   size2->Reset();  
@@ -566,19 +568,17 @@ cout << k <<" "<< h1->GetBinContent(k)<<" "<<h2->GetBinContent(k)<<" "<<"NaN"<<"
 int main(int argc, char * argv[])
 {
     //TString mypath1 = "/data/nieto/deeplearning/evn/gamma/20deg/0deg/root";
-    TString mypath1 = "/data/nieto/deeplearning/evn/gamma-diffuse/20deg/0deg/*.root";
-    TString mypath2 = "/data/nieto/deeplearning/evn/gamma-diffuse/20deg/180deg/*.root";
+    TString mypath1 = "/data/deeplearning/data/root-evndisp/gamma-diffuse/*.root";
     TString label1 = "gamma-diffuse";
 
 
     //TString mypath2 = "/data/nieto/deeplearning/evn/gamma/20deg/180deg/*root";
-    TString mypath3 = "/data/nieto/deeplearning/evn/proton/20deg/0deg/*.root";
-    TString mypath4 = "/data/nieto/deeplearning/evn/proton/20deg/180deg/*.root"; 
+    TString mypath2 = "/data/deeplearning/data/root-evndisp/proton/*.root";
     TString label2 = "proton";
     
     TString tag = "particle";
 
     int teltoana = 1;
 
-    return plotImgPars(mypath1,mypath2,label1,mypath3,mypath4,label2,tag,teltoana);
+    return plotImgPars(mypath1,label1,mypath2,label2,tag,teltoana);
 }
