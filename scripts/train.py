@@ -23,6 +23,7 @@ parser.add_argument('samples',help='number of images per epoch', type=int, defau
 parser.add_argument('--color_mode',help='image generator color mode, grayscale or rgb', default='grayscale')
 parser.add_argument('--class_mode', help='-image generator class mode - binary or categorical', default='binary')
 parser.add_argument('--batch_size',help='image generator batch size', default=64, type=int)
+parser.add_argument('--val_samples',help='validation samples per epoch', default=2)
 #parser.add_argument('--l',help='log results to file',action="store_true")
 #parser.add_argument('--c',help='save checkpoints',action="store_true")
 
@@ -105,5 +106,5 @@ reducelr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, verbose
 #class weights
 #class_weight = {0:17,1:83}
 
-history = model.fit_generator(training_generator,samples_per_epoch=args.samples,nb_epoch=args.epochs,callbacks =[logger,checkpoint], validation_data=validation_generator,nb_val_samples=2,class_weight='auto')
+history = model.fit_generator(training_generator,samples_per_epoch=args.samples,nb_epoch=args.epochs,callbacks =[logger,checkpoint], validation_data=validation_generator,nb_val_samples=args.val_samples,class_weight='auto')
 
