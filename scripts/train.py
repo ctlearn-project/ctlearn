@@ -105,5 +105,5 @@ reducelr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, verbose
 #class weights
 #class_weight = {0:17,1:83}
 
-history = model.fit_generator(training_generator,samples_per_epoch=args.samples,nb_epoch=args.epochs,callbacks =[logger,checkpoint], validation_data=validation_generator,nb_val_samples=30742,class_weight='auto')
+history = model.fit_generator(training_generator,samples_per_epoch=args.samples,nb_epoch=args.epochs,callbacks =[logger,checkpoint], validation_data=validation_generator,nb_val_samples=2,class_weight='auto')
 
