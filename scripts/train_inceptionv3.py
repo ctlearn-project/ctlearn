@@ -16,6 +16,7 @@ from keras.callbacks import CSVLogger, ModelCheckpoint, EarlyStopping, ReduceLRO
 image_x_dim= 120
 image_y_dim= 120
 
+#hello
 training_samples = 40000
 validation_samples = 10000
 
