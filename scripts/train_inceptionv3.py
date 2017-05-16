@@ -99,7 +99,7 @@ checkpoint = ModelCheckpoint(os.path.join(checkpoint_dir,
 earlystoploss = EarlyStopping(monitor='val_loss', min_delta=0.00001, patience=10, verbose=0, mode='auto')
 earlystopacc = EarlyStopping(monitor='val_binary_accuracy', min_delta=0.001, patience=5, verbose=0, mode='auto')
 reducelr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, verbose=0, mode='auto', epsilon=0.0001, cooldown=0, min_lr=0)
-lrs = 2*np.random.random(25) - 4
+lrs = np.random.random(25) - 3
 lrs = 10**lrs
 accs = []
 for lr in lrs:
