@@ -69,8 +69,17 @@ instructions for prepping dataset:
 2. run generate_image_lists.py on the two directories to generate two lists of all image filenames (gamma-diffuse.txt,proton.txt)
 3. run generateBinLists to read mscw ROOT files (hardcoded), apply energy bins and other pre-training cuts (all hardcoded), and output to text files (ex. gamma-diffuse_0.txt, gamma-diffuse_1.txt, ... proton_0.txt, etc.). These text files list the eventIDs of events which pass the selection cuts and which fall into each energy bin.
 4. pass the list of filenames and the list of passing eventIDs into get_passing_filenames.py to output the complete lists of image filenames which satisfy the cuts/bins (ex. passing_gamma-diffuse_1.txt, etc.)
+
+NOTE: If using pre-generated passing_gamma-diffuse_[0-2].txt and passing_proton_[0-2].txt files, be sure to replace the full image paths with the corresponding file paths in your own system.
+
+NOTE: apply_bins_cuts_2.sh requires that the main target directory already exist (subdirectories will be created automatically)
+
 5.run apply_bins_cuts_2.sh in the same directory as the lists of passing filenames and provide a target directory, where directories will be created (ex. /0, /1, /2, etc.) containing subdirectories (/gamma-diffuse, /proton) containing symlinks to the images satisfying the bins and cuts
+
+
 6.run split_train_test.py to copy + split the data into the necessary training/validation/test directories for keras training. 
+
+NOTE: you will need to run split_train_test.py once for each bin. As written, it copies (does not follow) symlinks.
 
 #####
 
