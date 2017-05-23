@@ -34,12 +34,12 @@ int main(int argc, char **argv)
 
         if(label==0)
         {
-            gammafile << classifier_value;
+            gammafile << (classifier_value + 1)/2;
             gammafile << "\n";
         }
         else if(label==1)
         {
-            protonfile << classifier_value;
+            protonfile << (classifier_value+1)/2;
             protonfile << "\n";
         }
         else
