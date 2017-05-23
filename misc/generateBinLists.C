@@ -35,8 +35,8 @@ int main(int argc, char **argv)
 {
 
     //energy bins
-    float min_energy[8] = {0,0,0,0,0,0,0,0};
-    float max_energy[8] = {0,0,0,0,0,0,0,0};
+    float min_energy[3] = {0.1,0.31,1};
+    float max_energy[3] = {0.31,1,10};
 
     //TString mypath1 = "/data/nieto/deeplearning/evn/gamma/20deg/0deg/root";
     TString mypath1 = "/data/nieto/mscw_energy_diffuse/gamma-diffuse*.root";
@@ -48,9 +48,9 @@ int main(int argc, char **argv)
 
     //string cut_selection_conditions = "MCe0>10 && MSCW>0.5 && MSCL >0.2 && EChi2S > 10000000 && dES > 0 && EmissionHeight > 0 "; 
 
-    for (int i= 0; i < 8; i++)
+    for (int i= 0; i < 3; i++)
     {
-        string cut_selection_conditions = "MCe0>" + std::to_string(min_energy[i]) + " && MCe0<" + std::to_string(max_energy[i]) + " && MSCW > 0.5 && MSCL>0.5 && sqrt(Xoff^2 + Yoff^2)<0.5 && NTrig > 3" ; 
+        string cut_selection_conditions = "ErecS>" + std::to_string(min_energy[i]) + " && ErecS<" + std::to_string(max_energy[i]) + " && MSCW>-2.0 && MSCW<2.0 && MSCL>-2.0 && MSCL<5.0 && EChi2S>=0.0 && ErecS>0.0 && EmissionHeight>0.0 && EmissionHeight<50.0 && sqrt(MCxoff^2 + MCyoff^2)<3.0 && sqrt(MCxoff^2 + MCyoff^2)>=0.0 && NImages>=3 && dES>=0.0" ; 
         generateEventList(mypath1,label1,mypath2,label2,cut_selection_conditions, i);
     }
 

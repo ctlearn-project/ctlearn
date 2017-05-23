@@ -18,15 +18,16 @@ do
     filename=$(basename $f)
     id=$(echo $filename | cut -f1 -d_)
 
-for i in $(awk -F "[ \t\n]+" 'FNR > 3 {print $4}' $1); 
+while read i;
 do
-    if [ "$id" == "$i" ];
+    if (( i==id ));
     then
         ln -s $f $filename
         echo $filename
+        break
     fi
 
-done
+done < $1
 
 done
 
@@ -40,15 +41,16 @@ do
     filename=$(basename $f)
     id=$(echo $filename | cut -f1 -d_)
 
-for i in $(awk -F "[ \t\n]+" 'FNR > 3 {print $4}' $2); 
+while read i;
 do
-    if [ "$id" == "$i" ];
+    if (( i==id ));
     then
         ln -s $f $filename
         echo $filename
+        break
     fi
 
-done
+done < $2
 
 done
 
