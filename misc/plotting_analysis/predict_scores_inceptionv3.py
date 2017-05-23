@@ -55,12 +55,12 @@ test_preprocess = ImageDataGenerator(
         vertical_flip=False)
 
 #generator for training data
-test_generator = test_preprocess.flow_from_directory(
-        test_data_path,
-        target_size=(image_x_dim*2, image_y_dim*2),
-        color_mode='rgb',
-        batch_size=args.batch_size,
-        class_mode='binary')
+#test_generator = test_preprocess.flow_from_directory(
+        #test_data_path,
+        #target_size=(image_x_dim*2, image_y_dim*2),
+        #color_mode='rgb',
+        #batch_size=args.batch_size,
+        #class_mode='binary')
 
 #generator for gamma data
 gamma_test_generator = test_preprocess.flow_from_directory(
@@ -99,27 +99,19 @@ if args.weights is not None:
     model_weights_path = os.path.abspath(args.weights)
     model.load_weights(model_weights_path)
 
-result = model.predict_generator(test_generator, 100, max_q_size=10, workers=1, pickle_safe=False, verbose=0)
-filepath = os.path.join(save_dir, 'predict.txt')
-np.savetxt(filepath,result)
+#predict
+#result = model.predict_generator(test_generator, 100, max_q_size=10, workers=1, pickle_safe=False, verbose=0)
+#filepath = os.path.join(save_dir, 'predict.txt')
+#np.savetxt(filepath,result)
 
 result_gamma = model.predict_generator(gamma_test_generator, 50, max_q_size=10, workers=1, pickle_safe=False, verbose=0)
 filepath_gamma = os.path.join(save_dir, 'predict_gamma.txt')
+result_gamma = 1-result_gamma
 np.savetxt(filepath_gamma,result_gamma)
 
 result_proton = model.predict_generator(proton_test_generator, 50, max_q_size=10, workers=1, pickle_safe=False, verbose=0)
 filepath_proton = os.path.join(save_dir, 'predict_proton.txt')
+result_proton = 1-result_proton
 np.savetxt(filepath_proton,result_proton)
 
-## plot classifier value histograms
 
-histogram=plt.figure()
-bins = np.linspace(0, 1, 100)
-
-plt.hist(result_gamma, bins, alpha=0.5,histtype='stepfilled',label='gamma')
-plt.hist(result_proton, bins, alpha=0.5,histtype='stepfilled',label='proton')
-plt.legend()
-plt.xlabel('Classifier value (binary crossentropy/logloss)')
-plt.ylabel('Frequency')
-plotpath = os.path.join(save_dir,'plot.png')
-plt.savefig(plotpath)
