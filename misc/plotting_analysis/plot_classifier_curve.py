@@ -8,7 +8,6 @@ import os
 # parse command line arguments
 
 parser = argparse.ArgumentParser(description='Predict on a batch of images and generate plots for the classifier value.')
-parser.add_argument('save_dir', help='directory to save plots in')
 parser.add_argument('gamma_scores',help='text file containing classifier scores for true gammas')
 parser.add_argument('proton_scores',help='text file containing classifier scores for true protons')
 

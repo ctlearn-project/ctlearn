@@ -8,11 +8,19 @@ using namespace std;
 
 int main(int argc, char **argv)
 {
+    //takes 3 arguments,
+    //full file path of ROOT file to read BDT data from
+    //file name of text file containing gamma classifier values
+    //file name of text file containing proton classifier values
+    char *root_file_path = argv[1];
+    char *gamma_file_name = argv[2];
+    char *proton_file_name = argv[3];
+
     int label;
     float classifier_value;
 
     //open the file
-    TFile *f = TFile::Open("/data/nieto/TMVA/BDT-V2-ID0-IM3-d20170517-0.5/complete_BDTroot/BDT_0.root");
+    TFile *f = TFile::Open(root_file_path);
     if (f == 0) {
         printf("Error: cannot open file\n");
         return 0;
@@ -24,8 +32,8 @@ int main(int argc, char **argv)
     TTreeReaderValue<int> classID = TTreeReaderValue<int>(myReader,"classID");
     TTreeReaderValue<float> BDT_0 = TTreeReaderValue<float>(myReader,"BDT_0");
 
-    ofstream gammafile ("BDT_gamma.txt");
-    ofstream protonfile("BDT_proton.txt");
+    ofstream gammafile (gamma_file_name);
+    ofstream protonfile(proton_file_name);
 
     while (myReader.Next()) 
     {
