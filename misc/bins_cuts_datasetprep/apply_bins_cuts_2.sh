@@ -8,6 +8,12 @@
 #1 -> number of energy bins
 #2 -> full path of target directory (will create sub-directories for each energy bin, eg. 0, 1,...)
 
+if [ $# -lt 2 ] || [ $# -gt 3 ]; then
+    echo "Usage: "
+    echo $0" <# of energy bins> <full path to target dir> <original path substitution> [optional]"
+    echo "For path substitutions, input path to the 'img' folder only."
+fi
+
 end=$(expr $1 - 1)
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -30,7 +36,11 @@ for i in $(seq 0 $end);
         while read j;
             do
                 filename="${j##*/}"
-                ln -s $j
+		if [ $# -eq 3 ]; then
+		    tmp=`echo $j | rev | cut -d "/" -f1-5 | rev`
+		    j=$3"/"$tmp
+		fi
+		ln -s $j
                 #echo $filename
 
         done < $list1
@@ -44,6 +54,10 @@ for i in $(seq 0 $end);
         while read j;
             do
                 filename="${j##*/}"
+		if [ $# -eq 3 ]; then
+		    tmp=`echo $j | rev | cut -d "/" -f1-5 |rev`
+		    j=$3/$tmp
+		fi
                 ln -s $j
                 #echo $filename
 
