@@ -6,7 +6,7 @@ import sys
 import numpy as np
 
 from keras.models import Model
-from keras.optimizers import SGD, RMSprop
+from keras.optimizers import SGD, RMSprop, Nadam
 from keras.layers.core import Dense, Flatten
 from keras.applications.inception_v3 import InceptionV3
 from keras.preprocessing.image import ImageDataGenerator
@@ -16,8 +16,8 @@ from keras.callbacks import CSVLogger, ModelCheckpoint, EarlyStopping, ReduceLRO
 image_x_dim= 120
 image_y_dim= 120
 
-#hello
-training_samples = 40000
+#number of samples
+training_samples = 20000
 validation_samples = 10000
 
 # parse command line arguments
@@ -29,7 +29,7 @@ parser.add_argument('val_data_dir', help='path to validation data directory (con
 parser.add_argument('run_name', help='name of run (used to name log file, plot images,etc)')
 parser.add_argument('save_dir', help='directory to save run files in (directory must exist)')
 parser.add_argument('epochs',help='number of epochs to train for', type=int)
-parser.add_argument('--batch_size',help='image generator batch size', default=64, type=int)
+parser.add_argument('--batch_size',help='image generator batch size', default=96, type=int)
 #parser.add_argument('--l',help='log results to file',action="store_true")
 #parser.add_argument('--c',help='save checkpoints',action="store_true")
 
@@ -100,9 +100,17 @@ checkpoint = ModelCheckpoint(os.path.join(checkpoint_dir,
 earlystoploss = EarlyStopping(monitor='val_loss', min_delta=0.00001, patience=10, verbose=0, mode='auto')
 earlystopacc = EarlyStopping(monitor='val_binary_accuracy', min_delta=0.001, patience=5, verbose=0, mode='auto')
 reducelr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, verbose=0, mode='auto', epsilon=0.0001, cooldown=0, min_lr=0)
-lrs = 0.01*np.random.random(10) + 0.001
+
+num_samples = 20
+
+lrs = np.random.uniform(0.00009,0.0004,num_samples)
+#lrs = 10**lrs
+beta_1s = np.random.uniform(0.88,0.95,num_samples)
+beta_2s = np.random.uniform(0.92,1.0,num_samples)
 accs = []
-for lr in lrs:
+samples = []
+
+for lr,beta_1,beta_2 in zip(lrs,beta_1s,beta_2s):
     # Create the InceptionV3 model
     initial_model = InceptionV3(
             include_top=False, 
@@ -111,15 +119,15 @@ for lr in lrs:
             pooling=None)
     last = initial_model.output
     x = Flatten()(last)
-    prediction = Dense(1, activation='sigmoid')(x)
+    prediction = Dense(1, activation='sigmoid', name='prediction')(x)
     model = Model(initial_model.input, prediction)
     
     model.compile(
-            optimizer=SGD(lr=lr),
+            optimizer=Nadam(lr=lr,beta_1=beta_1,beta_2=beta_2,epsilon=1e-08, schedule_decay=0.004),
             loss='binary_crossentropy',
             metrics=['binary_accuracy'])
     
-    logger = CSVLogger(os.path.join(run_dir, args.run_name + str(lr) + '.log'),
+    logger = CSVLogger(os.path.join(run_dir, args.run_name + '_' + '{:.7f}_{:f}_{:f}'.format(lr,beta_1,beta_2) + '.log'),
             separator=',', append=True)
     history = model.fit_generator(
             generator=training_generator,
@@ -130,6 +138,9 @@ for lr in lrs:
             validation_steps=int(validation_samples/args.batch_size),
             class_weight='auto')
     accs.append(history.history["val_binary_accuracy"][-1])
-sorted_lrs = [(lr, acc) for (acc, lr) in sorted(zip(accs, lrs), reverse=True)]
-for sorted_lr in sorted_lrs:
-    print(sorted_lr)
+
+sorted_results = [(lr,beta_1,beta_2, acc) for (acc, lr, beta_1, beta_2) in sorted(zip(accs, lrs, beta_1s, beta_2s), reverse=True)]
+for sorted_result in sorted_results:
+    print(sorted_result)
+
+

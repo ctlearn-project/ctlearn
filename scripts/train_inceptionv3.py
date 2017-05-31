@@ -109,7 +109,7 @@ initial_model = InceptionV3(
         pooling=None)
 last = initial_model.output
 x = Flatten()(last)
-prediction = Dense(1, activation='sigmoid')(x)
+prediction = Dense(1, activation='sigmoid', name='prediction')(x)
 model = Model(initial_model.input, prediction)
 
 model.compile(

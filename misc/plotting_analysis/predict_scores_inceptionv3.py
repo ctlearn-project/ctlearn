@@ -23,15 +23,15 @@ image_y_dim= 120
 parser = argparse.ArgumentParser(description='Predict on a batch of images and generate plots for the classifier value.')
 parser.add_argument('weights', help='path to saved model weights')
 #parser.add_argument('model',help='path to saved model')
-parser.add_argument('test_data_dir', help='path to testing data directory (containing subdir for each type)')
+#parser.add_argument('test_data_dir', help='path to testing data directory (containing subdir for each type)')
 parser.add_argument('gamma_dir', help='path to gamma test data directory (must contain directory with data)')
 parser.add_argument('proton_dir', help='path to proton test data directory (must contain directory with data)')
 parser.add_argument('save_dir', help='directory to save plots in')
-parser.add_argument('--batch_size',help='image generator batch size', default=20, type=int)
+parser.add_argument('--batch_size',help='image generator batch size', default=100, type=int)
 
 args = parser.parse_args()
 
-test_data_path = os.path.abspath(args.test_data_dir)
+#test_data_path = os.path.abspath(args.test_data_dir)
 gamma_data_path = os.path.abspath(args.gamma_dir)
 proton_data_path = os.path.abspath(args.proton_dir)
 
@@ -45,6 +45,9 @@ if not os.path.exists(save_dir):
 
 #count number of images in directories, count number of classes
 ##############################################################
+
+num_gamma = 9000
+num_proton = 6900
 
 #data augmentation/preprocessing
 ################################
@@ -104,13 +107,13 @@ if args.weights is not None:
 #filepath = os.path.join(save_dir, 'predict.txt')
 #np.savetxt(filepath,result)
 
-result_gamma = model.predict_generator(gamma_test_generator, 50, max_q_size=10, workers=1, pickle_safe=False, verbose=0)
-filepath_gamma = os.path.join(save_dir, 'predict_gamma.txt')
+result_gamma = model.predict_generator(gamma_test_generator,num_gamma/args.batch_size , max_q_size=10, workers=1, pickle_safe=False, verbose=0)
+filepath_gamma = os.path.join(save_dir, 'predict_gamma_0_1.txt')
 result_gamma = 1-result_gamma
 np.savetxt(filepath_gamma,result_gamma)
 
-result_proton = model.predict_generator(proton_test_generator, 50, max_q_size=10, workers=1, pickle_safe=False, verbose=0)
-filepath_proton = os.path.join(save_dir, 'predict_proton.txt')
+result_proton = model.predict_generator(proton_test_generator, num_proton/args.batch_size, max_q_size=10, workers=1, pickle_safe=False, verbose=0)
+filepath_proton = os.path.join(save_dir, 'predict_proton_0_1.txt')
 result_proton = 1-result_proton
 np.savetxt(filepath_proton,result_proton)
 

@@ -10,6 +10,8 @@ import os
 parser = argparse.ArgumentParser(description='Predict on a batch of images and generate plots for the classifier value.')
 parser.add_argument('gamma_scores',help='text file containing classifier scores for true gammas')
 parser.add_argument('proton_scores',help='text file containing classifier scores for true protons')
+parser.add_argument('--save_dir',default='.',help='directory to save plot in')
+parser.add_argument('--filename',default='plot.png',help='filename of plot')
 
 args = parser.parse_args()
 
@@ -35,5 +37,5 @@ plt.hist(proton, bins, alpha=0.5,histtype='stepfilled',label='proton')
 plt.legend()
 plt.xlabel('Classifier value')
 plt.ylabel('Frequency')
-plotpath = os.path.join(save_dir,'classifier_scores_histogram.png')
+plotpath = os.path.join(save_dir,args.filename)
 plt.savefig(plotpath)
