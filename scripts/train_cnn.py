@@ -146,12 +146,19 @@ validation_generator = validation_preprocess.flow_from_directory(
 #train model
 ############
 
-checkpoint = ModelCheckpoint(os.path.join(checkpoint_dir,
-    args.run_name + '-{epoch:04d}-{val_loss:.5f}.h5'),
+checkpoint_vl = ModelCheckpoint(os.path.join(checkpoint_dir,
+    args.run_name + '-' + mymodel.lower() + '-e{epoch:04d}-vl{val_loss:.5f}.h5'),
     monitor='val_loss',
-    verbose=0,
-    save_best_only=False,
-    save_weights_only=True,
+    verbose=1,
+    save_best_only=True,
+    save_weights_only=False,
+    mode='auto')
+checkpoint_va = ModelCheckpoint(os.path.join(checkpoint_dir,
+    args.run_name + '-' + mymodel.lower() + '-e{epoch:04d}-va{val_binary_accuracy:.5f}.h5'),
+    monitor='val_binary_accuracy',
+    verbose=1,
+    save_best_only=True,
+    save_weights_only=False,
     mode='auto')
 earlystoploss = EarlyStopping(monitor='val_loss', min_delta=0.00001, patience=10, verbose=0, mode='auto')
 earlystopacc = EarlyStopping(monitor='val_binary_accuracy', min_delta=0.001, patience=5, verbose=0, mode='auto')
@@ -200,7 +207,7 @@ for lr in lrs:
         generator=training_generator,
         steps_per_epoch=int(training_samples/args.batch_size),
         epochs=args.epochs,
-        callbacks=[logger],
+        callbacks=[logger,checkpoint_vl,checkpoint_va],
         validation_data=validation_generator,
         validation_steps=int(validation_samples/args.batch_size),
         class_weight='auto')
