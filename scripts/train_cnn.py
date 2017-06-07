@@ -6,7 +6,7 @@ import sys
 import numpy as np
 
 from keras.models import Model
-from keras.optimizers import SGD, RMSprop, Adam, Adadelta, Nadam
+from keras.optimizers import SGD, RMSprop, Adam, Adadelta, Nadam, Adamax, Adagrad
 from keras.layers.core import Dense, Flatten
 from keras.applications.inception_v3 import InceptionV3
 from keras.applications.resnet50 import ResNet50
@@ -18,9 +18,6 @@ from keras.callbacks import CSVLogger, ModelCheckpoint, EarlyStopping, ReduceLRO
 image_x_dim= 120
 image_y_dim= 120
 scale_dim=2
-#hello
-#training_samples = 400
-#validation_samples = 50
 
 # parse command line arguments
 
@@ -36,13 +33,15 @@ parser.add_argument('--batch_size',help='image generator batch size', default=50
 parser.add_argument('--lrs',help='scan learning rates (random uniform distribution): log(min) log(max) #lrs', nargs='+', type=float)
 parser.add_argument('--lr',help='single learning rate', type=float)
 
-#parser.add_argument('--weights', help='path to saved model weights')
+parser.add_argument('--weights', help='path to saved model weights')
 #parser.add_argument('--l',help='log results to file',action="store_true")
 #parser.add_argument('--c',help='save checkpoints',action="store_true")
 
 args = parser.parse_args()
 
 mymodel = args.model
+myweights = args.weights
+
 suppmod = [ 'ResNet50', 'InceptionV3']
 #suppmod = [ 'ResNet50', 'InceptionV3', 'Xception']
 if not any(s.lower() == mymodel.lower() for s in suppmod):
@@ -50,7 +49,7 @@ if not any(s.lower() == mymodel.lower() for s in suppmod):
     exit()
 
 myoptimizer = args.optimizer
-suppopt = [ 'Adam', 'Nadam', 'Adadelta', 'RMSProp', 'SGD']
+suppopt = [ 'Adam', 'Nadam', 'Adadelta', 'RMSProp', 'SGD', 'Adagrad', 'Adamax']
 if not any(s.lower() == myoptimizer.lower() for s in suppopt):
     print('Optimizer not supported')
     exit()
@@ -73,6 +72,10 @@ else:
         lr=0.002
     elif myoptimizer.lower() == 'adadelta':
         lr=1.0
+    elif myoptimizer.lower() == 'adamax':
+        lr=0.002
+    elif myoptimizer.lower() == 'adagrad':
+        lr=0.01      
     elif myoptimizer.lower() == 'rmsprop':
         lr=0.001
     elif myoptimizer.lower()  == 'sgd':
@@ -111,8 +114,8 @@ if not os.path.exists(model_dir):
 #count number of images in directories
 ##############################################################
 
-training_samples = sum([len(f) for d, s, f in os.walk(train_data_path)])/2
-validation_samples = sum([len(f) for d, s, f in os.walk(val_data_path)])/2
+training_samples = sum([len(f) for d, s, f in os.walk(train_data_path,followlinks=True)])/2
+validation_samples = sum([len(f) for d, s, f in os.walk(val_data_path,followlinks=True)])/2
 
 #data augmentation/preprocessing
 ################################
@@ -179,6 +182,10 @@ for lr in lrs:
             input_shape=(3,image_x_dim*scale_dim, image_y_dim*scale_dim), 
             pooling=None)
         
+    if myweights is not None:
+        print("Loading weights from %s" % myweights)
+        initial_model.load_weights(myweights)
+        
     last = initial_model.output
     x = Flatten()(last)
     prediction = Dense(1, activation='sigmoid')(x)
@@ -188,6 +195,10 @@ for lr in lrs:
         selopt=Adam(lr=lr, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
     elif myoptimizer.lower() == 'nadam':
         selopt=Nadam(lr=lr, beta_1=0.9, beta_2=0.999, epsilon=1e-08, schedule_decay=0.004)
+    elif myoptimizer.lower() == 'adagrad':
+        selopt=Adagrad(lr=lr, epsilon=1e-08, decay=0.0)
+    elif myoptimizer.lower() == 'adamax':
+        selopt=Adamax(lr=lr, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
     elif myoptimizer.lower() == 'adadelta':
         selopt=Adadelta(lr=lr, rho=0.95, epsilon=1e-08, decay=0.0)
     elif myoptimizer.lower()  == 'rmsprop':
