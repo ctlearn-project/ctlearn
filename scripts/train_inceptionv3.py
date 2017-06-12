@@ -3,13 +3,15 @@ import os
 from shutil import copyfile
 import sys
 
+from preprocessing_fixed.image_fixed import ImageDataGenerator
+
 import numpy as np
 
 from keras.models import Model
-from keras.optimizers import SGD, RMSprop
+from keras.optimizers import SGD, RMSprop, Nadam
 from keras.layers.core import Dense, Flatten
 from keras.applications.inception_v3 import InceptionV3
-from keras.preprocessing.image import ImageDataGenerator
+#from keras.preprocessing.image import ImageDataGenerator
 from keras.callbacks import CSVLogger, ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
 
 # pSCT image dimensions
@@ -17,6 +19,8 @@ image_x_dim= 120
 image_y_dim= 120
 
 #samples
+#training_samples = 20000
+#validation_samples = 10000
 training_samples = (581852+399927)
 validation_samples = (72732+49991)
 
@@ -113,7 +117,7 @@ prediction = Dense(1, activation='sigmoid', name='prediction')(x)
 model = Model(initial_model.input, prediction)
 
 model.compile(
-        optimizer=SGD(lr=0.005),
+        optimizer=Nadam(lr=0.00025),
         loss='binary_crossentropy',
         metrics=['binary_accuracy','binary_crossentropy'])
 logger = CSVLogger(os.path.join(run_dir, args.run_name + '.log'),

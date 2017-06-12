@@ -7,9 +7,9 @@ import numpy as np
 from PIL import Image
 
 from keras.models import Model
-from keras.optimizers import SGD, RMSprop
-from keras.layers.core import Dense, Flatten
-from keras.layers.merge import Concatenate
+from keras.optimizers import SGD, RMSprop, Nadam
+from keras.layers import Dense, Flatten, Input, concatenate
+#from keras.layers.merge import Concatenate
 from keras.applications.inception_v3 import InceptionV3
 from keras.preprocessing.image import ImageDataGenerator
 from keras.callbacks import CSVLogger, ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
@@ -19,10 +19,10 @@ image_x_dim= 120
 image_y_dim= 120
 
 #samples
-#training_samples = (581852+399927)
-#validation_samples = (72732+49991)
-training_samples = 20000
-validation_samples = 10000
+training_samples = (581852+399927)
+validation_samples = (72732+49991)
+#training_samples = 20000
+#validation_samples = 10000
 
 # Class directory names
 gamma_data_dir = "gamma-diffuse"
@@ -37,7 +37,7 @@ parser.add_argument('val_data_dir', help='path to validation data directory (con
 parser.add_argument('run_name', help='name of run (used to name log file, plot images,etc)')
 parser.add_argument('save_dir', help='directory to save run files in (directory must exist)')
 parser.add_argument('epochs',help='number of epochs to train for', type=int)
-parser.add_argument('--batch_size',help='image generator batch size', default=108, type=int)
+parser.add_argument('--batch_size',help='image generator batch size', default=12, type=int)
 #parser.add_argument('--l',help='log results to file',action="store_true")
 #parser.add_argument('--c',help='save checkpoints',action="store_true")
 
@@ -86,7 +86,7 @@ def event_image_generator(path, batch_size):
     #dict structure:
     #key = event_id
     #value = [dict (key = tel_num, value = full image file name), label]
-    
+
     dict_events = {}
 
     for ptype in ['gamma','proton']:
@@ -165,9 +165,14 @@ def event_image_generator(path, batch_size):
                     X_train_T16[event_read_count % batch_size,:,:,:] = img  
                 elif tel_num == 'T17':
                     X_train_T17[event_read_count % batch_size,:,:,:] = img
-
-training_generator = event_image_generator(args.train_data_dir, args.batch_size)
-validation_generator = event_image_generator(args.val_data_dir, args.batch_size)
+            y_train[event_read_count % batch_size] = event_label
+            event_read_count += 1
+            
+            if not event_read_count % batch_size:
+                input_data = [X_train_T5, X_train_T6, X_train_T8, X_train_T9,
+                        X_train_T10, X_train_T11, X_train_T16, X_train_T17]
+                labels = y_train
+                yield (input_data, labels)
 
 #train model
 ############
@@ -184,51 +189,70 @@ earlystopacc = EarlyStopping(monitor='val_binary_accuracy', min_delta=0.001, pat
 reducelr = ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=5, verbose=0, mode='auto', epsilon=0.0001, cooldown=0, min_lr=0)
 
 # Create the InceptionV3 model
-shared_inception = InceptionV3(
+inceptionv3 = InceptionV3(
         include_top=False, 
         weights=None, 
         input_shape=(3, image_x_dim*2, image_y_dim*2), 
         pooling=None)
-shared_inception = Flatten()(shared_inception)
-shared_inception = Dense(64, activation='relu', 
-        name='telescope_output')(shared_inception)
+# Add additional layers for connecting to array-level network
+inceptionv3_top = Flatten()(inceptionv3.output)
+inceptionv3_top = Dense(64, activation='relu', 
+        name='telescope_output')(inceptionv3_top)
+shared_inception_model = Model(inceptionv3.input, inceptionv3_top)
 # Load the pretrained weights, automatically skipping the missing output layer
 model_weights_path = os.path.abspath(args.weights)
-shared_inception.load_weights(model_weights_path, by_name=True)
+shared_inception_model.load_weights(model_weights_path, by_name=True)
+
+for layer in shared_inception_model.layers:
+        layer.trainable = False
+
+# Define inputs for each telescope
+image_1 = Input(shape=(3, 240, 240))
+image_2 = Input(shape=(3, 240, 240))
+image_3 = Input(shape=(3, 240, 240))
+image_4 = Input(shape=(3, 240, 240))
+image_5 = Input(shape=(3, 240, 240))
+image_6 = Input(shape=(3, 240, 240))
+image_7 = Input(shape=(3, 240, 240))
+image_8 = Input(shape=(3, 240, 240))
 
 # Create models for each of the telescopes, sharing the same weights for all
-telescope_1 = shared_inception()
-telescope_2 = shared_inception()
-telescope_3 = shared_inception()
-telescope_4 = shared_inception()
-telescope_5 = shared_inception()
-telescope_6 = shared_inception()
-telescope_7 = shared_inception()
-telescope_8 = shared_inception()
+print("Defining the model...")
+telescope_1 = shared_inception_model(image_1)
+telescope_2 = shared_inception_model(image_2)
+telescope_3 = shared_inception_model(image_3)
+telescope_4 = shared_inception_model(image_4)
+telescope_5 = shared_inception_model(image_5)
+telescope_6 = shared_inception_model(image_6)
+telescope_7 = shared_inception_model(image_7)
+telescope_8 = shared_inception_model(image_8)
+
 
 # Concatenate the telescope outputs into a single array output
-array_model = Concatenate([telescope_1, telescope_2, telescope_3, telescope_4,
+array_model = concatenate([telescope_1, telescope_2, telescope_3, telescope_4,
     telescope_5, telescope_6, telescope_7, telescope_8])
 array_model = Dense(512, activation='relu', name='dense_1')(array_model)
-array_model = Dense(512, activation='relu', name='dense_1')(array_model)
+array_model = Dense(512, activation='relu', name='dense_2')(array_model)
 prediction = Dense(1, activation='sigmoid', name='prediction')(array_model)
 
 # Define the model
-model = Model([telescope_1.input, telescope_2.input, telescope_3.input,
-    telescope_4.input, telescope_5.input, telescope_6.input, telescope_7.input,
-    telescope_8.input], prediction)
+model = Model([image_1, image_2, image_3, image_4, image_5, image_6, image_7,
+    image_8], prediction)
 
+print("Compiling the model...")
 model.compile(
-        optimizer=SGD(lr=0.005),
+        optimizer=Nadam(lr=0.0001),
         loss='binary_crossentropy',
-        metrics=['binary_accuracy','binary_crossentropy'])
+        metrics=['binary_accuracy'])
 logger = CSVLogger(os.path.join(run_dir, args.run_name + '.log'),
         separator=',', append=True)
+print("Starting the run...")
 history = model.fit_generator(
-        generator=training_generator,
+        generator=event_image_generator(args.train_data_dir, args.batch_size),
         steps_per_epoch=int(training_samples/args.batch_size),
         epochs=args.epochs,
         callbacks=[logger,checkpoint],
-        validation_data=validation_generator,
+        validation_data=event_image_generator(args.val_data_dir, 
+            args.batch_size),
         validation_steps=int(validation_samples/args.batch_size),
         class_weight='auto')

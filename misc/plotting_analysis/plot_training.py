@@ -30,9 +30,9 @@ for mylog in mylistlogs:
         lines = f.readlines()
         epoch = [line.split(",")[0] for line in lines]
         acc = [line.split(",")[1] for line in lines]
-        loss = [line.split(",")[2] for line in lines]
-        acc_val = [line.split(",")[3] for line in lines]
-        loss_val = [line.split(",")[4] for line in lines]
+        loss = [line.split(",")[3] for line in lines]
+        acc_val = [line.split(",")[4] for line in lines]
+        loss_val = [line.split(",")[6] for line in lines]
         plt.figure(1,figsize=(figx,figy))
         plt.xlabel('Epoch')
         plt.ylabel('Accuracy')
