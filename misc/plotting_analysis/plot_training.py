@@ -43,6 +43,7 @@ for mylog in mylistlogs:
     with open(mylog) as f:
         next(f)
         lines = f.readlines()
+
         epoch = [float(line.split(",")[0]) for line in lines]
         acc = [float(line.split(",")[1]) for line in lines]
         loss = [float(line.split(",")[2]) for line in lines]
@@ -50,6 +51,7 @@ for mylog in mylistlogs:
         loss_val = [float(line.split(",")[4]) for line in lines]
         delta_acc = [x - y for x, y in zip(acc, acc_val)]
         delta_loss = [x - y for x, y in zip(loss, loss_val)]
+
         plt.figure(1,figsize=(figx,figy))
         if plot_val:
             plt.subplot(gs[0])

@@ -7,7 +7,7 @@
 
 using namespace std;
 
-int generateEventList(TString mypath1, string label1, TString mypath2, string label2, string selection, int bin_num)
+void getIncorrectEvents()
 {
 
     //TString mypath1 = "/data/nieto/deeplearning/evn/gamma/20deg/0deg/root";
@@ -31,24 +31,23 @@ int generateEventList(TString mypath1, string label1, TString mypath2, string la
 
     for (int i= 0; i < 3; i++)
     {
-        string cut_selection_conditions = "ErecS>" + std::to_string(min_energy[i]) + " && ErecS<" + std::to_string(max_energy[i]) + " && MSCW>-2.0 && MSCW<2.0 && MSCL>-2.0 && MSCL<5.0 && EChi2S>=0.0 && ErecS>0.0 && EmissionHeight>0.0 && EmissionHeight<50.0 && sqrt(MCxoff^2 + MCyoff^2)<3.0 && sqrt(MCxoff^2 + MCyoff^2)>=0.0 && NImages>=3 && dES>=0.0" ; 
+        string cut_selection_conditions = "ErecS<" + std::to_string(min_energy[i]) + " || ErecS>" + std::to_string(max_energy[i]) + " || MSCW<-2.0 || MSCW>2.0 || MSCL<-2.0 || MSCL>5.0 || EChi2S<0.0 || ErecS<0.0 || EmissionHeight<0.0 || EmissionHeight>50.0 || sqrt(MCxoff^2 + MCyoff^2)>3.0 || sqrt(MCxoff^2 + MCyoff^2)<0.0 || NImages<3 || dES<0.0" ; 
 
-        string list = "_" + std::to_string(i) + ".txt";
+        string list = "_incorrect_" + std::to_string(i) + ".txt";
         string filename1 = label1 + list;
         string filename2 = label2 + list;
 
         ((TTreePlayer*)(ch1.GetPlayer()))->SetScanRedirect(true);
         ((TTreePlayer*)(ch1.GetPlayer()))->SetScanFileName(filename1.c_str());
-        ch1.Scan("eventNumber",cut_selection_conditions.c_str());
+        ch1.Scan("eventNumber:MCe0",cut_selection_conditions.c_str());
 
         ((TTreePlayer*)(ch2.GetPlayer()))->SetScanRedirect(true);
         ((TTreePlayer*)(ch2.GetPlayer()))->SetScanFileName(filename2.c_str());
-        ch2.Scan("eventNumber",cut_selection_conditions.c_str());
-
+        ch2.Scan("eventNumber:MCe0",cut_selection_conditions.c_str());
 
     }
 
-    return 0;
+    return;
 }
 
 
