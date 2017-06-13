@@ -1,7 +1,10 @@
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.lines as mlines
 import os
+import glob
+#import matplotlib.gridspec as gridspec
 
 from matplotlib.ticker import MultipleLocator
 
@@ -9,15 +12,15 @@ from matplotlib.ticker import MultipleLocator
 
 # parse command line arguments
 
-parser = argparse.ArgumentParser(description='Predict on a batch of images and generate plots for the classifier value.')
+parser = argparse.ArgumentParser(description='Combine ROC curves in single plot.')
+parser.add_argument('--rocs', help='List of curves, as in /my/path/to/curves/*.txt. For the legend to work, filename should have the format: yourmodel_youbin.*',default='*.txt')
 parser.add_argument('--save_dir', help='directory to save plots in',default='.')
-parser.add_argument('BDT_gamma_scores',help='text file containing list of BDT classifier scores for gammas')
-parser.add_argument('BDT_proton_scores',help='text file containing list of BDT classifier scores for protons')
-parser.add_argument('NN_gamma_scores',help='text file containing list of NN classifier scores for gammas')
-parser.add_argument('NN_proton_scores',help='text file containing list of NN classifier scores for protons')
-parser.add_argument('--filename',help='name of saved plot file',default='roc.png')
+parser.add_argument('--tag',help='name of saved plot file',default='roc_combined')
 
 args = parser.parse_args()
+myrocs = sorted(glob.glob(args.rocs))
+nametag = args.tag
+saveto = args.save_dir
 
 # Create required directories
 ############################
@@ -27,67 +30,38 @@ save_dir = os.path.normcase(os.path.abspath(args.save_dir))
 if not os.path.exists(save_dir):
     os.makedirs(save_dir)
 
-#range of cuts
-num_cuts = 1000
-min_classifier_value = 0
-max_classifier_value = 1
-cuts= np.linspace(min_classifier_value,max_classifier_value,num_cuts)
+#gs = gridspec.GridSpec(2,1,height_ratios=[3, 1])
 
-fig = plt.figure()
-ax = plt.axes()
+fs=12
+dict_color = {'bin0': 'r', 'bin1': 'g', 'bin2': 'b'}
+dict_style = {'ResNet50': ':', 'InceptionV3': '-.', 'BDT': '-'}
+dict_bins = {'bin0': 'Low energy', 'bin1': 'Medium energy', 'bin2': 'High energy'}
 
-for method in ['BDT','NN']:
+figx=6
+figy=6
+savefigs=True
 
-    #load data
-    if method=='BDT':
-        gamma = np.loadtxt(args.BDT_gamma_scores)
-        proton = np.loadtxt(args.BDT_proton_scores)
-        label = 'BDT'
-    elif method=='NN':
-        gamma = np.loadtxt(args.NN_gamma_scores)
-        proton = np.loadtxt(args.NN_proton_scores)
-        label = 'NN'
+for myroc in myrocs:
+        model=myroc.split("/")[-1].split("-")[0]
+        ebin=myroc.split("/")[-1].split("-")[1]
+        leg="%s, %s" % (dict_bins[ebin],model)
+        print(model, ebin)
+        x, y = np.loadtxt(myroc)                    
+        plt.figure(1,figsize=(figx,figy))
+        plt.plot(x,y,color=dict_color[ebin],ls=dict_style[model],label=leg)
+        leg1 = plt.legend(loc='lower right', shadow=False,fontsize=fs-2)
 
-    #true positive and false positive
+l = np.linspace(0, 1, 100)
+plt.plot(x,x,color='black',ls=':',lw=0.5)
+plt.axis([-0.05, 1, 0, 1.05])
+plt.grid(True)
+plt.tick_params(axis='both', which='major', labelsize=fs)
+plt.xlabel('False Positive Rate',fontsize=fs)
+plt.ylabel('True Positive Rate',fontsize=fs)
 
-    true_positive_rate = np.empty([num_cuts])
-    false_positive_rate = np.empty([num_cuts])
-
-    for i in range(0,num_cuts):
-        cut = cuts[i]
-        gamma_pass = gamma[np.where( gamma > cut )]
-        true_positive = gamma_pass.size
-
-        gamma_fail = gamma[np.where( gamma < cut )]
-        false_negative = gamma_fail.size
-
-        true_positive_rate[i] = true_positive/(true_positive + false_negative)
-
-        proton_pass = proton[np.where( proton > cut )]
-        false_positive = proton_pass.size
-
-        proton_fail = proton[np.where ( proton < cut )]
-        true_negative = proton_fail.size
-
-        false_positive_rate[i] = false_positive/(false_positive + true_negative)
-
-    ## plot classifier value histograms
-    ax.plot(false_positive_rate,true_positive_rate,label=label)
-
-ax.minorticks_on()
-plt.minorticks_on()
-ax.grid(True, which='both')
-
-#plt.legend()
-plt.xlabel('False Positive Rate')
-plt.ylabel('True Positive Rate')
-plt.legend()
-
-ml = MultipleLocator(5)
-plt.axes().yaxis.set_minor_locator(ml)
-plt.axes().xaxis.set_minor_locator(ml)
-
-plotpath = os.path.join(save_dir,args.filename)
-plt.savefig(plotpath)
-
+if savefigs:
+    plt.savefig('%s/%s.eps' % (saveto,nametag), bbox_inches='tight')
+    plt.savefig('%s/%s.png' % (saveto,nametag), bbox_inches='tight')
+    plt.savefig('%s/%s.pdf' % (saveto,nametag), bbox_inches='tight')
+plt.show()
 
