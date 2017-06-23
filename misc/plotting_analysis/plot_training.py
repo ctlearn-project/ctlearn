@@ -20,6 +20,8 @@ colors = [colormap(i) for i in np.linspace(0, 1,len(mylistlogs))]
 
 figx=8
 figy=6
+fs=12
+fsl=fs-1
 savefigs=True
 plot_val=False
 plot_lr=False
@@ -55,37 +57,43 @@ for mylog in mylistlogs:
         plt.figure(1,figsize=(figx,figy))
         if plot_val:
             plt.subplot(gs[0])
-        plt.ylabel('Accuracy')
+        plt.ylabel('Accuracy',fontsize=fs)
+        plt.tick_params(axis='both', which='major', labelsize=fs)
         plt.plot(epoch,acc,color=colors[index],label=leg,ls=dict_style[model.lower()])
         if plot_val:
             plt.plot(epoch,acc_val,color=colors[index],ls='dotted')
             plt.subplot(gs[1])
-            plt.ylabel('Delta Accuracy')
+            plt.ylabel('Delta Accuracy', fontsize=fs)
             plt.plot(epoch,delta_acc,color=colors[index],label=leg)
             plt.subplot(gs[0])
-            plt.legend(bbox_to_anchor=(1.04,1), loc='upper left', shadow=False)
+            plt.legend(bbox_to_anchor=(1.04,1), loc='upper left', shadow=False, fontsize=fsl)
         else:
-            plt.legend(loc='lower right', shadow=False)    
-        plt.xlabel('Epoch')
+            plt.legend(loc='lower right', shadow=False, fontsize=fsl)    
+        plt.xlabel('Epoch', fontsize=fs)
+        plt.tick_params(axis='both', which='major', labelsize=fs)
+
         
         plt.figure(2,figsize=(figx,figy))
         if plot_val:
             plt.subplot(gs[0])
             plt.semilogy(epoch,loss_val,color=colors[index],ls='dotted')
-            plt.legend(bbox_to_anchor=(1.04,1), loc='upper left', shadow=False)
+            plt.legend(bbox_to_anchor=(1.04,1), loc='upper left', shadow=False, fontsize=fsl)
         
-        plt.ylabel('Loss')
+        plt.ylabel('Loss', fontsize=fs)
+        plt.tick_params(axis='both', which='major', labelsize=fs)
         plt.semilogy(epoch,loss,color=colors[index],label=leg,ls=dict_style[model.lower()])
         if plot_val:
             plt.subplot(gs[1])
-            plt.ylabel('Delta Loss')
+            plt.ylabel('Delta Loss', fontsize=fs)
             plt.plot(epoch,delta_loss,color=colors[index],label=leg)
         else:
-            plt.legend(loc='upper right', shadow=False)      
-        plt.xlabel('Epoch')
+            plt.legend(loc='upper right', shadow=False, fontsize=fsl)      
+        plt.xlabel('Epoch', fontsize=fs)
         index=index+1
 
 if savefigs:
+    plt.figure(1).savefig('accuracy_%s.pdf' % nametag, bbox_inches='tight')
+    plt.figure(2).savefig('loss_%s.pdf' % nametag, bbox_inches='tight')
     plt.figure(1).savefig('accuracy_%s.eps' % nametag, bbox_inches='tight')
     plt.figure(2).savefig('loss_%s.eps' % nametag, bbox_inches='tight')
     plt.figure(1).savefig('accuracy_%s.png' % nametag, bbox_inches='tight')
