@@ -49,8 +49,8 @@ if not os.path.exists(save_dir):
 
 #count number of images in directories, count number of classes
 ##############################################################
-num_gamma = sum([len(f) for d, s, f in os.walk(gamma_data_path)])
-num_proton = sum([len(f) for d, s, f in os.walk(proton_data_path)])
+num_gamma = sum([len(f) for d, s, f in os.walk(gamma_data_path,followlinks=True)])
+num_proton = sum([len(f) for d, s, f in os.walk(proton_data_path,followlinks=True)])
 
 #data augmentation/preprocessing
 ################################
@@ -84,12 +84,16 @@ model = load_model(model_path)
 #filepath = os.path.join(save_dir, 'predict.txt')
 #np.savetxt(filepath,result)
 
-result_gamma = model.predict_generator(gamma_test_generator,num_gamma/args.batch_size , max_q_size=10, workers=1, pickle_safe=False, verbose=0)
+#result_gamma = model.predict_generator(gamma_test_generator,num_gamma/args.batch_size , max_q_size=10, workers=1, pickle_safe=False, verbose=0)
+
+result_gamma = model.predict_generator(gamma_test_generator, num_gamma/args.batch_size, verbose=0)
 filepath_gamma = os.path.join(save_dir, 'predict_gamma_0_1.txt')
-result_gamma = 1-result_gamma
+result_gamma = 1-np.array(result_gamma)
 np.savetxt(filepath_gamma,result_gamma)
 
-result_proton = model.predict_generator(proton_test_generator, num_proton/args.batch_size, max_q_size=10, workers=1, pickle_safe=False, verbose=0)
+#result_proton = model.predict_generator(proton_test_generator, num_proton/args.batch_size, max_q_size=10, workers=1, pickle_safe=False, verbose=0)
+
+result_proton = model.predict_generator(proton_test_generator, num_proton/args.batch_size, verbose=0)
 filepath_proton = os.path.join(save_dir, 'predict_proton_0_1.txt')
-result_proton = 1-result_proton
+result_proton = 1-np.array(result_proton)
 np.savetxt(filepath_proton,result_proton)

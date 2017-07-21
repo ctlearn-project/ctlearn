@@ -77,5 +77,5 @@ plt.axes().xaxis.set_minor_locator(ml)
 
 plotpath = os.path.join(save_dir,args.filename)
 plt.savefig(plotpath)
-
+np.savetxt('roc.txt',(false_positive_rate,true_positive_rate))
 

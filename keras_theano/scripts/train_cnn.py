@@ -58,6 +58,10 @@ if args.lr and args.lrs:
     print('--lr and --lrs options are incompatible')
     exit()
 
+enableFlip=True
+if enableFlip:
+    print('Data augmentation: vertical and horizontal flip enabled')
+    
 #Loading learning rates
 runlrs=False
 if args.lrs:
@@ -122,8 +126,8 @@ validation_samples = sum([len(f) for d, s, f in os.walk(val_data_path,followlink
 
 #processing training data
 training_preprocess = ImageDataGenerator(
-        horizontal_flip=False,
-        vertical_flip=False)
+        horizontal_flip=enableFlip,
+        vertical_flip=enableFlip)
 
 #processing validation data
 validation_preprocess = ImageDataGenerator()

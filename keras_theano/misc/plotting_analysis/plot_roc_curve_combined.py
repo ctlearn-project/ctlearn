@@ -1,5 +1,6 @@
 import argparse
 import numpy as np
+from scipy.integrate import simps, trapz
 import matplotlib.pyplot as plt
 import matplotlib.lines as mlines
 import os
@@ -34,7 +35,9 @@ if not os.path.exists(save_dir):
 
 fs=12
 dict_color = {'bin0': 'r', 'bin1': 'g', 'bin2': 'b'}
-dict_style = {'ResNet50': ':', 'InceptionV3': '-.', 'BDT': '-'}
+dict_style = {'ResNet50': ':', 'InceptionV3': '-', 'BDT': '-.'}
+dict_marker = {'ResNet50': '.', 'InceptionV3': '', 'BDT': ''}
+dict_alpha =  {'ResNet50': 1, 'InceptionV3': 1, 'BDT': 1}
 dict_bins = {'bin0': 'Low energy', 'bin1': 'Medium energy', 'bin2': 'High energy'}
 
 figx=6
@@ -46,9 +49,15 @@ for myroc in myrocs:
         ebin=myroc.split("/")[-1].split("-")[1]
         leg="%s, %s" % (dict_bins[ebin],model)
         print(model, ebin)
-        x, y = np.loadtxt(myroc)                    
+        x, y = np.loadtxt(myroc)
+        xnonzero = x[np.nonzero(x)]
+        xnonzero = np.flipud(xnonzero)
+        ynonzero = y[np.nonzero(x)]
+        ynonzero = np.flipud(ynonzero)
+        area = trapz(ynonzero,xnonzero)
+        print("area (trapz) = %.5f" % (area))
         plt.figure(1,figsize=(figx,figy))
-        plt.plot(x,y,color=dict_color[ebin],ls=dict_style[model],label=leg)
+        plt.plot(x,y,color=dict_color[ebin],ls=dict_style[model],label=leg,marker=dict_marker[model],alpha=dict_alpha[model],markevery=0.1)
         leg1 = plt.legend(loc='lower right', shadow=False,fontsize=fs-2)
 
 l = np.linspace(0, 1, 100)
