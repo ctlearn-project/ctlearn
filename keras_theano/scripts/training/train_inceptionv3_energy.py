@@ -2,6 +2,7 @@ import argparse
 import os
 from shutil import copyfile
 import sys
+from PIL import ImageFile
 
 from preprocessing_fixed.image_fixed import ImageDataGenerator
 
@@ -13,7 +14,7 @@ from keras.layers.core import Dense, Flatten
 from keras.applications.inception_v3 import InceptionV3
 #from keras.preprocessing.image import ImageDataGenerator
 from keras.callbacks import CSVLogger, ModelCheckpoint, EarlyStopping, ReduceLROnPlateau
-
+ImageFile.LOAD_TRUNCATED_IMAGES = True
 # pSCT image dimensions
 image_x_dim= 120
 image_y_dim= 120
@@ -21,8 +22,8 @@ image_y_dim= 120
 #samples
 #training_samples = 20000
 #validation_samples = 10000
-training_samples = (581852+399927)
-validation_samples = (72732+49991)
+training_samples = (820105)
+validation_samples = (91122)
 
 # parse command line arguments
 
@@ -73,22 +74,21 @@ training_preprocess = ImageDataGenerator(
 
 #processing validation data
 validation_preprocess = ImageDataGenerator()
-
 #generator for training data
 training_generator = training_preprocess.flow_from_directory(
-        train_data_path,
+        '/home/gemini/energy_data/training',
         target_size=(image_x_dim*2, image_y_dim*2),
         color_mode='rgb',
         batch_size=args.batch_size,
-        class_mode='binary')
+        class_mode='sparse')
 
 #generator for validation data
 validation_generator = validation_preprocess.flow_from_directory(
-        val_data_path,
+        '/home/gemini/energy_data/validation',
         target_size=(image_x_dim*2, image_y_dim*2),
         color_mode='rgb',
         batch_size=args.batch_size,
-        class_mode='binary')
+        class_mode='sparse')
 
 
 #train model
@@ -113,15 +113,16 @@ initial_model = InceptionV3(
         pooling=None)
 last = initial_model.output
 x = Flatten()(last)
-prediction = Dense(1, activation='sigmoid', name='prediction')(x)
+prediction = Dense(80, activation='softmax', name='prediction')(x)
 model = Model(initial_model.input, prediction)
 
 model.compile(
         optimizer=Nadam(lr=0.00025),
-        loss='binary_crossentropy',
-        metrics=['binary_accuracy','binary_crossentropy'])
+        loss='sparse_categorical_crossentropy',
+        metrics=['sparse_categorical_accuracy','sparse_categorical_crossentropy'])
 logger = CSVLogger(os.path.join(run_dir, args.run_name + '.log'),
         separator=',', append=True)
+
 history = model.fit_generator(
         generator=training_generator,
         steps_per_epoch=int(training_samples/args.batch_size),

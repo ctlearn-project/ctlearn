@@ -19,8 +19,8 @@ image_x_dim= 120
 image_y_dim= 120
 
 #samples
-training_samples = (581852+399927)
-validation_samples = (72732+49991)
+training_samples = (358044+185019)
+validation_samples = (22842+44757)
 #training_samples = 20000
 #validation_samples = 10000
 
@@ -96,12 +96,15 @@ def event_image_generator(path, batch_size):
         else:
             data_dir = os.path.join(path, proton_data_dir)
             label = 0
-
         for filename in os.listdir(data_dir):
-            if filename.endswith(".png"):
+            print("file exists. ")
+            if filename.endswith(".png" or ".pn"):
                 #get event ID and energy
-                event_id, energy, impact, tel_num = filename.rsplit(".", 1)[0].split("_")
+                evn_id,run_num, energy, impact, tel_num = filename.rsplit(".", 1)[0].split("_")
+                event_id=evn_id +'_'+run_num
                 event_key = event_id + '_' + ptype
+                print("event ID="+ event_id+ "  tel num="+tel_num+"\t")
+                print("file is here")
                 if event_key in dict_events:
                     dict_events[event_key][0][tel_num] = filename
                 else:
@@ -227,7 +230,6 @@ telescope_6 = shared_inception_model(image_6)
 telescope_7 = shared_inception_model(image_7)
 telescope_8 = shared_inception_model(image_8)
 
-
 # Concatenate the telescope outputs into a single array output
 array_model = concatenate([telescope_1, telescope_2, telescope_3, telescope_4,
     telescope_5, telescope_6, telescope_7, telescope_8])
@@ -241,7 +243,7 @@ model = Model([image_1, image_2, image_3, image_4, image_5, image_6, image_7,
 
 print("Compiling the model...")
 model.compile(
-        optimizer=Nadam(lr=0.0001),
+        optimizer=Nadam(lr=0.000001),
         loss='binary_crossentropy',
         metrics=['binary_accuracy'])
 logger = CSVLogger(os.path.join(run_dir, args.run_name + '.log'),
