@@ -1,12 +1,16 @@
+import sys
+import os
+#add parent directory to pythonpath to allow imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
+
 import argparse
-#import tftables
-from mvcnn import mvcnn_fn_2
+from models.mvcnn import mvcnn_fn_2
+from models.custom_multi_input import custom_multi_input
 import tensorflow as tf
 from tables import *
 import re
 import numpy as np
 import random
-import os
 
 tf.logging.set_verbosity(tf.logging.DEBUG)
 
@@ -30,7 +34,7 @@ STEPS_TO_VIZ_EMBED = 12000
 
 IMAGE_VIZ_MAX_OUTPUTS = 100
 
-def train(data_file,epochs):
+def train(model,data_file,epochs):
     #open file to determine the telescopes included
     f = open_file(data_file, mode = "r", title = "Input file")
     table = f.root.E0.Events_Training
@@ -68,7 +72,7 @@ def train(data_file,epochs):
         images_placeholder = tf.placeholder(tf.float32, shape=(None,num_tel,IMAGE_WIDTH,IMAGE_HEIGHT,IMAGE_CHANNELS))
         labels_placeholder = tf.placeholder(tf.int8, shape=(None))
 
-        loss,accuracy,logits,predictions = mvcnn_fn_2(images_placeholder,labels_placeholder)
+        loss,accuracy,logits,predictions = model(images_placeholder,labels_placeholder)
  
         tf.summary.scalar('training_loss', loss)
         tf.summary.scalar('training_accuracy',accuracy)
@@ -234,4 +238,4 @@ if __name__ == '__main__':
     parser.add_argument('--no_image_summary',action='store_true')
     args = parser.parse_args()
 
-    train(args.h5_file,args.epochs)
+    train(custom_multi_input,args.h5_file,args.epochs)
