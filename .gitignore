@@ -8,3 +8,7 @@
 *.ckpt
 *.tar.gz
 *.pbtxt
+
+# Compiled Python files
+__pycache__/
+*.py[cod]
