@@ -100,12 +100,12 @@ def alexnet_base_cnn_v2(input_features,number):
 
 #for use with train_datasets
 def custom_multi_input_v2(tel_data,labels):
-    
+   
     tel_data_transposed = tf.transpose(tel_data, perm=[1, 0, 2, 3, 4])
 
     feature_vectors = []
     
-    '''
+    """
     i = tf.constant(0)
     def body(i):
         global TEL_COUNTER
@@ -120,10 +120,9 @@ def custom_multi_input_v2(tel_data,labels):
         return tf.less(i, num_tels)
 
     tf.while_loop(while_condition, body, [i])
-    '''
+    """
 
     for i in range(NUM_TEL):
-        print(i)
         feature_vectors.append(alexnet_base_cnn_v2(tf.gather(tel_data_transposed,i),i))
 
     with tf.variable_scope("Classifier"):
@@ -164,7 +163,7 @@ def custom_multi_input_v2(tel_data,labels):
                     "probabilities": tf.nn.softmax(fc8, name="softmax_tensor")
                     }
 
-        accuracy = tf.reduce_mean(tf.cast(tf.equal(tf.cast(predictions['classes'],tf.float16),labels), tf.float32))
+        accuracy = tf.reduce_mean(tf.cast(tf.equal(tf.cast(predictions['classes'],tf.int8),labels), tf.float32))
 
     return loss,accuracy,fc8,predictions
 

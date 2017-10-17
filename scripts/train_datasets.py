@@ -6,7 +6,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 import argparse
 from models.mvcnn import mvcnn_fn_2
-from models.custom_multi_input import custom_multi_input
+from models.custom_multi_input import custom_multi_input_v2
 import tensorflow as tf
 from tables import *
 import re
@@ -31,18 +31,18 @@ def train(model,data_file,epochs):
         tel_imgs = []
         for tel in tels_list:
             tel_imgs.append(record[tel])
-        imgs = np.stack(tel_imgs,axis=1)
-        label = record[label_column_name]
-        return imgs, label
+        imgs = np.squeeze(np.stack(tel_imgs,axis=1)).astype(np.float32)
+        label = record[label_column_name].astype(np.int8)        
+        return [imgs, label]
 
     def load_val_data(index):
         record = table_val.read(index,index+1)
         tel_imgs = []
         for tel in tels_list:
             tel_imgs.append(record[tel])
-        imgs = np.stack(tel_imgs,axis=1)
-        label = record[label_column_name]
-        return imgs, label
+        imgs = np.squeeze(np.stack(tel_imgs,axis=1)).astype(np.float32)
+        label = record[label_column_name].astype(np.int8)
+        return [imgs, label]
 
     #open HDF5 file for reading
     f = open_file(data_file, mode = "r", title = "Input file")
@@ -67,11 +67,11 @@ def train(model,data_file,epochs):
     #data input
     train_dataset = tf.contrib.data.Dataset.range(num_events_train)
     train_dataset = train_dataset.shuffle(buffer_size=10000)
-    train_dataset = train_dataset.map((lambda index: tuple(tf.py_func(load_train_data, [index], [tf.float16, tf.float16]))),num_threads=NUM_THREADS,output_buffer_size=100*TRAIN_BATCH_SIZE)
+    train_dataset = train_dataset.map((lambda index: tuple(tf.py_func(load_train_data, [index], [tf.float32, tf.int8]))),num_threads=NUM_THREADS,output_buffer_size=100*TRAIN_BATCH_SIZE)
     train_dataset = train_dataset.batch(TRAIN_BATCH_SIZE)
 
     val_dataset = tf.contrib.data.Dataset.range(num_events_val)
-    val_dataset = val_dataset.map((lambda index: tuple(tf.py_func(load_val_data,[index],[tf.float16, tf.float16]))), num_threads=NUM_THREADS,output_buffer_size=100*VAL_BATCH_SIZE)
+    val_dataset = val_dataset.map((lambda index: tuple(tf.py_func(load_val_data,[index],[tf.float32, tf.int8]))), num_threads=NUM_THREADS,output_buffer_size=100*VAL_BATCH_SIZE)
     val_dataset = val_dataset.batch(VAL_BATCH_SIZE)
 
     iterator = tf.contrib.data.Iterator.from_structure(train_dataset.output_types,train_dataset.output_shapes)
@@ -120,10 +120,10 @@ def train(model,data_file,epochs):
 
     #for embeddings visualization
     fetch = tf.get_default_graph().get_tensor_by_name('Classifier/fc7/BiasAdd:0')
-    embedding_var = tf.Variable(np.empty((0,4096),dtype=np.float16),name='Embedding_of_fc7',validate_shape=False)
+    embedding_var = tf.Variable(np.empty((0,4096),dtype=np.float32),name='Embedding_of_fc7',validate_shape=False)
     new_embedding_var = tf.concat([embedding_var,fetch],0)
     update_embedding = tf.assign(embedding_var,new_embedding_var,validate_shape=False)
-    empty = tf.Variable(np.empty((0,4096),dtype=np.float16),validate_shape=False)
+    empty = tf.Variable(np.empty((0,4096),dtype=np.float32),validate_shape=False)
     reset_embedding = tf.assign(embedding_var,empty,validate_shape=False)
 
     #create supervised session (summary op can be omitted)
@@ -219,7 +219,7 @@ if __name__ == '__main__':
     parser.add_argument('h5_file', help='path to h5 file containing data')
     parser.add_argument('--optimizer',default='adadelta')
     parser.add_argument('--epochs',default=10000)
-    parser.add_argument('--logdir',default='/data0/logs')
+    parser.add_argument('--logdir',default='/data0/logs/custom_multi_input_datasets_test')
     parser.add_argument('--lr',default=0.00001)
     parser.add_argument('--label_col_name',default='gamma_hadron_label')
     parser.add_argument('--checkpoint_basename',default='custom_multi_input.ckpt')
