@@ -98,7 +98,7 @@ def alexnet_block(input_features,number,trig_values):
     return output
 
 #for use with train_datasets
-def variable_input_model(tel_data,labels,trig_list,training):
+def variable_input_model(tel_data,labels,trig_list,tel_pos_tensor,training):
   
     #from batch,tel,width,length,channels to tel,batch,width,length,channels
     tel_data_transposed = tf.transpose(tel_data, perm=[1, 0, 2, 3, 4])
@@ -110,9 +110,13 @@ def variable_input_model(tel_data,labels,trig_list,training):
 
     with tf.variable_scope("Classifier"):
 
-        #combine the feature vectors + trigger info into a tensor of shape [batch size,num_tels,num_features]
+        #combine the feature vectors + trigger info + tel_x + tel_y into a tensor of shape [batch size,num_tels,num_features+3]
         combined_feature_tensor = tf.concat(feature_vectors, 1)
-        combined_feature_tensor = tf.concat([combined_feature_tensor,tf.expand_dims(trig,-1)],2)
+        
+        batch_size = tf.shape(combined_feature_tensor)[0]
+        tel_pos_tensor_batch = tf.expand_dims(tel_pos_tensor,0)
+        tel_pos_tensor_batch =  tf.tile(tel_pos_tensor_batch, tf.stack([batch_size,1,1])) 
+        combined_feature_tensor = tf.concat([combined_feature_tensor,tf.expand_dims(trig,-1),tel_pos_tensor_batch],2)
 
         #fc6
         fc6 = tf.layers.dense(inputs=missing_tel_dropout, units=4096, activation=tf.nn.relu,name="fc6") 
