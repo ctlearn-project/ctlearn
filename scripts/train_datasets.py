@@ -13,9 +13,7 @@ import re
 import numpy as np
 import random
 
-tf.logging.set_verbosity(tf.logging.DEBUG)
-
-NUM_THREADS = 1
+NUM_THREADS = 12
 TRAIN_BATCH_SIZE = 64
 VAL_BATCH_SIZE = 64
 
@@ -92,7 +90,9 @@ def train(model,data_file,epochs):
     print("Embedding visualization summary every {} epochs".format(EPOCHS_PER_VIZ_EMBED))
     print("*************************************")
 
-    loss,accuracy,logits,predictions = model(next_example,next_label)
+    training = tf.placeholder(tf.bool, shape=())
+
+    loss,accuracy,logits,predictions,variables_to_train = model(next_example,next_label,training)
 
     tf.summary.scalar('training_loss', loss)
     tf.summary.scalar('training_accuracy',accuracy)
@@ -111,10 +111,17 @@ def train(model,data_file,epochs):
     #global step
     global_step = tf.Variable(0, name='global_step', trainable=False)
     increment_global_step_op = tf.assign(global_step, global_step+1)
-    
+
     #train op
     if args.optimizer == 'adadelta':
         train_op = tf.train.AdadeltaOptimizer(learning_rate=args.lr).minimize(loss)
+    elif args.optimizer == 'adam':
+        train_op = tf.train.AdamOptimizer(learning_rate=args.lr,
+        beta1=0.9,
+        beta2=0.999,
+        epsilon=0.1,
+        use_locking=False,
+        name='Adam').minimize(loss)
     else:
         train_op = tf.train.GradientDescentOptimizer(args.lr).minimize(loss)
 
@@ -144,7 +151,7 @@ def train(model,data_file,epochs):
             print("Epoch {} started...".format(i+1))
             while True:
                 try:
-                    sess.run([train_op,increment_global_step_op])
+                    sess.run([train_op,increment_global_step_op],feed_dict={training: True})
                     summ = sess.run(merged)
                     sv.summary_computed(sess, summ)
                 except tf.errors.OutOfRangeError:
@@ -158,7 +165,7 @@ def train(model,data_file,epochs):
             val_losses = []
             while True:
                 try:
-                    val_loss,val_acc = sess.run([loss,accuracy])
+                    val_loss,val_acc = sess.run([loss,accuracy],feed_dict={training: False})
                     val_accuracies.append(val_acc)
                     val_losses.append(val_loss)
                 except tf.errors.OutOfRangeError:
@@ -176,6 +183,7 @@ def train(model,data_file,epochs):
             print("Validation complete.")
 
             if i % EPOCHS_PER_IMAGE_VIZ == 0: 
+                sess.run(validation_init_op)
                 filter_summ,inputs_summ,activations_summ = sess.run([filter_summ_op,inputs_charge_summ_op,activations_summ_op])
                 sv.summary_computed(sess,filter_summ)
                 sv.summary_computed(sess,inputs_summ)
@@ -184,7 +192,7 @@ def train(model,data_file,epochs):
                 print("Image summary complete")
 
             if i % EPOCHS_PER_VIZ_EMBED == 0:
-
+                sess.run(validation_init_op)
                 #reset embedding variable to empty
                 sess.run(reset_embedding)
                 
@@ -206,7 +214,7 @@ def train(model,data_file,epochs):
 
                 #write corresponding metadata file
                 metadata_file = open(embedding.metadata_path, 'w')
-                for k in range(NUM_IMAGES_EMBEDDING):
+                for k in range(NUM_BATCHES_EMBEDDING):
                     metadata_file.write('{}\n'.format(table_val.read(k,k+1,field=label_column_name)[0]))         
                 metadata_file.close()
 
@@ -217,10 +225,10 @@ if __name__ == '__main__':
     # parse command line arguments
     parser = argparse.ArgumentParser(description='Trains on an hdf5 file.')
     parser.add_argument('h5_file', help='path to h5 file containing data')
-    parser.add_argument('--optimizer',default='adadelta')
+    parser.add_argument('--optimizer',default='adam')
     parser.add_argument('--epochs',default=10000)
-    parser.add_argument('--logdir',default='/data0/logs/custom_multi_input_datasets_test')
-    parser.add_argument('--lr',default=0.00001)
+    parser.add_argument('--logdir',default='/data0/logs/custom_multi_input_datasets_test_3_adam')
+    parser.add_argument('--lr',default=0.001)
     parser.add_argument('--label_col_name',default='gamma_hadron_label')
     parser.add_argument('--checkpoint_basename',default='custom_multi_input.ckpt')
     parser.add_argument('--no_embedding', action='store_true')
