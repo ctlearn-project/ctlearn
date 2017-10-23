@@ -125,18 +125,26 @@ def train(model,data_file,epochs):
     global_step = tf.Variable(0, name='global_step', trainable=False)
     increment_global_step_op = tf.assign(global_step, global_step+1)
 
+    #variable learning rate
+    learning_rate = tf.Variable(args.lr,trainable=False)
+    num_tels_tensor = tf.Constant(num_tels)
+    mean_num_trig_batch = tf.reduce_mean(tf.reduce_sum(next_trig_list,1))
+    scaling_factor = tf.divide(num_tels_tensor,mean_num_trig_batch)
+
+    variable_learning_rate = tf.multiply(scaling_factor,learning_rate)
+
     #train op
     if args.optimizer == 'adadelta':
-        train_op = tf.train.AdadeltaOptimizer(learning_rate=args.lr).minimize(loss)
+        train_op = tf.train.AdadeltaOptimizer(learning_rate=variable_learning_rate).minimize(loss)
     elif args.optimizer == 'adam':
-        train_op = tf.train.AdamOptimizer(learning_rate=args.lr,
+        train_op = tf.train.AdamOptimizer(learning_rate=variable_learning_rate,
         beta1=0.9,
         beta2=0.999,
         epsilon=0.1,
         use_locking=False,
         name='Adam').minimize(loss)
     else:
-        train_op = tf.train.GradientDescentOptimizer(args.lr).minimize(loss)
+        train_op = tf.train.GradientDescentOptimizer(variable_learning_rate).minimize(loss)
 
     #for embeddings visualization
     fetch = tf.get_default_graph().get_tensor_by_name('Classifier/fc7/BiasAdd:0')
