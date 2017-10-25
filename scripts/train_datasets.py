@@ -14,6 +14,7 @@ import numpy as np
 import random
 
 NUM_THREADS = 12
+BUFFER_SIZE = 100 # Output buffer size in batches
 TRAIN_BATCH_SIZE = 64
 VAL_BATCH_SIZE = 64
 
@@ -65,11 +66,11 @@ def train(model,data_file,epochs):
     #data input
     train_dataset = tf.contrib.data.Dataset.range(num_events_train)
     train_dataset = train_dataset.shuffle(buffer_size=10000)
-    train_dataset = train_dataset.map((lambda index: tuple(tf.py_func(load_train_data, [index], [tf.float32, tf.int8]))),num_threads=NUM_THREADS,output_buffer_size=100*TRAIN_BATCH_SIZE)
+    train_dataset = train_dataset.map((lambda index: tuple(tf.py_func(load_train_data, [index], [tf.float32, tf.int8]))),num_threads=NUM_THREADS,output_buffer_size=BUFFER_SIZE*TRAIN_BATCH_SIZE)
     train_dataset = train_dataset.batch(TRAIN_BATCH_SIZE)
 
     val_dataset = tf.contrib.data.Dataset.range(num_events_val)
-    val_dataset = val_dataset.map((lambda index: tuple(tf.py_func(load_val_data,[index],[tf.float32, tf.int8]))), num_threads=NUM_THREADS,output_buffer_size=100*VAL_BATCH_SIZE)
+    val_dataset = val_dataset.map((lambda index: tuple(tf.py_func(load_val_data,[index],[tf.float32, tf.int8]))), num_threads=NUM_THREADS,output_buffer_size=BUFFER_SIZE*VAL_BATCH_SIZE)
     val_dataset = val_dataset.batch(VAL_BATCH_SIZE)
 
     iterator = tf.contrib.data.Iterator.from_structure(train_dataset.output_types,train_dataset.output_shapes)
