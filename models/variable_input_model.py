@@ -1,6 +1,8 @@
 import tensorflow as tf
 import numpy as np
 
+slim = tf.contrib.slim
+
 NUM_CLASSES = 2
 
 IMAGE_WIDTH = 240
@@ -10,6 +12,84 @@ IMAGE_DEPTH = 3
 NUM_FEATURES = 1024
 
 NUM_TEL = 15
+
+# Conv and DepthSepConv namedtuple define layers of the MobileNet architecture
+# Conv defines 3x3 convolution layers
+# DepthSepConv defines 3x3 depthwise convolution followed by 1x1 convolution.
+# stride is the stride of the convolution
+# depth is the number of channels or filters in a layer
+Conv = namedtuple('Conv', ['kernel', 'stride', 'depth'])
+DepthSepConv = namedtuple('DepthSepConv', ['kernel', 'stride', 'depth'])
+
+# _CONV_DEFS specifies the MobileNet body
+_CONV_DEFS = [
+    Conv(kernel=[3, 3], stride=2, depth=32),
+    DepthSepConv(kernel=[3, 3], stride=1, depth=64),
+    DepthSepConv(kernel=[3, 3], stride=2, depth=128),
+    DepthSepConv(kernel=[3, 3], stride=1, depth=128),
+    DepthSepConv(kernel=[3, 3], stride=2, depth=256),
+    DepthSepConv(kernel=[3, 3], stride=1, depth=256),
+    DepthSepConv(kernel=[3, 3], stride=2, depth=512),
+    DepthSepConv(kernel=[3, 3], stride=1, depth=512),
+    DepthSepConv(kernel=[3, 3], stride=1, depth=512),
+    DepthSepConv(kernel=[3, 3], stride=1, depth=512),
+    DepthSepConv(kernel=[3, 3], stride=1, depth=512),
+    DepthSepConv(kernel=[3, 3], stride=1, depth=512),
+    DepthSepConv(kernel=[3, 3], stride=2, depth=1024),
+    DepthSepConv(kernel=[3, 3], stride=1, depth=1024)
+]
+
+def mobilenet_block(inputs, telescope_index, trig_values):
+    # Set all telescopes after the first to share weights
+    if telescope_index == 0:
+        reuse = None
+    else:
+        reuse = True
+    end_points = {}
+    with tf.variable_scope("Mobilenet"):
+        with slim.arg_scope([slim.conv2d, slim.separable_conv2d],
+                padding='SAME', reuse=reuse):
+            net = inputs
+            for i, conv_def in enumerate(conv_defs):
+                end_point_base = 'Conv2d_%d' % i
+                layer_stride = conv_def.stride
+
+                if isinstance(conv_def, Conv):
+                    end_point = end_point_base
+                    net = slim.conv2d(net, conv_def.depth, conv_def.kernel,
+                            stride=conv_def.stride,
+                            normalizer_fn=slim.batch_norm,
+                            scope=end_point)
+                    end_points[end_point] = net
+                elif isinstance(conv_def, DepthSepConv):
+                    end_point = end_point_base + '_depthwise'
+
+                    # By passing filters=None separable_conv2d produces only
+                    # a depthwise convolution layer
+                    net = slim.separable_conv2d(net, None, conv_def.kernel,
+                            depth_multiplier=1,
+                            stride=layer_stride,
+                            normalizer_fn=slim.batch_norm,
+                            scope=end_point)
+
+                    end_points[end_point] = net
+
+                    end_point = end_point_base + '_pointwise'
+
+                    net = slim.conv2d(net, depth(conv_def.depth), [1, 1],
+                                      stride=1,
+                                      normalizer_fn=slim.batch_norm,
+                                      scope=end_point)
+
+                    end_points[end_point] = net
+                else:
+                    raise ValueError('Unknown convolution type %s for layer %d'
+                            % (conv_def.ltype, i))
+            end_point = "Trigger_multiplier"
+            # Drop out all outputs if the telescope was not triggered
+            net = tf.multiply(net, trig_values)
+            end_points[end_point] = net
+            return net, end_points
 
 #for use with train_datasets
 def alexnet_block(input_features,number,trig_values):
