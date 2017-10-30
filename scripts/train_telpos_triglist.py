@@ -18,9 +18,9 @@ NUM_THREADS = 12
 TRAIN_BATCH_SIZE = 64
 VAL_BATCH_SIZE = 64
 
-EPOCHS_PER_IMAGE_VIZ = 2
+EPOCHS_PER_IMAGE_VIZ = 5
 IMAGE_VIZ_MAX_OUTPUTS = 100
-EPOCHS_PER_VIZ_EMBED = 2
+EPOCHS_PER_VIZ_EMBED = 5
 NUM_BATCHES_EMBEDDING = 20
 
 def train(model,data_file,epochs):
@@ -28,21 +28,43 @@ def train(model,data_file,epochs):
     def load_train_data(index):
         record = table.read(index,index+1)
         tel_imgs = []
-        for tel in tels_list:
-            tel_imgs.append(record[tel])
-        imgs = np.squeeze(np.stack(tel_imgs,axis=1)).astype(np.float32)
+        tel_map = record["tel_map"][0]
+        assert tel_map.shape[0] == len(tels_list)
+        for i in range(len(tels_list)):
+            if tel_map[i] != -1:
+                array = f.root.E0._f_get_child(tels_list[i])
+                tel_imgs.append(array[tel_map[i]])
+            else:
+                tel_imgs.append(np.empty([img_width,img_length,img_depth]))
+
+        imgs = np.squeeze(np.stack(tel_imgs,axis=0)).astype(np.float32)
+        if len(imgs.shape) == 3:
+            imgs = np.expand_dims(imgs,axis=3)
         label = record[label_column_name].astype(np.int8)
-        trig_list = record["trig_list"].astype(np.int8)
-        return [imgs, label,trig_list]
+        trig_list = tel_map.astype(np.int8)
+        trig_list[trig_list < 0] = 0
+        trig_list[trig_list > 0] = 1
+        return [imgs,label,trig_list]
 
     def load_val_data(index):
         record = table_val.read(index,index+1)
         tel_imgs = []
-        for tel in tels_list:
-            tel_imgs.append(record[tel])
-        imgs = np.squeeze(np.stack(tel_imgs,axis=1)).astype(np.float32)
+        tel_map = record["tel_map"][0]
+        assert tel_map.shape[0] == len(tels_list)
+        for i in range(len(tels_list)):
+            if tel_map[i] != -1:
+                array = f.root.E0._f_get_child(tels_list[i])
+                tel_imgs.append(array[tel_map[i]])
+            else:
+                tel_imgs.append(np.empty([img_width,img_length,img_depth]))
+                
+        imgs = np.squeeze(np.stack(tel_imgs,axis=0)).astype(np.float32)
+        if len(imgs.shape) == 3:
+            imgs = np.expand_dims(imgs,axis=3)
         label = record[label_column_name].astype(np.int8)
-        trig_llist = record["trig_list"].astype(np.int8)
+        trig_list = tel_map.astype(np.int8)
+        trig_list[trig_list < 0] = 0
+        trig_list[trig_list > 0] = 1
         return [imgs, label,trig_list]
 
     #open HDF5 file for reading
@@ -50,43 +72,43 @@ def train(model,data_file,epochs):
     table = f.root.E0.Events_Training
     table_val = f.root.E0.Events_Validation    
     label_column_name = args.label_col_name
-    columns_list = table.colnames 
-    tels_list = []
-    for i in columns_list:
-        if re.match("T[0-9]+",i):
-            tels_list.append(i)
-    num_tel = len(tels_list)
     num_events_train = table.shape[0]
     num_events_val = table_val.shape[0]
 
     #prepare constant telescope position vector
     table_telpos = f.root.Tel_Table
     tel_pos_vector = []
+    tels_list = []
     for row in table_telpos.iterrows():
+        tels_list.append("T" + str(row["tel_id"]))
         tel_pos_vector.append(row["tel_x"])
         tel_pos_vector.append(row["tel_y"])
+    num_tels = len(tels_list)
+    print(num_tels)
+    print(tels_list)
 
     tel_pos_tensor = tf.constant(tel_pos_vector)
-    tel_pos_tensor = tf.reshape([num_tel,2])
+    tel_pos_tensor = tf.reshape(tel_pos_tensor,[num_tels,2])
 
     #shape of images
-    img_shape = table.read(0,1,field=tels_list[0]).shape
+    img_shape = eval("f.root.E0.{}.shape".format(tels_list[0]))
     img_width = img_shape[1]
-    img_height = img_shape[2]
+    img_length = img_shape[2]
     img_depth = img_shape[3]
+    print(img_shape)
 
     #data input
     train_dataset = tf.contrib.data.Dataset.range(num_events_train)
     train_dataset = train_dataset.shuffle(buffer_size=10000)
-    train_dataset = train_dataset.map((lambda index: tuple(tf.py_func(load_train_data, [index], [tf.float32, tf.int8,tf.int8]))),num_threads=NUM_THREADS,output_buffer_size=100*TRAIN_BATCH_SIZE)
+    train_dataset = train_dataset.map((lambda index: tuple(tf.py_func(load_train_data, [index], [tf.float32, tf.int8, tf.int8]))),num_threads=NUM_THREADS,output_buffer_size=100*TRAIN_BATCH_SIZE)
     train_dataset = train_dataset.batch(TRAIN_BATCH_SIZE)
 
     val_dataset = tf.contrib.data.Dataset.range(num_events_val)
-    val_dataset = val_dataset.map((lambda index: tuple(tf.py_func(load_val_data,[index],[tf.float32, tf.int8,tf.int8]))), num_threads=NUM_THREADS,output_buffer_size=100*VAL_BATCH_SIZE)
+    val_dataset = val_dataset.map((lambda index: tuple(tf.py_func(load_val_data,[index],[tf.float32, tf.int8, tf.int8]))), num_threads=NUM_THREADS,output_buffer_size=100*VAL_BATCH_SIZE)
     val_dataset = val_dataset.batch(VAL_BATCH_SIZE)
 
     iterator = tf.contrib.data.Iterator.from_structure(train_dataset.output_types,train_dataset.output_shapes)
-    next_example, next_label,next_trig_list = iterator.get_next()
+    next_example, next_label, next_trig_list = iterator.get_next()
 
     training_init_op = iterator.make_initializer(train_dataset)
     validation_init_op = iterator.make_initializer(val_dataset)
@@ -105,19 +127,22 @@ def train(model,data_file,epochs):
 
     training = tf.placeholder(tf.bool, shape=())
 
-    loss,accuracy,logits,predictions,variables_to_train = model(next_example,next_label,next_trig_list,tel_pos_tensor,training)
+    loss,accuracy,logits,predictions = model(next_example,next_label,next_trig_list,tel_pos_tensor,training)
 
     tf.summary.scalar('training_loss', loss)
     tf.summary.scalar('training_accuracy',accuracy)
     merged = tf.summary.merge_all()
 
     #locate input and 1st layer filter tensors for visualization
-    inputs = tf.get_default_graph().get_tensor_by_name("Conv_block_T0/input:0")
-    kernel = tf.get_collection(tf.GraphKeys.VARIABLES, 'Conv_block_T0/conv1/kernel:0')[0]
-    activations = tf.get_default_graph().get_tensor_by_name("Conv_block_T0/conv1/BiasAdd:0")
+    inputs = tf.get_default_graph().get_tensor_by_name("Conv_block/input:0")
+    kernel = tf.get_collection(tf.GraphKeys.VARIABLES, 'Conv_block/conv1/kernel:0')[0]
+    activations = tf.get_default_graph().get_tensor_by_name("Conv_block/conv1/BiasAdd:0")
 
-    inputs_charge_summ_op = tf.summary.image('inputs_charge',tf.slice(inputs,begin=[0,0,0,0],size=[TRAIN_BATCH_SIZE,img_width,img_height,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
-    inputs_timing_summ_op = tf.summary.image('inputs_timing',tf.slice(inputs,begin=[0,0,0,1],size=[TRAIN_BATCH_SIZE,img_width,img_height,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
+    print(kernel.get_shape())
+    print(tf.shape(kernel))
+
+    inputs_charge_summ_op = tf.summary.image('inputs_charge',tf.slice(inputs,begin=[0,0,0,0],size=[TRAIN_BATCH_SIZE,img_width,img_length,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
+    #inputs_timing_summ_op = tf.summary.image('inputs_timing',tf.slice(inputs,begin=[0,0,0,1],size=[TRAIN_BATCH_SIZE,img_width,img_length,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
     filter_summ_op = tf.summary.image('filter',tf.slice(tf.transpose(kernel, perm=[3, 0, 1, 2]),begin=[0,0,0,0],size=[96,11,11,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
     activations_summ_op = tf.summary.image('activations',tf.slice(activations,begin=[0,0,0,0],size=[TRAIN_BATCH_SIZE,58,58,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
 
@@ -127,8 +152,8 @@ def train(model,data_file,epochs):
 
     #variable learning rate
     learning_rate = tf.Variable(args.lr,trainable=False)
-    num_tels_tensor = tf.Constant(num_tels)
-    mean_num_trig_batch = tf.reduce_mean(tf.reduce_sum(next_trig_list,1))
+    num_tels_tensor = tf.to_float(tf.constant(num_tels))
+    mean_num_trig_batch = tf.to_float(tf.reduce_mean(tf.reduce_sum(next_trig_list,1)))
     scaling_factor = tf.divide(num_tels_tensor,mean_num_trig_batch)
 
     variable_learning_rate = tf.multiply(scaling_factor,learning_rate)
@@ -248,7 +273,7 @@ if __name__ == '__main__':
     parser.add_argument('h5_file', help='path to h5 file containing data')
     parser.add_argument('--optimizer',default='adam')
     parser.add_argument('--epochs',default=10000)
-    parser.add_argument('--logdir',default='/data0/logs/custom_multi_input_datasets_test_3_adam')
+    parser.add_argument('--logdir',default='/data0/logs/variable_input_model_1')
     parser.add_argument('--lr',default=0.001)
     parser.add_argument('--label_col_name',default='gamma_hadron_label')
     parser.add_argument('--checkpoint_basename',default='custom_multi_input.ckpt')
