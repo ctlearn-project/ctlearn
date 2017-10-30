@@ -8,9 +8,6 @@ slim = tf.contrib.slim
 
 NUM_CLASSES = 2
 
-NUM_FEATURES = 1024
-
-
 # Conv and DepthSepConv namedtuple define layers of the MobileNet architecture
 # Conv defines 3x3 convolution layers
 # DepthSepConv defines 3x3 depthwise convolution followed by 1x1 convolution.
