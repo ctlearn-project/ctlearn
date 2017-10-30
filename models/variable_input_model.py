@@ -1,5 +1,8 @@
-import tensorflow as tf
+from collections import namedtuple
 import numpy as np
+
+import tensorflow as tf
+from tensorflow.contrib.layers import flatten
 
 slim = tf.contrib.slim
 
@@ -89,7 +92,9 @@ def mobilenet_block(inputs, telescope_index, trig_values):
             # Drop out all outputs if the telescope was not triggered
             net = tf.multiply(net, trig_values)
             end_points[end_point] = net
-            return net, end_points
+            # For compatibility with variable_input_model, do not return
+            # end_points for now
+            return net#, end_points
 
 #for use with train_datasets
 def alexnet_block(input_features,number,trig_values):
@@ -171,22 +176,31 @@ def alexnet_block(input_features,number,trig_values):
 
         #flatten output of pool5 layer to get feature vector
         #reshape shape = 1024
-        dim = np.prod(pool5.get_shape().as_list()[1:])
-        reshape = tf.reshape(pool5, [-1, dim])
-        output = tf.multiply(reshape,trig_values)
+        #dim = np.prod(pool5.get_shape().as_list()[1:])
+        #reshape = tf.reshape(pool5, [-1, dim])
+        #output = tf.multiply(reshape,trig_values)
+        output = flatten(pool5)
+        output = tf.multiply(pool5, trig_values)
 
     return output
 
 #for use with train_datasets
-def variable_input_model(tel_data,labels,trig_list,tel_pos_tensor,training):
+def variable_input_model(tel_data, labels, trig_list, tel_pos_tensor, 
+        training):
   
     #from batch,tel,width,length,channels to tel,batch,width,length,channels
     tel_data_transposed = tf.transpose(tel_data, perm=[1, 0, 2, 3, 4])
 
     feature_vectors = []
- 
+
+    cnn_block = alexnet_block
     for i in range(NUM_TEL):
-        feature_vectors.append(alexnet_block(tf.gather(tel_data_transposed,i),i,tf.gather(trig_list,i,axis=1)))
+        telescope_features = cnn_block(tf.gather(tel_data_transposed, i), i,
+                tf.gather(trig_list, i, axis=1))
+        ## Flatten output features to get feature vector
+        #print(tf.shape(telescope_features))
+        #feature_vectors.append(flatten(telescope_features))
+        feature_vectors.append(telescope_features)
 
     with tf.variable_scope("Classifier"):
 
@@ -196,10 +210,12 @@ def variable_input_model(tel_data,labels,trig_list,tel_pos_tensor,training):
         batch_size = tf.shape(combined_feature_tensor)[0]
         tel_pos_tensor_batch = tf.expand_dims(tel_pos_tensor,0)
         tel_pos_tensor_batch =  tf.tile(tel_pos_tensor_batch, tf.stack([batch_size,1,1])) 
-        combined_feature_tensor = tf.concat([combined_feature_tensor,tf.expand_dims(trig,-1),tel_pos_tensor_batch],2)
+        combined_feature_tensor = tf.concat([combined_feature_tensor,
+            tf.expand_dims(trig_list, -1), tel_pos_tensor_batch], 1)
 
         #fc6
-        fc6 = tf.layers.dense(inputs=missing_tel_dropout, units=4096, activation=tf.nn.relu,name="fc6") 
+        fc6 = tf.layers.dense(inputs=combined_feature_tensor, units=4096, 
+                activation=tf.nn.relu, name="fc6") 
         dropout6 = tf.layers.dropout(inputs=fc6, rate=0.5, training=training)
 
         #fc7
