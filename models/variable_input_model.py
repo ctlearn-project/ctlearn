@@ -99,13 +99,9 @@ def alexnet_block(input_features, number, trig_values, image_width,
         reuse = True
 
     with tf.variable_scope("Conv_block"):
-        # Input
-        input_layer = tf.reshape(input_features, [-1, image_width, 
-            image_length, image_depth], name="input")
-
         #conv1
         conv1 = tf.layers.conv2d(
-                inputs=input_layer,
+                inputs=input_features,
                 filters=96,
                 kernel_size=[11, 11],
                 strides=2,

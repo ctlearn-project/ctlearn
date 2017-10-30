@@ -118,11 +118,11 @@ def train(model,data_file,epochs):
     tf.summary.scalar('training_accuracy',accuracy)
     merged = tf.summary.merge_all()
 
-    #locate input and 1st layer filter tensors for visualization
-    inputs = tf.get_default_graph().get_tensor_by_name("Conv_block/input:0")
-    kernel = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, 'Conv_block/conv1/kernel:0')[0]
-    activations = tf.get_default_graph().get_tensor_by_name("Conv_block/conv1/BiasAdd:0")
-
+#    #locate input and 1st layer filter tensors for visualization
+#    inputs = tf.get_default_graph().get_tensor_by_name("Conv_block/input:0")
+#    kernel = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, 'Conv_block/conv1/kernel:0')[0]
+#    activations = tf.get_default_graph().get_tensor_by_name("Conv_block/conv1/BiasAdd:0")
+#
 #    inputs_charge_summ_op = tf.summary.image('inputs_charge',tf.slice(inputs,begin=[0,0,0,0],size=[TRAIN_BATCH_SIZE,img_width,img_length,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
 #    inputs_timing_summ_op = tf.summary.image('inputs_timing',tf.slice(inputs,begin=[0,0,0,1],size=[TRAIN_BATCH_SIZE,img_width,img_length,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
 #    filter_summ_op = tf.summary.image('filter',tf.slice(tf.transpose(kernel, perm=[3, 0, 1, 2]),begin=[0,0,0,0],size=[96,11,11,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
