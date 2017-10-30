@@ -25,38 +25,35 @@ NUM_BATCHES_EMBEDDING = 20
 
 def train(model,data_file,epochs):
 
-    def load_train_data(index):
-        record = table.read(index,index+1)
+    def load_data(record):
         tel_imgs = []
         for tel in tels_list:
             tel_imgs.append(record[tel])
-        imgs = np.squeeze(np.stack(tel_imgs,axis=1)).astype(np.float32)
+        imgs = np.squeeze(np.stack(tel_imgs, axis=1)).astype(np.float32)
         label = record[label_column_name].astype(np.int8)
         trig_list = record["trig_list"].astype(np.float32)
         return [imgs, label, trig_list]
 
+    def load_train_data(index):
+        record = table_train.read(index, index + 1)
+        return load_data(record)
+    
     def load_val_data(index):
-        record = table_val.read(index,index+1)
-        tel_imgs = []
-        for tel in tels_list:
-            tel_imgs.append(record[tel])
-        imgs = np.squeeze(np.stack(tel_imgs,axis=1)).astype(np.float32)
-        label = record[label_column_name].astype(np.int8)
-        trig_list = record["trig_list"].astype(np.float32)
-        return [imgs, label, trig_list]
+        record = table_val.read(index, index + 1)
+        return load_data(record)
 
     #open HDF5 file for reading
     f = open_file(data_file, mode = "r", title = "Input file")
-    table = f.root.E0.Events_Training
+    table_train = f.root.E0.Events_Training
     table_val = f.root.E0.Events_Validation    
     label_column_name = args.label_col_name
-    columns_list = table.colnames 
+    columns_list = table_train.colnames 
     tels_list = []
     for i in columns_list:
         if re.match("T[0-9]+",i):
             tels_list.append(i)
     num_tel = len(tels_list)
-    num_events_train = table.shape[0]
+    num_events_train = table_train.shape[0]
     num_events_val = table_val.shape[0]
 
     #prepare constant telescope position vector
@@ -70,19 +67,27 @@ def train(model,data_file,epochs):
     tel_pos_tensor = tf.reshape(tel_pos_tensor, [num_tel, 2])
 
     #shape of images
-    img_shape = table.read(0,1,field=tels_list[0]).shape
+    img_shape = table_train.read(0,1,field=tels_list[0]).shape
     img_width = img_shape[1]
-    img_height = img_shape[2]
+    img_length = img_shape[2]
     img_depth = img_shape[3]
 
     #data input
     train_dataset = tf.contrib.data.Dataset.range(num_events_train)
     train_dataset = train_dataset.shuffle(buffer_size=10000)
-    train_dataset = train_dataset.map((lambda index: tuple(tf.py_func(load_train_data, [index], [tf.float32, tf.int8, tf.float32]))),num_threads=NUM_THREADS,output_buffer_size=100*TRAIN_BATCH_SIZE)
+    train_dataset = train_dataset.map((lambda index: tuple(tf.py_func(
+        load_train_data, [index],
+        [tf.float32, tf.int8, tf.float32]))),
+        num_threads=NUM_THREADS,
+        output_buffer_size=100*TRAIN_BATCH_SIZE)
     train_dataset = train_dataset.batch(TRAIN_BATCH_SIZE)
 
     val_dataset = tf.contrib.data.Dataset.range(num_events_val)
-    val_dataset = val_dataset.map((lambda index: tuple(tf.py_func(load_val_data,[index],[tf.float32, tf.int8,tf.float32]))), num_threads=NUM_THREADS,output_buffer_size=100*VAL_BATCH_SIZE)
+    val_dataset = val_dataset.map((lambda index: tuple(tf.py_func(
+        load_val_data, [index],
+        [tf.float32, tf.int8, tf.float32]))), 
+        num_threads=NUM_THREADS,
+        output_buffer_size=100*VAL_BATCH_SIZE)
     val_dataset = val_dataset.batch(VAL_BATCH_SIZE)
 
     iterator = tf.contrib.data.Iterator.from_structure(train_dataset.output_types,train_dataset.output_shapes)
@@ -106,7 +111,8 @@ def train(model,data_file,epochs):
     training = tf.placeholder(tf.bool, shape=())
 
     loss, accuracy, logits, predictions = model(next_example, next_label, 
-            next_trig_list, tel_pos_tensor, training)
+            next_trig_list, tel_pos_tensor, num_tel, img_width, img_length, 
+            img_depth, training)
 
     tf.summary.scalar('training_loss', loss)
     tf.summary.scalar('training_accuracy',accuracy)
@@ -117,8 +123,8 @@ def train(model,data_file,epochs):
     kernel = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, 'Conv_block/conv1/kernel:0')[0]
     activations = tf.get_default_graph().get_tensor_by_name("Conv_block/conv1/BiasAdd:0")
 
-    inputs_charge_summ_op = tf.summary.image('inputs_charge',tf.slice(inputs,begin=[0,0,0,0],size=[TRAIN_BATCH_SIZE,img_width,img_height,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
-    inputs_timing_summ_op = tf.summary.image('inputs_timing',tf.slice(inputs,begin=[0,0,0,1],size=[TRAIN_BATCH_SIZE,img_width,img_height,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
+    inputs_charge_summ_op = tf.summary.image('inputs_charge',tf.slice(inputs,begin=[0,0,0,0],size=[TRAIN_BATCH_SIZE,img_width,img_length,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
+    inputs_timing_summ_op = tf.summary.image('inputs_timing',tf.slice(inputs,begin=[0,0,0,1],size=[TRAIN_BATCH_SIZE,img_width,img_length,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
     filter_summ_op = tf.summary.image('filter',tf.slice(tf.transpose(kernel, perm=[3, 0, 1, 2]),begin=[0,0,0,0],size=[96,11,11,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
     activations_summ_op = tf.summary.image('activations',tf.slice(activations,begin=[0,0,0,0],size=[TRAIN_BATCH_SIZE,58,58,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
 

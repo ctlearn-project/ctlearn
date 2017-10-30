@@ -8,13 +8,8 @@ slim = tf.contrib.slim
 
 NUM_CLASSES = 2
 
-IMAGE_WIDTH = 240
-IMAGE_LENGTH = 240
-IMAGE_DEPTH = 3
-
 NUM_FEATURES = 1024
 
-NUM_TEL = 15
 
 # Conv and DepthSepConv namedtuple define layers of the MobileNet architecture
 # Conv defines 3x3 convolution layers
@@ -97,7 +92,8 @@ def mobilenet_block(inputs, telescope_index, trig_values):
             return net#, end_points
 
 #for use with train_datasets
-def alexnet_block(input_features,number,trig_values):
+def alexnet_block(input_features, number, trig_values, image_width, 
+        image_length, image_depth):
 
     #shared weights
     if number == 0:
@@ -106,8 +102,9 @@ def alexnet_block(input_features,number,trig_values):
         reuse = True
 
     with tf.variable_scope("Conv_block"):
-        #input
-        input_layer = tf.reshape(input_features, [-1, IMAGE_WIDTH, IMAGE_LENGTH, IMAGE_DEPTH],name="input")
+        # Input
+        input_layer = tf.reshape(input_features, [-1, image_width, 
+            image_length, image_depth], name="input")
 
         #conv1
         conv1 = tf.layers.conv2d(
@@ -185,8 +182,8 @@ def alexnet_block(input_features,number,trig_values):
     return output
 
 #for use with train_datasets
-def variable_input_model(tel_data, labels, trig_list, tel_pos_tensor, 
-        training):
+def variable_input_model(tel_data, labels, trig_list, tel_pos_tensor, num_tel,
+        image_width, image_length, image_depth, training):
   
     #from batch,tel,width,length,channels to tel,batch,width,length,channels
     tel_data_transposed = tf.transpose(tel_data, perm=[1, 0, 2, 3, 4])
@@ -194,9 +191,10 @@ def variable_input_model(tel_data, labels, trig_list, tel_pos_tensor,
     feature_vectors = []
 
     cnn_block = alexnet_block
-    for i in range(NUM_TEL):
+    for i in range(num_tel):
         telescope_features = cnn_block(tf.gather(tel_data_transposed, i), i,
-                tf.gather(trig_list, i, axis=1))
+                tf.gather(trig_list, i, axis=1), image_width, image_length,
+                image_depth)
         ## Flatten output features to get feature vector
         #print(tf.shape(telescope_features))
         #feature_vectors.append(flatten(telescope_features))
