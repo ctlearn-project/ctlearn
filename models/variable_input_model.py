@@ -16,22 +16,19 @@ NUM_CLASSES = 2
 Conv = namedtuple('Conv', ['kernel', 'stride', 'depth'])
 DepthSepConv = namedtuple('DepthSepConv', ['kernel', 'stride', 'depth'])
 
-# _CONV_DEFS specifies the MobileNet body
-_CONV_DEFS = [
-    Conv(kernel=[3, 3], stride=2, depth=32),
+# CONV_DEFS specifies the MobileNet body
+# Modified from standard MobileNet to account for small image size and to fit
+# in memory
+CONV_DEFS = [
+    Conv(kernel=[3, 3], stride=2, depth=8),
+    DepthSepConv(kernel=[3, 3], stride=1, depth=16),
+    DepthSepConv(kernel=[3, 3], stride=2, depth=32),
+    DepthSepConv(kernel=[3, 3], stride=1, depth=32),
+    DepthSepConv(kernel=[3, 3], stride=2, depth=64),
     DepthSepConv(kernel=[3, 3], stride=1, depth=64),
-    DepthSepConv(kernel=[3, 3], stride=2, depth=128),
     DepthSepConv(kernel=[3, 3], stride=1, depth=128),
-    DepthSepConv(kernel=[3, 3], stride=2, depth=256),
-    DepthSepConv(kernel=[3, 3], stride=1, depth=256),
-    DepthSepConv(kernel=[3, 3], stride=2, depth=512),
-    DepthSepConv(kernel=[3, 3], stride=1, depth=512),
-    DepthSepConv(kernel=[3, 3], stride=1, depth=512),
-    DepthSepConv(kernel=[3, 3], stride=1, depth=512),
-    DepthSepConv(kernel=[3, 3], stride=1, depth=512),
-    DepthSepConv(kernel=[3, 3], stride=1, depth=512),
-    DepthSepConv(kernel=[3, 3], stride=2, depth=1024),
-    DepthSepConv(kernel=[3, 3], stride=1, depth=1024)
+    DepthSepConv(kernel=[3, 3], stride=1, depth=128),
+    DepthSepConv(kernel=[3, 3], stride=1, depth=128)
 ]
 
 def mobilenet_block(inputs, telescope_index, trig_values):
@@ -41,13 +38,12 @@ def mobilenet_block(inputs, telescope_index, trig_values):
     else:
         reuse = True
     end_points = {}
-    with tf.variable_scope("Mobilenet"):
+    with tf.variable_scope("MobilenetV1", [inputs, trig_values], reuse=reuse):
         with slim.arg_scope([slim.conv2d, slim.separable_conv2d],
-                padding='SAME', reuse=reuse):
+                padding='SAME'):
             net = inputs
-            for i, conv_def in enumerate(conv_defs):
+            for i, conv_def in enumerate(CONV_DEFS):
                 end_point_base = 'Conv2d_%d' % i
-                layer_stride = conv_def.stride
 
                 if isinstance(conv_def, Conv):
                     end_point = end_point_base
@@ -63,7 +59,7 @@ def mobilenet_block(inputs, telescope_index, trig_values):
                     # a depthwise convolution layer
                     net = slim.separable_conv2d(net, None, conv_def.kernel,
                             depth_multiplier=1,
-                            stride=layer_stride,
+                            stride=conv_def.stride,
                             normalizer_fn=slim.batch_norm,
                             scope=end_point)
 
@@ -71,7 +67,7 @@ def mobilenet_block(inputs, telescope_index, trig_values):
 
                     end_point = end_point_base + '_pointwise'
 
-                    net = slim.conv2d(net, depth(conv_def.depth), [1, 1],
+                    net = slim.conv2d(net, conv_def.depth, [1, 1],
                                       stride=1,
                                       normalizer_fn=slim.batch_norm,
                                       scope=end_point)
@@ -81,16 +77,17 @@ def mobilenet_block(inputs, telescope_index, trig_values):
                     raise ValueError('Unknown convolution type %s for layer %d'
                             % (conv_def.ltype, i))
             end_point = "Trigger_multiplier"
+            
             # Drop out all outputs if the telescope was not triggered
-            net = tf.multiply(net, trig_values)
+            net = tf.multiply(flatten(net), tf.expand_dims(trig_values, 1))
             end_points[end_point] = net
+            
             # For compatibility with variable_input_model, do not return
             # end_points for now
             return net#, end_points
 
 #for use with train_datasets
-def alexnet_block(input_features, number, trig_values, image_width, 
-        image_length, image_depth):
+def alexnet_block(input_features, number, trig_values):
 
     #shared weights
     if number == 0:
@@ -104,7 +101,7 @@ def alexnet_block(input_features, number, trig_values, image_width,
                 inputs=input_features,
                 filters=96,
                 kernel_size=[11, 11],
-                strides=2,
+                strides=2, # changed from strides=4 for small image sizes
                 padding="valid",
                 activation=tf.nn.relu,
                 name="conv1",
@@ -164,11 +161,7 @@ def alexnet_block(input_features, number, trig_values, image_width,
         #pool5
         pool5 = tf.layers.max_pooling2d(inputs=conv5, pool_size=[3, 3], strides=2)
 
-        #flatten output of pool5 layer to get feature vector
-        #reshape shape = 1024
-        #dim = np.prod(pool5.get_shape().as_list()[1:])
-        #reshape = tf.reshape(pool5, [-1, dim])
-        #output = tf.multiply(reshape,trig_values)
+        # Flatten output of pool5 layer to get feature vector
         output = tf.multiply(flatten(pool5), tf.expand_dims(trig_values, 1))
 
     return output
@@ -186,15 +179,12 @@ def variable_input_model(tel_data, labels, trig_list, tel_pos_tensor, num_tel,
 
     feature_vectors = []
 
-    cnn_block = alexnet_block
+    cnn_block = mobilenet_block
     for i in range(num_tel):
         telescope_features = cnn_block(tf.gather(tel_data_transposed, i), i,
-                tf.gather(trig_list, i, axis=1), image_width, image_length,
-                image_depth)
+                tf.gather(trig_list, i, axis=1))
         ## Flatten output features to get feature vector
-        #print(tf.shape(telescope_features))
         feature_vectors.append(flatten(telescope_features))
-        #feature_vectors.append(telescope_features)
 
     with tf.variable_scope("Classifier"):
 
@@ -244,5 +234,3 @@ def variable_input_model(tel_data, labels, trig_list, tel_pos_tensor, num_tel,
         accuracy = tf.reduce_mean(tf.cast(tf.equal(tf.cast(predictions['classes'],tf.int8),labels), tf.float32))
 
     return loss,accuracy,fc8,predictions
-
-
