@@ -123,10 +123,10 @@ def train(model,data_file,epochs):
     kernel = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, 'Conv_block/conv1/kernel:0')[0]
     activations = tf.get_default_graph().get_tensor_by_name("Conv_block/conv1/BiasAdd:0")
 
-    inputs_charge_summ_op = tf.summary.image('inputs_charge',tf.slice(inputs,begin=[0,0,0,0],size=[TRAIN_BATCH_SIZE,img_width,img_length,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
-    inputs_timing_summ_op = tf.summary.image('inputs_timing',tf.slice(inputs,begin=[0,0,0,1],size=[TRAIN_BATCH_SIZE,img_width,img_length,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
-    filter_summ_op = tf.summary.image('filter',tf.slice(tf.transpose(kernel, perm=[3, 0, 1, 2]),begin=[0,0,0,0],size=[96,11,11,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
-    activations_summ_op = tf.summary.image('activations',tf.slice(activations,begin=[0,0,0,0],size=[TRAIN_BATCH_SIZE,58,58,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
+#    inputs_charge_summ_op = tf.summary.image('inputs_charge',tf.slice(inputs,begin=[0,0,0,0],size=[TRAIN_BATCH_SIZE,img_width,img_length,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
+#    inputs_timing_summ_op = tf.summary.image('inputs_timing',tf.slice(inputs,begin=[0,0,0,1],size=[TRAIN_BATCH_SIZE,img_width,img_length,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
+#    filter_summ_op = tf.summary.image('filter',tf.slice(tf.transpose(kernel, perm=[3, 0, 1, 2]),begin=[0,0,0,0],size=[96,11,11,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
+#    activations_summ_op = tf.summary.image('activations',tf.slice(activations,begin=[0,0,0,0],size=[TRAIN_BATCH_SIZE,58,58,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
 
     #global step
     global_step = tf.Variable(0, name='global_step', trainable=False)
@@ -180,7 +180,7 @@ def train(model,data_file,epochs):
             while True:
                 try:
                     sess.run([train_op,increment_global_step_op],feed_dict={training: True})
-                    summ = sess.run(merged)
+                    summ = sess.run(merged, feed_dict={training: True})
                     sv.summary_computed(sess, summ)
                 except tf.errors.OutOfRangeError:
                     break
@@ -210,43 +210,43 @@ def train(model,data_file,epochs):
 
             print("Validation complete.")
 
-            if i % EPOCHS_PER_IMAGE_VIZ == 0: 
-                sess.run(validation_init_op)
-                filter_summ,inputs_summ,activations_summ = sess.run([filter_summ_op,inputs_charge_summ_op,activations_summ_op])
-                sv.summary_computed(sess,filter_summ)
-                sv.summary_computed(sess,inputs_summ)
-                sv.summary_computed(sess,activations_summ)
-
-                print("Image summary complete")
-
-            if i % EPOCHS_PER_VIZ_EMBED == 0:
-                sess.run(validation_init_op)
-                #reset embedding variable to empty
-                sess.run(reset_embedding)
-                
-                for j in range(NUM_BATCHES_EMBEDDING):
-                    try:
-                        sess.run(fetch)
-                        sess.run(new_embedding_var)
-                        sess.run(update_embedding)
-                    except tf.errors.OutOfRangeError:
-                        break
-
-                                      
-                config = tf.contrib.tensorboard.plugins.projector.ProjectorConfig()
-                config.model_checkpoint_dir = os.path.abspath(args.logdir)
-                embedding = config.embeddings.add()
-                embedding.tensor_name = embedding_var.name
-                embedding.metadata_path = os.path.abspath(os.path.join(args.logdir, 'metadata.tsv'))
-                tf.contrib.tensorboard.plugins.projector.visualize_embeddings(sv.summary_writer, config) 
-
-                #write corresponding metadata file
-                metadata_file = open(embedding.metadata_path, 'w')
-                for k in range(NUM_BATCHES_EMBEDDING):
-                    metadata_file.write('{}\n'.format(table_val.read(k,k+1,field=label_column_name)[0]))         
-                metadata_file.close()
-
-                print("Embedding summary complete")
+#            if i % EPOCHS_PER_IMAGE_VIZ == 0: 
+#                sess.run(validation_init_op)
+#                filter_summ,inputs_summ,activations_summ = sess.run([filter_summ_op,inputs_charge_summ_op,activations_summ_op])
+#                sv.summary_computed(sess,filter_summ)
+#                sv.summary_computed(sess,inputs_summ)
+#                sv.summary_computed(sess,activations_summ)
+#
+#                print("Image summary complete")
+#
+#            if i % EPOCHS_PER_VIZ_EMBED == 0:
+#                sess.run(validation_init_op)
+#                #reset embedding variable to empty
+#                sess.run(reset_embedding)
+#                
+#                for j in range(NUM_BATCHES_EMBEDDING):
+#                    try:
+#                        sess.run(fetch)
+#                        sess.run(new_embedding_var)
+#                        sess.run(update_embedding)
+#                    except tf.errors.OutOfRangeError:
+#                        break
+#
+#                                      
+#            config = tf.contrib.tensorboard.plugins.projector.ProjectorConfig()
+#            config.model_checkpoint_dir = os.path.abspath(args.logdir)
+#            embedding = config.embeddings.add()
+#            embedding.tensor_name = embedding_var.name
+#            embedding.metadata_path = os.path.abspath(os.path.join(args.logdir, 'metadata.tsv'))
+#            tf.contrib.tensorboard.plugins.projector.visualize_embeddings(sv.summary_writer, config) 
+#            
+#            #write corresponding metadata file
+#            metadata_file = open(embedding.metadata_path, 'w')
+#            for k in range(NUM_BATCHES_EMBEDDING):
+#                metadata_file.write('{}\n'.format(table_val.read(k,k+1,field=label_column_name)[0]))         
+#            metadata_file.close()
+#            
+#            print("Embedding summary complete")
 
 if __name__ == '__main__':
     

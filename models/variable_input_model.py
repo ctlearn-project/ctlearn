@@ -111,7 +111,7 @@ def alexnet_block(input_features, number, trig_values, image_width,
                 inputs=input_layer,
                 filters=96,
                 kernel_size=[11, 11],
-                strides=4,
+                strides=2,
                 padding="valid",
                 activation=tf.nn.relu,
                 name="conv1",
@@ -176,8 +176,7 @@ def alexnet_block(input_features, number, trig_values, image_width,
         #dim = np.prod(pool5.get_shape().as_list()[1:])
         #reshape = tf.reshape(pool5, [-1, dim])
         #output = tf.multiply(reshape,trig_values)
-        output = flatten(pool5)
-        output = tf.multiply(pool5, trig_values)
+        output = tf.multiply(flatten(pool5), tf.expand_dims(trig_values, 1))
 
     return output
 
@@ -186,7 +185,11 @@ def variable_input_model(tel_data, labels, trig_list, tel_pos_tensor, num_tel,
         image_width, image_length, image_depth, training):
   
     #from batch,tel,width,length,channels to tel,batch,width,length,channels
+    tel_data = tf.reshape(tel_data, [-1, num_tel, image_width, image_length, 
+        image_depth])
     tel_data_transposed = tf.transpose(tel_data, perm=[1, 0, 2, 3, 4])
+
+    trig_list = tf.reshape(trig_list, [-1, num_tel])
 
     feature_vectors = []
 
@@ -197,19 +200,19 @@ def variable_input_model(tel_data, labels, trig_list, tel_pos_tensor, num_tel,
                 image_depth)
         ## Flatten output features to get feature vector
         #print(tf.shape(telescope_features))
-        #feature_vectors.append(flatten(telescope_features))
-        feature_vectors.append(telescope_features)
+        feature_vectors.append(flatten(telescope_features))
+        #feature_vectors.append(telescope_features)
 
     with tf.variable_scope("Classifier"):
 
         #combine the feature vectors + trigger info + tel_x + tel_y into a tensor of shape [batch size,num_tels,num_features+3]
-        combined_feature_tensor = tf.concat(feature_vectors, 1)
+        combined_feature_tensor = tf.stack(feature_vectors, axis=1)
         
         batch_size = tf.shape(combined_feature_tensor)[0]
         tel_pos_tensor_batch = tf.expand_dims(tel_pos_tensor,0)
         tel_pos_tensor_batch =  tf.tile(tel_pos_tensor_batch, tf.stack([batch_size,1,1])) 
         combined_feature_tensor = tf.concat([combined_feature_tensor,
-            tf.expand_dims(trig_list, -1), tel_pos_tensor_batch], 1)
+            tf.expand_dims(trig_list, -1), tel_pos_tensor_batch], 2)
 
         #fc6
         fc6 = tf.layers.dense(inputs=combined_feature_tensor, units=4096, 
