@@ -37,14 +37,26 @@ BLOCK_CONV_DEFS = [
     DepthSepConv(kernel=[3, 3], stride=1, depth=64)
 ]
 
-def mobilenet_block(inputs, telescope_index, trig_values):
-    # Set all telescopes after the first to share weights
-    if telescope_index == 0:
-        reuse = None
-    else:
-        reuse = True
+# Specifies the MobileNet body for the array level network
+# Custom MobileNet array level network. The input should be stacked MobileNet
+# block final layers plus additional layers for auxiliary input. The 
+# classification head should be an Avg Pool layer followed by a classifier 
+# with 1024 inputs for whatever output is desired.
+HEAD_CONV_DEFS = [
+    DepthSepConv(kernel=[3, 3], stride=1, depth=512)
+    DepthSepConv(kernel=[3, 3], stride=1, depth=512)
+    DepthSepConv(kernel=[3, 3], stride=1, depth=512)
+    DepthSepConv(kernel=[3, 3], stride=1, depth=1024)
+]
+
+# Define a MobileNet body
+# scope is a scope or name
+# inputs is the input layer tensor
+# conv_defs is a list of ConvDef named tuples
+# reuse should be None or True
+def mobilenet_body(scope, inputs, conv_defs, reuse=None):
     end_points = {}
-    with tf.variable_scope("MobilenetV1", [inputs, trig_values], reuse=reuse):
+    with tf.variable_scope(scope, inputs, reuse=reuse):
         with slim.arg_scope([slim.conv2d, slim.separable_conv2d],
                 padding='SAME'):
             net = inputs
@@ -82,15 +94,47 @@ def mobilenet_block(inputs, telescope_index, trig_values):
                 else:
                     raise ValueError('Unknown convolution type %s for layer %d'
                             % (conv_def.ltype, i))
-            end_point = "Trigger_multiplier"
-            
-            # Drop out all outputs if the telescope was not triggered
-            net = tf.multiply(flatten(net), tf.expand_dims(trig_values, 1))
-            end_points[end_point] = net
-            
-            # For compatibility with variable_input_model, do not return
-            # end_points for now
-            return net#, end_points
+    return net, end_points
+
+def mobilenet_block(inputs, telescope_index, trig_values):
+    # Set all telescopes after the first to share weights
+    if telescope_index == 0:
+        reuse = None
+    else:
+        reuse = True
+
+    # Define the network
+    net, end_points = mobilenet_body("MobileNetBlock", inputs, 
+            BLOCK_CONV_DEFS, reuse)
+    
+    # Drop out all outputs if the telescope was not triggered
+    end_point = "Trigger_multiplier"        
+    net = tf.multiply(flatten(net), tf.expand_dims(trig_values, 1))
+    end_points[end_point] = net
+    
+    # For compatibility with variable_input_model, do not return end_points
+    # for now
+    return net#, end_points
+
+def mobilenet_head(inputs, dropout_keep_prob=0.9, num_classes=2):
+    # Define the network
+    net, end_points = mobilenet_body("MobileNetHead", inputs, HEAD_CONV_DEFS)
+    
+    with tf.variable_scope('Logits'):
+        net = slim.avg_pool2d(net, [15, 15], padding='VALID', 
+                scope='AvgPool_1a')
+        end_points['AvgPool_1a'] = net
+        # 1 x 1 x 1024
+        net = slim.dropout(net, keep_prob=dropout_keep_prob, 
+                scope='Dropout_1b')
+        # Essentially a fully connected layer
+        logits = slim.conv2d(net, num_classes, [1, 1], activation_fn=None,
+                             normalizer_fn=None, scope='Conv2d_1c_1x1')
+        # Reshape from [BATCH_SIZE, 1, 1, num_classes] to 
+        # [BATCH_SIZE, num_classes]
+        logits = tf.squeeze(logits, [1, 2], name='SpatialSqueeze')
+    end_points['Logits'] = logits
+    return logits#, end_points
 
 #for use with train_datasets
 def alexnet_block(input_features, number, trig_values):
