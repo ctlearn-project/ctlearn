@@ -16,19 +16,25 @@ NUM_CLASSES = 2
 Conv = namedtuple('Conv', ['kernel', 'stride', 'depth'])
 DepthSepConv = namedtuple('DepthSepConv', ['kernel', 'stride', 'depth'])
 
-# CONV_DEFS specifies the MobileNet body
-# Modified from standard MobileNet to account for small image size and to fit
-# in memory
-CONV_DEFS = [
+# Specifies the MobileNet body for the single telescope blocks
+# This is a custom MobileNet design. It is designed for 120x120 image input
+# and produces 15x15 output. The number of layers is set so that every pixel
+# in the final layer has input derived from the entire image. This is the
+# single telescope component. The final layers should be stacked to produce
+# a 15x15x(64*NUM_TEL + NUM_AUX_PARAMS*NUM_TEL) input layer for the array
+# level network.
+BLOCK_CONV_DEFS = [
     Conv(kernel=[3, 3], stride=2, depth=8),
     DepthSepConv(kernel=[3, 3], stride=1, depth=16),
-    DepthSepConv(kernel=[3, 3], stride=2, depth=32),
+    DepthSepConv(kernel=[3, 3], stride=2, depth=16),
     DepthSepConv(kernel=[3, 3], stride=1, depth=32),
-    DepthSepConv(kernel=[3, 3], stride=2, depth=64),
+    DepthSepConv(kernel=[3, 3], stride=2, depth=32),
     DepthSepConv(kernel=[3, 3], stride=1, depth=64),
-    DepthSepConv(kernel=[3, 3], stride=1, depth=128),
-    DepthSepConv(kernel=[3, 3], stride=1, depth=128),
-    DepthSepConv(kernel=[3, 3], stride=1, depth=128)
+    DepthSepConv(kernel=[3, 3], stride=1, depth=64),
+    DepthSepConv(kernel=[3, 3], stride=1, depth=64),
+    DepthSepConv(kernel=[3, 3], stride=1, depth=64),
+    DepthSepConv(kernel=[3, 3], stride=1, depth=64),
+    DepthSepConv(kernel=[3, 3], stride=1, depth=64)
 ]
 
 def mobilenet_block(inputs, telescope_index, trig_values):
@@ -42,7 +48,7 @@ def mobilenet_block(inputs, telescope_index, trig_values):
         with slim.arg_scope([slim.conv2d, slim.separable_conv2d],
                 padding='SAME'):
             net = inputs
-            for i, conv_def in enumerate(CONV_DEFS):
+            for i, conv_def in enumerate(BLOCK_CONV_DEFS):
                 end_point_base = 'Conv2d_%d' % i
 
                 if isinstance(conv_def, Conv):
