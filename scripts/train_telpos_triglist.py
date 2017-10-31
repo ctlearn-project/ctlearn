@@ -133,6 +133,9 @@ def train(model,data_file,epochs):
     tf.summary.scalar('training_accuracy',accuracy)
     merged = tf.summary.merge_all()
 
+    for n in tf.get_default_graph().as_graph_def().node:
+        print(n.name)
+
     #locate input and 1st layer filter tensors for visualization
     inputs = tf.get_default_graph().get_tensor_by_name("Conv_block/input:0")
     kernel = tf.get_collection(tf.GraphKeys.VARIABLES, 'Conv_block/conv1/kernel:0')[0]

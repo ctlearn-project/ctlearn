@@ -13,8 +13,7 @@ NUM_TEL = 15
 
 #for use with train_datasets
 def alexnet_block(input_features,trig_values,number):
-
-    input_features.set_shape([None,IMAGE_WIDTH,IMAGE_LENGTH,IMAGE_DEPTH])
+   
     #shared weights
     if number == 0:
         reuse = None
@@ -23,12 +22,14 @@ def alexnet_block(input_features,trig_values,number):
 
     with tf.variable_scope("Conv_block"):
 
+        input_tensor = tf.reshape(input_features,[-1,IMAGE_WIDTH,IMAGE_LENGTH,IMAGE_DEPTH],name="input")
+
         #conv1
         conv1 = tf.layers.conv2d(
-                inputs=input_features,
+                inputs=input_tensor,
                 filters=96,
                 kernel_size=[11, 11],
-                strides=4,
+                strides=2,
                 padding="valid",
                 activation=tf.nn.relu,
                 name="conv1",
