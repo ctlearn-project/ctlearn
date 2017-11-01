@@ -153,13 +153,13 @@ def train(model,data_file,epochs):
     else:
         train_op = tf.train.GradientDescentOptimizer(variable_learning_rate).minimize(loss)
 
-    #for embeddings visualization
-    fetch = tf.get_default_graph().get_tensor_by_name('Classifier/fc7/BiasAdd:0')
-    embedding_var = tf.Variable(np.empty((0,4096),dtype=np.float32),name='Embedding_of_fc7',validate_shape=False)
-    new_embedding_var = tf.concat([embedding_var,fetch],0)
-    update_embedding = tf.assign(embedding_var,new_embedding_var,validate_shape=False)
-    empty = tf.Variable(np.empty((0,4096),dtype=np.float32),validate_shape=False)
-    reset_embedding = tf.assign(embedding_var,empty,validate_shape=False)
+#    #for embeddings visualization
+#    fetch = tf.get_default_graph().get_tensor_by_name('Classifier/fc7/BiasAdd:0')
+#    embedding_var = tf.Variable(np.empty((0,4096),dtype=np.float32),name='Embedding_of_fc7',validate_shape=False)
+#    new_embedding_var = tf.concat([embedding_var,fetch],0)
+#    update_embedding = tf.assign(embedding_var,new_embedding_var,validate_shape=False)
+#    empty = tf.Variable(np.empty((0,4096),dtype=np.float32),validate_shape=False)
+#    reset_embedding = tf.assign(embedding_var,empty,validate_shape=False)
 
     #create supervised session (summary op can be omitted)
     sv = tf.train.Supervisor(

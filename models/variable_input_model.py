@@ -43,9 +43,9 @@ BLOCK_CONV_DEFS = [
 # classification head should be an Avg Pool layer followed by a classifier 
 # with 1024 inputs for whatever output is desired.
 HEAD_CONV_DEFS = [
-    DepthSepConv(kernel=[3, 3], stride=1, depth=512)
-    DepthSepConv(kernel=[3, 3], stride=1, depth=512)
-    DepthSepConv(kernel=[3, 3], stride=1, depth=512)
+    DepthSepConv(kernel=[3, 3], stride=1, depth=512),
+    DepthSepConv(kernel=[3, 3], stride=1, depth=512),
+    DepthSepConv(kernel=[3, 3], stride=1, depth=512),
     DepthSepConv(kernel=[3, 3], stride=1, depth=1024)
 ]
 
@@ -54,49 +54,50 @@ HEAD_CONV_DEFS = [
 # inputs is the input layer tensor
 # conv_defs is a list of ConvDef named tuples
 # reuse should be None or True
-def mobilenet_body(scope, inputs, conv_defs, reuse=None):
+def mobilenet_body(scope, inputs, conv_defs, is_training=True, reuse=None):
     end_points = {}
     with tf.variable_scope(scope, inputs, reuse=reuse):
         with slim.arg_scope([slim.conv2d, slim.separable_conv2d],
                 padding='SAME'):
-            net = inputs
-            for i, conv_def in enumerate(BLOCK_CONV_DEFS):
-                end_point_base = 'Conv2d_%d' % i
+            with slim.arg_scope([slim.batch_norm], is_training=is_training):
+                net = inputs
+                for i, conv_def in enumerate(BLOCK_CONV_DEFS):
+                    end_point_base = 'Conv2d_%d' % i
 
-                if isinstance(conv_def, Conv):
-                    end_point = end_point_base
-                    net = slim.conv2d(net, conv_def.depth, conv_def.kernel,
-                            stride=conv_def.stride,
-                            normalizer_fn=slim.batch_norm,
-                            scope=end_point)
-                    end_points[end_point] = net
-                elif isinstance(conv_def, DepthSepConv):
-                    end_point = end_point_base + '_depthwise'
+                    if isinstance(conv_def, Conv):
+                        end_point = end_point_base
+                        net = slim.conv2d(net, conv_def.depth, conv_def.kernel,
+                                stride=conv_def.stride,
+                                normalizer_fn=slim.batch_norm,
+                                scope=end_point)
+                        end_points[end_point] = net
+                    elif isinstance(conv_def, DepthSepConv):
+                        end_point = end_point_base + '_depthwise'
 
-                    # By passing filters=None separable_conv2d produces only
-                    # a depthwise convolution layer
-                    net = slim.separable_conv2d(net, None, conv_def.kernel,
-                            depth_multiplier=1,
-                            stride=conv_def.stride,
-                            normalizer_fn=slim.batch_norm,
-                            scope=end_point)
+                        # By passing filters=None separable_conv2d produces 
+                        # only a depthwise convolution layer
+                        net = slim.separable_conv2d(net, None, conv_def.kernel,
+                                depth_multiplier=1,
+                                stride=conv_def.stride,
+                                normalizer_fn=slim.batch_norm,
+                                scope=end_point)
 
-                    end_points[end_point] = net
+                        end_points[end_point] = net
 
-                    end_point = end_point_base + '_pointwise'
+                        end_point = end_point_base + '_pointwise'
 
-                    net = slim.conv2d(net, conv_def.depth, [1, 1],
-                                      stride=1,
-                                      normalizer_fn=slim.batch_norm,
-                                      scope=end_point)
+                        net = slim.conv2d(net, conv_def.depth, [1, 1],
+                                          stride=1,
+                                          normalizer_fn=slim.batch_norm,
+                                          scope=end_point)
 
-                    end_points[end_point] = net
-                else:
-                    raise ValueError('Unknown convolution type %s for layer %d'
-                            % (conv_def.ltype, i))
+                        end_points[end_point] = net
+                    else:
+                        raise ValueError('Unknown convolution type %s for '
+                                'layer %d' % (conv_def.ltype, i))
     return net, end_points
 
-def mobilenet_block(inputs, telescope_index, trig_values):
+def mobilenet_block(inputs, telescope_index, trig_values, is_training=True):
     # Set all telescopes after the first to share weights
     if telescope_index == 0:
         reuse = None
@@ -105,7 +106,7 @@ def mobilenet_block(inputs, telescope_index, trig_values):
 
     # Define the network
     net, end_points = mobilenet_body("MobileNetBlock", inputs, 
-            BLOCK_CONV_DEFS, reuse)
+            BLOCK_CONV_DEFS, is_training, reuse)
     
     # Drop out all outputs if the telescope was not triggered
     end_point = "Trigger_multiplier"        
@@ -116,9 +117,11 @@ def mobilenet_block(inputs, telescope_index, trig_values):
     # for now
     return net#, end_points
 
-def mobilenet_head(inputs, dropout_keep_prob=0.9, num_classes=2):
+def mobilenet_head(inputs, dropout_keep_prob=0.9, num_classes=2, 
+        is_training=True):
     # Define the network
-    net, end_points = mobilenet_body("MobileNetHead", inputs, HEAD_CONV_DEFS)
+    net, end_points = mobilenet_body("MobileNetHead", inputs, HEAD_CONV_DEFS, 
+            is_training)
     
     with tf.variable_scope('Logits'):
         net = slim.avg_pool2d(net, [15, 15], padding='VALID', 
@@ -126,14 +129,14 @@ def mobilenet_head(inputs, dropout_keep_prob=0.9, num_classes=2):
         end_points['AvgPool_1a'] = net
         # 1 x 1 x 1024
         net = slim.dropout(net, keep_prob=dropout_keep_prob, 
-                scope='Dropout_1b')
+                is_training=is_training, scope='Dropout_1b')
         # Essentially a fully connected layer
         logits = slim.conv2d(net, num_classes, [1, 1], activation_fn=None,
                              normalizer_fn=None, scope='Conv2d_1c_1x1')
         # Reshape from [BATCH_SIZE, 1, 1, num_classes] to 
         # [BATCH_SIZE, num_classes]
         logits = tf.squeeze(logits, [1, 2], name='SpatialSqueeze')
-    end_points['Logits'] = logits
+        end_points['Logits'] = logits
     return logits#, end_points
 
 #for use with train_datasets
@@ -216,71 +219,101 @@ def alexnet_block(input_features, number, trig_values):
 
     return output
 
+def alexnet_head(inputs, dropout_keep_prob=0.5, num_classes=2, 
+        is_training=True):
+    #fc6
+    fc6 = tf.layers.dense(inputs=inputs, units=4096, activation=tf.nn.relu,
+            name="fc6") 
+    dropout6 = tf.layers.dropout(inputs=fc6, rate=dropout_keep_prob, 
+            training=is_training)
+
+    #fc7
+    fc7 = tf.layers.dense(inputs=dropout6, units=4096, activation=tf.nn.relu,
+            name="fc7")        
+    dropout7 = tf.layers.dropout(inputs=fc7, rate=dropout_keep_prob, 
+            training=is_training)        
+
+    #fc8
+    fc8 = tf.layers.dense(inputs=dropout7, units=num_classes, name="fc8")
+
+    return fc8
+
 #for use with train_datasets
 def variable_input_model(tel_data, labels, trig_list, tel_pos_tensor, num_tel,
-        image_width, image_length, image_depth, training):
-  
-    #from batch,tel,width,length,channels to tel,batch,width,length,channels
+        image_width, image_length, image_depth, is_training):
+ 
+    # Reshape inputs into proper dimensions
     tel_data = tf.reshape(tel_data, [-1, num_tel, image_width, image_length, 
         image_depth])
-    tel_data_transposed = tf.transpose(tel_data, perm=[1, 0, 2, 3, 4])
-
     trig_list = tf.reshape(trig_list, [-1, num_tel])
+    # TODO: move number of aux inputs (2) to be defined as a constant
+    tel_pos_tensor = tf.reshape(tel_pos_tensor, [num_tel, 2])
+    
+    # Split data by telescope by switching the batch and telescope dimensions
+    # leaving width, length, and channel depth unchanged
+    tel_data_by_telescope = tf.transpose(tel_data, perm=[1, 0, 2, 3, 4])
 
-    feature_vectors = []
+    # Define the network being used. Each CNN block analyzes a single
+    # telescope. The outputs are stacked, with the outputs for non-triggering
+    # telescopes zeroed out (effectively, those channels are dropped out).
+    # Unlike standard dropout, this zeroing-out procedure is performed both at
+    # training and at test time since it encodes meaningful aspects of the
+    # data.
+    # The array-level processing in then performed by the network head. The
+    # logits are returned and fed into a classifier.
+    cnn_block = alexnet_block
+    network_head = alexnet_head
 
-    cnn_block = mobilenet_block
+    # Process the input for each telescope
+    telescope_outputs = []
     for i in range(num_tel):
-        telescope_features = cnn_block(tf.gather(tel_data_transposed, i), i,
+        telescope_features = cnn_block(tf.gather(tel_data_by_telescope, i), i,
                 tf.gather(trig_list, i, axis=1))
-        ## Flatten output features to get feature vector
-        feature_vectors.append(flatten(telescope_features))
+        telescope_outputs.append(telescope_features)
 
-    with tf.variable_scope("Classifier"):
-
-        #combine the feature vectors + trigger info + tel_x + tel_y into a tensor of shape [batch size,num_tels,num_features+3]
-        combined_feature_tensor = tf.stack(feature_vectors, axis=1)
-        
-        batch_size = tf.shape(combined_feature_tensor)[0]
-        tel_pos_tensor_batch = tf.expand_dims(tel_pos_tensor,0)
-        tel_pos_tensor_batch =  tf.tile(tel_pos_tensor_batch, tf.stack([batch_size,1,1])) 
-        combined_feature_tensor = tf.concat([combined_feature_tensor,
-            tf.expand_dims(trig_list, -1), tel_pos_tensor_batch], 2)
-
-        #fc6
-        fc6 = tf.layers.dense(inputs=combined_feature_tensor, units=4096, 
-                activation=tf.nn.relu, name="fc6") 
-        dropout6 = tf.layers.dropout(inputs=fc6, rate=0.5, training=training)
-
-        #fc7
-        fc7 = tf.layers.dense(inputs=dropout6, units=4096, activation=tf.nn.relu,name="fc7")        
-        dropout7 = tf.layers.dropout(inputs=fc7, rate=0.5, training=training)        
-
-        #fc8
-        fc8 = tf.layers.dense(inputs=dropout7, units=NUM_CLASSES,name="fc8")
+    with tf.variable_scope("NetworkHead"):
+        # Process the single telescope data into array-level input
+        array_inputs = []
+        for i, telescope_features in enumerate(telescope_outputs):
+            # Flatten output features to get feature vectors
+            telescope_features = flatten(telescope_features)
+            # Get the telescope x and y position and if it triggered
+            telescope_position = tel_pos_tensor[i, :]
+            telescope_position = tf.tile(tf.expand_dims(telescope_position, 0),
+                    [tf.shape(telescope_features)[0], 1])
+            telescope_trigger = tf.expand_dims(trig_list[:, i], 1)
+            # Insert auxiliary input into each feature vector
+            telescope_features = tf.concat([telescope_features, 
+                telescope_position, telescope_trigger], 1)
+            array_inputs.append(telescope_features)
+        array_features = tf.stack(array_inputs, axis=1)
+        # Process the combined array features
+        logits = network_head(array_features, num_classes=NUM_CLASSES, 
+                is_training=is_training)
 
     with tf.variable_scope("Outputs"):
 
         # Calculate Loss (for both TRAIN and EVAL modes) 
         if NUM_CLASSES == 2:
             onehot_labels = tf.one_hot(indices=tf.cast(labels, tf.int32), depth=NUM_CLASSES)
-            loss = tf.losses.sigmoid_cross_entropy(multi_class_labels=onehot_labels, logits=fc8)
+            loss = tf.losses.sigmoid_cross_entropy(multi_class_labels=onehot_labels, logits=logits)
         else:
             onehot_labels = tf.one_hot(indices=tf.cast(labels, tf.int32), depth=NUM_CLASSES)
-            loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels, logits=fc8)
+            loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels, logits=logits)
 
         #outputs
         if NUM_CLASSES == 2:
             predictions = {
-                    "classes": tf.argmax(input=fc8,axis=1),
-                    "probabilities": [tf.sigmoid(fc8), 1-tf.sigmoid(fc8)]
+                    "classes": tf.argmax(input=logits,axis=1),
+                    "probabilities": [tf.sigmoid(logits), 1-tf.sigmoid(logits)]
                     }
         else:
             predictions = {        
-                    "classes": tf.argmax(input=fc8, axis=1),
-                    "probabilities": tf.nn.softmax(fc8, name="softmax_tensor")
+                    "classes": tf.argmax(input=logits, axis=1),
+                    "probabilities": tf.nn.softmax(logits, 
+                        name="softmax_tensor")
                     }
 
         accuracy = tf.reduce_mean(tf.cast(tf.equal(tf.cast(predictions['classes'],tf.int8),labels), tf.float32))
 
-    return loss,accuracy,fc8,predictions
+    return loss, accuracy, logits, predictions
