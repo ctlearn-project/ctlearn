@@ -104,18 +104,54 @@ def mobilenet_block(inputs, telescope_index, trig_values, is_training=True):
     else:
         reuse = True
 
-    # Define the network
-    net, end_points = mobilenet_body("MobileNetBlock", inputs, 
-            BLOCK_CONV_DEFS, is_training, reuse)
-    
-    # Drop out all outputs if the telescope was not triggered
-    end_point = "Trigger_multiplier"        
-    net = tf.multiply(flatten(net), tf.expand_dims(trig_values, 1))
-    end_points[end_point] = net
-    
-    # For compatibility with variable_input_model, do not return end_points
-    # for now
-    return net#, end_points
+    end_points = {}
+    with tf.variable_scope("MobilenetV1", [inputs, trig_values], reuse=reuse):
+        with slim.arg_scope([slim.conv2d, slim.separable_conv2d],
+                padding='SAME'):
+            net = inputs
+            for i, conv_def in enumerate(CONV_DEFS):
+                end_point_base = 'Conv2d_%d' % i
+
+                if isinstance(conv_def, Conv):
+                    end_point = end_point_base
+                    net = slim.conv2d(net, conv_def.depth, conv_def.kernel,
+                            stride=conv_def.stride,
+                            normalizer_fn=slim.batch_norm,
+                            scope=end_point)
+                    end_points[end_point] = net
+                elif isinstance(conv_def, DepthSepConv):
+                    end_point = end_point_base + '_depthwise'
+
+                    # By passing filters=None separable_conv2d produces only
+                    # a depthwise convolution layer
+                    net = slim.separable_conv2d(net, None, conv_def.kernel,
+                            depth_multiplier=1,
+                            stride=conv_def.stride,
+                            normalizer_fn=slim.batch_norm,
+                            scope=end_point)
+
+                    end_points[end_point] = net
+
+                    end_point = end_point_base + '_pointwise'
+
+                    net = slim.conv2d(net, conv_def.depth, [1, 1],
+                                      stride=1,
+                                      normalizer_fn=slim.batch_norm,
+                                      scope=end_point)
+
+                    end_points[end_point] = net
+                else:
+                    raise ValueError('Unknown convolution type %s for layer %d'
+                            % (conv_def.ltype, i))
+            end_point = "Trigger_multiplier"
+            
+            # Drop out all outputs if the telescope was not triggered
+            net = tf.multiply(flatten(net), tf.expand_dims(tf.to_float(trig_values), 1))
+            end_points[end_point] = net
+            
+            # For compatibility with variable_input_model, do not return
+            # end_points for now
+            return net#, end_points
 
 def mobilenet_head(inputs, dropout_keep_prob=0.9, num_classes=2, 
         is_training=True):
@@ -149,6 +185,9 @@ def alexnet_block(input_features, number, trig_values):
         reuse = True
 
     with tf.variable_scope("Conv_block"):
+
+        input_tensor = tf.reshape(input_features,[-1,IMAGE_WIDTH,IMAGE_LENGTH,IMAGE_DEPTH],name="input")
+       
         #conv1
         conv1 = tf.layers.conv2d(
                 inputs=input_features,
@@ -214,9 +253,9 @@ def alexnet_block(input_features, number, trig_values):
         #pool5
         pool5 = tf.layers.max_pooling2d(inputs=conv5, pool_size=[3, 3], strides=2)
 
-        # Flatten output of pool5 layer to get feature vector
+        #flatten output of pool5 layer to get feature vector of shape (num_batch,1024)
         output = tf.multiply(flatten(pool5), tf.expand_dims(trig_values, 1))
-
+    
     return output
 
 def alexnet_head(inputs, dropout_keep_prob=0.5, num_classes=2, 
@@ -273,6 +312,9 @@ def variable_input_model(tel_data, labels, trig_list, tel_pos_tensor, num_tel,
     # Reshape inputs into proper dimensions
     tel_data = tf.reshape(tel_data, [-1, num_tel, image_width, image_length, 
         image_depth])
+    tel_data_transposed = tf.transpose(tel_data, perm=[1, 0, 2, 3, 4])
+    trig_list_transposed = tf.transpose(trig_list, perm=[1,0])
+
     trig_list = tf.reshape(trig_list, [-1, num_tel])
     # TODO: move number of aux inputs (2) to be defined as a constant
     tel_pos_tensor = tf.reshape(tel_pos_tensor, [num_tel, 2])
@@ -298,7 +340,7 @@ def variable_input_model(tel_data, labels, trig_list, tel_pos_tensor, num_tel,
     # Process the input for each telescope
     telescope_outputs = []
     for i in range(num_tel):
-        telescope_features = cnn_block(tf.gather(tel_data_by_telescope, i), i,
+       telescope_features = cnn_block(tf.gather(tel_data_by_telescope, i), i,
                 tf.gather(trig_list, i, axis=1))
         telescope_outputs.append(telescope_features)
 
