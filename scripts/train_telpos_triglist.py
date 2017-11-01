@@ -120,6 +120,19 @@ def train(model,data_file,epochs,image_summary,embedding):
             img_depth, training)
     tf.summary.scalar('training_loss', loss)
     tf.summary.scalar('training_accuracy',accuracy)
+
+    #global step
+    global_step = tf.Variable(0, name='global_step', trainable=False)
+    increment_global_step_op = tf.assign(global_step, global_step+1)
+
+    #variable learning rate
+    learning_rate = tf.Variable(args.lr,trainable=False)
+    num_tel_tensor = tf.constant(num_tel, dtype=tf.float32)
+    mean_num_trig_batch = tf.reduce_mean(tf.reduce_sum(next_trig_list,1))
+    scaling_factor = tf.divide(num_tel_tensor,tf.to_float(mean_num_trig_batch))
+    variable_learning_rate = tf.multiply(scaling_factor,learning_rate)
+
+    tf.summary.scalar('variable_learning_rate',variable_learning_rate)
     merged = tf.summary.merge_all()
 
     if image_summary:
@@ -142,17 +155,6 @@ def train(model,data_file,epochs,image_summary,embedding):
         filter_summ_op = tf.summary.image('filter',tf.slice(tf.transpose(kernel, perm=[3, 0, 1, 2]),begin=[0,0,0,0],size=[96,11,11,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
         activations_summ_op = tf.summary.image('activations',tf.slice(activations,begin=[0,0,0,0],size=[TRAIN_BATCH_SIZE,58,58,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
         
-    #global step
-    global_step = tf.Variable(0, name='global_step', trainable=False)
-    increment_global_step_op = tf.assign(global_step, global_step+1)
-
-    #variable learning rate
-    learning_rate = tf.Variable(args.lr,trainable=False)
-    num_tel_tensor = tf.constant(num_tel, dtype=tf.float32)
-    mean_num_trig_batch = tf.reduce_mean(tf.reduce_sum(next_trig_list,1))
-    scaling_factor = tf.divide(num_tel_tensor,tf.to_float(mean_num_trig_batch))
-    variable_learning_rate = tf.multiply(scaling_factor,learning_rate)
-
     #train op
     if args.optimizer == 'adadelta':
         train_op = tf.train.AdadeltaOptimizer(learning_rate=variable_learning_rate).minimize(loss)
