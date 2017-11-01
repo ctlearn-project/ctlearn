@@ -238,6 +238,34 @@ def alexnet_head(inputs, dropout_keep_prob=0.5, num_classes=2,
 
     return fc8
 
+# Given a list of telescope output features and tensors storing the telescope
+# positions and trigger list, return a tensor of array features of the form 
+# [NUM_BATCHES, NUM_ARRAY_FEATURES]
+def stack_telescopes_as_vectors(telescope_outputs, telescope_positions, 
+        telescope_triggers):
+    array_inputs = []
+    for i, telescope_features in enumerate(telescope_outputs):
+        # Flatten output features to get feature vectors
+        telescope_features = flatten(telescope_features)
+        # Get the telescope x and y position and if it triggered
+        telescope_position = telescope_positions[i, :]
+        telescope_position = tf.tile(tf.expand_dims(telescope_position, 0),
+                [tf.shape(telescope_features)[0], 1])
+        telescope_trigger = tf.expand_dims(telescope_triggers[:, i], 1)
+        # Insert auxiliary input into each feature vector
+        telescope_features = tf.concat([telescope_features, 
+            telescope_position, telescope_trigger], 1)
+        array_inputs.append(telescope_features)
+    array_features = tf.stack(array_inputs, axis=1)
+    return array_features
+
+# Given a list of telescope output features and tensors storing the telescope
+# positions and trigger list, return a tensor of array features of the form
+# [NUM_BATCHES, TEL_OUTPUT_WIDTH, TEL_OUTPUT_HEIGHT, TEL_OUTPUT_CHANNELS + 
+#       AUXILIARY_INPUTS_PER_TELESCOPE]
+def stack_telescopes_as_feature_maps(telescope_outputs):
+    pass
+
 #for use with train_datasets
 def variable_input_model(tel_data, labels, trig_list, tel_pos_tensor, num_tel,
         image_width, image_length, image_depth, is_training):
@@ -254,14 +282,17 @@ def variable_input_model(tel_data, labels, trig_list, tel_pos_tensor, num_tel,
     tel_data_by_telescope = tf.transpose(tel_data, perm=[1, 0, 2, 3, 4])
 
     # Define the network being used. Each CNN block analyzes a single
-    # telescope. The outputs are stacked, with the outputs for non-triggering
-    # telescopes zeroed out (effectively, those channels are dropped out).
+    # telescope. The outputs for non-triggering telescopes are zeroed out 
+    # (effectively, those channels are dropped out).
     # Unlike standard dropout, this zeroing-out procedure is performed both at
-    # training and at test time since it encodes meaningful aspects of the
-    # data.
-    # The array-level processing in then performed by the network head. The
+    # training and test time since it encodes meaningful aspects of the data.
+    # The telescope outputs are then stacked into input for the array-level
+    # network, either into 1D feature vectors or into 3D convolutional 
+    # feature maps, depending on the requirements of the network head.
+    # The array-level processing is then performed by the network head. The
     # logits are returned and fed into a classifier.
     cnn_block = alexnet_block
+    stack_telescopes = stack_telescopes_as_vectors
     network_head = alexnet_head
 
     # Process the input for each telescope
@@ -273,20 +304,8 @@ def variable_input_model(tel_data, labels, trig_list, tel_pos_tensor, num_tel,
 
     with tf.variable_scope("NetworkHead"):
         # Process the single telescope data into array-level input
-        array_inputs = []
-        for i, telescope_features in enumerate(telescope_outputs):
-            # Flatten output features to get feature vectors
-            telescope_features = flatten(telescope_features)
-            # Get the telescope x and y position and if it triggered
-            telescope_position = tel_pos_tensor[i, :]
-            telescope_position = tf.tile(tf.expand_dims(telescope_position, 0),
-                    [tf.shape(telescope_features)[0], 1])
-            telescope_trigger = tf.expand_dims(trig_list[:, i], 1)
-            # Insert auxiliary input into each feature vector
-            telescope_features = tf.concat([telescope_features, 
-                telescope_position, telescope_trigger], 1)
-            array_inputs.append(telescope_features)
-        array_features = tf.stack(array_inputs, axis=1)
+        array_features = stack_telescopes(telescope_outputs, tel_pos_tensor, 
+                trig_list)
         # Process the combined array features
         logits = network_head(array_features, num_classes=NUM_CLASSES, 
                 is_training=is_training)
