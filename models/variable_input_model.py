@@ -61,7 +61,7 @@ def mobilenet_body(scope, inputs, conv_defs, is_training=True, reuse=None):
                 padding='SAME'):
             with slim.arg_scope([slim.batch_norm], is_training=is_training):
                 net = inputs
-                for i, conv_def in enumerate(BLOCK_CONV_DEFS):
+                for i, conv_def in enumerate(conv_defs):
                     end_point_base = 'Conv2d_%d' % i
 
                     if isinstance(conv_def, Conv):
@@ -104,54 +104,21 @@ def mobilenet_block(inputs, telescope_index, trig_values, is_training=True):
     else:
         reuse = True
 
-    end_points = {}
-    with tf.variable_scope("MobilenetV1", [inputs, trig_values], reuse=reuse):
-        with slim.arg_scope([slim.conv2d, slim.separable_conv2d],
-                padding='SAME'):
-            net = inputs
-            for i, conv_def in enumerate(CONV_DEFS):
-                end_point_base = 'Conv2d_%d' % i
-
-                if isinstance(conv_def, Conv):
-                    end_point = end_point_base
-                    net = slim.conv2d(net, conv_def.depth, conv_def.kernel,
-                            stride=conv_def.stride,
-                            normalizer_fn=slim.batch_norm,
-                            scope=end_point)
-                    end_points[end_point] = net
-                elif isinstance(conv_def, DepthSepConv):
-                    end_point = end_point_base + '_depthwise'
-
-                    # By passing filters=None separable_conv2d produces only
-                    # a depthwise convolution layer
-                    net = slim.separable_conv2d(net, None, conv_def.kernel,
-                            depth_multiplier=1,
-                            stride=conv_def.stride,
-                            normalizer_fn=slim.batch_norm,
-                            scope=end_point)
-
-                    end_points[end_point] = net
-
-                    end_point = end_point_base + '_pointwise'
-
-                    net = slim.conv2d(net, conv_def.depth, [1, 1],
-                                      stride=1,
-                                      normalizer_fn=slim.batch_norm,
-                                      scope=end_point)
-
-                    end_points[end_point] = net
-                else:
-                    raise ValueError('Unknown convolution type %s for layer %d'
-                            % (conv_def.ltype, i))
-            end_point = "Trigger_multiplier"
-            
-            # Drop out all outputs if the telescope was not triggered
-            net = tf.multiply(flatten(net), tf.expand_dims(tf.to_float(trig_values), 1))
-            end_points[end_point] = net
-            
-            # For compatibility with variable_input_model, do not return
-            # end_points for now
-            return net#, end_points
+    net, end_points = mobilenet_body("MobileNetBlock", inputs, BLOCK_CONV_DEFS, 
+            is_training, reuse)
+    
+    # Drop out all outputs if the telescope was not triggered
+    end_point = "Trigger_multiplier"
+    # Reshape trig_values from [BATCH_SIZE] to [BATCH_SIZE, WIDTH, HEIGHT, 
+    # NUM_CHANNELS]
+    trig_values = tf.reshape(trig_values, [-1, 1, 1, 1])
+    trig_values = tf.tile(trig_values, tf.concat([[1], tf.shape(net)[1:]], 0))
+    net = tf.multiply(net, trig_values)
+    end_points[end_point] = net
+    
+    # For compatibility with variable_input_model, do not return
+    # end_points for now
+    return net#, end_points
 
 def mobilenet_head(inputs, dropout_keep_prob=0.9, num_classes=2, 
         is_training=True):
@@ -280,7 +247,7 @@ def alexnet_head(inputs, dropout_keep_prob=0.5, num_classes=2,
 # Given a list of telescope output features and tensors storing the telescope
 # positions and trigger list, return a tensor of array features of the form 
 # [NUM_BATCHES, NUM_ARRAY_FEATURES]
-def stack_telescopes_as_vectors(telescope_outputs, telescope_positions, 
+def combine_telescopes_as_vectors(telescope_outputs, telescope_positions, 
         telescope_triggers):
     array_inputs = []
     for i, telescope_features in enumerate(telescope_outputs):
@@ -295,27 +262,44 @@ def stack_telescopes_as_vectors(telescope_outputs, telescope_positions,
         telescope_features = tf.concat([telescope_features, 
             telescope_position, telescope_trigger], 1)
         array_inputs.append(telescope_features)
-    array_features = tf.stack(array_inputs, axis=1)
+    array_features = tf.concat(array_inputs, axis=1)
     return array_features
 
 # Given a list of telescope output features and tensors storing the telescope
 # positions and trigger list, return a tensor of array features of the form
 # [NUM_BATCHES, TEL_OUTPUT_WIDTH, TEL_OUTPUT_HEIGHT, TEL_OUTPUT_CHANNELS + 
 #       AUXILIARY_INPUTS_PER_TELESCOPE]
-def stack_telescopes_as_feature_maps(telescope_outputs):
-    pass
+def combine_telescopes_as_feature_maps(telescope_outputs, telescope_positions, 
+        telescope_triggers):
+    array_inputs = []
+    for i, telescope_features in enumerate(telescope_outputs):
+        # Get the telescope x and y position and if it triggered
+        telescope_position = telescope_positions[i, :] # [2]
+        telescope_trigger = telescope_triggers[:, i] # [NUM_BATCH]
+        # Tile the position along the batch, width, and height dimensions
+        telescope_position = tf.reshape(telescope_position, [1, 1, 1, -1])
+        telescope_position = tf.tile(telescope_position,
+                tf.concat([tf.shape(telescope_features)[:-1], [1]], 0))
+        # Tile the trigger along the width, height, and channel dimensions
+        telescope_trigger = tf.reshape(telescope_trigger, [-1, 1, 1, 1])
+        telescope_trigger = tf.tile(telescope_trigger,
+                tf.concat([[1], tf.shape(telescope_features)[1:-1], [1]], 0))
+        # Insert auxiliary input as additional channels in feature maps
+        telescope_features = tf.concat([telescope_features, 
+            telescope_position, telescope_trigger], 3)
+        array_inputs.append(telescope_features)
+    array_features = tf.concat(array_inputs, axis=3)
+    return array_features
 
 #for use with train_datasets
 def variable_input_model(tel_data, labels, trig_list, tel_pos_tensor, num_tel,
         image_width, image_length, image_depth, is_training):
  
-    # Reshape inputs into proper dimensions
+    # Reshape and cast inputs into proper dimensions and types
     tel_data = tf.reshape(tel_data, [-1, num_tel, image_width, image_length, 
         image_depth])
-    tel_data_transposed = tf.transpose(tel_data, perm=[1, 0, 2, 3, 4])
-    trig_list_transposed = tf.transpose(trig_list, perm=[1,0])
-
     trig_list = tf.reshape(trig_list, [-1, num_tel])
+    trig_list = tf.cast(trig_list, tf.float32)
     # TODO: move number of aux inputs (2) to be defined as a constant
     tel_pos_tensor = tf.reshape(tel_pos_tensor, [num_tel, 2])
     
@@ -333,20 +317,20 @@ def variable_input_model(tel_data, labels, trig_list, tel_pos_tensor, num_tel,
     # feature maps, depending on the requirements of the network head.
     # The array-level processing is then performed by the network head. The
     # logits are returned and fed into a classifier.
-    cnn_block = alexnet_block
-    stack_telescopes = stack_telescopes_as_vectors
-    network_head = alexnet_head
+    cnn_block = mobilenet_block
+    combine_telescopes = combine_telescopes_as_feature_maps
+    network_head = mobilenet_head
 
     # Process the input for each telescope
     telescope_outputs = []
     for i in range(num_tel):
-       telescope_features = cnn_block(tf.gather(tel_data_by_telescope, i), i,
+        telescope_features = cnn_block(tf.gather(tel_data_by_telescope, i), i,
                 tf.gather(trig_list, i, axis=1))
         telescope_outputs.append(telescope_features)
 
     with tf.variable_scope("NetworkHead"):
         # Process the single telescope data into array-level input
-        array_features = stack_telescopes(telescope_outputs, tel_pos_tensor, 
+        array_features = combine_telescopes(telescope_outputs, tel_pos_tensor, 
                 trig_list)
         # Process the combined array features
         logits = network_head(array_features, num_classes=NUM_CLASSES, 
