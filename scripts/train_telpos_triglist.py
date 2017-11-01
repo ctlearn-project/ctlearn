@@ -1,18 +1,20 @@
 import sys
 import os
 import math
+import argparse
+import re
+import random
+
 #add parent directory to pythonpath to allow imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
-import argparse
+import tensorflow as tf
+from tables import *
+import numpy as np
+
 from models.mvcnn import mvcnn_fn_2
 from models.custom_multi_input import custom_multi_input_v2
 from models.variable_input_model import variable_input_model
-import tensorflow as tf
-from tables import *
-import re
-import numpy as np
-import random
 
 NUM_THREADS = 12
 TRAIN_BATCH_SIZE = 64
@@ -23,12 +25,11 @@ IMAGE_VIZ_MAX_OUTPUTS = 100
 EPOCHS_PER_VIZ_EMBED = 5
 NUM_BATCHES_EMBEDDING = 20
 
-def train(model,data_file,epochs):
+def train(model,data_file,epochs,image_summary,embedding):
 
-    def load_train_data(index):
-        record = table.read(index,index+1)
-        tel_imgs = []
+    def load_data(record):
         tel_map = record["tel_map"][0]
+        tel_imgs = []
         assert tel_map.shape[0] == len(tels_list)
         for i in range(len(tels_list)):
             if tel_map[i] != -1:
@@ -37,42 +38,27 @@ def train(model,data_file,epochs):
             else:
                 tel_imgs.append(np.empty([img_width,img_length,img_depth]))
 
-        imgs = np.squeeze(np.stack(tel_imgs,axis=0)).astype(np.float32)
-        if len(imgs.shape) == 3:
-            imgs = np.expand_dims(imgs,axis=3)
+        imgs = np.stack(tel_imgs,axis=0).astype(np.float32)
         label = record[label_column_name].astype(np.int8)
         trig_list = tel_map.astype(np.int8)
         trig_list[trig_list < 0] = 0
         trig_list[trig_list > 0] = 1
         return [imgs,label,trig_list]
 
+    def load_train_data(index):
+        record = table_train.read(index, index + 1)
+        return load_data(record)
+    
     def load_val_data(index):
-        record = table_val.read(index,index+1)
-        tel_imgs = []
-        tel_map = record["tel_map"][0]
-        assert tel_map.shape[0] == len(tels_list)
-        for i in range(len(tels_list)):
-            if tel_map[i] != -1:
-                array = f.root.E0._f_get_child(tels_list[i])
-                tel_imgs.append(array[tel_map[i]])
-            else:
-                tel_imgs.append(np.empty([img_width,img_length,img_depth]))
-                
-        imgs = np.squeeze(np.stack(tel_imgs,axis=0)).astype(np.float32)
-        if len(imgs.shape) == 3:
-            imgs = np.expand_dims(imgs,axis=3)
-        label = record[label_column_name].astype(np.int8)
-        trig_list = tel_map.astype(np.int8)
-        trig_list[trig_list < 0] = 0
-        trig_list[trig_list > 0] = 1
-        return [imgs, label,trig_list]
+        record = table_val.read(index, index + 1)
+        return load_data(record)
 
     #open HDF5 file for reading
     f = open_file(data_file, mode = "r", title = "Input file")
-    table = f.root.E0.Events_Training
+    table_train = f.root.E0.Events_Training
     table_val = f.root.E0.Events_Validation    
     label_column_name = args.label_col_name
-    num_events_train = table.shape[0]
+    num_events_train = table_train.shape[0]
     num_events_val = table_val.shape[0]
 
     #prepare constant telescope position vector
@@ -83,21 +69,16 @@ def train(model,data_file,epochs):
         tels_list.append("T" + str(row["tel_id"]))
         tel_pos_vector.append(row["tel_x"])
         tel_pos_vector.append(row["tel_y"])
-    num_tels = len(tels_list)
-    print(num_tels)
-    print(tels_list)
-
-    tel_pos_tensor = tf.constant(tel_pos_vector)
-    tel_pos_tensor = tf.reshape(tel_pos_tensor,[num_tels,2])
+    num_tel = len(tels_list) 
+    tel_pos_tensor = tf.reshape(tf.constant(tel_pos_vector),[num_tel,2])
 
     #shape of images
     img_shape = eval("f.root.E0.{}.shape".format(tels_list[0]))
     img_width = img_shape[1]
     img_length = img_shape[2]
     img_depth = img_shape[3]
-    print(img_shape)
 
-    #data input
+    #create datasets
     train_dataset = tf.contrib.data.Dataset.range(num_events_train)
     train_dataset = train_dataset.shuffle(buffer_size=10000)
     train_dataset = train_dataset.map((lambda index: tuple(tf.py_func(load_train_data, [index], [tf.float32, tf.int8, tf.int8]))),num_threads=NUM_THREADS,output_buffer_size=100*TRAIN_BATCH_SIZE)
@@ -107,6 +88,7 @@ def train(model,data_file,epochs):
     val_dataset = val_dataset.map((lambda index: tuple(tf.py_func(load_val_data,[index],[tf.float32, tf.int8, tf.int8]))), num_threads=NUM_THREADS,output_buffer_size=100*VAL_BATCH_SIZE)
     val_dataset = val_dataset.batch(VAL_BATCH_SIZE)
 
+    #create iterator and init ops
     iterator = tf.contrib.data.Iterator.from_structure(train_dataset.output_types,train_dataset.output_shapes)
     next_example, next_label, next_trig_list = iterator.get_next()
 
@@ -121,44 +103,54 @@ def train(model,data_file,epochs):
     print("Total number of training events: ",num_events_train)
     print("Total number of validation events: ",num_events_val)
     print("*************************************")
-    print("Image visualization summary every {} epochs".format(EPOCHS_PER_IMAGE_VIZ))
-    print("Embedding visualization summary every {} epochs".format(EPOCHS_PER_VIZ_EMBED))
+    if image_summary:
+        print("Image visualization summary every {} epochs".format(EPOCHS_PER_IMAGE_VIZ))
+    else:
+        print("No image visualization")
+    if embedding:
+        print("Embedding visualization summary every {} epochs".format(EPOCHS_PER_VIZ_EMBED))
+    else:
+        print("No embedding visualization")
     print("*************************************")
 
     training = tf.placeholder(tf.bool, shape=())
 
-    loss,accuracy,logits,predictions = model(next_example,next_label,next_trig_list,tel_pos_tensor,training)
-
+    loss, accuracy, logits, predictions = model(next_example, next_label, 
+            next_trig_list, tel_pos_tensor, num_tel, img_width, img_length, 
+            img_depth, training)
     tf.summary.scalar('training_loss', loss)
     tf.summary.scalar('training_accuracy',accuracy)
     merged = tf.summary.merge_all()
 
-    for n in tf.get_default_graph().as_graph_def().node:
-        print(n.name)
+    if image_summary:
 
-    #locate input and 1st layer filter tensors for visualization
-    inputs = tf.get_default_graph().get_tensor_by_name("Conv_block/input:0")
-    kernel = tf.get_collection(tf.GraphKeys.VARIABLES, 'Conv_block/conv1/kernel:0')[0]
-    activations = tf.get_default_graph().get_tensor_by_name("Conv_block/conv1/BiasAdd:0")
+        #locate input and 1st layer filter tensors for visualization
+        inputs = tf.get_default_graph().get_tensor_by_name("input_0:0")
+        kernel = tf.get_collection(tf.GraphKeys.VARIABLES, 'MobilenetV1_0/Conv2d_0/convolution:0')[0]
+        activations = tf.get_default_graph().get_tensor_by_name("MobilenetV1_0/Conv2d_0/Relu:0")
 
-    print(kernel.get_shape())
-    print(tf.shape(kernel))
+        variables = [op.name for op in tf.get_default_graph().get_operations() if op.op_def and op.op_def.name=='Variable']
 
-    inputs_charge_summ_op = tf.summary.image('inputs_charge',tf.slice(inputs,begin=[0,0,0,0],size=[TRAIN_BATCH_SIZE,img_width,img_length,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
-    #inputs_timing_summ_op = tf.summary.image('inputs_timing',tf.slice(inputs,begin=[0,0,0,1],size=[TRAIN_BATCH_SIZE,img_width,img_length,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
-    filter_summ_op = tf.summary.image('filter',tf.slice(tf.transpose(kernel, perm=[3, 0, 1, 2]),begin=[0,0,0,0],size=[96,11,11,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
-    activations_summ_op = tf.summary.image('activations',tf.slice(activations,begin=[0,0,0,0],size=[TRAIN_BATCH_SIZE,58,58,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
+        #for n in tf.get_default_graph().as_graph_def().node:
+            #print(n.name)
 
+        #for i in variables:
+            #print(i)
+
+        inputs_charge_summ_op = tf.summary.image('inputs_charge',tf.slice(inputs,begin=[0,0,0,0],size=[TRAIN_BATCH_SIZE,img_width,img_length,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
+        inputs_timing_summ_op = tf.summary.image('inputs_timing',tf.slice(inputs,begin=[0,0,0,1],size=[TRAIN_BATCH_SIZE,img_width,img_length,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
+        filter_summ_op = tf.summary.image('filter',tf.slice(tf.transpose(kernel, perm=[3, 0, 1, 2]),begin=[0,0,0,0],size=[96,11,11,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
+        activations_summ_op = tf.summary.image('activations',tf.slice(activations,begin=[0,0,0,0],size=[TRAIN_BATCH_SIZE,58,58,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
+        
     #global step
     global_step = tf.Variable(0, name='global_step', trainable=False)
     increment_global_step_op = tf.assign(global_step, global_step+1)
 
     #variable learning rate
     learning_rate = tf.Variable(args.lr,trainable=False)
-    num_tels_tensor = tf.to_float(tf.constant(num_tels))
-    mean_num_trig_batch = tf.to_float(tf.reduce_mean(tf.reduce_sum(next_trig_list,1)))
-    scaling_factor = tf.divide(num_tels_tensor,mean_num_trig_batch)
-
+    num_tel_tensor = tf.constant(num_tel, dtype=tf.float32)
+    mean_num_trig_batch = tf.reduce_mean(tf.reduce_sum(next_trig_list,1))
+    scaling_factor = tf.divide(num_tel_tensor,tf.to_float(mean_num_trig_batch))
     variable_learning_rate = tf.multiply(scaling_factor,learning_rate)
 
     #train op
@@ -175,12 +167,13 @@ def train(model,data_file,epochs):
         train_op = tf.train.GradientDescentOptimizer(variable_learning_rate).minimize(loss)
 
     #for embeddings visualization
-    fetch = tf.get_default_graph().get_tensor_by_name('Classifier/fc7/BiasAdd:0')
-    embedding_var = tf.Variable(np.empty((0,4096),dtype=np.float32),name='Embedding_of_fc7',validate_shape=False)
-    new_embedding_var = tf.concat([embedding_var,fetch],0)
-    update_embedding = tf.assign(embedding_var,new_embedding_var,validate_shape=False)
-    empty = tf.Variable(np.empty((0,4096),dtype=np.float32),validate_shape=False)
-    reset_embedding = tf.assign(embedding_var,empty,validate_shape=False)
+    if embedding:
+        fetch = tf.get_default_graph().get_tensor_by_name('Classifier/fc7/BiasAdd:0')
+        embedding_var = tf.Variable(np.empty((0,4096),dtype=np.float32),name='Embedding_of_fc7',validate_shape=False)
+        new_embedding_var = tf.concat([embedding_var,fetch],0)
+        update_embedding = tf.assign(embedding_var,new_embedding_var,validate_shape=False)
+        empty = tf.Variable(np.empty((0,4096),dtype=np.float32),validate_shape=False)
+        reset_embedding = tf.assign(embedding_var,empty,validate_shape=False)
 
     #create supervised session (summary op can be omitted)
     sv = tf.train.Supervisor(
@@ -201,7 +194,7 @@ def train(model,data_file,epochs):
             while True:
                 try:
                     sess.run([train_op,increment_global_step_op],feed_dict={training: True})
-                    summ = sess.run(merged)
+                    summ = sess.run(merged, feed_dict={training: True})
                     sv.summary_computed(sess, summ)
                 except tf.errors.OutOfRangeError:
                     break
@@ -231,16 +224,17 @@ def train(model,data_file,epochs):
 
             print("Validation complete.")
 
-            if i % EPOCHS_PER_IMAGE_VIZ == 0: 
+            if i % EPOCHS_PER_IMAGE_VIZ == 0 and image_summary: 
                 sess.run(validation_init_op)
-                filter_summ,inputs_summ,activations_summ = sess.run([filter_summ_op,inputs_charge_summ_op,activations_summ_op])
-                sv.summary_computed(sess,filter_summ)
+                #filter_summ,inputs_summ,activations_summ = sess.run([filter_summ_op,inputs_charge_summ_op,activations_summ_op])
+                inputs_summ = sess.run([input_charge_summ_op])
+                #sv.summary_computed(sess,filter_summ)
                 sv.summary_computed(sess,inputs_summ)
-                sv.summary_computed(sess,activations_summ)
+                #sv.summary_computed(sess,activations_summ)
 
                 print("Image summary complete")
 
-            if i % EPOCHS_PER_VIZ_EMBED == 0:
+            if i % EPOCHS_PER_VIZ_EMBED == 0 and embedding:
                 sess.run(validation_init_op)
                 #reset embedding variable to empty
                 sess.run(reset_embedding)
@@ -252,7 +246,6 @@ def train(model,data_file,epochs):
                         sess.run(update_embedding)
                     except tf.errors.OutOfRangeError:
                         break
-
                                       
                 config = tf.contrib.tensorboard.plugins.projector.ProjectorConfig()
                 config.model_checkpoint_dir = os.path.abspath(args.logdir)
@@ -260,13 +253,13 @@ def train(model,data_file,epochs):
                 embedding.tensor_name = embedding_var.name
                 embedding.metadata_path = os.path.abspath(os.path.join(args.logdir, 'metadata.tsv'))
                 tf.contrib.tensorboard.plugins.projector.visualize_embeddings(sv.summary_writer, config) 
-
+                
                 #write corresponding metadata file
                 metadata_file = open(embedding.metadata_path, 'w')
                 for k in range(NUM_BATCHES_EMBEDDING):
                     metadata_file.write('{}\n'.format(table_val.read(k,k+1,field=label_column_name)[0]))         
                 metadata_file.close()
-
+                
                 print("Embedding summary complete")
 
 if __name__ == '__main__':
@@ -280,9 +273,9 @@ if __name__ == '__main__':
     parser.add_argument('--lr',default=0.001)
     parser.add_argument('--label_col_name',default='gamma_hadron_label')
     parser.add_argument('--checkpoint_basename',default='custom_multi_input.ckpt')
-    parser.add_argument('--no_embedding', action='store_true')
+    parser.add_argument('--embedding', action='store_true')
     parser.add_argument('--no_val',action='store_true')
-    parser.add_argument('--no_image_summary',action='store_true')
+    parser.add_argument('--image_summary',action='store_true')
     args = parser.parse_args()
 
-    train(variable_input_model,args.h5_file,args.epochs)
+    train(variable_input_model,args.h5_file,args.epochs,args.image_summary,args.embedding)
