@@ -10,16 +10,6 @@ _BATCH_NORM_EPSILON = 1e-5
 
 DATA_FORMAT = 'channels_last'
 
-#resnet versions
-model_params = {
-18: {'block': building_block, 'layers': [2, 2, 2, 2]},
-34: {'block': building_block, 'layers': [3, 4, 6, 3]},
-50: {'block': bottleneck_block, 'layers': [3, 4, 6, 3]},
-101: {'block': bottleneck_block, 'layers': [3, 4, 23, 3]},
-152: {'block': bottleneck_block, 'layers': [3, 8, 36, 3]},
-200: {'block': bottleneck_block, 'layers': [3, 24, 36, 3]}
-}
-
 def batch_norm_relu(inputs, is_training, data_format):
     """Performs a batch normalization followed by a ReLU."""
     # We set fused=True for a significant performance boost. See
@@ -28,7 +18,7 @@ def batch_norm_relu(inputs, is_training, data_format):
             inputs=inputs, axis=1 if data_format == 'channels_first' else 3,
             momentum=_BATCH_NORM_DECAY, epsilon=_BATCH_NORM_EPSILON, center=True,
             scale=True, training=is_training, fused=True)
-            inputs = tf.nn.relu(inputs)
+    inputs = tf.nn.relu(inputs)
     return inputs
 
 
@@ -75,23 +65,23 @@ def conv2d_fixed_padding(inputs, filters, kernel_size, strides, data_format):
 
 def building_block(inputs, filters, is_training, projection_shortcut, strides,
 data_format):
-"""Standard building block for residual networks with BN before convolutions.
+    """Standard building block for residual networks with BN before convolutions.
 
-Args:
-inputs: A tensor of size [batch, channels, height_in, width_in] or
-[batch, height_in, width_in, channels] depending on data_format.
-filters: The number of filters for the convolutions.
-is_training: A Boolean for whether the model is in training or inference
-mode. Needed for batch normalization.
-projection_shortcut: The function to use for projection shortcuts (typically
-a 1x1 convolution when downsampling the input).
-strides: The block's stride. If greater than 1, this block will ultimately
-downsample the input.
-data_format: The input format ('channels_last' or 'channels_first').
+    Args:
+    inputs: A tensor of size [batch, channels, height_in, width_in] or
+    [batch, height_in, width_in, channels] depending on data_format.
+    filters: The number of filters for the convolutions.
+    is_training: A Boolean for whether the model is in training or inference
+    mode. Needed for batch normalization.
+    projection_shortcut: The function to use for projection shortcuts (typically
+    a 1x1 convolution when downsampling the input).
+    strides: The block's stride. If greater than 1, this block will ultimately
+    downsample the input.
+    data_format: The input format ('channels_last' or 'channels_first').
 
-Returns:
-The output tensor of the block.
-"""
+    Returns:
+    The output tensor of the block.
+    """
     shortcut = inputs
     inputs = batch_norm_relu(inputs, is_training, data_format)
 
@@ -149,7 +139,7 @@ strides, data_format):
             data_format=data_format)
 
     inputs = batch_norm_relu(inputs, is_training, data_format)
-            inputs = conv2d_fixed_padding(
+    inputs = conv2d_fixed_padding(
             inputs=inputs, filters=4 * filters, kernel_size=1, strides=1,
             data_format=data_format)
 
@@ -196,6 +186,16 @@ data_format):
 
 
 def resnet_base(inputs,size,scope_name,reuse,is_training):
+
+    #valid resnet configurations
+    model_params = {
+    18: {'block': building_block, 'layers': [2, 2, 2, 2]},
+    34: {'block': building_block, 'layers': [3, 4, 6, 3]},
+    50: {'block': bottleneck_block, 'layers': [3, 4, 6, 3]},
+    101: {'block': bottleneck_block, 'layers': [3, 4, 23, 3]},
+    152: {'block': bottleneck_block, 'layers': [3, 8, 36, 3]},
+    200: {'block': bottleneck_block, 'layers': [3, 24, 36, 3]}
+    }
 
     if size not in model_params:
         raise ValueError('Not a valid resnet_size:', resnet_size)
