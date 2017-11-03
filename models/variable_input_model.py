@@ -3,6 +3,7 @@ import numpy as np
 
 from alexnet import alexnet_block, alexnet_head
 from mobilenet import mobilenet_block, mobilenet_head 
+from resnet import resnet_block, resnet_head
 
 NUM_CLASSES = 2
 
