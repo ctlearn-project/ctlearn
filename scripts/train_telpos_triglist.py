@@ -48,7 +48,6 @@ def train(model,data_file,epochs,image_summary,embedding):
             label[0] = 1
         elif label[0] == 101:
             label[0] = 0
-        print(label)
         trig_list = tel_map.astype(np.int8)
         trig_list[trig_list < 0] = 0
         trig_list[trig_list > 0] = 1
