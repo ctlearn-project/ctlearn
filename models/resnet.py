@@ -2,8 +2,8 @@ import tensorflow as tf
 
 #credit to https://github.com/tensorflow/models/blob/master/official/resnet for implementation
 
-RESNET_HEAD_SIZE = 50
-RESNET_BLOCK_SIZE = 50
+RESNET_HEAD_SIZE = 18
+RESNET_BLOCK_SIZE = 18
 
 _BATCH_NORM_DECAY = 0.997
 _BATCH_NORM_EPSILON = 1e-5
@@ -20,7 +20,6 @@ def batch_norm_relu(inputs, is_training, data_format):
             scale=True, training=is_training, fused=True)
     inputs = tf.nn.relu(inputs)
     return inputs
-
 
 def fixed_padding(inputs, kernel_size, data_format):
     """Pads the input along the spatial dimensions independently of input size.
@@ -243,26 +242,61 @@ def resnet_block(inputs, telescope_index, trig_values, is_training):
     inputs = tf.identity(inputs, 'initial_max_pool')
 
     #resnet block
-    inputs = resnet_base(inputs,RESNET_BLOCK_SIZE,"RESNET_BLOCK",True,is_training)
+    inputs = resnet_base(inputs,RESNET_BLOCK_SIZE,"RESNET_BLOCK",reuse,is_training)
 
     #zero out based on trigger value
     trig_values = tf.reshape(trig_values, [-1, 1, 1, 1])
-    trig_values = tf.tile(trig_values, tf.concat([[1], tf.shape(net)[1:]], 0))
+    trig_values = tf.tile(trig_values, tf.concat([[1], tf.shape(inputs)[1:]], 0))
     output = tf.multiply(inputs, trig_values)
 
+    output = tf.layers.max_pooling2d(
+            inputs=output, pool_size=5, strides=3, padding='SAME',
+            data_format=DATA_FORMAT)
+ 
     return output   
 
-def resnet_head(inputs,num_classes,is_training):
+def resnet_head(inputs,num_classes,is_training): 
 
-    inputs = resnet_base(inputs,RESNET_HEAD_SIZE,"RESNET_HEAD",False,is_training)
-    
+    #conv and pool
+    inputs = block_layer(
+                inputs=inputs, filters=128, block_fn=building_block, blocks=4,
+                strides=2, is_training=is_training, name='block_layer2',
+                data_format=DATA_FORMAT)
+   
     with tf.variable_scope('Logits'):
         inputs = tf.layers.average_pooling2d(
-                inputs=inputs, pool_size=7, strides=1, padding='VALID',
+                inputs=inputs, pool_size=2, strides=1, padding='VALID',
                 data_format=DATA_FORMAT)
         inputs = tf.identity(inputs, 'final_avg_pool')
-        inputs = tf.reshape(inputs,
-                            [-1, 512 if block_fn is building_block else 2048])
+        inputs = tf.contrib.layers.flatten(inputs)
+        inputs = tf.layers.dense(inputs=inputs, units=num_classes)
+        logits = tf.identity(inputs, 'final_dense')
+    
+    return logits
+
+def resnet_head_feature_vector(inputs,num_classes,is_training): 
+
+    #preliminary convolution and pooling on raw input
+    #inputs = conv2d_fixed_padding(
+    #inputs=inputs, filters=64, kernel_size=5, strides=2,
+    #        data_format=DATA_FORMAT)
+    #inputs = tf.identity(inputs, 'initial_conv')
+    #inputs = tf.layers.max_pooling2d(
+    #        inputs=inputs, pool_size=3, strides=2, padding='SAME',
+    #        data_format=DATA_FORMAT)
+    #inputs = tf.identity(inputs, 'initial_max_pool')
+    #
+    #inputs = resnet_base(inputs,RESNET_HEAD_SIZE,"RESNET_HEAD",False,is_training)
+    
+    with tf.variable_scope('Logits'):
+        #inputs = tf.layers.average_pooling2d(
+                #inputs=inputs, pool_size=2, strides=1, padding='VALID',
+                #data_format=DATA_FORMAT)
+        #inputs = tf.identity(inputs, 'final_avg_pool')
+        #inputs = tf.contrib.layers.flatten(inputs)
+        #inputs = tf.layers.dense(inputs=inputs, units=1024)
+        inputs = tf.layers.dense(inputs=inputs, units=512)
+        inputs = tf.layers.dense(inputs=inputs, units=512)
         inputs = tf.layers.dense(inputs=inputs, units=num_classes)
         logits = tf.identity(inputs, 'final_dense')
     
