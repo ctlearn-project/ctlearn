@@ -126,8 +126,7 @@ def train(model,data_file,epochs,image_summary,embedding):
     training = tf.placeholder(tf.bool, shape=())
 
     loss, accuracy, logits, predictions = model(next_example, next_label, 
-            next_trig_list, tel_pos_tensor, num_tel, img_width, img_length, 
-            img_depth, training)
+            next_trig_list, tel_pos_tensor, num_tel, img_width, img_length, img_depth, training)
     tf.summary.scalar('training_loss', loss)
     tf.summary.scalar('training_accuracy',accuracy)
 
@@ -280,9 +279,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Trains on an hdf5 file.')
     parser.add_argument('h5_file', help='path to h5 file containing data')
     parser.add_argument('--optimizer',default='adam')
-    parser.add_argument('--epochs',default=10000)
+    parser.add_argument('--epochs',default=10000,type=int)
     parser.add_argument('--logdir',default='/data0/logs/variable_input_model_1')
-    parser.add_argument('--lr',default=0.001)
+    parser.add_argument('--lr',default=0.001,type=float)
     parser.add_argument('--label_col_name',default='gamma_hadron_label')
     parser.add_argument('--checkpoint_basename',default='custom_multi_input.ckpt')
     parser.add_argument('--embedding', action='store_true')
