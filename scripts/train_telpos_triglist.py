@@ -8,6 +8,9 @@ import random
 #add parent directory to pythonpath to allow imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
+#disable info and warning messages (not error messages)
+os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
+
 import tensorflow as tf
 from tables import *
 import numpy as np
