@@ -43,6 +43,12 @@ def train(model,data_file,epochs,image_summary,embedding):
 
         imgs = np.stack(tel_imgs,axis=0).astype(np.float32)
         label = record[label_column_name].astype(np.int8)
+        #convert CORSIKA particle type code to gamma-proton label (0 = proton, 1 = gamma)
+        if label[0] == 0:
+            label[0] = 1
+        elif label[0] == 101:
+            label[0] = 0
+        print(label)
         trig_list = tel_map.astype(np.int8)
         trig_list[trig_list < 0] = 0
         trig_list[trig_list > 0] = 1
