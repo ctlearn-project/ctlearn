@@ -123,7 +123,7 @@ def mobilenet_block(inputs, telescope_index, trig_values, is_training=True):
 def mobilenet_head(inputs, dropout_keep_prob=0.9, num_classes=2, 
         is_training=True):
     # Define the network
-    net, end_points = mobilenet_body("MobileNetHead", inputs, HEAD_CONV_DEFS, 
+    net, end_points = mobilenet_base("MobileNetHead", inputs, HEAD_CONV_DEFS, 
             is_training)
     
     with tf.variable_scope('Logits'):
