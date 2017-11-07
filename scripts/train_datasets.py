@@ -30,7 +30,7 @@ def train(model,data_file,epochs):
         tel_imgs = []
         for tel in tels_list:
             tel_imgs.append(record[tel])
-        imgs = np.squeeze(np.stack(tel_imgs,axis=1)).astype(np.float32)
+        imgs = np.squeeze(np.stack(tel_imgs,axis=1),axis=0).astype(np.float32)
         label = record[label_column_name].astype(np.int8)        
         return [imgs, label]
 
@@ -39,7 +39,7 @@ def train(model,data_file,epochs):
         tel_imgs = []
         for tel in tels_list:
             tel_imgs.append(record[tel])
-        imgs = np.squeeze(np.stack(tel_imgs,axis=1)).astype(np.float32)
+        imgs = np.squeeze(np.stack(tel_imgs,axis=1),axis=0).astype(np.float32)
         label = record[label_column_name].astype(np.int8)
         return [imgs, label]
 
@@ -93,7 +93,7 @@ def train(model,data_file,epochs):
 
     training = tf.placeholder(tf.bool, shape=())
 
-    loss,accuracy,logits,predictions,variables_to_train = model(next_example,next_label,training)
+    loss,accuracy,logits,prediction = model(next_example,next_label,training)
 
     tf.summary.scalar('training_loss', loss)
     tf.summary.scalar('training_accuracy',accuracy)
@@ -153,7 +153,7 @@ def train(model,data_file,epochs):
             while True:
                 try:
                     sess.run([train_op,increment_global_step_op],feed_dict={training: True})
-                    summ = sess.run(merged)
+                    summ = sess.run(merged,feed_dict={training: False})
                     sv.summary_computed(sess, summ)
                 except tf.errors.OutOfRangeError:
                     break
@@ -185,7 +185,7 @@ def train(model,data_file,epochs):
 
             if i % EPOCHS_PER_IMAGE_VIZ == 0: 
                 sess.run(validation_init_op)
-                filter_summ,inputs_summ,activations_summ = sess.run([filter_summ_op,inputs_charge_summ_op,activations_summ_op])
+                filter_summ,inputs_summ,activations_summ = sess.run([filter_summ_op,inputs_charge_summ_op,activations_summ_op],feed_dict={training: False})
                 sv.summary_computed(sess,filter_summ)
                 sv.summary_computed(sess,inputs_summ)
                 sv.summary_computed(sess,activations_summ)
@@ -199,9 +199,9 @@ def train(model,data_file,epochs):
                 
                 for j in range(NUM_BATCHES_EMBEDDING):
                     try:
-                        sess.run(fetch)
-                        sess.run(new_embedding_var)
-                        sess.run(update_embedding)
+                        sess.run(fetch,feed_dict={training: False})
+                        sess.run(new_embedding_var,feed_dict={training: False})
+                        sess.run(update_embedding,feed_dict={training: False})
                     except tf.errors.OutOfRangeError:
                         break
 
@@ -228,7 +228,7 @@ if __name__ == '__main__':
     parser.add_argument('h5_file', help='path to h5 file containing data')
     parser.add_argument('--optimizer',default='adam')
     parser.add_argument('--epochs',default=10000)
-    parser.add_argument('--logdir',default='/data0/logs/custom_multi_input_datasets_test_3_adam')
+    parser.add_argument('--logdir',default='/data0/logs/custom_multi_input_datasets_4')
     parser.add_argument('--lr',default=0.001)
     parser.add_argument('--label_col_name',default='gamma_hadron_label')
     parser.add_argument('--checkpoint_basename',default='custom_multi_input.ckpt')
