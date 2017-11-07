@@ -99,7 +99,7 @@ def alexnet_base_cnn_v2(input_features,number):
     return reshape
 
 #for use with train_datasets
-def custom_multi_input_v2(tel_data,labels):
+def custom_multi_input_v2(tel_data,labels,training):
    
     tel_data_transposed = tf.transpose(tel_data, perm=[1, 0, 2, 3, 4])
 
@@ -132,11 +132,11 @@ def custom_multi_input_v2(tel_data,labels):
 
         #fc6
         fc6 = tf.layers.dense(inputs=combined_feature_tensor, units=4096, activation=tf.nn.relu,name="fc6") 
-        dropout6 = tf.layers.dropout(inputs=fc6, rate=0.5, training=True)
+        dropout6 = tf.layers.dropout(inputs=fc6, rate=0.5, training=training)
 
         #fc7
         fc7 = tf.layers.dense(inputs=dropout6, units=4096, activation=tf.nn.relu,name="fc7")        
-        dropout7 = tf.layers.dropout(inputs=fc7, rate=0.5, training=True)        
+        dropout7 = tf.layers.dropout(inputs=fc7, rate=0.5, training=training)        
 
         #fc8
         fc8 = tf.layers.dense(inputs=dropout7, units=NUM_CLASSES,name="fc8")
