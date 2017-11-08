@@ -197,15 +197,15 @@ def train(model,data_file,epochs,image_summary,embedding):
             )
 
     #training loop in session
-    #with sv.managed_session() as sess:
     with sv.managed_session() as sess:
         for i in range(epochs):
             sess.run(training_init_op)
             print("Epoch {} started...".format(i+1))
             while True:
                 try:
-                    sess.run([train_op,increment_global_step_op],feed_dict={training: True})
-                    summ = sess.run(merged, feed_dict={training: True})
+                    __, __, summ = sess.run([train_op, 
+                        increment_global_step_op, merged], 
+                        feed_dict={training: True})
                     sv.summary_computed(sess, summ)
                 except tf.errors.OutOfRangeError:
                     break
