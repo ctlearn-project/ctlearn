@@ -103,27 +103,19 @@ def variable_input_model(tel_data, labels, trig_list, tel_pos_tensor, num_tel,
 
     with tf.variable_scope("Outputs"):
 
-        # Calculate Loss (for both TRAIN and EVAL modes) 
-        if NUM_CLASSES == 2:
-            onehot_labels = tf.one_hot(indices=tf.cast(labels, tf.int32), depth=NUM_CLASSES)
-            loss = tf.losses.sigmoid_cross_entropy(multi_class_labels=onehot_labels, logits=logits)
-        else:
-            onehot_labels = tf.one_hot(indices=tf.cast(labels, tf.int32), depth=NUM_CLASSES)
-            loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels, logits=logits)
+        # Calculate loss (for both TRAIN and EVAL modes) 
+        onehot_labels = tf.one_hot(indices=tf.cast(labels, tf.int32), 
+                depth=NUM_CLASSES)
+        loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels, 
+                logits=logits)
 
-        #outputs
-        if NUM_CLASSES == 2:
-            predictions = {
-                    "classes": tf.argmax(input=logits,axis=1),
-                    "probabilities": [tf.sigmoid(logits), 1-tf.sigmoid(logits)]
-                    }
-        else:
-            predictions = {        
-                    "classes": tf.argmax(input=logits, axis=1),
-                    "probabilities": tf.nn.softmax(logits, 
-                        name="softmax_tensor")
-                    }
+        # Calculate outputs
+        predictions = {
+                "classes": tf.argmax(logits, axis=1),
+                "probabilities": tf.nn.softmax(logits)
+                }
 
-        accuracy = tf.reduce_mean(tf.cast(tf.equal(tf.cast(predictions['classes'],tf.int8),labels), tf.float32))
+        accuracy = tf.reduce_mean(tf.cast(tf.equal(
+            tf.cast(predictions['classes'], tf.int8), labels), tf.float32))
 
     return loss, accuracy, logits, predictions
