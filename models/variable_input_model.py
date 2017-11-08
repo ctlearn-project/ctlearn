@@ -61,6 +61,8 @@ def variable_input_model(tel_data, labels, trig_list, tel_pos_tensor, num_tel,
     # Reshape and cast inputs into proper dimensions and types
     tel_data = tf.reshape(tel_data, [-1, num_tel, image_width, image_length, 
         image_depth])
+    # Reshape labels to vector as expected by tf.one_hot
+    labels = tf.reshape(labels, [-1])
     trig_list = tf.reshape(trig_list, [-1, num_tel])
     trig_list = tf.cast(trig_list, tf.float32)
     # TODO: move number of aux inputs (2) to be defined as a constant
