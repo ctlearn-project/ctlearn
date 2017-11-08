@@ -90,7 +90,7 @@ def variable_input_model(tel_data, labels, trig_list, tel_pos_tensor, num_tel,
     telescope_outputs = []
     for i in range(num_tel):
         telescope_features = cnn_block(tf.gather(tel_data_by_telescope, i), i,
-                tf.gather(trig_list, i, axis=1))
+                tf.gather(trig_list, i, axis=1), is_training=is_training)
         telescope_outputs.append(telescope_features)
 
     with tf.variable_scope("NetworkHead"):
