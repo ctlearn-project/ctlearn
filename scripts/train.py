@@ -29,6 +29,8 @@ IMAGE_VIZ_MAX_OUTPUTS = 100
 EPOCHS_PER_VIZ_EMBED = 5
 NUM_BATCHES_EMBEDDING = 20
 
+SHUFFLE_BUFFER_SIZE = 10000
+
 def train(model,data_file,epochs,image_summary,embedding):
 
     def load_data(record):
@@ -191,8 +193,22 @@ def train(model,data_file,epochs,image_summary,embedding):
         reset_embedding = tf.assign(embedding_var,empty,validate_shape=False)
 
     # Define the input functions
-    train_input_fn = None
-    eval_input_fn = None
+    def input_fn(dataset, shuffle_buffer_size=None):
+        if shuffle_buffer_size:
+            dataset = dataset.shuffle(shuffle_buffer_size)
+        iterator = dataset.make_one_shot_iterator()
+        features = {
+                'telescope_data': telescope_data, 
+                'telescope_triggers': telescope_triggers, 
+                'auxiliary_data': auxiliary_data
+                }
+        labels = {
+                'gamma_hadron_labels': gamma_hadron_labels
+                }
+        return features, labels
+    train_input_fn = input_fn(train_table, 
+            shuffle_buffer_size=SHUFFLE_BUFFER_SIZE)
+    eval_input_fn = input_fn(val_table, shuffle_buffer_size=None)
     # Define the model function
     model_fn = None
     # Define the Estimator
