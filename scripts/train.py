@@ -101,13 +101,6 @@ def train(model,data_file,epochs,image_summary,embedding):
     val_dataset = val_dataset.map((lambda index: tuple(tf.py_func(load_val_data,[index],[tf.float32, tf.int8, tf.int8]))), num_threads=NUM_THREADS,output_buffer_size=100*VAL_BATCH_SIZE)
     val_dataset = val_dataset.batch(VAL_BATCH_SIZE)
 
-    #create iterator and init ops
-    iterator = tf.contrib.data.Iterator.from_structure(train_dataset.output_types,train_dataset.output_shapes)
-    next_example, next_label, next_trig_list = iterator.get_next()
-
-    training_init_op = iterator.make_initializer(train_dataset)
-    validation_init_op = iterator.make_initializer(val_dataset)
-
     print("Training settings\n*************************************")
     print("Training batch size: ",TRAIN_BATCH_SIZE)
     print("Validation batch size: ",VAL_BATCH_SIZE)
@@ -197,6 +190,8 @@ def train(model,data_file,epochs,image_summary,embedding):
         if shuffle_buffer_size:
             dataset = dataset.shuffle(shuffle_buffer_size)
         iterator = dataset.make_one_shot_iterator()
+        (telescope_data, telescope_triggers, auxiliary_data, 
+                gamma_hadron_labels) = iterator.get_next()
         features = {
                 'telescope_data': telescope_data, 
                 'telescope_triggers': telescope_triggers, 
@@ -206,9 +201,9 @@ def train(model,data_file,epochs,image_summary,embedding):
                 'gamma_hadron_labels': gamma_hadron_labels
                 }
         return features, labels
-    train_input_fn = input_fn(train_table, 
+    train_input_fn = input_fn(train_dataset, 
             shuffle_buffer_size=SHUFFLE_BUFFER_SIZE)
-    eval_input_fn = input_fn(val_table, shuffle_buffer_size=None)
+    eval_input_fn = input_fn(eval_dataset, shuffle_buffer_size=None)
     # Define the model function
     model_fn = None
     # Define the Estimator
