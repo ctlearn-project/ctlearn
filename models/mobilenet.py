@@ -59,7 +59,8 @@ def mobilenet_base(scope, inputs, conv_defs, is_training=True, reuse=None):
     with tf.variable_scope(scope, inputs, reuse=reuse):
         with slim.arg_scope([slim.conv2d, slim.separable_conv2d],
                 padding='SAME'):
-            with slim.arg_scope([slim.batch_norm], is_training=is_training):
+            with slim.arg_scope([slim.batch_norm], is_training=is_training, 
+                    decay=0.95):
                 net = inputs
                 for i, conv_def in enumerate(conv_defs):
                     end_point_base = 'Conv2d_%d' % i
@@ -124,7 +125,7 @@ def mobilenet_head(inputs, dropout_keep_prob=0.9, num_classes=2,
         is_training=True):
     # Define the network
     net, end_points = mobilenet_base("MobileNetHead", inputs, HEAD_CONV_DEFS, 
-            is_training)
+            is_training=is_training)
     
     with tf.variable_scope('Logits'):
         net = slim.avg_pool2d(net, [15, 15], padding='VALID', 

@@ -12,6 +12,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
 
 import tensorflow as tf
+slim = tf.contrib.slim
 from tables import *
 import numpy as np
 
@@ -164,18 +165,21 @@ def train(model,data_file,epochs,image_summary,embedding):
         filter_summ_op = tf.summary.image('filter',tf.slice(tf.transpose(kernel, perm=[3, 0, 1, 2]),begin=[0,0,0,0],size=[96,11,11,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
         activations_summ_op = tf.summary.image('activations',tf.slice(activations,begin=[0,0,0,0],size=[TRAIN_BATCH_SIZE,58,58,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
         
-    #train op
+    # Define the train op
     if args.optimizer == 'adadelta':
-        train_op = tf.train.AdadeltaOptimizer(learning_rate=variable_learning_rate).minimize(loss)
+        optimizer = tf.train.AdadeltaOptimizer(
+                learning_rate=variable_learning_rate)
     elif args.optimizer == 'adam':
-        train_op = tf.train.AdamOptimizer(learning_rate=variable_learning_rate,
-        beta1=0.9,
-        beta2=0.999,
-        epsilon=0.1,
-        use_locking=False,
-        name='Adam').minimize(loss)
+        optimizer = tf.train.AdamOptimizer(
+                learning_rate=variable_learning_rate,
+                beta1=0.9,
+                beta2=0.999,
+                epsilon=0.1,
+                use_locking=False,
+                name='Adam')
     else:
-        train_op = tf.train.GradientDescentOptimizer(variable_learning_rate).minimize(loss)
+        optimizer = tf.train.GradientDescentOptimizer(variable_learning_rate)
+    train_op = slim.learning.create_train_op(loss, optimizer)
 
     #for embeddings visualization
     if embedding:
