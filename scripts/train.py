@@ -190,6 +190,24 @@ def train(model,data_file,epochs,image_summary,embedding):
         empty = tf.Variable(np.empty((0,4096),dtype=np.float32),validate_shape=False)
         reset_embedding = tf.assign(embedding_var,empty,validate_shape=False)
 
+    # Define the input functions
+    train_input_fn = None
+    eval_input_fn = None
+    # Define the model function
+    model_fn = None
+    # Define the Estimator
+    estimator = tf.Estimator(model_fn, model_dir=model_dir, config=config, 
+            params=params)
+    # Specify training and evalution functions
+    train_hooks = None
+    max_steps = None # train forever
+    train_spec = tf.estimator.TrainSpec(input_fn=train_input_fn, 
+            max_steps=max_steps, hooks=train_hooks)
+    eval_hooks = None
+    eval_spec = tf.estimator.EvalSpec(input_fn=eval_input_fn, hooks=eval_hooks)
+    # Train and evaluate the model
+    tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
+
     #create supervised session (summary op can be omitted)
     sv = tf.train.Supervisor(
             init_op=tf.global_variables_initializer(),
