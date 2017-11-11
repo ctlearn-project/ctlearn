@@ -56,7 +56,7 @@ def train(model,data_file,epochs,image_summary,embedding):
         trig_list[trig_list >= 0] = 1
         trig_list[trig_list == -1] = 0
         trig_list = trig_list.astype(np.int8)
-        return [imgs,label,trig_list]
+        return [imgs,trig_list,label]
 
     def load_train_data(index):
         record = table_train.read(index, index + 1)
@@ -83,7 +83,6 @@ def train(model,data_file,epochs,image_summary,embedding):
         tel_pos_vector.append(row["tel_x"])
         tel_pos_vector.append(row["tel_y"])
     num_tel = len(tels_list) 
-    tel_pos_tensor = tf.reshape(tf.constant(tel_pos_vector),[num_tel,2])
 
     #shape of images
     img_shape = eval("f.root.E0.{}.shape".format(tels_list[0]))
@@ -97,9 +96,9 @@ def train(model,data_file,epochs,image_summary,embedding):
     train_dataset = train_dataset.map((lambda index: tuple(tf.py_func(load_train_data, [index], [tf.float32, tf.int8, tf.int8]))),num_threads=NUM_THREADS,output_buffer_size=100*TRAIN_BATCH_SIZE)
     train_dataset = train_dataset.batch(TRAIN_BATCH_SIZE)
 
-    val_dataset = tf.contrib.data.Dataset.range(num_events_val)
-    val_dataset = val_dataset.map((lambda index: tuple(tf.py_func(load_val_data,[index],[tf.float32, tf.int8, tf.int8]))), num_threads=NUM_THREADS,output_buffer_size=100*VAL_BATCH_SIZE)
-    val_dataset = val_dataset.batch(VAL_BATCH_SIZE)
+    eval_dataset = tf.contrib.data.Dataset.range(num_events_val)
+    eval_dataset = eval_dataset.map((lambda index: tuple(tf.py_func(load_val_data,[index],[tf.float32, tf.int8, tf.int8]))), num_threads=NUM_THREADS,output_buffer_size=100*VAL_BATCH_SIZE)
+    eval_dataset = eval_dataset.batch(VAL_BATCH_SIZE)
 
     print("Training settings\n*************************************")
     print("Training batch size: ",TRAIN_BATCH_SIZE)
@@ -119,16 +118,16 @@ def train(model,data_file,epochs,image_summary,embedding):
         print("No embedding visualization")
     print("*************************************")
 
-    tf.summary.scalar('training_loss', loss)
-    tf.summary.scalar('training_accuracy',accuracy)
+    #tf.summary.scalar('training_loss', loss)
+    #tf.summary.scalar('training_accuracy',accuracy)
 
     ##global step
     #global_step = tf.Variable(0, name='global_step', trainable=False)
     #increment_global_step_op = tf.assign(global_step, global_step+1)
 
 
-    tf.summary.scalar('variable_learning_rate',variable_learning_rate)
-    merged = tf.summary.merge_all()
+    #tf.summary.scalar('variable_learning_rate',variable_learning_rate)
+    #merged = tf.summary.merge_all()
 
     if image_summary:
 
@@ -161,48 +160,61 @@ def train(model,data_file,epochs,image_summary,embedding):
         reset_embedding = tf.assign(embedding_var,empty,validate_shape=False)
 
     # Define the input functions
-    def input_fn(dataset, shuffle_buffer_size=None):
+    def input_fn(dataset, auxiliary_data, shuffle_buffer_size=None):
         if shuffle_buffer_size:
             dataset = dataset.shuffle(shuffle_buffer_size)
         iterator = dataset.make_one_shot_iterator()
-        (telescope_data, telescope_triggers, auxiliary_data, 
+        (telescope_data, telescope_triggers, 
                 gamma_hadron_labels) = iterator.get_next()
+        # Convert auxiliary data to tensors
+        telescope_positions = tf.constant(
+                auxiliary_data['telescope_positions'])
         features = {
                 'telescope_data': telescope_data, 
                 'telescope_triggers': telescope_triggers, 
-                'auxiliary_data': auxiliary_data
+                'telescope_positions': telescope_positions
                 }
         labels = {
                 'gamma_hadron_labels': gamma_hadron_labels
                 }
         return features, labels
-    train_input_fn = input_fn(train_dataset, 
-            shuffle_buffer_size=SHUFFLE_BUFFER_SIZE)
-    eval_input_fn = input_fn(eval_dataset, shuffle_buffer_size=None)
+    # TODO: move this elsewhere
+    auxiliary_data = {
+            'telescope_positions': tel_pos_vector
+            }
+    def train_input_fn():
+        return input_fn(train_dataset, auxiliary_data, 
+                shuffle_buffer_size=SHUFFLE_BUFFER_SIZE)
+    def eval_input_fn():
+        return input_fn(eval_dataset, auxiliary_data, 
+                shuffle_buffer_size=None)
     # Define the params
     # TODO: calculate this elsewhere
     params = {
             'num_telescopes': num_tel,
-            'image_dimensions': (img_width, img_length, img_depth)
+            'image_dimensions': (img_width, img_length, img_depth),
             'base_learning_rate': args.lr
             }
     # Define the model function
     def model_fn(features, labels, mode, params, config):
         if (mode == tf.estimator.ModeKeys.TRAIN):
             is_training = True
-        else
+        else:
             is_training = False
         loss, accuracy, logits, predictions = model(
                 features['telescope_data'],
-                features['telescope_triggers'], 
-                features['auxiliary_data'],
-                labels['gamma_hadron_labels'], 
+                features['telescope_triggers'],
+                features['telescope_positions'],
+                labels['gamma_hadron_labels'],
                 params['num_telescopes'],
                 params['image_dimensions'],
                 is_training)
-        # Scale up the learning rate of batches with fewer triggered
-        # telescopes, avoiding division by 0
-        trigger_rate = tf.maximum(tf.reduce_mean(telescope_triggers, 0.1))
+        # Scale the learning rate so batches with fewer triggered
+        # telescopes don't have smaller gradients
+        trigger_rate = tf.reduce_mean(tf.cast(features['telescope_triggers'], 
+            tf.float32))
+        # Avoid division by 0
+        trigger_rate = tf.maximum(trigger_rate, 0.1)
         scaling_factor = tf.reciprocal(trigger_rate)
         scaled_learning_rate = tf.multiply(scaling_factor, 
                 params['base_learning_rate'])
@@ -218,8 +230,8 @@ def train(model,data_file,epochs,image_summary,embedding):
     # TODO: define arguments elsewhere
     model_dir = args.logdir
     config = None
-    estimator = tf.Estimator(model_fn, model_dir=model_dir, config=config, 
-            params=params)
+    estimator = tf.estimator.Estimator(model_fn, model_dir=model_dir, 
+            config=config, params=params)
     # Specify training and evalution functions
     train_hooks = None
     max_steps = None # train forever
