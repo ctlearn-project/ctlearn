@@ -1,9 +1,6 @@
 import sys
 import os
-import math
 import argparse
-import re
-import random
 
 #add parent directory to pythonpath to allow imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
@@ -16,8 +13,6 @@ slim = tf.contrib.slim
 from tables import *
 import numpy as np
 
-from models.mvcnn import mvcnn_fn_2
-from models.custom_multi_input import custom_multi_input_v2
 from models.variable_input_model import variable_input_model
 
 NUM_THREADS = 12
@@ -118,8 +113,8 @@ def train(model,data_file,epochs,image_summary,embedding):
     print("Training settings\n*************************************")
     print("Training batch size: ",TRAIN_BATCH_SIZE)
     print("Validation batch size: ",VAL_BATCH_SIZE)
-    print("Training batches/steps per epoch: ",math.ceil(num_events_train/TRAIN_BATCH_SIZE))
-    print("Total # of training steps: ",math.ceil(num_events_train/TRAIN_BATCH_SIZE)*epochs)
+    print("Training batches/steps per epoch: ",np.ceil(num_events_train/TRAIN_BATCH_SIZE))
+    print("Total # of training steps: ",np.ceil(num_events_train/TRAIN_BATCH_SIZE)*epochs)
     print("Total number of training events: ",num_events_train)
     print("Total number of validation events: ",num_events_val)
     print("*************************************")
