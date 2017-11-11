@@ -55,10 +55,11 @@ def combine_telescopes_as_feature_maps(telescope_outputs, telescope_positions,
     return array_features
 
 #for use with train_datasets
-def variable_input_model(tel_data, labels, trig_list, tel_pos_tensor, num_tel,
-        image_width, image_length, image_depth, is_training):
+def variable_input_model(tel_data, trig_list, tel_pos_tensor, labels, num_tel,
+        image_dimensions, is_training):
  
     # Reshape and cast inputs into proper dimensions and types
+    image_width, image_length, image_depth = image_dimensions
     tel_data = tf.reshape(tel_data, [-1, num_tel, image_width, image_length, 
         image_depth])
     # Reshape labels to vector as expected by tf.one_hot

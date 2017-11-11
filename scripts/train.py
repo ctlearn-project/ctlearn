@@ -119,23 +119,13 @@ def train(model,data_file,epochs,image_summary,embedding):
         print("No embedding visualization")
     print("*************************************")
 
-    training = tf.placeholder(tf.bool, shape=())
-
-    loss, accuracy, logits, predictions = model(next_example, next_label, 
-            next_trig_list, tel_pos_tensor, num_tel, img_width, img_length, img_depth, training)
     tf.summary.scalar('training_loss', loss)
     tf.summary.scalar('training_accuracy',accuracy)
 
-    #global step
-    global_step = tf.Variable(0, name='global_step', trainable=False)
-    increment_global_step_op = tf.assign(global_step, global_step+1)
+    ##global step
+    #global_step = tf.Variable(0, name='global_step', trainable=False)
+    #increment_global_step_op = tf.assign(global_step, global_step+1)
 
-    #variable learning rate
-    learning_rate = tf.Variable(args.lr,trainable=False)
-    num_tel_tensor = tf.constant(num_tel, dtype=tf.float32)
-    mean_num_trig_batch = tf.reduce_mean(tf.reduce_sum(tf.to_float(next_trig_list),1))
-    scaling_factor = tf.divide(num_tel_tensor,tf.to_float(mean_num_trig_batch))
-    variable_learning_rate = tf.multiply(scaling_factor,learning_rate)
 
     tf.summary.scalar('variable_learning_rate',variable_learning_rate)
     merged = tf.summary.merge_all()
@@ -160,21 +150,6 @@ def train(model,data_file,epochs,image_summary,embedding):
         filter_summ_op = tf.summary.image('filter',tf.slice(tf.transpose(kernel, perm=[3, 0, 1, 2]),begin=[0,0,0,0],size=[96,11,11,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
         activations_summ_op = tf.summary.image('activations',tf.slice(activations,begin=[0,0,0,0],size=[TRAIN_BATCH_SIZE,58,58,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
         
-    # Define the train op
-    if args.optimizer == 'adadelta':
-        optimizer = tf.train.AdadeltaOptimizer(
-                learning_rate=variable_learning_rate)
-    elif args.optimizer == 'adam':
-        optimizer = tf.train.AdamOptimizer(
-                learning_rate=variable_learning_rate,
-                beta1=0.9,
-                beta2=0.999,
-                epsilon=0.1,
-                use_locking=False,
-                name='Adam')
-    else:
-        optimizer = tf.train.GradientDescentOptimizer(variable_learning_rate)
-    train_op = slim.learning.create_train_op(loss, optimizer)
 
     #for embeddings visualization
     if embedding:
@@ -204,9 +179,45 @@ def train(model,data_file,epochs,image_summary,embedding):
     train_input_fn = input_fn(train_dataset, 
             shuffle_buffer_size=SHUFFLE_BUFFER_SIZE)
     eval_input_fn = input_fn(eval_dataset, shuffle_buffer_size=None)
+    # Define the params
+    # TODO: calculate this elsewhere
+    params = {
+            'num_telescopes': num_tel,
+            'image_dimensions': (img_width, img_length, img_depth)
+            'base_learning_rate': args.lr
+            }
     # Define the model function
-    model_fn = None
+    def model_fn(features, labels, mode, params, config):
+        if (mode == tf.estimator.ModeKeys.TRAIN):
+            is_training = True
+        else
+            is_training = False
+        loss, accuracy, logits, predictions = model(
+                features['telescope_data'],
+                features['telescope_triggers'], 
+                features['auxiliary_data'],
+                labels['gamma_hadron_labels'], 
+                params['num_telescopes'],
+                params['image_dimensions'],
+                is_training)
+        # Scale up the learning rate of batches with fewer triggered
+        # telescopes, avoiding division by 0
+        trigger_rate = tf.maximum(tf.reduce_mean(telescope_triggers, 0.1))
+        scaling_factor = tf.reciprocal(trigger_rate)
+        scaled_learning_rate = tf.multiply(scaling_factor, 
+                params['base_learning_rate'])
+        # Define the train op
+        optimizer = tf.train.AdamOptimizer(learning_rate=scaled_learning_rate)
+        train_op = slim.learning.create_train_op(loss, optimizer)
+        return tf.estimator.EstimatorSpec(
+                mode=mode,
+                predictions=predictions,
+                loss=loss,
+                train_op=train_op)
     # Define the Estimator
+    # TODO: define arguments elsewhere
+    model_dir = args.logdir
+    config = None
     estimator = tf.Estimator(model_fn, model_dir=model_dir, config=config, 
             params=params)
     # Specify training and evalution functions
@@ -219,92 +230,92 @@ def train(model,data_file,epochs,image_summary,embedding):
     # Train and evaluate the model
     tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
 
-    #create supervised session (summary op can be omitted)
-    sv = tf.train.Supervisor(
-            init_op=tf.global_variables_initializer(),
-            logdir=args.logdir,
-            checkpoint_basename=args.checkpoint_basename,
-            global_step=global_step,
-            summary_op=None,
-            save_model_secs=600 
-            )
+    ##create supervised session (summary op can be omitted)
+    #sv = tf.train.Supervisor(
+    #        init_op=tf.global_variables_initializer(),
+    #        logdir=args.logdir,
+    #        checkpoint_basename=args.checkpoint_basename,
+    #        global_step=global_step,
+    #        summary_op=None,
+    #        save_model_secs=600 
+    #        )
 
-    #training loop in session
-    with sv.managed_session() as sess:
-        for i in range(epochs):
-            sess.run(training_init_op)
-            print("Epoch {} started...".format(i+1))
-            while True:
-                try:
-                    __, __, summ = sess.run([train_op, 
-                        increment_global_step_op, merged], 
-                        feed_dict={training: True})
-                    sv.summary_computed(sess, summ)
-                except tf.errors.OutOfRangeError:
-                    break
+    ##training loop in session
+    #with sv.managed_session() as sess:
+    #    for i in range(epochs):
+    #        sess.run(training_init_op)
+    #        print("Epoch {} started...".format(i+1))
+    #        while True:
+    #            try:
+    #                __, __, summ = sess.run([train_op, 
+    #                    increment_global_step_op, merged], 
+    #                    feed_dict={training: True})
+    #                sv.summary_computed(sess, summ)
+    #            except tf.errors.OutOfRangeError:
+    #                break
 
-            print("Epoch {} finished. Validating...".format(i+1))
+    #        print("Epoch {} finished. Validating...".format(i+1))
 
-            #validation
-            sess.run(validation_init_op)
-            val_accuracies = []
-            val_losses = []
-            while True:
-                try:
-                    val_loss,val_acc = sess.run([loss,accuracy],feed_dict={training: False})
-                    val_accuracies.append(val_acc)
-                    val_losses.append(val_loss)
-                except tf.errors.OutOfRangeError:
-                    break
+    #        #validation
+    #        sess.run(validation_init_op)
+    #        val_accuracies = []
+    #        val_losses = []
+    #        while True:
+    #            try:
+    #                val_loss,val_acc = sess.run([loss,accuracy],feed_dict={training: False})
+    #                val_accuracies.append(val_acc)
+    #                val_losses.append(val_loss)
+    #            except tf.errors.OutOfRangeError:
+    #                break
 
-            mean_val_accuracy = np.mean(val_accuracies)
-            mean_val_loss = np.mean(val_losses)
-            val_acc_summ = tf.Summary()
-            val_acc_summ.value.add(tag="validation_accuracy", simple_value=mean_val_accuracy)
-            val_loss_summ = tf.Summary()
-            val_loss_summ.value.add(tag="validation_loss", simple_value=mean_val_loss)
-            sv.summary_computed(sess, val_loss_summ)
-            sv.summary_computed(sess, val_acc_summ)
+    #        mean_val_accuracy = np.mean(val_accuracies)
+    #        mean_val_loss = np.mean(val_losses)
+    #        val_acc_summ = tf.Summary()
+    #        val_acc_summ.value.add(tag="validation_accuracy", simple_value=mean_val_accuracy)
+    #        val_loss_summ = tf.Summary()
+    #        val_loss_summ.value.add(tag="validation_loss", simple_value=mean_val_loss)
+    #        sv.summary_computed(sess, val_loss_summ)
+    #        sv.summary_computed(sess, val_acc_summ)
 
-            print("Validation complete.")
+    #        print("Validation complete.")
 
-            if i % EPOCHS_PER_IMAGE_VIZ == 0 and image_summary: 
-                sess.run(validation_init_op)
-                #filter_summ,inputs_summ,activations_summ = sess.run([filter_summ_op,inputs_charge_summ_op,activations_summ_op])
-                inputs_summ = sess.run([input_charge_summ_op])
-                #sv.summary_computed(sess,filter_summ)
-                sv.summary_computed(sess,inputs_summ)
-                #sv.summary_computed(sess,activations_summ)
+    #        if i % EPOCHS_PER_IMAGE_VIZ == 0 and image_summary: 
+    #            sess.run(validation_init_op)
+    #            #filter_summ,inputs_summ,activations_summ = sess.run([filter_summ_op,inputs_charge_summ_op,activations_summ_op])
+    #            inputs_summ = sess.run([input_charge_summ_op])
+    #            #sv.summary_computed(sess,filter_summ)
+    #            sv.summary_computed(sess,inputs_summ)
+    #            #sv.summary_computed(sess,activations_summ)
 
-                print("Image summary complete")
+    #            print("Image summary complete")
 
-            if i % EPOCHS_PER_VIZ_EMBED == 0 and embedding:
-                sess.run(validation_init_op)
-                #reset embedding variable to empty
-                sess.run(reset_embedding)
-                
-                for j in range(NUM_BATCHES_EMBEDDING):
-                    try:
-                        sess.run(fetch)
-                        sess.run(new_embedding_var)
-                        sess.run(update_embedding)
-                    except tf.errors.OutOfRangeError:
-                        break
-                                      
-                config = tf.contrib.tensorboard.plugins.projector.ProjectorConfig()
-                config.model_checkpoint_dir = os.path.abspath(args.logdir)
-                embedding = config.embeddings.add()
-                embedding.tensor_name = embedding_var.name
-                embedding.metadata_path = os.path.abspath(os.path.join(args.logdir, 'metadata.tsv'))
-                tf.contrib.tensorboard.plugins.projector.visualize_embeddings(sv.summary_writer, config) 
-                
-                #write corresponding metadata file
-                metadata_file = open(embedding.metadata_path, 'w')
-                for k in range(NUM_BATCHES_EMBEDDING):
-                    metadata_file.write('{}\n'.format(table_val.read(k,k+1,field=label_column_name)[0]))         
-                metadata_file.close()
-                
-                print("Embedding summary complete")
+    #        if i % EPOCHS_PER_VIZ_EMBED == 0 and embedding:
+    #            sess.run(validation_init_op)
+    #            #reset embedding variable to empty
+    #            sess.run(reset_embedding)
+    #            
+    #            for j in range(NUM_BATCHES_EMBEDDING):
+    #                try:
+    #                    sess.run(fetch)
+    #                    sess.run(new_embedding_var)
+    #                    sess.run(update_embedding)
+    #                except tf.errors.OutOfRangeError:
+    #                    break
+    #                                  
+    #            config = tf.contrib.tensorboard.plugins.projector.ProjectorConfig()
+    #            config.model_checkpoint_dir = os.path.abspath(args.logdir)
+    #            embedding = config.embeddings.add()
+    #            embedding.tensor_name = embedding_var.name
+    #            embedding.metadata_path = os.path.abspath(os.path.join(args.logdir, 'metadata.tsv'))
+    #            tf.contrib.tensorboard.plugins.projector.visualize_embeddings(sv.summary_writer, config) 
+    #            
+    #            #write corresponding metadata file
+    #            metadata_file = open(embedding.metadata_path, 'w')
+    #            for k in range(NUM_BATCHES_EMBEDDING):
+    #                metadata_file.write('{}\n'.format(table_val.read(k,k+1,field=label_column_name)[0]))         
+    #            metadata_file.close()
+    #            
+    #            print("Embedding summary complete")
 
 if __name__ == '__main__':
     
