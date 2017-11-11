@@ -30,6 +30,7 @@ EPOCHS_PER_VIZ_EMBED = 5
 NUM_BATCHES_EMBEDDING = 20
 
 SHUFFLE_BUFFER_SIZE = 10000
+MAX_STEPS = 10000
 
 def train(model,data_file,epochs,image_summary,embedding):
 
@@ -56,7 +57,7 @@ def train(model,data_file,epochs,image_summary,embedding):
         trig_list[trig_list >= 0] = 1
         trig_list[trig_list == -1] = 0
         trig_list = trig_list.astype(np.int8)
-        return [imgs,trig_list,label]
+        return [imgs,trig_list,label[0]]
 
     def load_train_data(index):
         record = table_train.read(index, index + 1)
@@ -99,6 +100,20 @@ def train(model,data_file,epochs,image_summary,embedding):
     eval_dataset = tf.contrib.data.Dataset.range(num_events_val)
     eval_dataset = eval_dataset.map((lambda index: tuple(tf.py_func(load_val_data,[index],[tf.float32, tf.int8, tf.int8]))), num_threads=NUM_THREADS,output_buffer_size=100*VAL_BATCH_SIZE)
     eval_dataset = eval_dataset.batch(VAL_BATCH_SIZE)
+   
+    # Store a dictionary of constant auxiliary input. Will be the same for
+    # every event.
+    auxiliary_data = {
+            'telescope_positions': tel_pos_vector
+            }
+    # Store a dictionary of hyperparameters and constants.
+    params = {
+            'num_telescopes': num_tel,
+            'image_dimensions': (img_width, img_length, img_depth),
+            'base_learning_rate': args.lr
+            }
+    # TODO: rename this argument
+    model_dir = args.logdir
 
     print("Training settings\n*************************************")
     print("Training batch size: ",TRAIN_BATCH_SIZE)
@@ -118,49 +133,9 @@ def train(model,data_file,epochs,image_summary,embedding):
         print("No embedding visualization")
     print("*************************************")
 
-    #tf.summary.scalar('training_loss', loss)
-    #tf.summary.scalar('training_accuracy',accuracy)
-
-    ##global step
-    #global_step = tf.Variable(0, name='global_step', trainable=False)
-    #increment_global_step_op = tf.assign(global_step, global_step+1)
-
-
-    #tf.summary.scalar('variable_learning_rate',variable_learning_rate)
-    #merged = tf.summary.merge_all()
-
-    if image_summary:
-
-        #locate input and 1st layer filter tensors for visualization
-        inputs = tf.get_default_graph().get_tensor_by_name("input_0:0")
-        kernel = tf.get_collection(tf.GraphKeys.VARIABLES, 'MobilenetV1_0/Conv2d_0/convolution:0')[0]
-        activations = tf.get_default_graph().get_tensor_by_name("MobilenetV1_0/Conv2d_0/Relu:0")
-
-        variables = [op.name for op in tf.get_default_graph().get_operations() if op.op_def and op.op_def.name=='Variable']
-
-        #for n in tf.get_default_graph().as_graph_def().node:
-            #print(n.name)
-
-        #for i in variables:
-            #print(i)
-
-        inputs_charge_summ_op = tf.summary.image('inputs_charge',tf.slice(inputs,begin=[0,0,0,0],size=[TRAIN_BATCH_SIZE,img_width,img_length,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
-        inputs_timing_summ_op = tf.summary.image('inputs_timing',tf.slice(inputs,begin=[0,0,0,1],size=[TRAIN_BATCH_SIZE,img_width,img_length,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
-        filter_summ_op = tf.summary.image('filter',tf.slice(tf.transpose(kernel, perm=[3, 0, 1, 2]),begin=[0,0,0,0],size=[96,11,11,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
-        activations_summ_op = tf.summary.image('activations',tf.slice(activations,begin=[0,0,0,0],size=[TRAIN_BATCH_SIZE,58,58,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
-        
-
-    #for embeddings visualization
-    if embedding:
-        fetch = tf.get_default_graph().get_tensor_by_name('Classifier/fc7/BiasAdd:0')
-        embedding_var = tf.Variable(np.empty((0,4096),dtype=np.float32),name='Embedding_of_fc7',validate_shape=False)
-        new_embedding_var = tf.concat([embedding_var,fetch],0)
-        update_embedding = tf.assign(embedding_var,new_embedding_var,validate_shape=False)
-        empty = tf.Variable(np.empty((0,4096),dtype=np.float32),validate_shape=False)
-        reset_embedding = tf.assign(embedding_var,empty,validate_shape=False)
-
     # Define the input functions
     def input_fn(dataset, auxiliary_data, shuffle_buffer_size=None):
+        # Get batches of data
         if shuffle_buffer_size:
             dataset = dataset.shuffle(shuffle_buffer_size)
         iterator = dataset.make_one_shot_iterator()
@@ -178,29 +153,20 @@ def train(model,data_file,epochs,image_summary,embedding):
                 'gamma_hadron_labels': gamma_hadron_labels
                 }
         return features, labels
-    # TODO: move this elsewhere
-    auxiliary_data = {
-            'telescope_positions': tel_pos_vector
-            }
     def train_input_fn():
         return input_fn(train_dataset, auxiliary_data, 
                 shuffle_buffer_size=SHUFFLE_BUFFER_SIZE)
     def eval_input_fn():
         return input_fn(eval_dataset, auxiliary_data, 
                 shuffle_buffer_size=None)
-    # Define the params
-    # TODO: calculate this elsewhere
-    params = {
-            'num_telescopes': num_tel,
-            'image_dimensions': (img_width, img_length, img_depth),
-            'base_learning_rate': args.lr
-            }
-    # Define the model function
+
     def model_fn(features, labels, mode, params, config):
+        
         if (mode == tf.estimator.ModeKeys.TRAIN):
             is_training = True
         else:
             is_training = False
+        
         loss, accuracy, logits, predictions = model(
                 features['telescope_data'],
                 features['telescope_triggers'],
@@ -209,6 +175,7 @@ def train(model,data_file,epochs,image_summary,embedding):
                 params['num_telescopes'],
                 params['image_dimensions'],
                 is_training)
+        
         # Scale the learning rate so batches with fewer triggered
         # telescopes don't have smaller gradients
         trigger_rate = tf.reduce_mean(tf.cast(features['telescope_triggers'], 
@@ -218,116 +185,100 @@ def train(model,data_file,epochs,image_summary,embedding):
         scaling_factor = tf.reciprocal(trigger_rate)
         scaled_learning_rate = tf.multiply(scaling_factor, 
                 params['base_learning_rate'])
+        
+        # Define the summaries
+        # TODO: calculate accuracy using tf.metrics for consistency
+        tf.summary.scalar('accuracy', accuracy)
+        tf.summary.scalar('scaled_learning_rate', scaled_learning_rate)
+        tf.summary.merge_all()
+        # Define the evaluation metrics
+        eval_metric_ops = {
+                'accuracy': tf.metrics.accuracy(
+                    tf.cast(labels['gamma_hadron_labels'], tf.float32), 
+                    predictions['classes'])
+                }
         # Define the train op
         optimizer = tf.train.AdamOptimizer(learning_rate=scaled_learning_rate)
         train_op = slim.learning.create_train_op(loss, optimizer)
+        
         return tf.estimator.EstimatorSpec(
                 mode=mode,
                 predictions=predictions,
                 loss=loss,
-                train_op=train_op)
-    # Define the Estimator
-    # TODO: define arguments elsewhere
-    model_dir = args.logdir
-    config = None
-    estimator = tf.estimator.Estimator(model_fn, model_dir=model_dir, 
-            config=config, params=params)
-    # Specify training and evalution functions
-    train_hooks = None
-    max_steps = None # train forever
-    train_spec = tf.estimator.TrainSpec(input_fn=train_input_fn, 
-            max_steps=max_steps, hooks=train_hooks)
-    eval_hooks = None
-    eval_spec = tf.estimator.EvalSpec(input_fn=eval_input_fn, hooks=eval_hooks)
+                train_op=train_op,
+                eval_metric_ops=eval_metric_ops)
+    
     # Train and evaluate the model
+    estimator = tf.estimator.Estimator(model_fn, model_dir=model_dir,
+            params=params)
+    train_spec = tf.estimator.TrainSpec(input_fn=train_input_fn)
+    eval_spec = tf.estimator.EvalSpec(input_fn=eval_input_fn)
+    
     tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
 
-    ##create supervised session (summary op can be omitted)
-    #sv = tf.train.Supervisor(
-    #        init_op=tf.global_variables_initializer(),
-    #        logdir=args.logdir,
-    #        checkpoint_basename=args.checkpoint_basename,
-    #        global_step=global_step,
-    #        summary_op=None,
-    #        save_model_secs=600 
-    #        )
+# Everything below here relates to layer and embedding visualization.
+# Ignore it all for now.
 
-    ##training loop in session
-    #with sv.managed_session() as sess:
-    #    for i in range(epochs):
-    #        sess.run(training_init_op)
-    #        print("Epoch {} started...".format(i+1))
-    #        while True:
-    #            try:
-    #                __, __, summ = sess.run([train_op, 
-    #                    increment_global_step_op, merged], 
-    #                    feed_dict={training: True})
-    #                sv.summary_computed(sess, summ)
-    #            except tf.errors.OutOfRangeError:
-    #                break
+    if image_summary:
 
-    #        print("Epoch {} finished. Validating...".format(i+1))
+        #locate input and 1st layer filter tensors for visualization
+        inputs = tf.get_default_graph().get_tensor_by_name("input_0:0")
+        kernel = tf.get_collection(tf.GraphKeys.VARIABLES, 'MobilenetV1_0/Conv2d_0/convolution:0')[0]
+        activations = tf.get_default_graph().get_tensor_by_name("MobilenetV1_0/Conv2d_0/Relu:0")
 
-    #        #validation
-    #        sess.run(validation_init_op)
-    #        val_accuracies = []
-    #        val_losses = []
-    #        while True:
-    #            try:
-    #                val_loss,val_acc = sess.run([loss,accuracy],feed_dict={training: False})
-    #                val_accuracies.append(val_acc)
-    #                val_losses.append(val_loss)
-    #            except tf.errors.OutOfRangeError:
-    #                break
+        variables = [op.name for op in tf.get_default_graph().get_operations() if op.op_def and op.op_def.name=='Variable']
 
-    #        mean_val_accuracy = np.mean(val_accuracies)
-    #        mean_val_loss = np.mean(val_losses)
-    #        val_acc_summ = tf.Summary()
-    #        val_acc_summ.value.add(tag="validation_accuracy", simple_value=mean_val_accuracy)
-    #        val_loss_summ = tf.Summary()
-    #        val_loss_summ.value.add(tag="validation_loss", simple_value=mean_val_loss)
-    #        sv.summary_computed(sess, val_loss_summ)
-    #        sv.summary_computed(sess, val_acc_summ)
+        inputs_charge_summ_op = tf.summary.image('inputs_charge',tf.slice(inputs,begin=[0,0,0,0],size=[TRAIN_BATCH_SIZE,img_width,img_length,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
+        inputs_timing_summ_op = tf.summary.image('inputs_timing',tf.slice(inputs,begin=[0,0,0,1],size=[TRAIN_BATCH_SIZE,img_width,img_length,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
+        filter_summ_op = tf.summary.image('filter',tf.slice(tf.transpose(kernel, perm=[3, 0, 1, 2]),begin=[0,0,0,0],size=[96,11,11,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
+        activations_summ_op = tf.summary.image('activations',tf.slice(activations,begin=[0,0,0,0],size=[TRAIN_BATCH_SIZE,58,58,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS) 
 
-    #        print("Validation complete.")
+    #for embeddings visualization
+    if embedding:
+        fetch = tf.get_default_graph().get_tensor_by_name('Classifier/fc7/BiasAdd:0')
+        embedding_var = tf.Variable(np.empty((0,4096),dtype=np.float32),name='Embedding_of_fc7',validate_shape=False)
+        new_embedding_var = tf.concat([embedding_var,fetch],0)
+        update_embedding = tf.assign(embedding_var,new_embedding_var,validate_shape=False)
+        empty = tf.Variable(np.empty((0,4096),dtype=np.float32),validate_shape=False)
+        reset_embedding = tf.assign(embedding_var,empty,validate_shape=False)
+        
+        if i % EPOCHS_PER_IMAGE_VIZ == 0 and image_summary: 
+            sess.run(validation_init_op)
+            #filter_summ,inputs_summ,activations_summ = sess.run([filter_summ_op,inputs_charge_summ_op,activations_summ_op])
+            inputs_summ = sess.run([input_charge_summ_op])
+            #sv.summary_computed(sess,filter_summ)
+            sv.summary_computed(sess,inputs_summ)
+            #sv.summary_computed(sess,activations_summ)
 
-    #        if i % EPOCHS_PER_IMAGE_VIZ == 0 and image_summary: 
-    #            sess.run(validation_init_op)
-    #            #filter_summ,inputs_summ,activations_summ = sess.run([filter_summ_op,inputs_charge_summ_op,activations_summ_op])
-    #            inputs_summ = sess.run([input_charge_summ_op])
-    #            #sv.summary_computed(sess,filter_summ)
-    #            sv.summary_computed(sess,inputs_summ)
-    #            #sv.summary_computed(sess,activations_summ)
+            print("Image summary complete")
 
-    #            print("Image summary complete")
-
-    #        if i % EPOCHS_PER_VIZ_EMBED == 0 and embedding:
-    #            sess.run(validation_init_op)
-    #            #reset embedding variable to empty
-    #            sess.run(reset_embedding)
-    #            
-    #            for j in range(NUM_BATCHES_EMBEDDING):
-    #                try:
-    #                    sess.run(fetch)
-    #                    sess.run(new_embedding_var)
-    #                    sess.run(update_embedding)
-    #                except tf.errors.OutOfRangeError:
-    #                    break
-    #                                  
-    #            config = tf.contrib.tensorboard.plugins.projector.ProjectorConfig()
-    #            config.model_checkpoint_dir = os.path.abspath(args.logdir)
-    #            embedding = config.embeddings.add()
-    #            embedding.tensor_name = embedding_var.name
-    #            embedding.metadata_path = os.path.abspath(os.path.join(args.logdir, 'metadata.tsv'))
-    #            tf.contrib.tensorboard.plugins.projector.visualize_embeddings(sv.summary_writer, config) 
-    #            
-    #            #write corresponding metadata file
-    #            metadata_file = open(embedding.metadata_path, 'w')
-    #            for k in range(NUM_BATCHES_EMBEDDING):
-    #                metadata_file.write('{}\n'.format(table_val.read(k,k+1,field=label_column_name)[0]))         
-    #            metadata_file.close()
-    #            
-    #            print("Embedding summary complete")
+        if i % EPOCHS_PER_VIZ_EMBED == 0 and embedding:
+            sess.run(validation_init_op)
+            #reset embedding variable to empty
+            sess.run(reset_embedding)
+            
+            for j in range(NUM_BATCHES_EMBEDDING):
+                try:
+                    sess.run(fetch)
+                    sess.run(new_embedding_var)
+                    sess.run(update_embedding)
+                except tf.errors.OutOfRangeError:
+                    break
+                                  
+            config = tf.contrib.tensorboard.plugins.projector.ProjectorConfig()
+            config.model_checkpoint_dir = os.path.abspath(args.logdir)
+            embedding = config.embeddings.add()
+            embedding.tensor_name = embedding_var.name
+            embedding.metadata_path = os.path.abspath(os.path.join(args.logdir, 'metadata.tsv'))
+            tf.contrib.tensorboard.plugins.projector.visualize_embeddings(sv.summary_writer, config) 
+            
+            #write corresponding metadata file
+            metadata_file = open(embedding.metadata_path, 'w')
+            for k in range(NUM_BATCHES_EMBEDDING):
+                metadata_file.write('{}\n'.format(table_val.read(k,k+1,field=label_column_name)[0]))         
+            metadata_file.close()
+            
+            print("Embedding summary complete")
 
 if __name__ == '__main__':
     
