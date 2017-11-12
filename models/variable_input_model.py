@@ -55,23 +55,30 @@ def combine_telescopes_as_feature_maps(telescope_outputs, telescope_positions,
     return array_features
 
 #for use with train_datasets
-def variable_input_model(tel_data, trig_list, tel_pos_tensor, labels, num_tel,
-        image_shape, is_training):
+def variable_input_model(telescope_data, telescope_triggers, 
+        telescope_positions, gamma_hadron_labels, num_telescopes, image_shape,
+        is_training):
  
     # Reshape and cast inputs into proper dimensions and types
     image_width, image_length, image_depth = image_shape
-    tel_data = tf.reshape(tel_data, [-1, num_tel, image_width, image_length, 
-        image_depth])
+    telescope_data = tf.reshape(telescope_data, [-1, num_telescopes, 
+        image_width, image_length, image_depth])
+    telescope_data = tf.cast(telescope_data, tf.float32)
+
     # Reshape labels to vector as expected by tf.one_hot
-    labels = tf.reshape(labels, [-1])
-    trig_list = tf.reshape(trig_list, [-1, num_tel])
-    trig_list = tf.cast(trig_list, tf.float32)
+    gamma_hadron_labels = tf.reshape(gamma_hadron_labels, [-1])
+    gamma_hadron_labels = tf.cast(gamma_hadron_labels, tf.int8)
+
+    telescope_triggers = tf.reshape(telescope_triggers, [-1, num_telescopes])
+    telescope_triggers = tf.cast(telescope_triggers, tf.float32)
+
     # TODO: move number of aux inputs (2) to be defined as a constant
-    tel_pos_tensor = tf.reshape(tel_pos_tensor, [num_tel, 2])
+    telescope_positions = tf.reshape(telescope_positions, [num_telescopes, 2])
+    telescope_positions = tf.cast(telescope_positions, tf.float32)
     
     # Split data by telescope by switching the batch and telescope dimensions
     # leaving width, length, and channel depth unchanged
-    tel_data_by_telescope = tf.transpose(tel_data, perm=[1, 0, 2, 3, 4])
+    telescope_data = tf.transpose(telescope_data, perm=[1, 0, 2, 3, 4])
 
     # Define the network being used. Each CNN block analyzes a single
     # telescope. The outputs for non-triggering telescopes are zeroed out 
@@ -89,15 +96,20 @@ def variable_input_model(tel_data, trig_list, tel_pos_tensor, labels, num_tel,
 
     # Process the input for each telescope
     telescope_outputs = []
-    for i in range(num_tel):
-        telescope_features = cnn_block(tf.gather(tel_data_by_telescope, i), i,
-                tf.gather(trig_list, i, axis=1), is_training=is_training)
+    for i in range(num_telescopes):
+        telescope_features = cnn_block(
+                tf.gather(telescope_data, i), 
+                i,
+                tf.gather(telescope_triggers, i, axis=1), 
+                is_training=is_training)
         telescope_outputs.append(telescope_features)
 
     with tf.variable_scope("NetworkHead"):
         # Process the single telescope data into array-level input
-        array_features = combine_telescopes(telescope_outputs, tel_pos_tensor, 
-                trig_list)
+        array_features = combine_telescopes(
+                telescope_outputs, 
+                telescope_positions, 
+                telescope_triggers)
         # Process the combined array features
         logits = network_head(array_features, num_classes=NUM_CLASSES, 
                 is_training=is_training)
@@ -105,7 +117,8 @@ def variable_input_model(tel_data, trig_list, tel_pos_tensor, labels, num_tel,
     with tf.variable_scope("Outputs"):
 
         # Calculate loss (for both TRAIN and EVAL modes) 
-        onehot_labels = tf.one_hot(indices=tf.cast(labels, tf.int32), 
+        onehot_labels = tf.one_hot(
+                indices=tf.cast(gamma_hadron_labels, tf.int32), 
                 depth=NUM_CLASSES)
         loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels, 
                 logits=logits)
@@ -117,6 +130,7 @@ def variable_input_model(tel_data, trig_list, tel_pos_tensor, labels, num_tel,
                 }
 
         accuracy = tf.reduce_mean(tf.cast(tf.equal(
-            tf.cast(predictions['classes'], tf.int8), labels), tf.float32))
+            tf.cast(predictions['classes'], tf.int8), 
+            gamma_hadron_labels), tf.float32))
 
     return loss, accuracy, logits, predictions
