@@ -2,22 +2,21 @@ import sys
 import os
 import argparse
 
-#add parent directory to pythonpath to allow imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-
-#disable info and warning messages (not error messages)
-os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
+# Disable info and warning messages (not error messages)
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 import tensorflow as tf
 slim = tf.contrib.slim
-from tables import *
+import tables
 import numpy as np
 
+# Add parent directory to pythonpath to allow imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 from models.variable_input_model import variable_input_model
 
-NUM_THREADS = 12
+NUM_PARALLEL_CALLS = 12
 TRAIN_BATCH_SIZE = 64
-VAL_BATCH_SIZE = 64
+EVAL_BATCH_SIZE = 64
 
 EPOCHS_PER_IMAGE_VIZ = 5
 IMAGE_VIZ_MAX_OUTPUTS = 100
@@ -27,106 +26,128 @@ NUM_BATCHES_EMBEDDING = 20
 SHUFFLE_BUFFER_SIZE = 10000
 MAX_STEPS = 10000
 
-def train(model,data_file,epochs,image_summary,embedding):
+def train(model, data_file, epochs, image_summary, embedding):
 
-    def load_data(record):
-        tel_map = record["tel_map"][0]
-        #print(tel_map)
-        tel_imgs = []
-        assert tel_map.shape[0] == len(tels_list)
-        for i in range(len(tels_list)):
-            if tel_map[i] != -1:
-                array = f.root.E0._f_get_child(tels_list[i])
-                tel_imgs.append(array[tel_map[i]])
+    def load_HDF5_data(filename, index, metadata, mode='TRAIN'):
+
+        # Read the data at the given table and index from the file
+        f = tables.open_file(filename, mode='r')
+        if mode == 'TRAIN':
+            table = f.root.E0.Events_Training
+        elif mode == 'EVAL':
+            table = f.root.E0.Events_Validation
+        else:
+            raise ValueError("Mode must be 'TRAIN' or 'EVAL'")
+        record = table.read(index, index + 1)
+        
+        telescope_ids = metadata['telescope_ids']
+        image_indices = record['tel_map'][0]
+        telescope_images = []
+        for telescope_id, image_index in zip(telescope_ids, image_indices):
+            if image_index == -1:
+                # Telescope did not trigger. Its outputs will be
+                # dropped out, so input is arbitrary. Use an empty
+                # array for efficiency.
+                telescope_images.append(np.empty(metadata['image_shape']))
             else:
-                tel_imgs.append(np.empty([img_width,img_length,img_depth]))
+                telescope_table = f.root.E0._f_get_child(telescope_id)
+                telescope_images.append(telescope_table[image_index])
+        telescope_images = np.stack(telescope_images).astype(np.float32)
+        
+        # Get binary values indicating whether each telescope triggered
+        telescope_triggers = np.array([0 if i < 0 else 1 for i 
+            in image_indices], dtype=np.int8)
+        
+        # Get classification label by converting CORSIKA particle code
+        gamma_hadron_label = record['gamma_hadron_label'].astype(np.int8)
+        if gamma_hadron_label[0] == 0: # gamma ray
+            gamma_hadron_label[0] = 1
+        elif gamma_hadron_label[0] == 101: # proton
+            gamma_hadron_label[0] = 0
+        
+        f.close()
+        
+        return [telescope_images, telescope_triggers, gamma_hadron_label]
 
-        imgs = np.stack(tel_imgs,axis=0).astype(np.float32)
-        label = record[label_column_name].astype(np.int8)
-        #convert CORSIKA particle type code to gamma-proton label (0 = proton, 1 = gamma)
-        if label[0] == 0:
-            label[0] = 1
-        elif label[0] == 101:
-            label[0] = 0
-        trig_list = tel_map
-        trig_list[trig_list >= 0] = 1
-        trig_list[trig_list == -1] = 0
-        trig_list = trig_list.astype(np.int8)
-        return [imgs,trig_list,label[0]]
-
-    def load_train_data(index):
-        record = table_train.read(index, index + 1)
-        return load_data(record)
-    
-    def load_val_data(index):
-        record = table_val.read(index, index + 1)
-        return load_data(record)
-
-    #open HDF5 file for reading
-    f = open_file(data_file, mode = "r", title = "Input file")
-    table_train = f.root.E0.Events_Training
-    table_val = f.root.E0.Events_Validation    
-    label_column_name = args.label_col_name
-    num_events_train = table_train.shape[0]
-    num_events_val = table_val.shape[0]
-
-    #prepare constant telescope position vector
-    table_telpos = f.root.Tel_Table
-    tel_pos_vector = []
-    tels_list = []
-    for row in table_telpos.iterrows():
-        tels_list.append("T" + str(row["tel_id"]))
-        tel_pos_vector.append(row["tel_x"])
-        tel_pos_vector.append(row["tel_y"])
-    num_tel = len(tels_list) 
-
-    #shape of images
-    img_shape = eval("f.root.E0.{}.shape".format(tels_list[0]))
-    img_width = img_shape[1]
-    img_length = img_shape[2]
-    img_depth = img_shape[3]
-
-    #create datasets
-    train_dataset = tf.contrib.data.Dataset.range(num_events_train)
-    train_dataset = train_dataset.shuffle(buffer_size=10000)
-    train_dataset = train_dataset.map((lambda index: tuple(tf.py_func(load_train_data, [index], [tf.float32, tf.int8, tf.int8]))),num_threads=NUM_THREADS,output_buffer_size=100*TRAIN_BATCH_SIZE)
-    train_dataset = train_dataset.batch(TRAIN_BATCH_SIZE)
-
-    eval_dataset = tf.contrib.data.Dataset.range(num_events_val)
-    eval_dataset = eval_dataset.map((lambda index: tuple(tf.py_func(load_val_data,[index],[tf.float32, tf.int8, tf.int8]))), num_threads=NUM_THREADS,output_buffer_size=100*VAL_BATCH_SIZE)
-    eval_dataset = eval_dataset.batch(VAL_BATCH_SIZE)
-   
-    # Store a dictionary of constant auxiliary input. Will be the same for
-    # every event.
-    auxiliary_data = {
-            'telescope_positions': tel_pos_vector
+    def load_HDF5_auxiliary_data(filename):
+        
+        f = tables.open_file(filename, mode='r')
+        telescope_positions = []
+        for row in f.root.Tel_Table.iterrows():
+            telescope_positions.append(row["tel_x"])
+            telescope_positions.append(row["tel_y"])
+        f.close()
+        auxiliary_data = {
+            'telescope_positions': np.array(telescope_positions, 
+                dtype=np.float32)
             }
-    # Store a dictionary of hyperparameters and constants.
-    params = {
-            'num_telescopes': num_tel,
-            'image_dimensions': (img_width, img_length, img_depth),
-            'base_learning_rate': args.lr
-            }
+        return auxiliary_data
+
+    def load_HDF5_metadata(filename):
+       
+        f = tables.open_file(filename, mode='r')
+        num_train_events = f.root.E0.Events_Training.shape[0]
+        num_eval_events = f.root.E0.Events_Validation.shape[0]
+        # List of telescope IDs ordered by mapping index
+        telescope_ids = ["T" + str(row["tel_id"]) for row 
+                in f.root.Tel_Table.iterrows()]
+        num_telescopes = f.root.Tel_Table.shape[0]
+        # All telescope images have the same shape
+        image_shape = f.root.E0._f_get_child(telescope_ids[0]).shape[1:]
+        f.close()
+        metadata = {
+                'num_train_events': num_train_events,
+                'num_eval_events': num_eval_events,
+                'telescope_ids': telescope_ids,
+                'num_telescopes': num_telescopes,
+                'image_shape': image_shape
+                }
+        return metadata
+
     # TODO: rename this argument
     model_dir = args.logdir
 
-    print("Training settings\n*************************************")
-    print("Training batch size: ",TRAIN_BATCH_SIZE)
-    print("Validation batch size: ",VAL_BATCH_SIZE)
-    print("Training batches/steps per epoch: ",np.ceil(num_events_train/TRAIN_BATCH_SIZE))
-    print("Total # of training steps: ",np.ceil(num_events_train/TRAIN_BATCH_SIZE)*epochs)
-    print("Total number of training events: ",num_events_train)
-    print("Total number of validation events: ",num_events_val)
-    print("*************************************")
-    if image_summary:
-        print("Image visualization summary every {} epochs".format(EPOCHS_PER_IMAGE_VIZ))
-    else:
-        print("No image visualization")
-    if embedding:
-        print("Embedding visualization summary every {} epochs".format(EPOCHS_PER_VIZ_EMBED))
-    else:
-        print("No embedding visualization")
-    print("*************************************")
+    # Define data loading functions
+    load_data = load_HDF5_data
+    load_auxiliary_data = load_HDF5_auxiliary_data
+    load_metadata = load_HDF5_metadata
+
+    # Get information about the dataset
+    metadata = load_metadata(data_file)
+    
+    # Define model hyperparameters
+    hyperparameters = {
+            'base_learning_rate': args.lr
+            }
+    
+    # Merge dictionaries for passing to the model function
+    params = {**metadata, **hyperparameters}
+    
+    # Get the auxiliary input (same for every event)
+    auxiliary_data = load_auxiliary_data(data_file)
+   
+    # Create training and evaluation datasets
+    def load_train_data(index):
+        return load_data(data_file, index, metadata, mode='TRAIN')
+    
+    def load_eval_data(index):
+        return load_data(data_file, index, metadata, mode='EVAL')
+
+    train_dataset = tf.data.Dataset.range(metadata['num_train_events'])
+    train_dataset = train_dataset.map(lambda index: tuple(tf.py_func(
+                load_train_data,
+                [index], 
+                [tf.float32, tf.int8, tf.int8])),
+            num_parallel_calls=NUM_PARALLEL_CALLS)
+    train_dataset = train_dataset.batch(TRAIN_BATCH_SIZE)
+
+    eval_dataset = tf.data.Dataset.range(metadata['num_eval_events'])
+    eval_dataset = eval_dataset.map(lambda index: tuple(tf.py_func(
+                load_eval_data,
+                [index],
+                [tf.float32, tf.int8, tf.int8])), 
+            num_parallel_calls=NUM_PARALLEL_CALLS)
+    eval_dataset = eval_dataset.batch(EVAL_BATCH_SIZE)
 
     # Define the input functions
     def input_fn(dataset, auxiliary_data, shuffle_buffer_size=None):
@@ -148,9 +169,11 @@ def train(model,data_file,epochs,image_summary,embedding):
                 'gamma_hadron_labels': gamma_hadron_labels
                 }
         return features, labels
+    
     def train_input_fn():
         return input_fn(train_dataset, auxiliary_data, 
                 shuffle_buffer_size=SHUFFLE_BUFFER_SIZE)
+    
     def eval_input_fn():
         return input_fn(eval_dataset, auxiliary_data, 
                 shuffle_buffer_size=None)
@@ -168,7 +191,7 @@ def train(model,data_file,epochs,image_summary,embedding):
                 features['telescope_positions'],
                 labels['gamma_hadron_labels'],
                 params['num_telescopes'],
-                params['image_dimensions'],
+                params['image_shape'],
                 is_training)
         
         # Scale the learning rate so batches with fewer triggered
@@ -208,6 +231,14 @@ def train(model,data_file,epochs,image_summary,embedding):
             params=params)
     train_spec = tf.estimator.TrainSpec(input_fn=train_input_fn)
     eval_spec = tf.estimator.EvalSpec(input_fn=eval_input_fn)
+    
+    print("Training and evaluating...")
+    print("Training batch size: ", TRAIN_BATCH_SIZE)
+    print("Validation batch size: ", EVAL_BATCH_SIZE)
+    print("Training steps per epoch: ", np.ceil(metadata['num_train_events'] 
+        / TRAIN_BATCH_SIZE).astype(np.int32))
+    print("Total number of training events: ", metadata['num_train_events'])
+    print("Total number of validation events: ", metadata['num_eval_events'])
     
     tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
 
