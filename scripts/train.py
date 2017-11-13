@@ -18,11 +18,6 @@ NUM_PARALLEL_CALLS = 12
 TRAINING_BATCH_SIZE = 64
 VALIDATION_BATCH_SIZE = 64
 
-EPOCHS_PER_IMAGE_VIZ = 5
-IMAGE_VIZ_MAX_OUTPUTS = 100
-EPOCHS_PER_VIZ_EMBED = 5
-NUM_BATCHES_EMBEDDING = 20
-
 SHUFFLE_BUFFER_SIZE = 10000
 MAX_STEPS = 10000
 
@@ -224,7 +219,6 @@ def train(model, data_file, epochs, image_summary, embedding):
                 loss=loss,
                 train_op=train_op,
                 eval_metric_ops=eval_metric_ops)
-    
 
     # Train and evaluate the model
     print("Training and evaluating...")
@@ -234,6 +228,7 @@ def train(model, data_file, epochs, image_summary, embedding):
     print("Validation batch size: ", VALIDATION_BATCH_SIZE)
     print("Training steps per epoch: ", np.ceil(metadata['num_train_events'] 
         / TRAINING_BATCH_SIZE).astype(np.int32))
+    
     estimator = tf.estimator.Estimator(model_fn, model_dir=model_dir,
             params=params)
     while True:
@@ -245,70 +240,6 @@ def train(model, data_file, epochs, image_summary, embedding):
         estimator.evaluate(
                 lambda: input_fn(validation_dataset, auxiliary_data),
                 name='validation')
-
-# Everything below here relates to layer and embedding visualization.
-# Ignore it all for now.
-
-    if image_summary:
-
-        #locate input and 1st layer filter tensors for visualization
-        inputs = tf.get_default_graph().get_tensor_by_name("input_0:0")
-        kernel = tf.get_collection(tf.GraphKeys.VARIABLES, 'MobilenetV1_0/Conv2d_0/convolution:0')[0]
-        activations = tf.get_default_graph().get_tensor_by_name("MobilenetV1_0/Conv2d_0/Relu:0")
-
-        variables = [op.name for op in tf.get_default_graph().get_operations() if op.op_def and op.op_def.name=='Variable']
-
-        inputs_charge_summ_op = tf.summary.image('inputs_charge',tf.slice(inputs,begin=[0,0,0,0],size=[TRAIN_BATCH_SIZE,img_width,img_length,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
-        inputs_timing_summ_op = tf.summary.image('inputs_timing',tf.slice(inputs,begin=[0,0,0,1],size=[TRAIN_BATCH_SIZE,img_width,img_length,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
-        filter_summ_op = tf.summary.image('filter',tf.slice(tf.transpose(kernel, perm=[3, 0, 1, 2]),begin=[0,0,0,0],size=[96,11,11,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS)
-        activations_summ_op = tf.summary.image('activations',tf.slice(activations,begin=[0,0,0,0],size=[TRAIN_BATCH_SIZE,58,58,1]),max_outputs=IMAGE_VIZ_MAX_OUTPUTS) 
-
-    #for embeddings visualization
-    if embedding:
-        fetch = tf.get_default_graph().get_tensor_by_name('Classifier/fc7/BiasAdd:0')
-        embedding_var = tf.Variable(np.empty((0,4096),dtype=np.float32),name='Embedding_of_fc7',validate_shape=False)
-        new_embedding_var = tf.concat([embedding_var,fetch],0)
-        update_embedding = tf.assign(embedding_var,new_embedding_var,validate_shape=False)
-        empty = tf.Variable(np.empty((0,4096),dtype=np.float32),validate_shape=False)
-        reset_embedding = tf.assign(embedding_var,empty,validate_shape=False)
-        
-        if i % EPOCHS_PER_IMAGE_VIZ == 0 and image_summary: 
-            sess.run(validation_init_op)
-            #filter_summ,inputs_summ,activations_summ = sess.run([filter_summ_op,inputs_charge_summ_op,activations_summ_op])
-            inputs_summ = sess.run([input_charge_summ_op])
-            #sv.summary_computed(sess,filter_summ)
-            sv.summary_computed(sess,inputs_summ)
-            #sv.summary_computed(sess,activations_summ)
-
-            print("Image summary complete")
-
-        if i % EPOCHS_PER_VIZ_EMBED == 0 and embedding:
-            sess.run(validation_init_op)
-            #reset embedding variable to empty
-            sess.run(reset_embedding)
-            
-            for j in range(NUM_BATCHES_EMBEDDING):
-                try:
-                    sess.run(fetch)
-                    sess.run(new_embedding_var)
-                    sess.run(update_embedding)
-                except tf.errors.OutOfRangeError:
-                    break
-                                  
-            config = tf.contrib.tensorboard.plugins.projector.ProjectorConfig()
-            config.model_checkpoint_dir = os.path.abspath(args.logdir)
-            embedding = config.embeddings.add()
-            embedding.tensor_name = embedding_var.name
-            embedding.metadata_path = os.path.abspath(os.path.join(args.logdir, 'metadata.tsv'))
-            tf.contrib.tensorboard.plugins.projector.visualize_embeddings(sv.summary_writer, config) 
-            
-            #write corresponding metadata file
-            metadata_file = open(embedding.metadata_path, 'w')
-            for k in range(NUM_BATCHES_EMBEDDING):
-                metadata_file.write('{}\n'.format(table_val.read(k,k+1,field=label_column_name)[0]))         
-            metadata_file.close()
-            
-            print("Embedding summary complete")
 
 if __name__ == '__main__':
     
