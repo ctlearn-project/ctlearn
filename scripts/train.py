@@ -31,10 +31,10 @@ def train(model, data_file, epochs, image_summary, embedding):
         f = tables.open_file(filename, mode='r')
         if mode == 'TRAIN':
             table = f.root.E0.Events_Training
-        elif mode == 'EVAL':
+        elif mode == 'VALID':
             table = f.root.E0.Events_Validation
         else:
-            raise ValueError("Mode must be 'TRAIN' or 'EVAL'")
+            raise ValueError("Mode must be 'TRAIN' or 'VALID'")
         record = table.read(index, index + 1)
         
         telescope_ids = metadata['telescope_ids']
@@ -83,8 +83,8 @@ def train(model, data_file, epochs, image_summary, embedding):
     def load_HDF5_metadata(filename):
        
         f = tables.open_file(filename, mode='r')
-        num_train_events = f.root.E0.Events_Training.shape[0]
-        num_eval_events = f.root.E0.Events_Validation.shape[0]
+        num_training_events = f.root.E0.Events_Training.shape[0]
+        num_validation_events = f.root.E0.Events_Validation.shape[0]
         # List of telescope IDs ordered by mapping index
         telescope_ids = ["T" + str(row["tel_id"]) for row 
                 in f.root.Tel_Table.iterrows()]
@@ -93,8 +93,8 @@ def train(model, data_file, epochs, image_summary, embedding):
         image_shape = f.root.E0._f_get_child(telescope_ids[0]).shape[1:]
         f.close()
         metadata = {
-                'num_train_events': num_train_events,
-                'num_eval_events': num_eval_events,
+                'num_training_events': num_training_events,
+                'num_validation_events': num_validation_events,
                 'telescope_ids': telescope_ids,
                 'num_telescopes': num_telescopes,
                 'image_shape': image_shape,
@@ -127,23 +127,24 @@ def train(model, data_file, epochs, image_summary, embedding):
     auxiliary_data = load_auxiliary_data(data_file)
    
     # Create training and evaluation datasets
-    def load_train_data(index):
+    def load_training_data(index):
         return load_data(data_file, index, metadata, mode='TRAIN')
     
-    def load_eval_data(index):
-        return load_data(data_file, index, metadata, mode='EVAL')
+    def load_validation_data(index):
+        return load_data(data_file, index, metadata, mode='VALID')
 
-    training_dataset = tf.data.Dataset.range(metadata['num_train_events'])
+    training_dataset = tf.data.Dataset.range(metadata['num_training_events'])
     training_dataset = training_dataset.map(lambda index: tuple(tf.py_func(
-                load_train_data,
+                load_training_data,
                 [index], 
                 [tf.float32, tf.int8, tf.int64])),
             num_parallel_calls=NUM_PARALLEL_CALLS)
     training_dataset = training_dataset.batch(TRAINING_BATCH_SIZE)
 
-    validation_dataset = tf.data.Dataset.range(metadata['num_eval_events'])
+    validation_dataset = tf.data.Dataset.range(
+            metadata['num_validation_events'])
     validation_dataset = validation_dataset.map(lambda index: tuple(tf.py_func(
-                load_eval_data,
+                load_validation_data,
                 [index],
                 [tf.float32, tf.int8, tf.int64])), 
             num_parallel_calls=NUM_PARALLEL_CALLS)
@@ -222,8 +223,9 @@ def train(model, data_file, epochs, image_summary, embedding):
 
     # Train and evaluate the model
     print("Training and evaluating...")
-    print("Total number of training events: ", metadata['num_train_events'])
-    print("Total number of validation events: ", metadata['num_eval_events'])
+    print("Total number of training events: ", metadata['num_training_events'])
+    print("Total number of validation events: ", 
+            metadata['num_validation_events'])
     print("Training batch size: ", TRAINING_BATCH_SIZE)
     print("Validation batch size: ", VALIDATION_BATCH_SIZE)
     print("Training steps per epoch: ", np.ceil(metadata['num_train_events'] 
