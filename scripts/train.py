@@ -185,13 +185,7 @@ def train(model, data_file, epochs, image_summary, embedding):
         else:
             is_training = False
         
-        loss, accuracy, logits, predictions = model(
-                features['telescope_data'],
-                features['telescope_triggers'],
-                features['telescope_positions'],
-                labels['gamma_hadron_labels'],
-                params['num_telescopes'],
-                params['image_shape'],
+        loss, accuracy, logits, predictions = model(features, labels, params,
                 is_training)
         
         # Scale the learning rate so batches with fewer triggered
