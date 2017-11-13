@@ -1,15 +1,16 @@
-import sys
-import os
 import configparser
-import argparse
+import os
+import shutil
+import sys
+import time
 
 # Disable info and warning messages (not error messages)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 import tensorflow as tf
 slim = tf.contrib.slim
-import tables
 import numpy as np
+import tables
 
 # Add parent directory to pythonpath to allow imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
@@ -95,9 +96,10 @@ def load_HDF5_metadata(filename):
 # Parse configuration file
 config = configparser.ConfigParser()
 try:
-    config.read(sys.argv[1])
+    config_filename = sys.argv[1]
 except IndexError:
     sys.exit("Usage: train.py config_file")
+config.read(config_filename)
 
 data_filename = config['Data']['Filename']
 is_hdf5_format = config['Data'].getboolean('UseHDF5Format', False)
@@ -108,6 +110,12 @@ shuffle_buffer_size = config['Data Processing'].getint('ShuffleBufferSize',
 base_learning_rate = config['Training'].getfloat('BaseLearningRate')
 batch_norm_decay = config['Training'].getfloat('BatchNormDecay', 0.95)
 model_dir = config['Logging']['ModelDirectory']
+
+# Log a copy of the configuration file
+config_log_filename = time.strftime('%Y%m%d_%H%M%S_') + config_filename
+if not os.path.exists(model_dir):
+    os.makedirs(model_dir)
+shutil.copy(config_filename, os.path.join(model_dir, config_log_filename))
 
 # Define data loading functions
 if is_hdf5_format:
