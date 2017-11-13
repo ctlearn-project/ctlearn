@@ -54,13 +54,14 @@ HEAD_CONV_DEFS = [
 # inputs is the input layer tensor
 # conv_defs is a list of ConvDef named tuples
 # reuse should be None or True
-def mobilenet_base(scope, inputs, conv_defs, is_training=True, reuse=None):
+def mobilenet_base(scope, inputs, conv_defs, batch_norm_decay=0.95, 
+        is_training=True, reuse=None):
     end_points = {}
     with tf.variable_scope(scope, inputs, reuse=reuse):
         with slim.arg_scope([slim.conv2d, slim.separable_conv2d],
                 padding='SAME'):
             with slim.arg_scope([slim.batch_norm], is_training=is_training, 
-                    decay=0.95):
+                    decay=batch_norm_decay):
                 net = inputs
                 for i, conv_def in enumerate(conv_defs):
                     end_point_base = 'Conv2d_%d' % i
@@ -98,31 +99,38 @@ def mobilenet_base(scope, inputs, conv_defs, is_training=True, reuse=None):
                                 'layer %d' % (conv_def.ltype, i))
     return net, end_points
 
-def mobilenet_block(inputs, telescope_index, trig_values, is_training=True):
-    # Set all telescopes after the first to share weights
-    if telescope_index == 0:
-        reuse = None
-    else:
-        reuse = True
+def mobilenet_block(inputs, triggers, params=None, is_training=True, 
+        reuse=None):
+    
+    # Get hyperparameters
+    if not params:
+        params = {}
+    batch_norm_decay = params.get('batch_norm_decay', 0.95)
 
-    net, end_points = mobilenet_base("MobileNetBlock", inputs, BLOCK_CONV_DEFS, 
-            is_training, reuse)
+    net, end_points = mobilenet_base("MobileNetBlock", inputs, BLOCK_CONV_DEFS,
+            batch_norm_decay, is_training, reuse)
     
     # Drop out all outputs if the telescope was not triggered
     end_point = "Trigger_multiplier"
-    # Reshape trig_values from [BATCH_SIZE] to [BATCH_SIZE, WIDTH, HEIGHT, 
+    # Reshape triggers from [BATCH_SIZE] to [BATCH_SIZE, WIDTH, HEIGHT, 
     # NUM_CHANNELS]
-    trig_values = tf.reshape(trig_values, [-1, 1, 1, 1])
-    trig_values = tf.tile(trig_values, tf.concat([[1], tf.shape(net)[1:]], 0))
-    net = tf.multiply(net, trig_values)
+    triggers = tf.reshape(triggers, [-1, 1, 1, 1])
+    triggers = tf.tile(triggers, tf.concat([[1], tf.shape(net)[1:]], 0))
+    net = tf.multiply(net, triggers)
     end_points[end_point] = net
     
     # For compatibility with variable_input_model, do not return
     # end_points for now
     return net#, end_points
 
-def mobilenet_head(inputs, dropout_keep_prob=0.9, num_classes=2, 
-        is_training=True):
+def mobilenet_head(inputs, params=None, is_training=True):
+
+    # Get hyperparameters
+    if not params:
+        params = {}
+    dropout_keep_prob = params.get('dropout_keep_prob', 0.9)
+    num_classes = params.get('num_gamma_hadron_classes', 2)
+
     # Define the network
     net, end_points = mobilenet_base("MobileNetHead", inputs, HEAD_CONV_DEFS, 
             is_training=is_training)

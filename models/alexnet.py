@@ -1,88 +1,92 @@
 import tensorflow as tf
 
 #for use with train_datasets
-def alexnet_block(input_features, number, trig_values):
+def alexnet_block(inputs, triggers, params=None, is_training=True, reuse=None):
 
-    #shared weights
-        if number == 0:
-            reuse = None
-        else:
-            reuse = True
+    with tf.variable_scope("Conv_block"):
 
-        with tf.variable_scope("Conv_block"):
-            input_tensor = tf.reshape(input_features,[-1,IMAGE_WIDTH,IMAGE_LENGTH,IMAGE_DEPTH],name="input")
+        #conv1
+        conv1 = tf.layers.conv2d(
+                inputs=inputs,
+                filters=96,
+                kernel_size=[11, 11],
+                strides=2, # changed from strides=4 for small image sizes
+                padding="valid",
+                activation=tf.nn.relu,
+                name="conv1",
+                reuse=reuse,
+                kernel_initializer = tf.zeros_initializer())
 
-            #conv1
-            conv1 = tf.layers.conv2d(
-                    inputs=input_features,
-                    filters=96,
-                    kernel_size=[11, 11],
-                    strides=2, # changed from strides=4 for small image sizes
-                    padding="valid",
-                    activation=tf.nn.relu,
-                    name="conv1",
-                    reuse=reuse,
-                    kernel_initializer = tf.zeros_initializer())
+        #local response normalization ???
 
-            #local response normalization ???
+        #pool1
+        pool1 = tf.layers.max_pooling2d(inputs=conv1, pool_size=[3, 3], 
+                strides=2)
 
-            #pool1
-            pool1 = tf.layers.max_pooling2d(inputs=conv1, pool_size=[3, 3], strides=2)
+        #conv2
+        conv2 = tf.layers.conv2d(
+                inputs=pool1,
+                filters=256,
+                kernel_size=[5, 5],
+                padding="valid",
+                activation=tf.nn.relu,
+                name="conv2",
+                reuse=reuse)
 
-            #conv2
-            conv2 = tf.layers.conv2d(
-                    inputs=pool1,
-                    filters=256,
-                    kernel_size=[5, 5],
-                    padding="valid",
-                    activation=tf.nn.relu,
-                    name="conv2",
-                    reuse=reuse)
+        #normalization ????
 
-            #normalization ????
+        #pool2
+        pool2 = tf.layers.max_pooling2d(inputs=conv2, pool_size=[3, 3], 
+                strides=2)
 
-            #pool2
-            pool2 = tf.layers.max_pooling2d(inputs=conv2, pool_size=[3, 3], strides=2)
+        #conv3
+        conv3 = tf.layers.conv2d(
+                inputs=pool2,
+                filters=384,
+                kernel_size=[3,3],
+                padding="valid",
+                activation=tf.nn.relu,
+                name="conv3",
+                reuse=reuse)
 
-            #conv3
-            conv3 = tf.layers.conv2d(
-                    inputs=pool2,
-                    filters=384,
-                    kernel_size=[3,3],
-                    padding="valid",
-                    activation=tf.nn.relu,
-                    name="conv3",
-                    reuse=reuse)
+        #conv4
+        conv4 = tf.layers.conv2d(
+                inputs=conv3,
+                filters=384,
+                kernel_size=[3, 3],
+                padding="valid",
+                activation=tf.nn.relu,
+                name="conv4",
+                reuse=reuse)
 
-            #conv4
-            conv4 = tf.layers.conv2d(
-                    inputs=conv3,
-                    filters=384,
-                    kernel_size=[3, 3],
-                    padding="valid",
-                    activation=tf.nn.relu,
-                    name="conv4",
-                    reuse=reuse)
+        #conv5
+        conv5 = tf.layers.conv2d(
+                inputs=conv4,
+                filters=256,
+                kernel_size=[3, 3],
+                padding="valid",
+                activation=tf.nn.relu,
+                name="conv5",
+                reuse=reuse)
 
-            #conv5
-            conv5 = tf.layers.conv2d(
-                    inputs=conv4,
-                    filters=256,
-                    kernel_size=[3, 3],
-                    padding="valid",
-                    activation=tf.nn.relu,
-                    name="conv5",
-                    reuse=reuse)
+        #pool5
+        pool5 = tf.layers.max_pooling2d(inputs=conv5, pool_size=[3, 3], 
+                strides=2)
 
-            #pool5
-            pool5 = tf.layers.max_pooling2d(inputs=conv5, pool_size=[3, 3], strides=2)
+        #flatten output of pool5 layer to get feature vector of shape 
+        # (num_batch,1024)
+        output = tf.multiply(flatten(pool5), tf.expand_dims(trig_values, 1))
 
-            #flatten output of pool5 layer to get feature vector of shape (num_batch,1024)
-            output = tf.multiply(flatten(pool5), tf.expand_dims(trig_values, 1))
+        return output
 
-            return output
-
-def alexnet_head(inputs, dropout_keep_prob=0.5, num_classes=2, is_training=True):
+def alexnet_head(inputs, params=None, is_training=True):
+    
+    # Get hyperparameters
+    if not params:
+        params = {}
+    dropout_keep_prob = params.get('dropout_keep_prob', 0.5)
+    num_classes = params.get('num_gamma_hadron_classes', 2)
+    
     #fc6
     fc6 = tf.layers.dense(inputs=inputs, units=4096, activation=tf.nn.relu,
     name="fc6") 

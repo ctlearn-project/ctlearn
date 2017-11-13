@@ -69,7 +69,6 @@ def variable_input_model(features, labels, params, is_training):
     telescope_triggers = tf.reshape(telescope_triggers, [-1, num_telescopes])
     telescope_triggers = tf.cast(telescope_triggers, tf.float32)
 
-    # TODO: move number of aux inputs (2) to be defined as a constant
     telescope_positions = features['telescope_positions']
     telescope_positions = tf.reshape(telescope_positions, 
             [num_telescopes, num_auxiliary_inputs])
@@ -100,12 +99,18 @@ def variable_input_model(features, labels, params, is_training):
 
     # Process the input for each telescope
     telescope_outputs = []
-    for i in range(num_telescopes):
+    for telescope_index in range(num_telescopes):
+        # Set all telescopes after the first to share weights
+        if telescope_index == 0:
+            reuse = None
+        else:
+            reuse = True
         telescope_features = cnn_block(
-                tf.gather(telescope_data, i), 
-                i,
-                tf.gather(telescope_triggers, i, axis=1), 
-                is_training=is_training)
+                tf.gather(telescope_data, telescope_index), 
+                tf.gather(telescope_triggers, telescope_index, axis=1),
+                params=params,
+                is_training=is_training,
+                reuse=reuse)
         telescope_outputs.append(telescope_features)
 
     with tf.variable_scope("NetworkHead"):
@@ -115,9 +120,7 @@ def variable_input_model(features, labels, params, is_training):
                 telescope_positions, 
                 telescope_triggers)
         # Process the combined array features
-        logits = network_head(
-                array_features, 
-                num_classes=num_gamma_hadron_classes, 
+        logits = network_head(array_features, params=params,
                 is_training=is_training)
 
     with tf.variable_scope("Outputs"):

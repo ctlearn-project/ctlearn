@@ -224,12 +224,7 @@ def resnet_base(inputs,size,scope_name,reuse,is_training):
     return inputs
 
 
-def resnet_block(inputs, telescope_index, trig_values, is_training):
-    # Set all telescopes after the first to share weights
-    if telescope_index == 0:
-        reuse = None
-    else:
-        reuse = True
+def resnet_block(inputs, triggers, params=None, is_training=True, reuse=None):
 
     #preliminary convolution and pooling on raw input
     inputs = conv2d_fixed_padding(
@@ -242,12 +237,13 @@ def resnet_block(inputs, telescope_index, trig_values, is_training):
     inputs = tf.identity(inputs, 'initial_max_pool')
 
     #resnet block
-    inputs = resnet_base(inputs,RESNET_BLOCK_SIZE,"RESNET_BLOCK",reuse,is_training)
+    inputs = resnet_base(inputs, RESNET_BLOCK_SIZE, "RESNET_BLOCK", reuse,
+            is_training)
 
     #zero out based on trigger value
-    trig_values = tf.reshape(trig_values, [-1, 1, 1, 1])
-    trig_values = tf.tile(trig_values, tf.concat([[1], tf.shape(inputs)[1:]], 0))
-    output = tf.multiply(inputs, trig_values)
+    triggers = tf.reshape(triggers, [-1, 1, 1, 1])
+    triggers = tf.tile(triggers, tf.concat([[1], tf.shape(inputs)[1:]], 0))
+    output = tf.multiply(inputs, triggers)
 
     output = tf.layers.max_pooling2d(
             inputs=output, pool_size=5, strides=3, padding='SAME',
@@ -255,8 +251,13 @@ def resnet_block(inputs, telescope_index, trig_values, is_training):
  
     return output   
 
-def resnet_head(inputs,num_classes,is_training): 
+def resnet_head(inputs, params=None, is_training=True): 
 
+    # Get hyperparameters
+    if not params:
+        params = {}
+    num_classes = params.get('num_gamma_hadron_classes', 2)
+    
     #conv and pool
     inputs = block_layer(
                 inputs=inputs, filters=128, block_fn=building_block, blocks=4,
@@ -274,7 +275,7 @@ def resnet_head(inputs,num_classes,is_training):
     
     return logits
 
-def resnet_head_feature_vector(inputs,num_classes,is_training): 
+def resnet_head_feature_vector(inputs, params=None, is_training=True): 
 
     #preliminary convolution and pooling on raw input
     #inputs = conv2d_fixed_padding(
@@ -287,6 +288,11 @@ def resnet_head_feature_vector(inputs,num_classes,is_training):
     #inputs = tf.identity(inputs, 'initial_max_pool')
     #
     #inputs = resnet_base(inputs,RESNET_HEAD_SIZE,"RESNET_HEAD",False,is_training)
+    
+    # Get hyperparameters
+    if not params:
+        params = {}
+    num_classes = params.get('num_gamma_hadron_classes', 2)
     
     with tf.variable_scope('Logits'):
         #inputs = tf.layers.average_pooling2d(
