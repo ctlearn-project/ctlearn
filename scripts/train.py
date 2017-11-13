@@ -26,20 +26,12 @@ BATCH_NORM_DECAY = 0.95
 # parse command line arguments
 parser = argparse.ArgumentParser(description='Trains on an hdf5 file.')
 parser.add_argument('h5_file', help='path to h5 file containing data')
-parser.add_argument('--optimizer',default='adam')
-parser.add_argument('--epochs',default=10000,type=int)
 parser.add_argument('--logdir',default='/data0/logs/variable_input_model_1')
 parser.add_argument('--lr',default=0.001,type=float)
-parser.add_argument('--label_col_name',default='gamma_hadron_label')
-parser.add_argument('--checkpoint_basename',default='custom_multi_input.ckpt')
-parser.add_argument('--embedding', action='store_true')
-parser.add_argument('--no_val',action='store_true')
-parser.add_argument('--image_summary',action='store_true')
 args = parser.parse_args()
 
 model = variable_input_model
 data_file = args.h5_file
-epochs = args.epochs
 model_dir = args.logdir
 base_learning_rate = args.lr
 
