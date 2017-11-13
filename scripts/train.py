@@ -104,9 +104,11 @@ config.read(config_filename)
 data_filename = config['Data']['Filename']
 use_hdf5_format = config['Data'].getboolean('UseHDF5Format', False)
 batch_size = config['Data Processing'].getint('BatchSize')
+num_examples_per_training_epoch = config['Data Processing'].getint(
+        'NumExamplesPerTrainingEpoch', 10000)
+num_training_epochs_per_evaluation = config['Data Processing'].getint(
+        'NumTrainingEpochsPerEvaluation', 1)
 num_parallel_calls = config['Data Processing'].getint('NumParallelCalls', 1)
-shuffle_buffer_size = config['Data Processing'].getint('ShuffleBufferSize', 
-        10000)
 use_variable_input_model = config['Model'].getboolean('UseVariableInputModel', 
         False)
 cnn_block = config['Model']['CNNBlock'].lower()
@@ -256,8 +258,9 @@ print("Training steps per epoch: ", np.ceil(metadata['num_training_events']
 estimator = tf.estimator.Estimator(model_fn, model_dir=model_dir,
         params=params)
 while True:
-    estimator.train(lambda: input_fn(training_dataset, auxiliary_data, 
-        shuffle_buffer_size=shuffle_buffer_size))
+    for _ in range(num_training_epochs_per_evaluation):
+        estimator.train(lambda: input_fn(training_dataset, auxiliary_data, 
+            shuffle_buffer_size=num_examples_per_training_epoch))
     estimator.evaluate(
             lambda: input_fn(training_dataset, auxiliary_data),
             name='training')
