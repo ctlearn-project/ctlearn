@@ -15,8 +15,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 from models.variable_input_model import variable_input_model
 
 NUM_PARALLEL_CALLS = 12
-TRAIN_BATCH_SIZE = 64
-EVAL_BATCH_SIZE = 64
+TRAINING_BATCH_SIZE = 64
+VALIDATION_BATCH_SIZE = 64
 
 EPOCHS_PER_IMAGE_VIZ = 5
 IMAGE_VIZ_MAX_OUTPUTS = 100
@@ -138,23 +138,22 @@ def train(model, data_file, epochs, image_summary, embedding):
     def load_eval_data(index):
         return load_data(data_file, index, metadata, mode='EVAL')
 
-    train_dataset = tf.data.Dataset.range(metadata['num_train_events'])
-    train_dataset = train_dataset.map(lambda index: tuple(tf.py_func(
+    training_dataset = tf.data.Dataset.range(metadata['num_train_events'])
+    training_dataset = training_dataset.map(lambda index: tuple(tf.py_func(
                 load_train_data,
                 [index], 
                 [tf.float32, tf.int8, tf.int64])),
             num_parallel_calls=NUM_PARALLEL_CALLS)
-    train_dataset = train_dataset.batch(TRAIN_BATCH_SIZE)
+    training_dataset = training_dataset.batch(TRAINING_BATCH_SIZE)
 
-    eval_dataset = tf.data.Dataset.range(metadata['num_eval_events'])
-    eval_dataset = eval_dataset.map(lambda index: tuple(tf.py_func(
+    validation_dataset = tf.data.Dataset.range(metadata['num_eval_events'])
+    validation_dataset = validation_dataset.map(lambda index: tuple(tf.py_func(
                 load_eval_data,
                 [index],
                 [tf.float32, tf.int8, tf.int64])), 
             num_parallel_calls=NUM_PARALLEL_CALLS)
-    eval_dataset = eval_dataset.batch(EVAL_BATCH_SIZE)
+    validation_dataset = validation_dataset.batch(VALIDATION_BATCH_SIZE)
 
-    # Define the input functions
     def input_fn(dataset, auxiliary_data, shuffle_buffer_size=None):
         # Get batches of data
         if shuffle_buffer_size:
@@ -175,14 +174,6 @@ def train(model, data_file, epochs, image_summary, embedding):
                 }
         return features, labels
     
-    def train_input_fn():
-        return input_fn(train_dataset, auxiliary_data, 
-                shuffle_buffer_size=SHUFFLE_BUFFER_SIZE)
-    
-    def eval_input_fn():
-        return input_fn(eval_dataset, auxiliary_data, 
-                shuffle_buffer_size=None)
-
     def model_fn(features, labels, mode, params, config):
         
         if (mode == tf.estimator.ModeKeys.TRAIN):
@@ -216,14 +207,14 @@ def train(model, data_file, epochs, image_summary, embedding):
         train_op = slim.learning.create_train_op(loss, optimizer)
         
         # Define the summaries
-        tf.summary.scalar('training_accuracy', training_accuracy)
+        #tf.summary.scalar('training_accuracy', training_accuracy)
         tf.summary.scalar('scaled_learning_rate', scaled_learning_rate)
         tf.summary.merge_all()
         # Define the evaluation metrics
         eval_metric_ops = {
-                'validation_accuracy': tf.metrics.accuracy(true_classes, 
+                'accuracy': tf.metrics.accuracy(true_classes, 
                     predicted_classes),
-                'validation_auc': tf.metrics.auc(true_classes,
+                'auc': tf.metrics.auc(true_classes,
                     predicted_classes)
                 }
         
@@ -234,21 +225,26 @@ def train(model, data_file, epochs, image_summary, embedding):
                 train_op=train_op,
                 eval_metric_ops=eval_metric_ops)
     
+
     # Train and evaluate the model
-    estimator = tf.estimator.Estimator(model_fn, model_dir=model_dir,
-            params=params)
-    train_spec = tf.estimator.TrainSpec(input_fn=train_input_fn)
-    eval_spec = tf.estimator.EvalSpec(input_fn=eval_input_fn)
-    
     print("Training and evaluating...")
-    print("Training batch size: ", TRAIN_BATCH_SIZE)
-    print("Validation batch size: ", EVAL_BATCH_SIZE)
-    print("Training steps per epoch: ", np.ceil(metadata['num_train_events'] 
-        / TRAIN_BATCH_SIZE).astype(np.int32))
     print("Total number of training events: ", metadata['num_train_events'])
     print("Total number of validation events: ", metadata['num_eval_events'])
-    
-    tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
+    print("Training batch size: ", TRAINING_BATCH_SIZE)
+    print("Validation batch size: ", VALIDATION_BATCH_SIZE)
+    print("Training steps per epoch: ", np.ceil(metadata['num_train_events'] 
+        / TRAINING_BATCH_SIZE).astype(np.int32))
+    estimator = tf.estimator.Estimator(model_fn, model_dir=model_dir,
+            params=params)
+    while True:
+        estimator.train(lambda: input_fn(training_dataset, auxiliary_data, 
+            shuffle_buffer_size=SHUFFLE_BUFFER_SIZE))
+        estimator.evaluate(
+                lambda: input_fn(training_dataset, auxiliary_data),
+                name='training')
+        estimator.evaluate(
+                lambda: input_fn(validation_dataset, auxiliary_data),
+                name='validation')
 
 # Everything below here relates to layer and embedding visualization.
 # Ignore it all for now.
