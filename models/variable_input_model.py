@@ -77,7 +77,7 @@ def variable_input_model(features, labels, params, is_training):
     # Reshape labels to vector as expected by tf.one_hot
     gamma_hadron_labels = labels['gamma_hadron_labels']
     gamma_hadron_labels = tf.reshape(gamma_hadron_labels, [-1])
-    gamma_hadron_labels = tf.cast(gamma_hadron_labels, tf.int8)
+    gamma_hadron_labels = tf.cast(gamma_hadron_labels, tf.int32)
 
     # Split data by telescope by switching the batch and telescope dimensions
     # leaving width, length, and channel depth unchanged
@@ -122,24 +122,12 @@ def variable_input_model(features, labels, params, is_training):
         # Process the combined array features
         logits = network_head(array_features, params=params,
                 is_training=is_training)
+        
+    # Calculate loss
+    onehot_labels = tf.one_hot(
+            indices=gamma_hadron_labels,
+            depth=num_gamma_hadron_classes)
+    loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels, 
+            logits=logits)
 
-    with tf.variable_scope("Outputs"):
-
-        # Calculate loss (for both TRAIN and EVAL modes) 
-        onehot_labels = tf.one_hot(
-                indices=tf.cast(gamma_hadron_labels, tf.int32), 
-                depth=num_gamma_hadron_classes)
-        loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels, 
-                logits=logits)
-
-        # Calculate outputs
-        predictions = {
-                "classes": tf.argmax(logits, axis=1),
-                "probabilities": tf.nn.softmax(logits)
-                }
-
-        accuracy = tf.reduce_mean(tf.cast(tf.equal(
-            tf.cast(predictions['classes'], tf.int8), 
-            gamma_hadron_labels), tf.float32))
-
-    return loss, accuracy, logits, predictions
+    return loss, logits

@@ -26,6 +26,8 @@ NUM_BATCHES_EMBEDDING = 20
 SHUFFLE_BUFFER_SIZE = 10000
 MAX_STEPS = 10000
 
+BATCH_NORM_DECAY = 0.95
+
 def train(model, data_file, epochs, image_summary, embedding):
 
     def load_HDF5_data(filename, index, metadata, mode='TRAIN'):
@@ -59,11 +61,11 @@ def train(model, data_file, epochs, image_summary, embedding):
             in image_indices], dtype=np.int8)
         
         # Get classification label by converting CORSIKA particle code
-        gamma_hadron_label = record['gamma_hadron_label'].astype(np.int8)
-        if gamma_hadron_label[0] == 0: # gamma ray
-            gamma_hadron_label[0] = 1
-        elif gamma_hadron_label[0] == 101: # proton
-            gamma_hadron_label[0] = 0
+        gamma_hadron_label = record['gamma_hadron_label'][0]
+        if gamma_hadron_label == 0: # gamma ray
+            gamma_hadron_label = 1
+        elif gamma_hadron_label == 101: # proton
+            gamma_hadron_label = 0
         
         f.close()
         
@@ -119,7 +121,8 @@ def train(model, data_file, epochs, image_summary, embedding):
     
     # Define model hyperparameters
     hyperparameters = {
-            'base_learning_rate': args.lr
+            'base_learning_rate': args.lr,
+            'batch_norm_decay': BATCH_NORM_DECAY
             }
     
     # Merge dictionaries for passing to the model function
@@ -139,7 +142,7 @@ def train(model, data_file, epochs, image_summary, embedding):
     train_dataset = train_dataset.map(lambda index: tuple(tf.py_func(
                 load_train_data,
                 [index], 
-                [tf.float32, tf.int8, tf.int8])),
+                [tf.float32, tf.int8, tf.int64])),
             num_parallel_calls=NUM_PARALLEL_CALLS)
     train_dataset = train_dataset.batch(TRAIN_BATCH_SIZE)
 
@@ -147,7 +150,7 @@ def train(model, data_file, epochs, image_summary, embedding):
     eval_dataset = eval_dataset.map(lambda index: tuple(tf.py_func(
                 load_eval_data,
                 [index],
-                [tf.float32, tf.int8, tf.int8])), 
+                [tf.float32, tf.int8, tf.int64])), 
             num_parallel_calls=NUM_PARALLEL_CALLS)
     eval_dataset = eval_dataset.batch(EVAL_BATCH_SIZE)
 
@@ -187,8 +190,16 @@ def train(model, data_file, epochs, image_summary, embedding):
         else:
             is_training = False
         
-        loss, accuracy, logits, predictions = model(features, labels, params,
-                is_training)
+        loss, logits = model(features, labels, params, is_training)
+
+        # Calculate metrics
+        true_classes = tf.cast(labels['gamma_hadron_labels'], tf.int32)
+        predicted_classes = tf.cast(tf.argmax(logits, axis=1), tf.int32)
+        training_accuracy = tf.reduce_mean(tf.cast(tf.equal(true_classes, 
+            predicted_classes), tf.float32))
+        predictions = {
+                'classes': predicted_classes
+                }
         
         # Scale the learning rate so batches with fewer triggered
         # telescopes don't have smaller gradients
@@ -200,20 +211,21 @@ def train(model, data_file, epochs, image_summary, embedding):
         scaled_learning_rate = tf.multiply(scaling_factor, 
                 params['base_learning_rate'])
         
+        # Define the train op
+        optimizer = tf.train.AdamOptimizer(learning_rate=scaled_learning_rate)
+        train_op = slim.learning.create_train_op(loss, optimizer)
+        
         # Define the summaries
-        # TODO: calculate accuracy using tf.metrics for consistency
-        tf.summary.scalar('accuracy', accuracy)
+        tf.summary.scalar('training_accuracy', training_accuracy)
         tf.summary.scalar('scaled_learning_rate', scaled_learning_rate)
         tf.summary.merge_all()
         # Define the evaluation metrics
         eval_metric_ops = {
-                'accuracy': tf.metrics.accuracy(
-                    tf.cast(labels['gamma_hadron_labels'], tf.float32), 
-                    predictions['classes'])
+                'validation_accuracy': tf.metrics.accuracy(true_classes, 
+                    predicted_classes),
+                'validation_auc': tf.metrics.auc(true_classes,
+                    predicted_classes)
                 }
-        # Define the train op
-        optimizer = tf.train.AdamOptimizer(learning_rate=scaled_learning_rate)
-        train_op = slim.learning.create_train_op(loss, optimizer)
         
         return tf.estimator.EstimatorSpec(
                 mode=mode,
