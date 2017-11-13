@@ -100,7 +100,9 @@ def train(model, data_file, epochs, image_summary, embedding):
                 'num_eval_events': num_eval_events,
                 'telescope_ids': telescope_ids,
                 'num_telescopes': num_telescopes,
-                'image_shape': image_shape
+                'image_shape': image_shape,
+                'num_auxiliary_inputs': 2,
+                'num_gamma_hadron_classes': 2
                 }
         return metadata
 

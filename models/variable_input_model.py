@@ -5,8 +5,6 @@ from models.alexnet import alexnet_block, alexnet_head
 from models.mobilenet import mobilenet_block, mobilenet_head
 from models.resnet import resnet_block, resnet_head
 
-NUM_CLASSES = 2
-
 # Given a list of telescope output features and tensors storing the telescope
 # positions and trigger list, return a tensor of array features of the form 
 # [NUM_BATCHES, NUM_ARRAY_FEATURES]
@@ -59,6 +57,8 @@ def variable_input_model(features, labels, params, is_training):
     # Reshape and cast inputs into proper dimensions and types
     image_width, image_length, image_depth = params['image_shape']
     num_telescopes = params['num_telescopes']
+    num_auxiliary_inputs = params['num_auxiliary_inputs']
+    num_gamma_hadron_classes = params['num_gamma_hadron_classes']
     
     telescope_data = features['telescope_data']
     telescope_data = tf.reshape(telescope_data, [-1, num_telescopes, 
@@ -71,7 +71,8 @@ def variable_input_model(features, labels, params, is_training):
 
     # TODO: move number of aux inputs (2) to be defined as a constant
     telescope_positions = features['telescope_positions']
-    telescope_positions = tf.reshape(telescope_positions, [num_telescopes, 2])
+    telescope_positions = tf.reshape(telescope_positions, 
+            [num_telescopes, num_auxiliary_inputs])
     telescope_positions = tf.cast(telescope_positions, tf.float32)
     
     # Reshape labels to vector as expected by tf.one_hot
@@ -114,7 +115,9 @@ def variable_input_model(features, labels, params, is_training):
                 telescope_positions, 
                 telescope_triggers)
         # Process the combined array features
-        logits = network_head(array_features, num_classes=NUM_CLASSES, 
+        logits = network_head(
+                array_features, 
+                num_classes=num_gamma_hadron_classes, 
                 is_training=is_training)
 
     with tf.variable_scope("Outputs"):
@@ -122,7 +125,7 @@ def variable_input_model(features, labels, params, is_training):
         # Calculate loss (for both TRAIN and EVAL modes) 
         onehot_labels = tf.one_hot(
                 indices=tf.cast(gamma_hadron_labels, tf.int32), 
-                depth=NUM_CLASSES)
+                depth=num_gamma_hadron_classes)
         loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels, 
                 logits=logits)
 
