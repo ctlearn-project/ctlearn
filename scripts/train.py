@@ -1,5 +1,6 @@
 import sys
 import os
+import configparser
 import argparse
 
 # Disable info and warning messages (not error messages)
@@ -12,28 +13,7 @@ import numpy as np
 
 # Add parent directory to pythonpath to allow imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-from models.variable_input_model import variable_input_model
-
-NUM_PARALLEL_CALLS = 12
-TRAINING_BATCH_SIZE = 64
-VALIDATION_BATCH_SIZE = 64
-
-SHUFFLE_BUFFER_SIZE = 10000
-MAX_STEPS = 10000
-
-BATCH_NORM_DECAY = 0.95
-
-# parse command line arguments
-parser = argparse.ArgumentParser(description='Trains on an hdf5 file.')
-parser.add_argument('h5_file', help='path to h5 file containing data')
-parser.add_argument('--logdir',default='/data0/logs/variable_input_model_1')
-parser.add_argument('--lr',default=0.001,type=float)
-args = parser.parse_args()
-
-model = variable_input_model
-data_file = args.h5_file
-model_dir = args.logdir
-base_learning_rate = args.lr
+from models.variable_input_model import variable_input_model as model
 
 def load_HDF5_data(filename, index, metadata, mode='TRAIN'):
 
@@ -112,48 +92,68 @@ def load_HDF5_metadata(filename):
             }
     return metadata
 
-# Define data loading functions
-load_data = load_HDF5_data
-load_auxiliary_data = load_HDF5_auxiliary_data
-load_metadata = load_HDF5_metadata
+# Parse configuration file
+config = configparser.ConfigParser()
+try:
+    config.read(sys.argv[1])
+except IndexError:
+    sys.exit("Usage: train.py config_file")
 
-# Get information about the dataset
-metadata = load_metadata(data_file)
+data_filename = config['Data']['Filename']
+is_hdf5_format = config['Data'].getboolean('UseHDF5Format', False)
+batch_size = config['Data Processing'].getint('BatchSize')
+num_parallel_calls = config['Data Processing'].getint('NumParallelCalls', 1)
+shuffle_buffer_size = config['Data Processing'].getint('ShuffleBufferSize', 
+        10000)
+base_learning_rate = config['Training'].getfloat('BaseLearningRate')
+batch_norm_decay = config['Training'].getfloat('BatchNormDecay', 0.95)
+model_dir = config['Logging']['ModelDirectory']
+
+# Define data loading functions
+if is_hdf5_format:
+    load_data = load_HDF5_data
+    load_auxiliary_data = load_HDF5_auxiliary_data
+    load_metadata = load_HDF5_metadata
+else:
+    sys.exit("Error: No data format specified.")
 
 # Define model hyperparameters
 hyperparameters = {
         'base_learning_rate': base_learning_rate,
-        'batch_norm_decay': BATCH_NORM_DECAY
+        'batch_norm_decay': batch_norm_decay
         }
 
+# Get information about the dataset
+metadata = load_metadata(data_filename)
+
 # Merge dictionaries for passing to the model function
-params = {**metadata, **hyperparameters}
+params = {**hyperparameters, **metadata}
 
 # Get the auxiliary input (same for every event)
-auxiliary_data = load_auxiliary_data(data_file)
+auxiliary_data = load_auxiliary_data(data_filename)
 
 # Create training and evaluation datasets
 def load_training_data(index):
-    return load_data(data_file, index, metadata, mode='TRAIN')
+    return load_data(data_filename, index, metadata, mode='TRAIN')
 
 def load_validation_data(index):
-    return load_data(data_file, index, metadata, mode='VALID')
+    return load_data(data_filename, index, metadata, mode='VALID')
 
 training_dataset = tf.data.Dataset.range(metadata['num_training_events'])
 training_dataset = training_dataset.map(lambda index: tuple(tf.py_func(
             load_training_data,
             [index], 
             [tf.float32, tf.int8, tf.int64])),
-        num_parallel_calls=NUM_PARALLEL_CALLS)
-training_dataset = training_dataset.batch(TRAINING_BATCH_SIZE)
+        num_parallel_calls=num_parallel_calls)
+training_dataset = training_dataset.batch(batch_size)
 
 validation_dataset = tf.data.Dataset.range(metadata['num_validation_events'])
 validation_dataset = validation_dataset.map(lambda index: tuple(tf.py_func(
             load_validation_data,
             [index],
             [tf.float32, tf.int8, tf.int64])), 
-        num_parallel_calls=NUM_PARALLEL_CALLS)
-validation_dataset = validation_dataset.batch(VALIDATION_BATCH_SIZE)
+        num_parallel_calls=num_parallel_calls)
+validation_dataset = validation_dataset.batch(batch_size)
 
 def input_fn(dataset, auxiliary_data, shuffle_buffer_size=None):
     # Get batches of data
@@ -227,16 +227,15 @@ def model_fn(features, labels, mode, params, config):
 print("Training and evaluating...")
 print("Total number of training events: ", metadata['num_training_events'])
 print("Total number of validation events: ", metadata['num_validation_events'])
-print("Training batch size: ", TRAINING_BATCH_SIZE)
-print("Validation batch size: ", VALIDATION_BATCH_SIZE)
+print("Batch size: ", batch_size)
 print("Training steps per epoch: ", np.ceil(metadata['num_training_events'] 
-    / TRAINING_BATCH_SIZE).astype(np.int32))
+    / batch_size).astype(np.int32))
 
 estimator = tf.estimator.Estimator(model_fn, model_dir=model_dir,
         params=params)
 while True:
     estimator.train(lambda: input_fn(training_dataset, auxiliary_data, 
-        shuffle_buffer_size=SHUFFLE_BUFFER_SIZE))
+        shuffle_buffer_size=shuffle_buffer_size))
     estimator.evaluate(
             lambda: input_fn(training_dataset, auxiliary_data),
             name='training')
