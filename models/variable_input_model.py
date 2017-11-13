@@ -1,10 +1,6 @@
 import tensorflow as tf
 import numpy as np
 
-from models.alexnet import alexnet_block, alexnet_head
-from models.mobilenet import mobilenet_block, mobilenet_head
-from models.resnet import resnet_block, resnet_head
-
 # Given a list of telescope output features and tensors storing the telescope
 # positions and trigger list, return a tensor of array features of the form 
 # [NUM_BATCHES, NUM_ARRAY_FEATURES]
@@ -93,10 +89,37 @@ def variable_input_model(features, labels, params, is_training):
     # feature maps, depending on the requirements of the network head.
     # The array-level processing is then performed by the network head. The
     # logits are returned and fed into a classifier.
-    cnn_block = mobilenet_block
-    combine_telescopes = combine_telescopes_as_feature_maps
-    network_head = mobilenet_head
 
+    # Choose the CNN block
+    if params['cnn_block'] == 'alexnet':
+        from models.alexnet import alexnet_block as cnn_block
+    elif params['cnn_block'] == 'mobilenet':
+        from models.mobilenet import mobilenet_block as cnn_block
+    elif params['cnn_block'] == 'resnet':
+        from models.resnet import resnet_block as cnn_block
+    else:
+        sys.exit("Error: No valid CNN block specified.")
+    
+    # Choose how to combine telescope outputs
+    if params['telescope_combination'] == 'vector':
+        combine_telescopes = combine_telescopes_as_vectors
+    elif params['telescope_combination'] == 'featuremap':
+        combine_telescopes = combine_telescopes_as_feature_maps
+    else:
+        sys.exit("Error: Must combine telescopes as Vector or FeatureMap")
+
+    # Choose the network head
+    if params['network_head'] == 'alexnet':
+        from models.alexnet import alexnet_head as network_head
+    elif params['network_head'] == 'mobilenet':
+        from models.mobilenet import mobilenet_head as network_head
+    elif params['network_head'] == 'resnet':
+        from models.resnet import resnet_head as network_head
+    elif params['network_head'] == 'resnetfeaturevector':
+        from models.resnet import resnet_head_feature_vector as network_head
+    else:
+        sys.exit("Error: No valid network head specified.")
+    
     # Process the input for each telescope
     telescope_outputs = []
     for telescope_index in range(num_telescopes):

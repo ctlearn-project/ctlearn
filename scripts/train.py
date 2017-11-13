@@ -14,7 +14,7 @@ import tables
 
 # Add parent directory to pythonpath to allow imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-from models.variable_input_model import variable_input_model as model
+from models.variable_input_model import variable_input_model
 
 def load_HDF5_data(filename, index, metadata, mode='TRAIN'):
 
@@ -102,11 +102,16 @@ except IndexError:
 config.read(config_filename)
 
 data_filename = config['Data']['Filename']
-is_hdf5_format = config['Data'].getboolean('UseHDF5Format', False)
+use_hdf5_format = config['Data'].getboolean('UseHDF5Format', False)
 batch_size = config['Data Processing'].getint('BatchSize')
 num_parallel_calls = config['Data Processing'].getint('NumParallelCalls', 1)
 shuffle_buffer_size = config['Data Processing'].getint('ShuffleBufferSize', 
         10000)
+use_variable_input_model = config['Model'].getboolean('UseVariableInputModel', 
+        False)
+cnn_block = config['Model']['CNNBlock'].lower()
+telescope_combination = config['Model']['TelescopeCombination'].lower()
+network_head = config['Model']['NetworkHead'].lower()
 base_learning_rate = config['Training'].getfloat('BaseLearningRate')
 batch_norm_decay = config['Training'].getfloat('BatchNormDecay', 0.95)
 model_dir = config['Logging']['ModelDirectory']
@@ -118,15 +123,24 @@ if not os.path.exists(model_dir):
 shutil.copy(config_filename, os.path.join(model_dir, config_log_filename))
 
 # Define data loading functions
-if is_hdf5_format:
+if use_hdf5_format:
     load_data = load_HDF5_data
     load_auxiliary_data = load_HDF5_auxiliary_data
     load_metadata = load_HDF5_metadata
 else:
     sys.exit("Error: No data format specified.")
 
+# Define model
+if use_variable_input_model:
+    model = variable_input_model
+else:
+    sys.exit("Error: no valid model specified.")
+
 # Define model hyperparameters
 hyperparameters = {
+        'cnn_block': cnn_block,
+        'telescope_combination': telescope_combination,
+        'network_head': network_head,
         'base_learning_rate': base_learning_rate,
         'batch_norm_decay': batch_norm_decay
         }
