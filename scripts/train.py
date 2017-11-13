@@ -228,7 +228,7 @@ def train(model, data_file, epochs, image_summary, embedding):
             metadata['num_validation_events'])
     print("Training batch size: ", TRAINING_BATCH_SIZE)
     print("Validation batch size: ", VALIDATION_BATCH_SIZE)
-    print("Training steps per epoch: ", np.ceil(metadata['num_train_events'] 
+    print("Training steps per epoch: ", np.ceil(metadata['num_training_events'] 
         / TRAINING_BATCH_SIZE).astype(np.int32))
     
     estimator = tf.estimator.Estimator(model_fn, model_dir=model_dir,
