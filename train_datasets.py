@@ -1,12 +1,10 @@
 import sys
 import os
 import math
-#add parent directory to pythonpath to allow imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 
 import argparse
-from models.mvcnn import mvcnn_fn_2
-from models.custom_multi_input import custom_multi_input_v2
+from mvcnn import mvcnn_fn_2
+from custom_multi_input import custom_multi_input_v2
 import tensorflow as tf
 from tables import *
 import re

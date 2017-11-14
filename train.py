@@ -12,10 +12,6 @@ slim = tf.contrib.slim
 import numpy as np
 import tables
 
-# Add parent directory to pythonpath to allow imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
-from models.variable_input_model import variable_input_model
-
 def load_HDF5_data(filename, index, metadata, mode='TRAIN'):
 
     # Read the data at the given table and index from the file
@@ -143,7 +139,7 @@ else:
 
 # Define model
 if use_variable_input_model:
-    model = variable_input_model
+    from variable_input_model import variable_input_model as model
 else:
     sys.exit("Error: no valid model specified.")
 
