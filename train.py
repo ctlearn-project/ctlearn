@@ -13,10 +13,11 @@ slim = tf.contrib.slim
 # Parse configuration file
 config = configparser.ConfigParser()
 try:
-    config_filename = sys.argv[1]
+    config_full_path = os.path.abspath(sys.argv[1])
+    config_path, config_filename = os.path.split(config_full_path)
 except IndexError:
     sys.exit("Usage: train.py config_file")
-config.read(config_filename)
+config.read(config_full_path)
 
 # Load options related to loading the data
 data_filename = config['Data']['Filename']
@@ -48,7 +49,7 @@ model_dir = config['Logging']['ModelDirectory']
 config_log_filename = time.strftime('%Y%m%d_%H%M%S_') + config_filename
 if not os.path.exists(model_dir):
     os.makedirs(model_dir)
-shutil.copy(config_filename, os.path.join(model_dir, config_log_filename))
+shutil.copy(config_full_path, os.path.join(model_dir, config_log_filename))
 
 # Define data loading functions
 if use_hdf5_format:
