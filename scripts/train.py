@@ -256,11 +256,7 @@ def model_fn(features, labels, mode, params, config):
 print("Training and evaluating...")
 print("Total number of training events: ", metadata['num_training_events'])
 print("Total number of validation events: ", metadata['num_validation_events'])
-print("Batch size: ", batch_size)
-print("Training steps per epoch: ", np.ceil(metadata['num_training_events'] 
-    / batch_size).astype(np.int32))
-
-estimator = tf.estimator.Estimator(model_fn, model_dir=model_dir,
+estimator = tf.estimator.Estimator(model_fn, model_dir=model_dir, 
         params=params)
 while True:
     for _ in range(num_training_epochs_per_evaluation):
