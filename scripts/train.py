@@ -239,10 +239,6 @@ def model_fn(features, labels, mode, params, config):
     optimizer = tf.train.AdamOptimizer(learning_rate=scaled_learning_rate)
     train_op = slim.learning.create_train_op(loss, optimizer)
     
-    # Define the summaries
-    #tf.summary.scalar('training_accuracy', training_accuracy)
-    tf.summary.scalar('scaled_learning_rate', scaled_learning_rate)
-    tf.summary.merge_all()
     # Define the evaluation metrics
     eval_metric_ops = {
             'accuracy': tf.metrics.accuracy(true_classes, predicted_classes),
