@@ -101,21 +101,30 @@ except IndexError:
     sys.exit("Usage: train.py config_file")
 config.read(config_filename)
 
+# Load options related to loading the data
 data_filename = config['Data']['Filename']
 use_hdf5_format = config['Data'].getboolean('UseHDF5Format', False)
+
+# Load options relating to processing the data
 batch_size = config['Data Processing'].getint('BatchSize')
 num_examples_per_training_epoch = config['Data Processing'].getint(
         'NumExamplesPerTrainingEpoch', 10000)
 num_training_epochs_per_evaluation = config['Data Processing'].getint(
         'NumTrainingEpochsPerEvaluation', 1)
 num_parallel_calls = config['Data Processing'].getint('NumParallelCalls', 1)
+
+# Load options to specify the model
 use_variable_input_model = config['Model'].getboolean('UseVariableInputModel', 
         False)
 cnn_block = config['Model']['CNNBlock'].lower()
 telescope_combination = config['Model']['TelescopeCombination'].lower()
 network_head = config['Model']['NetworkHead'].lower()
+
+# Load options for training hyperparameters
 base_learning_rate = config['Training'].getfloat('BaseLearningRate')
 batch_norm_decay = config['Training'].getfloat('BatchNormDecay', 0.95)
+
+# Load options relating to logging and checkpointing
 model_dir = config['Logging']['ModelDirectory']
 
 # Log a copy of the configuration file
