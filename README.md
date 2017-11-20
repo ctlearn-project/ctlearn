@@ -2,13 +2,49 @@
 
 Deep learning models for analysis and classification of image data for [CTA](https://www.cta-observatory.org/) (the Cherenkov Telescope Array).
 
-## Getting Started
+## Installation
 
 To install Tensorflow, follow the [instructions](https://www.tensorflow.org/install/). 
 Tensorflow with GPU support must be installed to train models on GPU.
 
 A data file of CTA data or simulations must be available in HDF5 format. 
 The [ImageExtractor](https://github.com/bryankim96/image-extractor) package is available to process, calibrate, and write CTA simtel files into the HDF5 format required by the scripts here.
+
+### Package Install
+
+Install dependencies with:
+
+```bash
+pip install -r requirements.txt
+```
+
+Install with pip:
+
+```bash
+pip install .
+```
+
+### Package Install w/ Anaconda
+
+Setup Anaconda environment with:
+
+```bash
+conda create -n [ENV_NAME] --file requirements.txt
+source activate [ENV_NAME]
+```
+
+Install package with pip:
+
+```bash
+/path/to/anaconda/install/envs/[ENV_NAME]/bin/pip install .
+```
+where /path/to/anaconda/install is the path to your anaconda installation directory and ENV\_NAME is the name of your environment.
+
+The path to the environment directory for the environment you wish to install into can be found quickly by running
+
+```bash
+conda env list
+```
 
 ## Dependencies
 
