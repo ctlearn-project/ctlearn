@@ -92,11 +92,11 @@ def variable_input_model(features, labels, params, is_training):
 
     # Choose the CNN block
     if params['cnn_block'] == 'alexnet':
-        from alexnet import alexnet_block as cnn_block
+        from ctalearn.models.alexnet import alexnet_block as cnn_block
     elif params['cnn_block'] == 'mobilenet':
-        from mobilenet import mobilenet_block as cnn_block
+        from ctalearn.models.mobilenet import mobilenet_block as cnn_block
     elif params['cnn_block'] == 'resnet':
-        from resnet import resnet_block as cnn_block
+        from ctalearn.models.resnet import resnet_block as cnn_block
     else:
         sys.exit("Error: No valid CNN block specified.")
     
@@ -110,13 +110,13 @@ def variable_input_model(features, labels, params, is_training):
 
     # Choose the network head
     if params['network_head'] == 'alexnet':
-        from alexnet import alexnet_head as network_head
+        from ctalearn.models.alexnet import alexnet_head as network_head
     elif params['network_head'] == 'mobilenet':
-        from mobilenet import mobilenet_head as network_head
+        from ctalearn.models.mobilenet import mobilenet_head as network_head
     elif params['network_head'] == 'resnet':
-        from resnet import resnet_head as network_head
+        from ctalearn.models.resnet import resnet_head as network_head
     elif params['network_head'] == 'resnetfeaturevector':
-        from resnet import resnet_head_feature_vector as network_head
+        from ctalearn.models.resnet import resnet_head_feature_vector as network_head
     else:
         sys.exit("Error: No valid network head specified.")
     

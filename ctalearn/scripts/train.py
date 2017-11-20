@@ -5,7 +5,7 @@ import sys
 import time
 
 # Disable info and warning messages (not error messages)
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '0'
 
 import tensorflow as tf
 slim = tf.contrib.slim
@@ -53,15 +53,15 @@ shutil.copy(config_full_path, os.path.join(model_dir, config_log_filename))
 
 # Define data loading functions
 if use_hdf5_format:
-    from load_HDF5_data import load_HDF5_data as load_data
-    from load_HDF5_data import load_HDF5_auxiliary_data as load_auxiliary_data
-    from load_HDF5_data import load_HDF5_metadata as load_metadata
+    from ctalearn.data import load_HDF5_data as load_data
+    from ctalearn.data import load_HDF5_auxiliary_data as load_auxiliary_data
+    from ctalearn.data import load_HDF5_metadata as load_metadata
 else:
     sys.exit("Error: No data format specified.")
 
 # Define model
 if use_variable_input_model:
-    from variable_input_model import variable_input_model as model
+    from ctalearn.models.variable_input_model import variable_input_model as model
 else:
     sys.exit("Error: no valid model specified.")
 
