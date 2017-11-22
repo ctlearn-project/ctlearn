@@ -22,8 +22,9 @@ install:
       - conda update -q conda
         # Useful for debugging any issues with conda
       - conda info -a
-      - conda env create -q -n test -f requirements.txt 
+      - conda env create -q -n test
       - source activate test
+      - conda install --q --yes --file requirements.txt -c conda-forge
       - python setup.py install
 script: 
       - pytest --cov=ctalearn;
