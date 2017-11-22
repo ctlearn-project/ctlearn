@@ -1,5 +1,9 @@
 # Deep Learning for CTA Analysis
 
+[![Build Status](https://travis-ci.org/bryankim96/deep-learning-CTA.svg?branch=master)](https://travis-ci.org/bryankim96/deep-learning-CTA) [![Coverage Status](https://coveralls.io/repos/github/bryankim96/deep-learning-CTA/badge.svg?branch=master)](https://coveralls.io/github/bryankim96/deep-learning-CTA?branch=master) [![Code Health](https://landscape.io/github/bryankim96/deep-learning-CTA/master/landscape.svg?style=flat)](https://landscape.io/github/bryankim96/deep-learning-CTA/master)
+
+
+
 Deep learning models for analysis and classification of image data for [CTA](https://www.cta-observatory.org/) (the Cherenkov Telescope Array).
 
 ## Installation
