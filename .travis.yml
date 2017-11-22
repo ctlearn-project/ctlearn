@@ -22,7 +22,7 @@ install:
       - conda update -q conda
         # Useful for debugging any issues with conda
       - conda info -a
-      - conda env create -q -n test
+      - conda create -q --name test
       - source activate test
       - conda install --q --yes --file requirements.txt -c conda-forge
       - python setup.py install
