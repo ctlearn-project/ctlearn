@@ -19,8 +19,7 @@ def cnn_rnn_model(features, labels, params, is_training):
     telescope_triggers = tf.cast(telescope_triggers, tf.float32)
 
     telescope_positions = features['telescope_positions']
-    telescope_positions = tf.reshape(telescope_positions, 
-            [num_telescopes, num_auxiliary_inputs])
+    telescope_positions = tf.reshape(telescope_positions, [-1, num_telescopes,num_auxiliary_inputs])
     telescope_positions = tf.cast(telescope_positions, tf.float32)
  
     # Reshape labels to vector as expected by tf.one_hot
@@ -54,8 +53,8 @@ def cnn_rnn_model(features, labels, params, is_training):
         sys.exit("Error: No valid CNN block specified.")
       
     used_tel_data = tf.sign(tf.reduce_max(telescope_data,[2,3,4]))
-    num_tels_triggered = tf.reduce_sum(used_tel_data, 1).to_int32()
-  
+    num_tels_triggered = tf.to_int32(tf.reduce_sum(used_tel_data, 0))
+
     telescope_outputs = []
     for telescope_index in range(num_telescopes):
         # Set all telescopes after the first to share weights
@@ -63,23 +62,25 @@ def cnn_rnn_model(features, labels, params, is_training):
             reuse = None
         else:
             reuse = True
- 
+        
         output = cnn_block(
                     tf.gather(telescope_data, telescope_index), 
                     tf.gather(telescope_triggers, telescope_index, axis=1),
                     params=params,
                     is_training=is_training,
                     reuse=reuse)
-       
-        output_flattened = tf.contrib.layers.flatten(output)
-        image_embedding = tf.layers.dense(inputs=output, units=1024, activation=tf.nn.relu,reuse=reuse)
-        telescope_position = tf.gather(telescope_positions,telescope_index,axis=1)
-        image_embedding_with_features = tf.concat([image_embeding,telescope_position], 1)
-        telescope_outputs.append(image_embedding_with_features)
+    
+        shape = output.get_shape().as_list()
+        dim = np.prod(shape[1:])
+        output_flattened = tf.reshape(output,[-1,dim])
+
+        image_embedding = tf.layers.dense(inputs=output_flattened, units=1024, activation=tf.nn.relu,reuse=reuse)
+        telescope_outputs.append(image_embedding)
 
     embeddings = tf.stack(telescope_outputs,axis=1)
-    
-    attention_cell = tf.contrib.rnn.AttentionCellWrapper(tf.contrib.rnn.LSTMCell(15360),num_telescopes)
+    embeddings = tf.concat([embeddings,telescope_positions],axis=2)
+
+    attention_cell = tf.contrib.rnn.AttentionCellWrapper(tf.contrib.rnn.LSTMCell(2048),num_telescopes)
 
     output, state = tf.nn.dynamic_rnn(
                         attention_cell,
@@ -87,11 +88,12 @@ def cnn_rnn_model(features, labels, params, is_training):
                         dtype=tf.float32,
                         sequence_length=num_tels_triggered)
 
-    logits = tf.layers.dense(inputs=state,units=num_gamma_hadron_classes)
+    logits = tf.layers.dense(inputs=state[1],units=num_gamma_hadron_classes)
 
     onehot_labels = tf.one_hot(
             indices=gamma_hadron_labels,
             depth=num_gamma_hadron_classes)
+
     loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels, 
             logits=logits)
 
