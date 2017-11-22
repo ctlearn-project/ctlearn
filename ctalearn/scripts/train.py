@@ -26,9 +26,8 @@ def train(config):
     # Load options to specify the model
     model_type = config['Model']['ModelType'].lower()
     cnn_block = config['Model']['CNNBlock'].lower()
-    if model_type == 'variable_input_model':
-        telescope_combination = config['Model']['TelescopeCombination'].lower()
-        network_head = config['Model']['NetworkHead'].lower()
+    telescope_combination = config['Model']['TelescopeCombination'].lower()
+    network_head = config['Model']['NetworkHead'].lower()
 
     # Load options for training hyperparameters
     base_learning_rate = config['Training'].getfloat('BaseLearningRate')
@@ -44,11 +43,16 @@ def train(config):
     shutil.copy(config_full_path, os.path.join(model_dir, config_log_filename))
 
     # Define data loading functions
-    if use_hdf5_format:
+    if use_hdf5_format:        
         from ctalearn.data import load_HDF5_metadata as load_metadata
-        from ctalearn.data import load_HDF5_data as load_data
-        from ctalearn.data import load_HDF5_auxiliary_data as load_auxiliary_data
-        data_types = [tf.float32, tf.int8, tf.int64]
+        if model_type == 'variable_input_model':
+            from ctalearn.data import load_HDF5_metadata as load_metadata
+            from ctalearn.data import load_HDF5_data as load_data
+            from ctalearn.data import load_HDF5_auxiliary_data as load_auxiliary_data
+            data_types = [tf.float32, tf.int8, tf.int64]
+        elif model_type == 'cnn_rnn':
+            from ctalearn.data import load_HDF5_data_by_tel as load_data
+            data_types = [tf.float32, tf.int8, tf.float32, tf.int64]
     else:
         sys.exit("Error: No data format specified.")
 
@@ -63,20 +67,24 @@ def train(config):
     # Define model hyperparameters
     hyperparameters = {
             'cnn_block': cnn_block,
-            'telescope_combination': telescope_combination,
-            'network_head': network_head,
             'base_learning_rate': base_learning_rate,
             'batch_norm_decay': batch_norm_decay
             }
-
+    if model_type == 'variable_input_model': 
+        hyperparameters['telescope_combination'] = telescope_combination
+        hyperparameters['network_head'] = network_head
+ 
     # Get information about the dataset
     metadata = load_metadata(data_filename)
 
     # Merge dictionaries for passing to the model function
     params = {**hyperparameters, **metadata}
 
-    # Get the auxiliary input (same for every event)
-    auxiliary_data = load_auxiliary_data(data_filename)
+    if model_type == 'variable_input_model':
+        # Get the auxiliary input (same for every event)
+        auxiliary_data = load_auxiliary_data(data_filename)
+    elif model_type == 'cnn_rnn':
+        auxiliary_data = None
 
     # Create training and evaluation datasets
     def load_training_data(index):
@@ -106,18 +114,30 @@ def train(config):
         if shuffle_buffer_size:
             dataset = dataset.shuffle(shuffle_buffer_size)
         iterator = dataset.make_one_shot_iterator()
-        (telescope_data, telescope_triggers, 
-                gamma_hadron_labels) = iterator.get_next()
-        # Convert auxiliary data to tensors
-        telescope_positions = tf.constant(auxiliary_data['telescope_positions'])
-        features = {
-                'telescope_data': telescope_data, 
-                'telescope_triggers': telescope_triggers, 
-                'telescope_positions': telescope_positions
-                }
-        labels = {
-                'gamma_hadron_labels': gamma_hadron_labels
-                }
+        if model_type == 'variable_input_model':
+            (telescope_data, telescope_triggers, 
+                    gamma_hadron_labels) = iterator.get_next()
+            # Convert auxiliary data to tensors
+            telescope_positions = tf.constant(auxiliary_data['telescope_positions'])
+            features = {
+                    'telescope_data': telescope_data, 
+                    'telescope_triggers': telescope_triggers, 
+                    'telescope_positions': telescope_positions
+                    }
+            labels = {
+                    'gamma_hadron_labels': gamma_hadron_labels
+                    }
+        elif model_type == 'cnn_rnn':
+            (telescope_data, telescope_triggers, telescope_positions,
+                    gamma_hadron_labels) = iterator.get_next()
+            features = {
+                    'telescope_data': telescope_data, 
+                    'telescope_triggers': telescope_triggers, 
+                    'telescope_positions': telescope_positions
+                    }
+            labels = {
+                    'gamma_hadron_labels': gamma_hadron_labels
+                    } 
         return features, labels
 
     def model_fn(features, labels, mode, params, config):
