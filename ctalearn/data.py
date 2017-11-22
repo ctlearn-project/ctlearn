@@ -1,44 +1,6 @@
 import tables
 import numpy as np
 
-def load_HDF5_data_by_tel(filename, index, metadata, mode='TRAIN'):
-    # Read the data at the given table and index from the file
-    f = tables.open_file(filename, mode='r')
-    tel_table = f.root.Tel_table
-    if mode == 'TRAIN':
-        table = f.root.E0.Events_Training
-    elif mode == 'VALID':
-        table = f.root.E0.Events_Validation
-    else:
-        raise ValueError("Mode must be 'TRAIN' or 'VALID'")
-    record = table.read(index, index + 1)
-    
-    telescope_ids = metadata['telescope_ids']
-    image_indices = record['tel_map'][0]
-    telescope_images = []
-    for telescope_id, image_index in zip(telescope_ids, image_indices):
-        if not image_index == -1:
-            # Telescope triggered
-            telescope_table = f.root.E0._f_get_child(telescope_id)
-            telescope_images.append(telescope_table[image_index])
-   
-            # Get corresponding telescope positions
-            record = tel_table.where('tel_id == {}'.format(telescope_id[1:])[0]
-            telescope_positions.append([record['tel_x'],record['tel_y'])
-
-    telescope_images = np.stack(telescope_images).astype(np.float32)
-    telescope_positions = np.stack(telescope_positions).astype(np.float32) 
-
-    # Get classification label by converting CORSIKA particle code
-    gamma_hadron_label = record['gamma_hadron_label'][0]
-    if gamma_hadron_label == 0: # gamma ray
-        gamma_hadron_label = 1
-    elif gamma_hadron_label == 101: # proton
-        gamma_hadron_label = 0
-    
-    f.close()
-    
-    return [telescope_images, telescope_positions, gamma_hadron_label]
 
 def load_HDF5_data(filename, index, metadata, mode='TRAIN'):
 
@@ -88,6 +50,7 @@ def load_HDF5_auxiliary_data(filename):
     for row in f.root.Tel_Table.iterrows():
         telescope_positions.append(row["tel_x"])
         telescope_positions.append(row["tel_y"])
+        telescope_positions.append(row["tel_z"])
     f.close()
     auxiliary_data = {
         'telescope_positions': np.array(telescope_positions, dtype=np.float32)
@@ -112,7 +75,7 @@ def load_HDF5_metadata(filename):
             'telescope_ids': telescope_ids,
             'num_telescopes': num_telescopes,
             'image_shape': image_shape,
-            'num_auxiliary_inputs': 2,
+            'num_auxiliary_inputs': 3,
             'num_gamma_hadron_classes': 2
             }
     return metadata
