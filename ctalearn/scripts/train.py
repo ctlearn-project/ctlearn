@@ -45,14 +45,10 @@ def train(config):
 
     # Define data loading functions
     if use_hdf5_format:
+        from ctalearn.data import load_HDF5_metadata as load_metadata
+        from ctalearn.data import load_HDF5_data as load_data
         from ctalearn.data import load_HDF5_auxiliary_data as load_auxiliary_data
-        if model_type == 'variable_input_model':
-            from ctalearn.data import load_HDF5_data as load_data
-            from ctalearn.data import load_HDF5_metadata as load_metadata
-            data_types = [tf.float32, tf.int8, tf.int64]
-        elif model_type == 'cnn_rnn':
-            from ctalearn.data import load_HDF5_data_by_tel as load_data
-            data_types = [tf.float32, tf.float32, tf.int64]
+        data_types = [tf.float32, tf.int8, tf.int64]
     else:
         sys.exit("Error: No data format specified.")
 
@@ -110,31 +106,19 @@ def train(config):
         if shuffle_buffer_size:
             dataset = dataset.shuffle(shuffle_buffer_size)
         iterator = dataset.make_one_shot_iterator()
-        if model_type == 'variable_input_model':
-            (telescope_data, telescope_triggers, 
-                    gamma_hadron_labels) = iterator.get_next()
-            # Convert auxiliary data to tensors
-            telescope_positions = tf.constant(auxiliary_data['telescope_positions'])
-            features = {
-                    'telescope_data': telescope_data, 
-                    'telescope_triggers': telescope_triggers, 
-                    'telescope_positions': telescope_positions
-                    }
-            labels = {
-                    'gamma_hadron_labels': gamma_hadron_labels
-                    }
-        elif model_type == 'cnn_rnn':
-            (telescope_data, telescope_positions, 
-                    gamma_hadron_labels) = iterator.get_next()
-            features = {
-                    'telescope_data': telescope_data, 
-                    'telescope_positions': telescope_positions
-                    }
-            labels = {
-                    'gamma_hadron_labels': gamma_hadron_labels
-                    }
- 
-            return features, labels
+        (telescope_data, telescope_triggers, 
+                gamma_hadron_labels) = iterator.get_next()
+        # Convert auxiliary data to tensors
+        telescope_positions = tf.constant(auxiliary_data['telescope_positions'])
+        features = {
+                'telescope_data': telescope_data, 
+                'telescope_triggers': telescope_triggers, 
+                'telescope_positions': telescope_positions
+                }
+        labels = {
+                'gamma_hadron_labels': gamma_hadron_labels
+                }
+        return features, labels
 
     def model_fn(features, labels, mode, params, config):
         
@@ -154,18 +138,15 @@ def train(config):
                 'classes': predicted_classes
                 }
       
-        if model_type == 'variable_input_model':
-            # Scale the learning rate so batches with fewer triggered
-            # telescopes don't have smaller gradients
-            trigger_rate = tf.reduce_mean(tf.cast(features['telescope_triggers'], 
-                tf.float32))
-            # Avoid division by 0
-            trigger_rate = tf.maximum(trigger_rate, 0.1)
-            scaling_factor = tf.reciprocal(trigger_rate)
-            scaled_learning_rate = tf.multiply(scaling_factor, 
-                    params['base_learning_rate'])
-        elif model_type == 'cnn_rnn':
-            scaled_learning_rate = params['base_learning_rate']
+        # Scale the learning rate so batches with fewer triggered
+        # telescopes don't have smaller gradients
+        trigger_rate = tf.reduce_mean(tf.cast(features['telescope_triggers'], 
+            tf.float32))
+        # Avoid division by 0
+        trigger_rate = tf.maximum(trigger_rate, 0.1)
+        scaling_factor = tf.reciprocal(trigger_rate)
+        scaled_learning_rate = tf.multiply(scaling_factor, 
+                params['base_learning_rate'])
 
         # Define the train op
         optimizer = tf.train.AdamOptimizer(learning_rate=scaled_learning_rate)
