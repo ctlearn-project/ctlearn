@@ -1,6 +1,6 @@
 # Deep Learning for CTA Analysis
 
-[![Build Status](https://travis-ci.org/bryankim96/deep-learning-CTA.svg?branch=master)](https://travis-ci.org/bryankim96/deep-learning-CTA) [![Coverage Status](https://coveralls.io/repos/github/bryankim96/ctalearn/badge.svg?branch=master)](https://coveralls.io/github/bryankim96/ctalearn?branch=master) [![Code Health](https://landscape.io/github/bryankim96/ctalearn/master/landscape.svg?style=flat)](https://landscape.io/github/bryankim96/ctalearn/master)
+[![Build Status](https://travis-ci.org/bryankim96/ctalearn.svg?branch=master)](https://travis-ci.org/bryankim96/ctalearn) [![Coverage Status](https://coveralls.io/repos/github/bryankim96/ctalearn/badge.svg?branch=master)](https://coveralls.io/github/bryankim96/ctalearn?branch=master) [![Code Health](https://landscape.io/github/bryankim96/ctalearn/master/landscape.svg?style=flat)](https://landscape.io/github/bryankim96/ctalearn/master)
 
 
 
