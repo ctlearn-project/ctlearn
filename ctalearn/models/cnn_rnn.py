@@ -89,7 +89,7 @@ def cnn_rnn_model(features, labels, params, is_training):
 
     #implement attention mechanism with range num_tel (covering all timesteps)
     #define LSTM cell size
-    attention_cell = tf.contrib.rnn.AttentionCellWrapper(tf.contrib.rnn.LSTMCell(LSTM_SIZE),num_telescopes)
+    attention_cell = tf.contrib.rnn.AttentionCellWrapper(tf.contrib.rnn.LayerNormBasicLSTMCell(LSTM_SIZE),num_telescopes)
 
     # outputs = shape(batch_size, num_tel, output_size)
     outputs, final_state = tf.nn.dynamic_rnn(
