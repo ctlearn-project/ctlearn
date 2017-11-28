@@ -21,12 +21,11 @@ def load_HDF5_data_by_tel(filename, index, metadata, mode='TRAIN'):
     telescope_images = []
     telescope_positions = []
     for telescope_id, image_index in zip(telescope_ids, image_indices):
-       if image_index != -1:
+        if image_index != -1:
             telescope_table = f.root.E0._f_get_child(telescope_id)
             telescope_images.append(telescope_table[image_index])
             telescope_position = [[x['tel_x'],x['tel_y'],x['tel_z']] for x in tel_data_table.iterrows() if x['tel_id'] == int(telescope_id[1:])][0]
             telescope_positions.append(telescope_position)
-
     while len(telescope_images) < len(telescope_ids):
         telescope_images.append(np.zeros(metadata['image_shape']))
         telescope_positions.append([0,0,0])
@@ -35,17 +34,19 @@ def load_HDF5_data_by_tel(filename, index, metadata, mode='TRAIN'):
     telescope_images = np.stack(telescope_images).astype(np.float32)
 
     # Get binary values indicating whether each telescope triggered
-    telescope_triggers = np.array([0 if i < 0 else 1 for i in image_indices].sort(reverse=True),dtype=np.int8)
-    
+    telescope_triggers_list = [0 if i < 0 else 1 for i in image_indices]
+    telescope_triggers_list.sort(reverse=True)
+    telescope_triggers = np.array(telescope_triggers_list,dtype=np.int8)
+
     # Get classification label by converting CORSIKA particle code
     gamma_hadron_label = record['gamma_hadron_label'][0]
     if gamma_hadron_label == 0: # gamma ray
         gamma_hadron_label = 1
     elif gamma_hadron_label == 101: # proton
         gamma_hadron_label = 0
-    
+   
     f.close()
-    
+
     return [telescope_images, telescope_triggers, telescope_positions, gamma_hadron_label]
 
 def load_HDF5_data(filename, index, metadata, mode='TRAIN'):
