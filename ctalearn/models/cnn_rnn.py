@@ -51,7 +51,8 @@ def cnn_rnn_model(features, labels, params, is_training):
         from ctalearn.models.resnet import resnet_block as cnn_block
     else:
         sys.exit("Error: No valid CNN block specified.")
-      
+
+    #use reduce_max to locate blank (zero-padded) images and calculate the number of valid images per event
     used_tel_data = tf.sign(tf.reduce_max(telescope_data,[2,3,4]))
     num_tels_triggered = tf.to_int32(tf.reduce_sum(used_tel_data, 0))
 
@@ -70,25 +71,42 @@ def cnn_rnn_model(features, labels, params, is_training):
                     is_training=is_training,
                     reuse=reuse)
     
+        #flatten output of embedding CNN to (batch_size, _)
         shape = output.get_shape().as_list()
         dim = np.prod(shape[1:])
         output_flattened = tf.reshape(output,[-1,dim])
 
+        #compute image embedding for each telescope (batch_size,1024)
         image_embedding = tf.layers.dense(inputs=output_flattened, units=1024, activation=tf.nn.relu,reuse=reuse)
         telescope_outputs.append(image_embedding)
 
+    #combine image embeddings (batch_size,num_tel,num_units_embedding)
     embeddings = tf.stack(telescope_outputs,axis=1)
+    #add telescope position auxiliary input to each embedding (batch_size, num_tel, num_units_embedding+3)
     embeddings = tf.concat([embeddings,telescope_positions],axis=2)
 
-    attention_cell = tf.contrib.rnn.AttentionCellWrapper(tf.contrib.rnn.LSTMCell(2048),num_telescopes)
+    #implement attention mechanism with range num_tel (covering all timesteps)
+    #define LSTM cell size
+    attention_cell = tf.contrib.rnn.AttentionCellWrapper(tf.contrib.rnn.LSTMCell(1024),num_telescopes)
 
-    output, state = tf.nn.dynamic_rnn(
+    # outputs = shape(batch_size, num_tel, output_size)
+    outputs, final_state = tf.nn.dynamic_rnn(
                         attention_cell,
                         embeddings,
                         dtype=tf.float32,
                         sequence_length=num_tels_triggered)
 
-    logits = tf.layers.dense(inputs=state[1],units=num_gamma_hadron_classes)
+    # (batch_size*num_tel,output_size)
+    outputs_reshaped = tf.reshape(outputs, [-1, 1024])
+    #indices (0 except at every n+(num_tel-1) where n in range(batch_size))
+    indices = tf.range(0, tf.shape(outputs)[0]) * outputs.get_shape()[1] + (outputs.get_shape()[1] - 1)
+    #partition outputs to select only the last LSTM output for each example in the batch
+    partitions = tf.reduce_sum(tf.one_hot(indices, tf.shape(outputs_reshaped)[0],dtype='int32'),0)
+    partitioned_output = tf.dynamic_partition(outputs_reshaped, partitions, 2)    
+    #shape (batch_size, output_size)
+    last_output = partitioned_output[1]
+
+    logits = tf.layers.dense(inputs=last_output,units=num_gamma_hadron_classes)
 
     onehot_labels = tf.one_hot(
             indices=gamma_hadron_labels,
