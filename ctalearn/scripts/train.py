@@ -46,7 +46,6 @@ def train(config):
     if use_hdf5_format:        
         from ctalearn.data import load_HDF5_metadata as load_metadata
         if model_type == 'variable_input_model':
-            from ctalearn.data import load_HDF5_metadata as load_metadata
             from ctalearn.data import load_HDF5_data as load_data
             from ctalearn.data import load_HDF5_auxiliary_data as load_auxiliary_data
             data_types = [tf.float32, tf.int8, tf.int64]
@@ -169,8 +168,13 @@ def train(config):
                 params['base_learning_rate'])
 
         # Define the train op
+        if model_type == 'variable_input_model':
+            clip_gradient_norm = 0
+        elif model_type == 'cnn_rnn':
+            clip_gradient_norm = 1.0
+
         optimizer = tf.train.AdamOptimizer(learning_rate=scaled_learning_rate)
-        train_op = slim.learning.create_train_op(loss, optimizer)
+        train_op = slim.learning.create_train_op(loss, optimizer,clip_gradient_norm=clip_gradient_norm)
         
         # Define the evaluation metrics
         eval_metric_ops = {
