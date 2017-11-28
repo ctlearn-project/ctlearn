@@ -1,6 +1,8 @@
 import tensorflow as tf
 import numpy as np
 
+LSTM_SIZE = 2048
+
 def cnn_rnn_model(features, labels, params, is_training):
     
     # Reshape and cast inputs into proper dimensions and types
@@ -87,7 +89,7 @@ def cnn_rnn_model(features, labels, params, is_training):
 
     #implement attention mechanism with range num_tel (covering all timesteps)
     #define LSTM cell size
-    attention_cell = tf.contrib.rnn.AttentionCellWrapper(tf.contrib.rnn.LSTMCell(1024),num_telescopes)
+    attention_cell = tf.contrib.rnn.AttentionCellWrapper(tf.contrib.rnn.LSTMCell(LSTM_SIZE),num_telescopes)
 
     # outputs = shape(batch_size, num_tel, output_size)
     outputs, final_state = tf.nn.dynamic_rnn(
@@ -97,7 +99,7 @@ def cnn_rnn_model(features, labels, params, is_training):
                         sequence_length=num_tels_triggered)
 
     # (batch_size*num_tel,output_size)
-    outputs_reshaped = tf.reshape(outputs, [-1, 1024])
+    outputs_reshaped = tf.reshape(outputs, [-1, LSTM_SIZE])
     #indices (0 except at every n+(num_tel-1) where n in range(batch_size))
     indices = tf.range(0, tf.shape(outputs)[0]) * outputs.get_shape()[1] + (outputs.get_shape()[1] - 1)
     #partition outputs to select only the last LSTM output for each example in the batch
