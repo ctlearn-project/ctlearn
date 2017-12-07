@@ -9,11 +9,8 @@ def combine_telescopes_as_vectors(telescope_outputs, telescope_positions,
     array_inputs = []
     for i, telescope_features in enumerate(telescope_outputs):
         # Flatten output features to get feature vectors
-        telescope_features = tf.contrib.layers.flatten(telescope_features)
-        # Get the telescope x and y position and if it triggered
-        telescope_position = telescope_positions[i, :]
-        telescope_position = tf.tile(tf.expand_dims(telescope_position, 0),
-                [tf.shape(telescope_features)[0], 1])
+        telescope_features = tf.layers.flatten(telescope_features)
+        telescope_position = telescope_positions[:, i, :]
         telescope_trigger = tf.expand_dims(telescope_triggers[:, i], 1)
         # Insert auxiliary input into each feature vector
         telescope_features = tf.concat([telescope_features, 
@@ -30,13 +27,15 @@ def combine_telescopes_as_feature_maps(telescope_outputs, telescope_positions,
         telescope_triggers):
     array_inputs = []
     for i, telescope_features in enumerate(telescope_outputs):
-        # Get the telescope x and y position and if it triggered
-        telescope_position = telescope_positions[i, :] # [2]
+        # Get the telescope position and if it triggered
+        # [NUM_BATCH, NUM_AUX_INFO]
+        telescope_position = telescope_positions[:, i, :]
         telescope_trigger = telescope_triggers[:, i] # [NUM_BATCH]
-        # Tile the position along the batch, width, and height dimensions
-        telescope_position = tf.reshape(telescope_position, [1, 1, 1, -1])
+        # Tile the position along the width and height dimensions
+        telescope_position = tf.expand_dims(telescope_position, 1)
+        telescope_position = tf.expand_dims(telescope_position, 1)
         telescope_position = tf.tile(telescope_position,
-                tf.concat([tf.shape(telescope_features)[:-1], [1]], 0))
+                tf.concat([[1], tf.shape(telescope_features)[1:-1], [1]], 0))
         # Tile the trigger along the width, height, and channel dimensions
         telescope_trigger = tf.reshape(telescope_trigger, [-1, 1, 1, 1])
         telescope_trigger = tf.tile(telescope_trigger,
@@ -67,7 +66,7 @@ def variable_input_model(features, labels, params, is_training):
 
     telescope_positions = features['telescope_positions']
     telescope_positions = tf.reshape(telescope_positions, 
-            [num_telescopes, num_auxiliary_inputs])
+            [-1, num_telescopes, num_auxiliary_inputs])
     telescope_positions = tf.cast(telescope_positions, tf.float32)
     
     # Reshape labels to vector as expected by tf.one_hot

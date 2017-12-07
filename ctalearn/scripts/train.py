@@ -14,6 +14,8 @@ def train(config):
     # Load options related to loading the data
     data_filename = config['Data']['Filename']
     use_hdf5_format = config['Data'].getboolean('UseHDF5Format', False)
+    sort_telescopes_by_trigger = config['Data'].getboolean(
+            'SortTelescopesByTrigger', False)
 
     # Load options relating to processing the data
     batch_size = config['Data Processing'].getint('BatchSize')
@@ -25,13 +27,24 @@ def train(config):
 
     # Load options to specify the model
     model_type = config['Model']['ModelType'].lower()
-    cnn_block = config['Model']['CNNBlock'].lower()
-    telescope_combination = config['Model']['TelescopeCombination'].lower()
-    network_head = config['Model']['NetworkHead'].lower()
+    if model_type == 'variableinputmodel':
+        from ctalearn.models.variable_input_model import (
+                variable_input_model as model)
+        cnn_block = config['Model']['CNNBlock'].lower()
+        telescope_combination = config['Model']['TelescopeCombination'].lower()
+        network_head = config['Model']['NetworkHead'].lower()
+    elif model_type == 'cnnrnn':
+        from ctalearn.models.cnn_rnn import cnn_rnn_model as model
+        cnn_block = config['Model']['CNNBlock'].lower()
+        telescope_combination = None
+        network_head = None
+    else:
+        sys.exit("Error: no valid model specified.")
 
     # Load options for training hyperparameters
     base_learning_rate = config['Training'].getfloat('BaseLearningRate')
     batch_norm_decay = config['Training'].getfloat('BatchNormDecay', 0.95)
+    clip_gradient_norm = config['Training'].getfloat('ClipGradientNorm', 0.)
 
     # Load options relating to logging and checkpointing
     model_dir = config['Logging']['ModelDirectory']
@@ -45,33 +58,25 @@ def train(config):
     # Define data loading functions
     if use_hdf5_format:        
         from ctalearn.data import load_HDF5_metadata as load_metadata
-        if model_type == 'variable_input_model':
-            from ctalearn.data import load_HDF5_data as load_data
-            from ctalearn.data import load_HDF5_auxiliary_data as load_auxiliary_data
-            data_types = [tf.float32, tf.int8, tf.int64]
-        elif model_type == 'cnn_rnn':
-            from ctalearn.data import load_HDF5_data_by_tel as load_data
-            data_types = [tf.float32, tf.int8, tf.float32, tf.int64]
+        from ctalearn.data import (
+                load_HDF5_auxiliary_data as load_auxiliary_data)
+        from ctalearn.data import load_HDF5_data as load_data
     else:
         sys.exit("Error: No data format specified.")
-
-    # Define model
-    if model_type == 'variable_input_model':
-        from ctalearn.models.variable_input_model import variable_input_model as model
-    elif model_type == 'cnn_rnn':
-        from ctalearn.models.cnn_rnn import cnn_rnn_model as model
-    else:
-        sys.exit("Error: no valid model specified.")
+    # Data types correspond to:
+    # [telescope_data, telescope_triggers, telescope_positions,
+    #  gamma_hadron_label]
+    data_types = [tf.float32, tf.int8, tf.float32, tf.int64]
 
     # Define model hyperparameters
     hyperparameters = {
             'cnn_block': cnn_block,
+            'telescope_combination': telescope_combination,
+            'network_head': network_head,
             'base_learning_rate': base_learning_rate,
-            'batch_norm_decay': batch_norm_decay
+            'batch_norm_decay': batch_norm_decay,
+            'clip_gradient_norm': clip_gradient_norm,
             }
-    if model_type == 'variable_input_model': 
-        hyperparameters['telescope_combination'] = telescope_combination
-        hyperparameters['network_head'] = network_head
  
     # Get information about the dataset
     metadata = load_metadata(data_filename)
@@ -79,18 +84,19 @@ def train(config):
     # Merge dictionaries for passing to the model function
     params = {**hyperparameters, **metadata}
 
-    if model_type == 'variable_input_model':
-        # Get the auxiliary input (same for every event)
-        auxiliary_data = load_auxiliary_data(data_filename)
-    elif model_type == 'cnn_rnn':
-        auxiliary_data = None
+    # Get the auxiliary input that won't change between events
+    auxiliary_data = load_auxiliary_data(data_filename)
 
     # Create training and evaluation datasets
     def load_training_data(index):
-        return load_data(data_filename, index, metadata, mode='TRAIN')
+        return load_data(data_filename, index, auxiliary_data, metadata,
+                sort_telescopes_by_trigger=sort_telescopes_by_trigger,
+                mode='TRAIN')
 
     def load_validation_data(index):
-        return load_data(data_filename, index, metadata, mode='VALID')
+        return load_data(data_filename, index, auxiliary_data, metadata,
+                sort_telescopes_by_trigger=sort_telescopes_by_trigger,
+                mode='VALID')
 
     training_dataset = tf.data.Dataset.range(metadata['num_training_events'])
     training_dataset = training_dataset.map(lambda index: tuple(tf.py_func(
@@ -100,7 +106,8 @@ def train(config):
             num_parallel_calls=num_parallel_calls)
     training_dataset = training_dataset.batch(batch_size)
 
-    validation_dataset = tf.data.Dataset.range(metadata['num_validation_events'])
+    validation_dataset = tf.data.Dataset.range(
+            metadata['num_validation_events'])
     validation_dataset = validation_dataset.map(lambda index: tuple(tf.py_func(
                 load_validation_data,
                 [index],
@@ -108,35 +115,21 @@ def train(config):
             num_parallel_calls=num_parallel_calls)
     validation_dataset = validation_dataset.batch(batch_size)
 
-    def input_fn(dataset, auxiliary_data, shuffle_buffer_size=None):
+    def input_fn(dataset, shuffle_buffer_size=None):
         # Get batches of data
         if shuffle_buffer_size:
             dataset = dataset.shuffle(shuffle_buffer_size)
         iterator = dataset.make_one_shot_iterator()
-        if model_type == 'variable_input_model':
-            (telescope_data, telescope_triggers, 
-                    gamma_hadron_labels) = iterator.get_next()
-            # Convert auxiliary data to tensors
-            telescope_positions = tf.constant(auxiliary_data['telescope_positions'])
-            features = {
-                    'telescope_data': telescope_data, 
-                    'telescope_triggers': telescope_triggers, 
-                    'telescope_positions': telescope_positions
-                    }
-            labels = {
-                    'gamma_hadron_labels': gamma_hadron_labels
-                    }
-        elif model_type == 'cnn_rnn':
-            (telescope_data, telescope_triggers, telescope_positions,
-                    gamma_hadron_labels) = iterator.get_next()
-            features = {
-                    'telescope_data': telescope_data, 
-                    'telescope_triggers': telescope_triggers, 
-                    'telescope_positions': telescope_positions
-                    }
-            labels = {
-                    'gamma_hadron_labels': gamma_hadron_labels
-                    } 
+        (telescope_data, telescope_triggers, telescope_positions,
+                gamma_hadron_labels) = iterator.get_next()
+        features = {
+                'telescope_data': telescope_data, 
+                'telescope_triggers': telescope_triggers, 
+                'telescope_positions': telescope_positions,
+                }
+        labels = {
+                'gamma_hadron_labels': gamma_hadron_labels,
+                }
         return features, labels
 
     def model_fn(features, labels, mode, params, config):
@@ -168,18 +161,15 @@ def train(config):
                 params['base_learning_rate'])
 
         # Define the train op
-        if model_type == 'variable_input_model':
-            clip_gradient_norm = 0
-        elif model_type == 'cnn_rnn':
-            clip_gradient_norm = 1.0
-
         optimizer = tf.train.AdamOptimizer(learning_rate=scaled_learning_rate)
-        train_op = slim.learning.create_train_op(loss, optimizer,clip_gradient_norm=clip_gradient_norm)
+        train_op = slim.learning.create_train_op(loss, optimizer,
+                clip_gradient_norm=params['clip_gradient_norm'])
         
         # Define the evaluation metrics
         eval_metric_ops = {
-                'accuracy': tf.metrics.accuracy(true_classes, predicted_classes),
-                'auc': tf.metrics.auc(true_classes, predicted_classes)
+                'accuracy': tf.metrics.accuracy(true_classes, 
+                    predicted_classes),
+                'auc': tf.metrics.auc(true_classes, predicted_classes),
                 }
         
         return tf.estimator.EstimatorSpec(
@@ -192,19 +182,18 @@ def train(config):
     # Train and evaluate the model
     print("Training and evaluating...")
     print("Total number of training events: ", metadata['num_training_events'])
-    print("Total number of validation events: ", metadata['num_validation_events'])
+    print("Total number of validation events: ",
+            metadata['num_validation_events'])
     estimator = tf.estimator.Estimator(model_fn, model_dir=model_dir, 
             params=params)
     while True:
         for _ in range(num_training_epochs_per_evaluation):
-            estimator.train(lambda: input_fn(training_dataset, auxiliary_data, 
+            estimator.train(lambda: input_fn(training_dataset, 
                 shuffle_buffer_size=num_examples_per_training_epoch))
         estimator.evaluate(
-                lambda: input_fn(training_dataset, auxiliary_data),
-                name='training')
+                lambda: input_fn(training_dataset), name='training')
         estimator.evaluate(
-                lambda: input_fn(validation_dataset, auxiliary_data),
-                name='validation')
+                lambda: input_fn(validation_dataset), name='validation')
 
 if __name__ == "__main__":
 
