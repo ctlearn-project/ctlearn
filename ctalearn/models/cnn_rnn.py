@@ -54,9 +54,8 @@ def cnn_rnn_model(features, labels, params, is_training):
     else:
         sys.exit("Error: No valid CNN block specified.")
 
-    #use reduce_max to locate blank (zero-padded) images and calculate the number of valid images per event
-    used_tel_data = tf.sign(tf.reduce_max(telescope_data,[2,3,4]))
-    num_tels_triggered = tf.to_int32(tf.reduce_sum(used_tel_data, 0))
+    #calculate number of valid images per event
+    num_tels_triggered = tf.to_int32(tf.reduce_sum(telescope_triggers,1))
 
     telescope_outputs = []
     for telescope_index in range(num_telescopes):
@@ -66,13 +65,8 @@ def cnn_rnn_model(features, labels, params, is_training):
         else:
             reuse = True
         
-        output = cnn_block(
-                    tf.gather(telescope_data, telescope_index), 
-                    tf.gather(telescope_triggers, telescope_index, axis=1),
-                    params=params,
-                    is_training=is_training,
-                    reuse=reuse)
-    
+        output = cnn_block(tf.gather(telescope_data, telescope_index),None,params=params,reuse=reuse)
+
         #flatten output of embedding CNN to (batch_size, _)
         shape = output.get_shape().as_list()
         dim = np.prod(shape[1:])

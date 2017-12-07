@@ -99,8 +99,7 @@ def mobilenet_base(scope, inputs, conv_defs, batch_norm_decay=0.95,
                                 'layer %d' % (conv_def.ltype, i))
     return net, end_points
 
-def mobilenet_block(inputs, triggers, params=None, is_training=True, 
-        reuse=None):
+def mobilenet_block(inputs, triggers, params=None, is_training=True, reuse=None):
     
     # Get hyperparameters
     if not params:
@@ -110,15 +109,16 @@ def mobilenet_block(inputs, triggers, params=None, is_training=True,
     net, end_points = mobilenet_base("MobileNetBlock", inputs, BLOCK_CONV_DEFS,
             batch_norm_decay, is_training, reuse)
     
-    # Drop out all outputs if the telescope was not triggered
-    end_point = "Trigger_multiplier"
-    # Reshape triggers from [BATCH_SIZE] to [BATCH_SIZE, WIDTH, HEIGHT, 
-    # NUM_CHANNELS]
-    triggers = tf.reshape(triggers, [-1, 1, 1, 1])
-    triggers = tf.tile(triggers, tf.concat([[1], tf.shape(net)[1:]], 0))
-    net = tf.multiply(net, triggers)
-    end_points[end_point] = net
-    
+    if triggers is not None:
+        # Drop out all outputs if the telescope was not triggered
+        end_point = "Trigger_multiplier"
+        # Reshape triggers from [BATCH_SIZE] to [BATCH_SIZE, WIDTH, HEIGHT, 
+        # NUM_CHANNELS]
+        triggers = tf.reshape(triggers, [-1, 1, 1, 1])
+        triggers = tf.tile(triggers, tf.concat([[1], tf.shape(net)[1:]], 0))
+        net = tf.multiply(net, triggers)
+        end_points[end_point] = net
+        
     # For compatibility with variable_input_model, do not return
     # end_points for now
     return net#, end_points
