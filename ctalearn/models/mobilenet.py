@@ -99,7 +99,7 @@ def mobilenet_base(scope, inputs, conv_defs, batch_norm_decay=0.95,
                                 'layer %d' % (conv_def.ltype, i))
     return net, end_points
 
-def mobilenet_block(inputs, triggers, params=None, is_training=True, reuse=None):
+def mobilenet_block(inputs, triggers=None, params=None, is_training=True, reuse=None):
     
     # Get hyperparameters
     if not params:
