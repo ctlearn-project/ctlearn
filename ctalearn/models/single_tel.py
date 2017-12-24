@@ -25,6 +25,8 @@ def single_tel_model(features, labels, params, is_training):
         from ctalearn.models.mobilenet import mobilenet_block as cnn_block
     elif params['cnn_block'] == 'resnet':
         from ctalearn.models.resnet import resnet_block as cnn_block
+    elif params['cnn_block'] == 'densenet':
+        from ctalearn.models.densenet import densenet_block as cnn_block
     else:
         sys.exit("Error: No valid CNN block specified.")
 
@@ -36,10 +38,8 @@ def single_tel_model(features, labels, params, is_training):
     shape = output.get_shape().as_list()
     dim = np.prod(shape[1:])
     output_flattened = tf.reshape(output,[-1,dim])
-
-    fc1 = tf.layers.dense(inputs=output_flattened, units=1024, activation=tf.nn.relu)
-    
-    logits = tf.layers.dense(inputs=last_output,units=num_gamma_hadron_classes)
+ 
+    logits = tf.layers.dense(output_flattened,units=num_gamma_hadron_classes)
 
     onehot_labels = tf.one_hot(
             indices=gamma_hadron_labels,
