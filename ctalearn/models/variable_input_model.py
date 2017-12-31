@@ -96,6 +96,8 @@ def variable_input_model(features, labels, params, is_training):
         from ctalearn.models.mobilenet import mobilenet_block as cnn_block
     elif params['cnn_block'] == 'resnet':
         from ctalearn.models.resnet import resnet_block as cnn_block
+    elif params['cnn_block'] == 'densenet':
+        from ctalearn.models.densenet import densenet_block as cnn_block
     else:
         sys.exit("Error: No valid CNN block specified.")
     
