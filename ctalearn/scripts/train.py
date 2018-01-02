@@ -1,21 +1,40 @@
+import argparse
+import logging
 import configparser
 import os
 import shutil
 import sys
 import time
 
-# Disable info and warning messages (not error messages)
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-
 import tensorflow as tf
 slim = tf.contrib.slim
 
+# Disable info and warning messages (not error messages)
+#os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+#tf.logging.set_verbosity(tf.logging.WARN)
+
+# Set up logger
+logger = logging.getLogger()
+handler = logging.StreamHandler()
+formatter = logging.Formatter("%(levelname)s:%(message)s")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+
+
 def train(config):
     # Load options related to loading the data
-    data_filename = config['Data']['Filename']
-    use_hdf5_format = config['Data'].getboolean('UseHDF5Format', False)
+    data_filelist = config['Data']['FileList']
+    data_format = config['Data']['Format'].lower()
     sort_telescopes_by_trigger = config['Data'].getboolean(
             'SortTelescopesByTrigger', False)
+
+    # Read data file list
+    data_files = []
+    with open(data_filelist) as f:
+        for line in f:
+            line = line.strip()
+            if line and line[0] != "#":
+                data_files.append(line)
 
     # Load options relating to processing the data
     batch_size = config['Data Processing'].getint('BatchSize')
@@ -24,6 +43,7 @@ def train(config):
     num_training_epochs_per_evaluation = config['Data Processing'].getint(
             'NumTrainingEpochsPerEvaluation', 1)
     num_parallel_calls = config['Data Processing'].getint('NumParallelCalls', 1)
+    validation_split = config['Data Processing'].getfloat('ValidationSplit',0.1)
 
     # Load options to specify the model
     model_type = config['Model']['ModelType'].lower()
@@ -35,6 +55,11 @@ def train(config):
         network_head = config['Model']['NetworkHead'].lower()
     elif model_type == 'cnnrnn':
         from ctalearn.models.cnn_rnn import cnn_rnn_model as model
+        cnn_block = config['Model']['CNNBlock'].lower()
+        telescope_combination = None
+        network_head = None
+    elif model_type == 'singletel':
+        from ctalearn.models.single_tel import single_tel_model as model
         cnn_block = config['Model']['CNNBlock'].lower()
         telescope_combination = None
         network_head = None
@@ -56,18 +81,28 @@ def train(config):
     shutil.copy(config_full_path, os.path.join(model_dir, config_log_filename))
 
     # Define data loading functions
-    if use_hdf5_format:        
+    if data_format == 'hdf5':
+        if model_type == 'singletel':
+            # Skip zeroth element in generator function when using single tel mode
+            # because first telescope image is blank
+            skip_zero = True
+            from ctalearn.data import load_HDF5_data_single_tel
+            data_types = [tf.float32, tf.int64]
+        else:
+            skip_zero = False
+            from ctalearn.data import load_HDF5_data
+            data_types = [tf.float32, tf.int8, tf.float32, tf.int64]
+
         from ctalearn.data import load_HDF5_metadata as load_metadata
         from ctalearn.data import (
                 load_HDF5_auxiliary_data as load_auxiliary_data)
-        from ctalearn.data import load_HDF5_data as load_data
+        from ctalearn.data import HDF5_gen_fn as generator
     else:
-        sys.exit("Error: No data format specified.")
+        raise ValueError("Invalid data format: {}".format(data_format))
+
     # Data types correspond to:
     # [telescope_data, telescope_triggers, telescope_positions,
     #  gamma_hadron_label]
-    data_types = [tf.float32, tf.int8, tf.float32, tf.int64]
-
     # Define model hyperparameters
     hyperparameters = {
             'cnn_block': cnn_block,
@@ -79,58 +114,94 @@ def train(config):
             }
  
     # Get information about the dataset
-    metadata = load_metadata(data_filename)
+    metadata = load_metadata(data_files)
 
     # Merge dictionaries for passing to the model function
     params = {**hyperparameters, **metadata}
 
     # Get the auxiliary input that won't change between events
-    auxiliary_data = load_auxiliary_data(data_filename)
+    auxiliary_data = load_auxiliary_data(data_files)
 
-    # Create training and evaluation datasets
-    def load_training_data(index):
-        return load_data(data_filename, index, auxiliary_data, metadata,
-                sort_telescopes_by_trigger=sort_telescopes_by_trigger,
-                mode='TRAIN')
+    # Flatten auxiliary input dict into a list
+    auxiliary_data_flattened = []
+    for i in auxiliary_data.values():
+        for j in i.values():
+            auxiliary_data_flattened += j
 
-    def load_validation_data(index):
-        return load_data(data_filename, index, auxiliary_data, metadata,
-                sort_telescopes_by_trigger=sort_telescopes_by_trigger,
-                mode='VALID')
+    # Set load data function and input_fn (for TF estimator) for single tel and array-level models
+    if model_type == 'singletel':
 
-    training_dataset = tf.data.Dataset.range(metadata['num_training_events'])
-    training_dataset = training_dataset.map(lambda index: tuple(tf.py_func(
-                load_training_data,
-                [index], 
-                data_types)),
-            num_parallel_calls=num_parallel_calls)
+        num_examples_by_file = metadata['num_images_by_file']['MSTS']
+
+        def load_data(filename,index):
+            return load_HDF5_data_single_tel(filename, index, metadata)
+
+        def input_fn(dataset):
+            # Get batches of data
+            iterator = dataset.make_one_shot_iterator()
+            (telescope_data, gamma_hadron_labels) = iterator.get_next()
+            features = {
+                    'telescope_data': telescope_data 
+                    }
+            labels = {
+                    'gamma_hadron_labels': gamma_hadron_labels
+                    }
+            return features, labels
+    else: 
+        num_examples_by_file = metadata['num_events_by_file']
+
+        def load_data(filename,index):
+            return load_HDF5_data(filename, index, auxiliary_data_flattened, metadata,sort_telescopes_by_trigger=sort_telescopes_by_trigger)
+
+        def input_fn(dataset):
+            # Get batches of data
+            iterator = dataset.make_one_shot_iterator()
+            (telescope_data, telescope_triggers, telescope_positions,
+                    gamma_hadron_labels) = iterator.get_next()
+            features = {
+                    'telescope_data': telescope_data, 
+                    'telescope_triggers': telescope_triggers, 
+                    'telescope_positions': telescope_positions,
+                    }
+            labels = {
+                    'gamma_hadron_labels': gamma_hadron_labels,
+                    }
+            return features, labels
+
+    # Print info on data files
+    num_examples_by_label = {}
+    for i,num_examples in enumerate(num_examples_by_file):
+        particle_id = metadata['particle_id_by_file'][i]
+        if particle_id not in num_examples_by_label:
+            num_examples_by_label[particle_id] = 0
+        num_examples_by_label[particle_id] += num_examples
+
+    num_examples = sum(num_examples_by_label.values())
+    num_validation_examples = int(validation_split * num_examples)
+    num_training_examples = num_examples - num_validation_examples
+
+    logger.info("{} data files read.".format(len(data_files)))
+    logger.info("{} total examples.".format(num_examples))
+    logger.info("Num examples by label:")
+    for label in num_examples_by_label:
+        logger.info("{}: {} ({}%)".format(label,num_examples_by_label[label], 100 * float(num_examples_by_label[label])/num_examples))
+    logger.info("Telescopes in data:")
+    for tel_type in metadata['telescope_ids']:
+        logger.info(tel_type + ": "+'[%s]' % ', '.join(map(str,metadata['telescope_ids'][tel_type]))) 
+
+    # Set generator function to create dataset of elements (filename,index)
+    def gen_fn():
+        return generator(data_files,num_examples_by_file,skip_zero=skip_zero)
+
+    dataset = tf.data.Dataset.from_generator(gen_fn,(tf.string, tf.int64))
+    dataset = dataset.shuffle(num_examples)
+    dataset = dataset.map(lambda filename, index: tuple(tf.py_func(load_data,[filename, index], data_types)),num_parallel_calls=num_parallel_calls)
+
+    training_dataset = dataset.skip(num_validation_examples)
+    validation_dataset = dataset.take(num_validation_examples)
+
     training_dataset = training_dataset.batch(batch_size)
-
-    validation_dataset = tf.data.Dataset.range(
-            metadata['num_validation_events'])
-    validation_dataset = validation_dataset.map(lambda index: tuple(tf.py_func(
-                load_validation_data,
-                [index],
-                data_types)), 
-            num_parallel_calls=num_parallel_calls)
     validation_dataset = validation_dataset.batch(batch_size)
-
-    def input_fn(dataset, shuffle_buffer_size=None):
-        # Get batches of data
-        if shuffle_buffer_size:
-            dataset = dataset.shuffle(shuffle_buffer_size)
-        iterator = dataset.make_one_shot_iterator()
-        (telescope_data, telescope_triggers, telescope_positions,
-                gamma_hadron_labels) = iterator.get_next()
-        features = {
-                'telescope_data': telescope_data, 
-                'telescope_triggers': telescope_triggers, 
-                'telescope_positions': telescope_positions,
-                }
-        labels = {
-                'gamma_hadron_labels': gamma_hadron_labels,
-                }
-        return features, labels
 
     def model_fn(features, labels, mode, params, config):
         
@@ -149,21 +220,31 @@ def train(config):
         predictions = {
                 'classes': predicted_classes
                 }
-      
-        # Scale the learning rate so batches with fewer triggered
-        # telescopes don't have smaller gradients
-        trigger_rate = tf.reduce_mean(tf.cast(features['telescope_triggers'], 
-            tf.float32))
-        # Avoid division by 0
-        trigger_rate = tf.maximum(trigger_rate, 0.1)
-        scaling_factor = tf.reciprocal(trigger_rate)
-        scaled_learning_rate = tf.multiply(scaling_factor, 
-                params['base_learning_rate'])
+ 
+        # Only apply learning rate scaling for array-level models (not single tel)
+        if model_type == 'singletel':
+            learning_rate = params['base_learning_rate']
+        else:
+            # Scale the learning rate so batches with fewer triggered
+            # telescopes don't have smaller gradients
+            trigger_rate = tf.reduce_mean(tf.cast(features['telescope_triggers'], 
+                tf.float32))
+            # Avoid division by 0
+            trigger_rate = tf.maximum(trigger_rate, 0.1)
+            scaling_factor = tf.reciprocal(trigger_rate)
+            learning_rate = tf.multiply(scaling_factor, 
+                    params['base_learning_rate'])
+
+        # Only apply gradient cliping if the model is CNNRNN
+        if model_type == 'cnnrnn':
+            clip_gradient_norm = params['clip_gradient_norm']
+        else:
+            clip_gradient_norm = 0
 
         # Define the train op
-        optimizer = tf.train.AdamOptimizer(learning_rate=scaled_learning_rate)
+        optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
         train_op = slim.learning.create_train_op(loss, optimizer,
-                clip_gradient_norm=params['clip_gradient_norm'])
+                clip_gradient_norm=clip_gradient_norm)
         
         # Define the evaluation metrics
         eval_metric_ops = {
@@ -180,16 +261,14 @@ def train(config):
                 eval_metric_ops=eval_metric_ops)
 
     # Train and evaluate the model
-    print("Training and evaluating...")
-    print("Total number of training events: ", metadata['num_training_events'])
-    print("Total number of validation events: ",
-            metadata['num_validation_events'])
+    logger.info("Training and evaluating...")
+    logger.info("Total number of training events: {}".format(num_training_examples))
+    logger.info("Total number of validation events: {}".format(num_validation_examples))
     estimator = tf.estimator.Estimator(model_fn, model_dir=model_dir, 
             params=params)
     while True:
         for _ in range(num_training_epochs_per_evaluation):
-            estimator.train(lambda: input_fn(training_dataset, 
-                shuffle_buffer_size=num_examples_per_training_epoch))
+            estimator.train(lambda: input_fn(training_dataset))
         estimator.evaluate(
                 lambda: input_fn(training_dataset), name='training')
         estimator.evaluate(
@@ -197,13 +276,28 @@ def train(config):
 
 if __name__ == "__main__":
 
+    parser = argparse.ArgumentParser(
+    description=("Train a ctalearn model."))
+    parser.add_argument(
+    'config_file',
+    help='configuration file containing training options (to be parsed with configparser)')
+    parser.add_argument(
+    "--debug",
+    help="print debug/logger messages",
+    action="store_true")
+
+    args = parser.parse_args()
+
+    if args.debug:
+        logger.setLevel(logging.DEBUG)
+
     # Parse configuration file
     config = configparser.ConfigParser()
     try:
-        config_full_path = os.path.abspath(sys.argv[1])
+        config_full_path = os.path.abspath(args.config_file)
         config_path, config_filename = os.path.split(config_full_path)
     except IndexError:
-        sys.exit("Usage: train.py config_file")
+        raise ValueError("Invalid config file: {}".format(config_full_path))
     config.read(config_full_path)
 
     train(config)
