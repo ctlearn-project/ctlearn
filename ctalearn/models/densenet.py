@@ -7,7 +7,7 @@ import tensorflow as tf
 
 NUM_CLASSES = 2
 
-GROWTH_RATE = 36
+GROWTH_RATE = 32
 NUM_DENSE_BLOCKS = 3
 NUM_LAYERS_PER_BLOCK = [6,12,24]
 
@@ -18,7 +18,7 @@ def densenet_conv_layer(inputs,kernel_size,num_filters,dropout_rate=0.2,training
     
     output = tf.layers.batch_normalization(inputs,training=training)
     output = tf.nn.relu(output)
-    output = tf.layers.conv2d(output,filters=num_filters,kernel_size=kernel_size)
+    output = tf.layers.conv2d(output,filters=num_filters,kernel_size=kernel_size,padding='same')
     output = tf.layers.dropout(output,rate=dropout_rate,training=training)
 
     return output
@@ -46,13 +46,14 @@ def densenet_dense_block(inputs,k,num_layers,training):
 densenet transition layer
 theta is compression factor from original paper. Reduce number of feature maps by a factor theta
 """
-def densenet_transition_layer(inputs,theta=0.5,training):
+def densenet_transition_layer(inputs,training,theta=0.5):
 
     input_num_filters = int(inputs.get_shape()[-1])
 
     #1x1 convolution (compress number of filters by factor theta) followed by average pooling (size 2x2, stride 2)
-    output = densenet_conv_layer(inputs,kernel_size=1,num_filters=int(theta*input_num_filters),training=training)
-    output = tf.layers.AveragePooling2D(output,pool_size=2,strides=2)
+    with tf.variable_scope("bottleneck"):
+        output = densenet_conv_layer(inputs,kernel_size=1,num_filters=int(theta*input_num_filters),training=training)
+    output = tf.layers.average_pooling2d(output,pool_size=2,strides=2)
 
     return output
 
@@ -64,14 +65,16 @@ def densenet_block(inputs, k=GROWTH_RATE,num_dense_blocks=NUM_DENSE_BLOCKS,trigg
 
     with tf.variable_scope("DenseNet_block",reuse=reuse):
         with tf.variable_scope("initial_conv"):
-            output = tf.layers.conv2d(inputs,kernel_size=3,strides=2,num_filters=k)
-        output = tf.layers.MaxPooling2D(output,pool_size=3,strides=1)
+            output = tf.layers.conv2d(inputs,kernel_size=3,strides=2,filters=k,padding='same')
+    
+        output = tf.layers.max_pooling2d(output,pool_size=3,strides=1,padding='same')
 
         for i in range(num_dense_blocks):
             with tf.variable_scope("block_{}".format(i+1)):
                 output = densenet_dense_block(output,k,num_layers=NUM_LAYERS_PER_BLOCK[i],training=is_training)
                 if i != num_dense_blocks-1:
-                    output = densenet_transition_layer(output,training=is_training)
+                    with tf.variable_scope("transition_after_block_{}".format(i+1)):
+                        output = densenet_transition_layer(output,training=is_training)
 
     if triggers is not None:
         # Drop out all outputs if the telescope was not triggered
