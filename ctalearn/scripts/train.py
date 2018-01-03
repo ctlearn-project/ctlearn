@@ -10,8 +10,8 @@ import tensorflow as tf
 slim = tf.contrib.slim
 
 # Disable info and warning messages (not error messages)
-#os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-#tf.logging.set_verbosity(tf.logging.WARN)
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+tf.logging.set_verbosity(tf.logging.WARN)
 
 # Set up logger
 logger = logging.getLogger()
@@ -38,12 +38,13 @@ def train(config):
 
     # Load options relating to processing the data
     batch_size = config['Data Processing'].getint('BatchSize')
-    num_examples_per_training_epoch = config['Data Processing'].getint(
-            'NumExamplesPerTrainingEpoch', 10000)
+    num_batches_per_training_epoch = config['Data Processing'].getint(
+            'NumBatchesPerTrainingEpoch', 10000)
     num_training_epochs_per_evaluation = config['Data Processing'].getint(
             'NumTrainingEpochsPerEvaluation', 1)
     num_parallel_calls = config['Data Processing'].getint('NumParallelCalls', 1)
     validation_split = config['Data Processing'].getfloat('ValidationSplit',0.1)
+    num_batches_per_evaluation = config['Data Processing'].getint('NumBatchesPerEvaluation',1000)
 
     # Load options to specify the model
     model_type = config['Model']['ModelType'].lower()
@@ -268,11 +269,11 @@ def train(config):
             params=params)
     while True:
         for _ in range(num_training_epochs_per_evaluation):
-            estimator.train(lambda: input_fn(training_dataset))
+            estimator.train(lambda: input_fn(training_dataset), steps=num_batches_per_training_epoch)
         estimator.evaluate(
-                lambda: input_fn(training_dataset), name='training')
+                lambda: input_fn(training_dataset), steps=num_batches_per_evaluation, name='training')
         estimator.evaluate(
-                lambda: input_fn(validation_dataset), name='validation')
+                lambda: input_fn(validation_dataset), steps=num_batches_per_evaluation, name='validation')
 
 if __name__ == "__main__":
 
