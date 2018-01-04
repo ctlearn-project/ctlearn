@@ -65,9 +65,9 @@ def densenet_block(inputs, k=GROWTH_RATE,num_dense_blocks=NUM_DENSE_BLOCKS,trigg
 
     with tf.variable_scope("DenseNet_block",reuse=reuse):
         with tf.variable_scope("initial_conv"):
-            output = tf.layers.conv2d(inputs,kernel_size=3,strides=2,filters=k,padding='same')
+            output = tf.layers.conv2d(inputs,kernel_size=7,strides=1,filters=k,padding='same')
     
-        output = tf.layers.max_pooling2d(output,pool_size=3,strides=1,padding='same')
+        output = tf.layers.max_pooling2d(output,pool_size=3,strides=2,padding='same')
 
         for i in range(num_dense_blocks):
             with tf.variable_scope("block_{}".format(i+1)):
