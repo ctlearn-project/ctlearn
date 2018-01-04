@@ -67,7 +67,12 @@ def train(config):
     else:
         sys.exit("Error: no valid model specified.")
 
+    # Load options related to pretrained weights
+    pretrained_weights_file = config['Model']['PretrainedWeights']
+    freeze_weights = config['Model'].getboolean('FreezeWeights',False)
+
     # Load options for training hyperparameters
+    optimizer_type = config['Training']['Optimizer'].lower()
     base_learning_rate = config['Training'].getfloat('BaseLearningRate')
     batch_norm_decay = config['Training'].getfloat('BatchNormDecay', 0.95)
     clip_gradient_norm = config['Training'].getfloat('ClipGradientNorm', 0.)
@@ -112,6 +117,8 @@ def train(config):
             'base_learning_rate': base_learning_rate,
             'batch_norm_decay': batch_norm_decay,
             'clip_gradient_norm': clip_gradient_norm,
+            'pretrained_weights': pretrained_weights_file,
+            'freeze_weights': freeze_weights
             }
  
     # Get information about the dataset
@@ -243,7 +250,17 @@ def train(config):
             clip_gradient_norm = 0
 
         # Define the train op
-        optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
+        if optimizer_type == 'adam':
+            optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
+        elif optimizer_type == 'rmsprop':
+            optimizer = tf.train.RMSPropOptimizer(learning_rate=learning_rate)
+        elif optimizer_type == 'adadelta':
+            optimizer = tf.train.AdadeltaOptimizer(learning_rate=learning_rate)
+        elif optimizer_type == 'sgd':
+            optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
+        else:
+            raise ValueError("Invalid optimizer type: {}".format(optimizer_type))
+
         train_op = slim.learning.create_train_op(loss, optimizer,
                 clip_gradient_norm=clip_gradient_norm)
         
@@ -293,7 +310,7 @@ if __name__ == "__main__":
         logger.setLevel(logging.DEBUG)
 
     # Parse configuration file
-    config = configparser.ConfigParser()
+    config = configparser.ConfigParser(allow_no_value=True)
     try:
         config_full_path = os.path.abspath(args.config_file)
         config_path, config_filename = os.path.split(config_full_path)
