@@ -13,9 +13,11 @@ def __generate_table_MSTS():
     Function returning MSTS injunction table
     """
     
+    LENGTH = 120
+    WIDTH = 120
+
     ROWS = 15
     MODULE_DIM = 8
-    MODULE_SIZE = MODULE_DIM * MODULE_DIM
     MODULES_PER_ROW = [
         5,
         9,
@@ -33,6 +35,15 @@ def __generate_table_MSTS():
         9,
         5]
 
+    #fill blank list of lists (120, 12)
+    table = []
+    for i in range(LENGTH):
+        row = []
+        for j in range(WIDTH):
+            row.append(-1)
+        table.append(row)
+    
+    # bottom left corner of each 8 x 8 module in the camera
     # counting from the bottom row, left to right
     MODULE_START_POSITIONS = [(((IMAGE_SHAPES['MSTS'][0] - MODULES_PER_ROW[j] *
                                  MODULE_DIM) / 2) +
@@ -40,11 +51,16 @@ def __generate_table_MSTS():
                               for j in range(ROWS)
                               for i in range(MODULES_PER_ROW[j])]
 
-    injunction_table = [(int(x_0 + int(i / MODULE_DIM)),y_0 + i % MODULE_DIM) 
-                        for (x_0,y_0) in MODULE_START_POSITIONS
-                        for i in range(MODULE_SIZE)]
+    # Fill appropriate positions with indices
+    j = 0
+    for (x_0,y_0) in MODULE_START_POSITIONS:
+        for i in range(MODULE_DIM * MODULE_DIM):
+            x = int(x_0 + i // MODULE_DIM)
+            y = y_0 + i % MODULE_DIM
+            table[x][y] = j
+            j +=1
 
-    return injunction_table
+    return table
 
 
 INJUNCTION_TABLES = {
@@ -95,20 +111,33 @@ def load_HDF5_data(filename, index, auxiliary_data, metadata,sort_telescopes_by_
     for tel_type in sorted(image_indices):
         if tel_type in INJUNCTION_TABLES:
             indices = image_indices[tel_type][0]
+            image_shape = metadata['image_shapes'][tel_type]
             for i in indices:
                 if i == 0:
                     # Telescope did not trigger. Its outputs will be dropped
                     # out, so input is arbitrary. Use an empty array for
                     # efficiency.
-                    telescope_images.append(np.empty(metadata['image_shapes']['MSTS']))
+                    telescope_images.append(np.empty(image_shape))
                     telescope_triggers.append(0)
                 else:
                     telescope_table = f.root._f_get_child(tel_type)
-                    image = np.empty(metadata['image_shapes']['MSTS'])
-                    for j,value in enumerate(telescope_table.read(i, i + 1)['image_charge'][0]):
-                        x,y = INJUNCTION_TABLES['MSTS'][j]
-                        image[x][y][0] = value
-                    telescope_images.append(image)
+                    record = telescope_table[i] 
+                    telescope_image = []
+                    for x in range(image_shape[0]):
+                        row = []
+                        for y in range(image_shape[1]):
+                            index = INJUNCTION_TABLES[tel_type][x][y]
+                            if index == -1:
+                                row.append(0.0)
+                            else:
+                                row.append(record['image_charge'][0][index])
+                        telescope_image.append(row)
+                    
+                    telescope_image = np.array(telescope_image,dtype=np.float32)
+                    # add dimension to give shape [120,120,1]
+                    telescope_image = np.expand_dims(telescope_image,2)
+
+                    telescope_images.append(telescope_image)
                     telescope_triggers.append(1)
     
     synchronized_close_file(f)
@@ -146,11 +175,23 @@ def load_HDF5_data_single_tel(filename, index, metadata):
     f = synchronized_open_file(filename.decode('utf-8'), mode='r')
     record = f.root.MSTS.read(index, index + 1)
 
-    # Get image
-    telescope_image = np.empty(metadata['image_shapes']['MSTS'],dtype=np.float32)
-    for j,value in enumerate(record['image_charge'][0]):
-        x,y = INJUNCTION_TABLES['MSTS'][j]
-        telescope_image[x][y][0] = value
+    # Format image
+    image_shape = metadata['image_shapes']['MSTS']
+
+    telescope_image = []
+    for x in range(image_shape[0]):
+        row = []
+        for y in range(image_shape[1]):
+            index = INJUNCTION_TABLES['MSTS'][x][y]
+            if index == -1:
+                row.append(0.0)
+            else:
+                row.append(record['image_charge'][0][index])
+        telescope_image.append(row)
+    
+    telescope_image = np.array(telescope_image,dtype=np.float32)
+    # add dimension to give shape [120,120,1]
+    telescope_image = np.expand_dims(telescope_image,2)
 
     event_index = record['event_index'][0] 
     event_record = f.root.Event_Info.read(event_index,event_index+1)
