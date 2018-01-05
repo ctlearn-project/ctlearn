@@ -93,7 +93,7 @@ def load_HDF5_data(filename, index, auxiliary_data, metadata,sort_telescopes_by_
 
     # Read the data at the given table and index from the file
     f = synchronized_open_file(filename.decode('utf-8'), mode='r')
-    record = f.root.Event_Info.read(index, index + 1)
+    record = f.root.Event_Info.read[index]
     
     # Get classification label by converting CORSIKA particle code
     particle_id = record['particle_id'][0]
@@ -117,26 +117,10 @@ def load_HDF5_data(filename, index, auxiliary_data, metadata,sort_telescopes_by_
                     # Telescope did not trigger. Its outputs will be dropped
                     # out, so input is arbitrary. Use an empty array for
                     # efficiency.
-                    telescope_images.append(np.empty(image_shape))
+                    telescope_images.append(np.empty(metadata['image_shapes']['MSTS']))
                     telescope_triggers.append(0)
                 else:
-                    telescope_table = f.root._f_get_child(tel_type)
-                    record = telescope_table[i] 
-                    telescope_image = []
-                    for x in range(image_shape[0]):
-                        row = []
-                        for y in range(image_shape[1]):
-                            index = INJUNCTION_TABLES[tel_type][x][y]
-                            if index == -1:
-                                row.append(0.0)
-                            else:
-                                row.append(record['image_charge'][0][index])
-                        telescope_image.append(row)
-                    
-                    telescope_image = np.array(telescope_image,dtype=np.float32)
-                    # add dimension to give shape [120,120,1]
-                    telescope_image = np.expand_dims(telescope_image,2)
-
+                    telescope_image = load_HDF5_image(f,'MSTS',metadata,i)
                     telescope_images.append(telescope_image)
                     telescope_triggers.append(1)
     
@@ -173,28 +157,11 @@ def load_HDF5_data_single_tel(filename, index, metadata):
 
     # Read the data at the given table and index from the file
     f = synchronized_open_file(filename.decode('utf-8'), mode='r')
-    record = f.root.MSTS.read(index, index + 1)
 
-    # Format image
-    image_shape = metadata['image_shapes']['MSTS']
-
-    telescope_image = []
-    for x in range(image_shape[0]):
-        row = []
-        for y in range(image_shape[1]):
-            index = INJUNCTION_TABLES['MSTS'][x][y]
-            if index == -1:
-                row.append(0.0)
-            else:
-                row.append(record['image_charge'][0][index])
-        telescope_image.append(row)
-    
-    telescope_image = np.array(telescope_image,dtype=np.float32)
-    # add dimension to give shape [120,120,1]
-    telescope_image = np.expand_dims(telescope_image,2)
+    telescope_image = load_HDF5_image(f,'MSTS',metadata,index)
 
     event_index = record['event_index'][0] 
-    event_record = f.root.Event_Info.read(event_index,event_index+1)
+    event_record = f.root.Event_Info[event_index]
 
     # Get classification label by converting CORSIKA particle code
     particle_id = event_record['particle_id'][0]
@@ -233,6 +200,8 @@ def load_HDF5_metadata(file_list):
     particle_id_by_file = []
     telescope_types = []
     telescope_ids = {}
+    image_charge_maxes = []
+    image_charge_mins = []
     for filename in file_list:
         with tables.open_file(filename, mode='r') as f:
             # Number of events
@@ -261,6 +230,14 @@ def load_HDF5_metadata(file_list):
                     num_images_by_file[tel_type] = []
                 num_images_by_file[tel_type].append(f.root._f_get_child(tel_type).shape[0])
 
+            # Compute dataset image max and min for normalization
+            for tel_type in telescope_types:
+                tel_table = f.root._f_get_child(tel_type)
+                record = tel_table.read(1,tel_table.shape[0])
+                images = record['image_charge']
+                image_charge_maxes.append(np.amax(images))
+                image_charge_mins.append(np.amin(images))
+
         metadata = {
             'num_events_by_file': num_events_by_file,
             'num_telescopes': {tel_type:len(telescope_ids[tel_type]) for tel_type in telescope_types},
@@ -270,7 +247,32 @@ def load_HDF5_metadata(file_list):
             'particle_id_by_file': particle_id_by_file,
             'image_shapes': IMAGE_SHAPES,
             'num_classes': len(set(particle_id_by_file)),
-            'num_auxiliary_inputs':3
+            'num_auxiliary_inputs':3,
+            'image_charge_min': min(image_charge_mins),
+            'image_charge_max': max(image_charge_maxes)
             }
 
     return metadata
+
+def load_HDF5_image(file,tel_type,metadata,index):
+    telescope_table = f.root._f_get_child(tel_type)
+    record = telescope_table[index] 
+    telescope_image = []
+    for x in range(image_shape[0]):
+        row = []
+        for y in range(image_shape[1]):
+            index = INJUNCTION_TABLES[tel_type][x][y]
+            if index == -1:
+                row.append(0.0)
+            else:
+                #normalize
+                value = record['image_charge'][0][index] - metadata['image_charge_min']
+                value /= (metadata['image_charge_max'] - metadata['image_charge_min'])
+                row.append(value)
+        telescope_image.append(row)
+    
+    telescope_image = np.array(telescope_image,dtype=np.float32)
+    # add dimension to give shape [120,120,1]
+    telescope_image = np.expand_dims(telescope_image,2)
+
+    return telescope_image
