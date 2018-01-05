@@ -96,7 +96,7 @@ def load_HDF5_data(filename, index, auxiliary_data, metadata,sort_telescopes_by_
     record = f.root.Event_Info.read[index]
     
     # Get classification label by converting CORSIKA particle code
-    particle_id = record['particle_id'][0]
+    particle_id = record['particle_id']
     if particle_id == 0: # gamma ray
         gamma_hadron_label = 1
     elif particle_id == 101: # proton
@@ -110,7 +110,7 @@ def load_HDF5_data(filename, index, auxiliary_data, metadata,sort_telescopes_by_
     telescope_triggers = []
     for tel_type in sorted(image_indices):
         if tel_type in INJUNCTION_TABLES:
-            indices = image_indices[tel_type][0]
+            indices = image_indices[tel_type]
             image_shape = metadata['image_shapes'][tel_type]
             for i in indices:
                 if i == 0:
@@ -160,11 +160,11 @@ def load_HDF5_data_single_tel(filename, index, metadata):
 
     telescope_image = load_HDF5_image(f,'MSTS',metadata,index)
 
-    event_index = record['event_index'][0] 
+    event_index = f.root._f_get_child('MSTS')[index]['event_index']
     event_record = f.root.Event_Info[event_index]
 
     # Get classification label by converting CORSIKA particle code
-    particle_id = event_record['particle_id'][0]
+    particle_id = event_record['particle_id']
     if particle_id == 0: # gamma ray
         gamma_hadron_label = 1
     elif particle_id == 101: # proton
@@ -254,10 +254,13 @@ def load_HDF5_metadata(file_list):
 
     return metadata
 
-def load_HDF5_image(file,tel_type,metadata,index):
-    telescope_table = f.root._f_get_child(tel_type)
+def load_HDF5_image(data_file,tel_type,metadata,index):
+    telescope_table = data_file.root._f_get_child(tel_type)
     record = telescope_table[index] 
     telescope_image = []
+    
+    image_shape = metadata['image_shapes'][tel_type]
+
     for x in range(image_shape[0]):
         row = []
         for y in range(image_shape[1]):
@@ -266,7 +269,7 @@ def load_HDF5_image(file,tel_type,metadata,index):
                 row.append(0.0)
             else:
                 #normalize
-                value = record['image_charge'][0][index] - metadata['image_charge_min']
+                value = record['image_charge'][index] - metadata['image_charge_min']
                 value /= (metadata['image_charge_max'] - metadata['image_charge_min'])
                 row.append(value)
         telescope_image.append(row)
