@@ -200,8 +200,8 @@ def load_HDF5_metadata(file_list):
     particle_id_by_file = []
     telescope_types = []
     telescope_ids = {}
-    image_charge_maxes = []
-    image_charge_mins = []
+    image_charge_max = {}
+    image_charge_min = {}
     for filename in file_list:
         with tables.open_file(filename, mode='r') as f:
             # Number of events
@@ -235,10 +235,18 @@ def load_HDF5_metadata(file_list):
                 tel_table = f.root._f_get_child(tel_type)
                 record = tel_table.read(1,tel_table.shape[0])
                 images = record['image_charge']
-                image_charge_maxes.append(np.amax(images))
-                image_charge_mins.append(np.amin(images))
 
-        metadata = {
+                if tel_type not in image_charge_min:
+                    image_charge_min[tel_type] = np.amin(images)
+                if tel_type not in image_charge_max:
+                    image_charge_max[tel_type] = np.amax(images)
+
+                if np.amin(images) < image_charge_min[tel_type]:
+                    image_charge_min[tel_type] = np.amin(images)
+                if np.amax(images) > image_charge_max[tel_type]:
+                    image_charge_max[tel_type] = np.amax(images)
+
+    metadata = {
             'num_events_by_file': num_events_by_file,
             'num_telescopes': {tel_type:len(telescope_ids[tel_type]) for tel_type in telescope_types},
             'telescope_ids': telescope_ids,
@@ -248,8 +256,8 @@ def load_HDF5_metadata(file_list):
             'image_shapes': IMAGE_SHAPES,
             'num_classes': len(set(particle_id_by_file)),
             'num_auxiliary_inputs':3,
-            'image_charge_min': min(image_charge_mins),
-            'image_charge_max': max(image_charge_maxes)
+            'image_charge_min': image_charge_min,
+            'image_charge_max': image_charge_max
             }
 
     return metadata
@@ -269,8 +277,8 @@ def load_HDF5_image(data_file,tel_type,metadata,index):
                 row.append(0.0)
             else:
                 #normalize
-                value = record['image_charge'][index] - metadata['image_charge_min']
-                value /= (metadata['image_charge_max'] - metadata['image_charge_min'])
+                value = record['image_charge'][index] - metadata['image_charge_min'][tel_type]
+                value /= (metadata['image_charge_max'][tel_type] - metadata['image_charge_min'][tel_type])
                 row.append(value)
         telescope_image.append(row)
     
