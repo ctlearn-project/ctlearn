@@ -244,12 +244,14 @@ def train(config):
     dataset = tf.data.Dataset.from_generator(gen_fn,(tf.string, tf.int64))
     dataset = dataset.shuffle(num_examples)
     dataset = dataset.map(lambda filename, index: tuple(tf.py_func(load_data,[filename, index], data_types)),num_parallel_calls=num_parallel_calls)
-
+   
     training_dataset = dataset.skip(num_validation_examples)
-    validation_dataset = dataset.take(num_validation_examples)
-
     training_dataset = training_dataset.batch(batch_size)
+    training_dataset = training_dataset.prefetch(5)
+    
+    validation_dataset = dataset.take(num_validation_examples)
     validation_dataset = validation_dataset.batch(batch_size)
+    validation_dataset = validation_dataset.prefetch(5)
 
     def model_fn(features, labels, mode, params, config):
         
