@@ -81,12 +81,10 @@ def synchronized_close_file(self, *args, **kwargs):
         return self.close(*args, **kwargs)
 
 # Generator function used to produce a dataset of elements (HDF5_filename,index)
-
-def HDF5_gen_fn(file_list,num_events,skip_zero=False):
+def HDF5_gen_fn(file_list,indices_by_file):
     for i,filename in enumerate(file_list):
-        for j in range(num_events[i]):
-            if not skip_zero or j != 0:
-                yield (filename.encode('utf-8'),j)
+        for j in indices_by_file[i]:
+            yield (filename.encode('utf-8'),j)
 
 # Data loading function for event-wise (array-level) HDF5 data loading
 def load_HDF5_data(filename, index, auxiliary_data, metadata,sort_telescopes_by_trigger=False):
@@ -287,3 +285,32 @@ def load_HDF5_image(data_file,tel_type,metadata,index):
     telescope_image = np.expand_dims(telescope_image,2)
 
     return telescope_image
+
+# Function to get all indices (by HDF5 file) passing a provided cut condition
+# Cut condition must be a string formatted as a Pytables selection condition
+# (i.e. for table.where()). See Pytables documentation for examples.
+def apply_cuts(data_files,cut_condition,model_type):
+    
+    indices_by_file = []
+    for data_file in data_files:
+        with tables.open_file(filename, mode='r') as f:
+            table = f.root.Event_Info
+            if model_type == 'singletel':
+                indices = []
+                if cut_condition is not None:
+                    image_indices = [row['MSTS_indices'] for row in table.where(cut_condition)]
+                else:
+                    image_indices = [row['MSTS_indices'] for row in table.iterrows()]
+                for indices_vector in image_indices:
+                    for i in indices_vector:
+                        if i != 0:
+                            indices.append(i)
+            else:
+                if cut_condition is not None:
+                    indices = [row.nrow for row in table.where(cut_condition)]
+                else:
+                    indices = range(table.nrows)
+            indices_by_file.append(indices)
+
+    return indices_by_file
+
