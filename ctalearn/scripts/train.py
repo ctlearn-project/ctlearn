@@ -130,15 +130,67 @@ def train(config):
     # Merge dictionaries for passing to the model function
     params = {**hyperparameters, **metadata}
 
+    # Get number of examples by file
+    if model_type == 'single_tel':
+        num_examples_by_file = metadata['num_images_by_file']['MSTS']
+    else:
+        num_examples_by_file = metadata['num_events_by_file']
+
+    # Log info on dataset
+    logger.info("{} data files read.".format(len(data_files)))
+    logger.info("Telescopes in data:")
+    for tel_type in metadata['telescope_ids']:
+        logger.info(tel_type + ": "+'[%s]' % ', '.join(map(str,metadata['telescope_ids'][tel_type]))) 
+
+    num_examples_by_label = {}
+    for i,num_examples in enumerate(num_examples_by_file):
+        particle_id = metadata['particle_id_by_file'][i]
+        if particle_id not in num_examples_by_label:
+            num_examples_by_label[particle_id] = 0
+        num_examples_by_label[particle_id] += num_examples
+
+    num_examples = sum(num_examples_by_label.values())
+
+    logger.info("{} total examples.".format(num_examples))
+    logger.info("Num examples by label:")
+    for label in num_examples_by_label:
+        logger.info("{}: {} ({}%)".format(label,num_examples_by_label[label], 100 * float(num_examples_by_label[label])/num_examples))
+
+    # Apply cuts on data
+    if cut_condition is not None:
+        logger.info("Cut condition: {}".format(cut_condition))
+    else:
+        logger.info("No cuts applied.")
+
+    indices_by_file = apply_cuts(data_files,cut_condition,model_type)
+
+    # Log info on cuts
+    num_passing_examples_by_label = {}
+    for i,index_list in enumerate(indices_by_file):
+        num_passing_examples = len(index_list)
+        particle_id = metadata['particle_id_by_file'][i]
+        if particle_id not in num_passing_examples_by_label:
+            num_passing_examples_by_label[particle_id] = 0
+        num_passing_examples_by_label[particle_id] += num_passing_examples
+
+    num_passing_examples = sum(num_passing_examples_by_label.values())
+    num_validation_examples = int(validation_split * num_passing_examples)
+    num_training_examples = num_passing_examples - num_validation_examples
+
+    logger.info("{} total examples passing cuts.".format(num_passing_examples))
+    logger.info("Num examples by label:")
+    for label in num_passing_examples_by_label:
+        logger.info("{}: {} ({}%)".format(label,num_passing_examples_by_label[label], 100 * float(num_passing_examples_by_label[label])/num_passing_examples))
+
     # Set load data function and input_fn (for TF estimator) for single tel and array-level models
     if model_type == 'singletel':
-
-        num_examples_by_file = metadata['num_images_by_file']['MSTS']
 
         def load_data(filename,index):
             return load_HDF5_data_single_tel(filename, index, metadata)
 
         def input_fn(dataset):
+            # Shuffle
+            dataset.shuffle(num_examples)
             # Get batches of data
             iterator = dataset.make_one_shot_iterator()
             (telescope_data, gamma_hadron_labels) = iterator.get_next()
@@ -166,6 +218,8 @@ def train(config):
             return load_HDF5_data(filename, index, auxiliary_data_flattened, metadata,sort_telescopes_by_trigger=sort_telescopes_by_trigger)
 
         def input_fn(dataset):
+            # Shuffle
+            dataset.shuffle(num_examples)
             # Get batches of data
             iterator = dataset.make_one_shot_iterator()
             (telescope_data, telescope_triggers, telescope_positions,
@@ -180,54 +234,8 @@ def train(config):
                     }
             return features, labels
 
-    
-    # Log info on dataset
-    logger.info("{} data files read.".format(len(data_files)))
-    logger.info("Telescopes in data:")
-    for tel_type in metadata['telescope_ids']:
-        logger.info(tel_type + ": "+'[%s]' % ', '.join(map(str,metadata['telescope_ids'][tel_type]))) 
 
-    num_examples_by_label = {}
-    for i,num_examples in enumerate(num_examples_by_file):
-        particle_id = metadata['particle_id_by_file'][i]
-        if particle_id not in num_examples_by_label:
-            num_examples_by_label[particle_id] = 0
-        num_examples_by_label[particle_id] += num_examples
 
-    num_examples = sum(num_examples_by_label.values())
-
-    logger.info("{} total examples.".format(num_examples))
-    logger.info("Num examples by label:")
-    for label in num_examples_by_label:
-        logger.info("{}: {} ({}%)".format(label,num_examples_by_label[label], 100 * float(num_examples_by_label[label])/num_examples))
-
-    # Apply cuts on data
-
-    if cut_condition is not None:
-        logger.info("Cut condition: {}".format(cut_condition))
-    else:
-        logger.info("No cuts applied.")
-
-    indices_by_file = apply_cuts(data_files,cut_condition,model_type)
-
-    # Log info on cuts
-    num_passing_examples_by_label = {}
-    for i,index_list in enumerate(indices_by_file):
-        num_passing_examples = len(index_list)
-        particle_id = metadata['particle_id_by_file'][i]
-        if particle_id not in num_passing_examples_by_label:
-            num_passing_examples_by_label[particle_id] = 0
-        num_passing_examples_by_label[particle_id] += num_passing_examples
-
-    num_passing_examples = sum(num_passing_examples_by_label.values())
-    num_validation_examples = int(validation_split * num_passing_examples)
-    num_training_examples = num_passing_examples - num_validation_examples
-
-    logger.info("{} total examples passing cuts.".format(num_passing_examples))
-    logger.info("Num examples by label:")
-    for label in num_passing_examples_by_label:
-        logger.info("{}: {} ({}%)".format(label,num_passing_examples_by_label[label], 100 * float(num_passing_examples_by_label[label])/num_passing_examples))
- 
     # Set generator function to create dataset of elements (filename,index)
     def gen_fn():
         return generator(data_files,indices_by_file)
@@ -275,12 +283,6 @@ def train(config):
             learning_rate = tf.multiply(scaling_factor, 
                     params['base_learning_rate'])
 
-        # Only apply gradient cliping if the model is CNNRNN
-        if model_type == 'cnnrnn':
-            clip_gradient_norm = params['clip_gradient_norm']
-        else:
-            clip_gradient_norm = 0
-
         # Define the train op
         if optimizer_type == 'adam':
             optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
@@ -294,7 +296,7 @@ def train(config):
             raise ValueError("Invalid optimizer type: {}".format(optimizer_type))
 
         train_op = slim.learning.create_train_op(loss, optimizer,
-                clip_gradient_norm=clip_gradient_norm)
+                clip_gradient_norm=params['clip_gradient_norm'])
         
         # Define the evaluation metrics
         eval_metric_ops = {
@@ -314,6 +316,11 @@ def train(config):
     logger.info("Training and evaluating...")
     logger.info("Total number of training events: {}".format(num_training_examples))
     logger.info("Total number of validation events: {}".format(num_validation_examples))
+    logger.info("Batch size: {}".format(batch_size))
+    logger.info("Number of batches per epoch: {}".format(num_batches_per_training_epoch))
+    logger.info("Number of examples per epoch: {}".format(num_batches_per_training_epoch * batch_size))
+    logger.info("Number of batches per evaluation (training and validation datasets): {}".format(num_batches_per_evaluation))
+    logger.info("Number of examples per evaluation: {}".format(num_batches_per_evaluation * batch_size))
     estimator = tf.estimator.Estimator(model_fn, model_dir=model_dir, 
             params=params)
     while True:
