@@ -9,11 +9,11 @@ import time
 import tensorflow as tf
 slim = tf.contrib.slim
 
-# Disable info and warning messages (not error messages)
+# Disable Tensorflow info and warning messages (not error messages)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 tf.logging.set_verbosity(tf.logging.WARN)
 
-# Set up logger
+# Logger
 logger = logging.getLogger()
 handler = logging.StreamHandler()
 formatter = logging.Formatter("%(levelname)s:%(message)s")
@@ -28,14 +28,6 @@ def train(config):
     sort_telescopes_by_trigger = config['Data'].getboolean(
             'SortTelescopesByTrigger', False)
 
-    # Read data file list
-    data_files = []
-    with open(data_filelist) as f:
-        for line in f:
-            line = line.strip()
-            if line and line[0] != "#":
-                data_files.append(line)
-
     # Load options relating to processing the data
     batch_size = config['Data Processing'].getint('BatchSize')
     num_batches_per_training_epoch = config['Data Processing'].getint(
@@ -45,6 +37,7 @@ def train(config):
     num_parallel_calls = config['Data Processing'].getint('NumParallelCalls', 1)
     validation_split = config['Data Processing'].getfloat('ValidationSplit',0.1)
     num_batches_per_evaluation = config['Data Processing'].getint('NumBatchesPerEvaluation',1000)
+    cut_condition = config['Data Processing']['Cut Condition']
 
     # Load options to specify the model
     model_type = config['Model']['ModelType'].lower()
@@ -86,29 +79,38 @@ def train(config):
         os.makedirs(model_dir)
     shutil.copy(config_full_path, os.path.join(model_dir, config_log_filename))
 
+    # Read data file list
+    data_files = []
+    with open(data_filelist) as f:
+        for line in f:
+            line = line.strip()
+            if line and line[0] != "#":
+                data_files.append(line)
+
     # Define data loading functions
     if data_format == 'hdf5':
         if model_type == 'singletel':
-            # Skip zeroth element in generator function when using single tel mode
-            # because first telescope image is blank
-            skip_zero = True
-            from ctalearn.data import load_HDF5_data_single_tel
+           from ctalearn.data import load_HDF5_data_single_tel
+            # For single telescope data, data types correspond to:
+            # [telescope_data, gamma_hadron_label]
             data_types = [tf.float32, tf.int64]
         else:
-            skip_zero = False
+            # Auxiliary data for array-level classification (telescope positions)
+            from ctalearn.data import (
+                load_HDF5_auxiliary_data as load_auxiliary_data)
             from ctalearn.data import load_HDF5_data
+            # For array-level data, data types correspond to:
+            # [telescope_data, telescope_triggers, telescope_positions,
+            #  gamma_hadron_label]
             data_types = [tf.float32, tf.int8, tf.float32, tf.int64]
 
+        # Both single-tel and array-level HDF5 data use the same metadata
+        # and generator function
         from ctalearn.data import load_HDF5_metadata as load_metadata
-        from ctalearn.data import (
-                load_HDF5_auxiliary_data as load_auxiliary_data)
         from ctalearn.data import HDF5_gen_fn as generator
     else:
         raise ValueError("Invalid data format: {}".format(data_format))
 
-    # Data types correspond to:
-    # [telescope_data, telescope_triggers, telescope_positions,
-    #  gamma_hadron_label]
     # Define model hyperparameters
     hyperparameters = {
             'cnn_block': cnn_block,
@@ -121,25 +123,14 @@ def train(config):
             'freeze_weights': freeze_weights
             }
  
-    # Get information about the dataset
+    # Get metadata information about the dataset
     metadata = load_metadata(data_files)
 
     # Merge dictionaries for passing to the model function
     params = {**hyperparameters, **metadata}
 
-    # Get the auxiliary input that won't change between events
-    auxiliary_data = load_auxiliary_data(data_files)
-
-    # Flatten auxiliary input dict into a list
-    auxiliary_data_flattened = []
-    for i in auxiliary_data.values():
-        for j in i.values():
-            auxiliary_data_flattened += j
-
     # Set load data function and input_fn (for TF estimator) for single tel and array-level models
     if model_type == 'singletel':
-
-        num_examples_by_file = metadata['num_images_by_file']['MSTS']
 
         def load_data(filename,index):
             return load_HDF5_data_single_tel(filename, index, metadata)
@@ -156,7 +147,14 @@ def train(config):
                     }
             return features, labels
     else: 
-        num_examples_by_file = metadata['num_events_by_file']
+        # For array-level methods, get auxiliary data (telescope positions + other) in dict
+        auxiliary_data = load_auxiliary_data(data_files)
+
+        # Flatten auxiliary input dict into a list
+        auxiliary_data_flattened = []
+        for i in auxiliary_data.values():
+            for j in i.values():
+                auxiliary_data_flattened += j
 
         def load_data(filename,index):
             return load_HDF5_data(filename, index, auxiliary_data_flattened, metadata,sort_telescopes_by_trigger=sort_telescopes_by_trigger)
@@ -176,7 +174,14 @@ def train(config):
                     }
             return features, labels
 
-    # Print info on data files
+    
+
+    logger.info("{} data files read.".format(len(data_files)))
+    logger.info("Telescopes in data:")
+    for tel_type in metadata['telescope_ids']:
+        logger.info(tel_type + ": "+'[%s]' % ', '.join(map(str,metadata['telescope_ids'][tel_type]))) 
+
+    # Print metadata info on dataset
     num_examples_by_label = {}
     for i,num_examples in enumerate(num_examples_by_file):
         particle_id = metadata['particle_id_by_file'][i]
@@ -185,21 +190,40 @@ def train(config):
         num_examples_by_label[particle_id] += num_examples
 
     num_examples = sum(num_examples_by_label.values())
-    num_validation_examples = int(validation_split * num_examples)
-    num_training_examples = num_examples - num_validation_examples
 
-    logger.info("{} data files read.".format(len(data_files)))
     logger.info("{} total examples.".format(num_examples))
     logger.info("Num examples by label:")
     for label in num_examples_by_label:
         logger.info("{}: {} ({}%)".format(label,num_examples_by_label[label], 100 * float(num_examples_by_label[label])/num_examples))
-    logger.info("Telescopes in data:")
-    for tel_type in metadata['telescope_ids']:
-        logger.info(tel_type + ": "+'[%s]' % ', '.join(map(str,metadata['telescope_ids'][tel_type]))) 
 
+    if cut_condition is not None:
+        logger.info("Cut condition: {}".format(cut_condition))
+    else:
+        logger.info("No cuts applied.")
+
+    indices_by_file = apply_cuts(data_files,cut_condition,model_type)
+
+    # Log info on cuts
+    num_passing_examples_by_label = {}
+    for i,indices in enumerate(indices):
+        num_passing_examples = len(indices)
+        particle_id = metadata['particle_id_by_file'][i]
+        if particle_id not in num_examples_by_label:
+            num_passing_examples_by_label[particle_id] = 0
+        num_passing_examples_by_label[particle_id] += num_passing_examples
+
+    num_passing_examples = sum(num_passing_examples_by_label.values())
+    num_validation_examples = int(validation_split * num_passing_examples)
+    num_training_examples = num_passing_examples - num_validation_examples
+
+    logger.info("{} total examples passing cuts.".format(num_passing_examples))
+    logger.info("Num examples by label:")
+    for label in num_examples_by_label:
+        logger.info("{}: {} ({}%)".format(label,num_examples_by_label[label], 100 * float(num_examples_by_label[label])/num_examples))
+ 
     # Set generator function to create dataset of elements (filename,index)
     def gen_fn():
-        return generator(data_files,num_examples_by_file,skip_zero=skip_zero)
+        return generator(data_files,indices_by_file)
 
     dataset = tf.data.Dataset.from_generator(gen_fn,(tf.string, tf.int64))
     dataset = dataset.shuffle(num_examples)
