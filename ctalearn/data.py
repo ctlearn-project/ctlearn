@@ -292,7 +292,7 @@ def load_HDF5_image(data_file,tel_type,metadata,index):
 def apply_cuts(data_files,cut_condition,model_type):
     
     indices_by_file = []
-    for data_file in data_files:
+    for filename in data_files:
         with tables.open_file(filename, mode='r') as f:
             table = f.root.Event_Info
             if model_type == 'singletel':
