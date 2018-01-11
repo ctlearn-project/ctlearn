@@ -29,7 +29,14 @@ def train(config):
             'NumTrainingEpochsPerEvaluation', None)
     num_parallel_calls = config['Data Processing'].getint('NumParallelCalls', 1)
     validation_split = config['Data Processing'].getfloat('ValidationSplit',0.1)
-    num_batches_per_evaluation = config['Data Processing'].getint('NumBatchesPerEvaluation',1000)
+    try:
+        num_batches_per_training_evaluation = config['Data Processing'].getint('NumBatchesPerTrainingEvaluation',1000)
+    except ValueError:
+        num_batches_per_training_evaluation = config['Data Processing']['NumBatchesPerTrainingEvaluation']
+    try:
+        num_batches_per_validation_evaluation = config['Data Processing'].getint('NumBatchesPerValidationEvaluation',1000)
+    except ValueError:
+        num_batches_per_validation_evaluation = config['Data Processing']['NumBatchesPerValidationEvaluation']
     cut_condition = config['Data Processing']['CutCondition']
 
     # Load options to specify the model
@@ -319,9 +326,9 @@ def train(config):
         for _ in range(num_training_epochs_per_evaluation):
             estimator.train(lambda: input_fn(training_dataset,int(num_training_examples/batch_size)), steps=num_batches_per_training_epoch)
         estimator.evaluate(
-                lambda: input_fn(training_dataset), steps=num_batches_per_evaluation, name='training')
+                lambda: input_fn(training_dataset), steps=num_batches_per_training_evaluation, name='training')
         estimator.evaluate(
-                lambda: input_fn(validation_dataset), steps=num_batches_per_evaluation, name='validation')
+                lambda: input_fn(validation_dataset), steps=num_batches_per_validation_evaluation, name='validation')
 
 if __name__ == "__main__":
 
