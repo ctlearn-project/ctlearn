@@ -32,13 +32,13 @@ def train(config):
     num_parallel_calls = config['Data Processing'].getint('NumParallelCalls', 1)
     validation_split = config['Data Processing'].getfloat('ValidationSplit',0.1)
     try:
-        num_batches_per_training_evaluation = config['Data Processing'].getint('NumBatchesPerTrainingEvaluation',1000)
+        num_batches_per_train_eval = config['Data Processing'].getint('NumBatchesPerTrainingEvaluation',1000)
     except ValueError:
-        num_batches_per_training_evaluation = None
+        num_batches_per_train_eval = None
     try:
-        num_batches_per_validation_evaluation = config['Data Processing'].getint('NumBatchesPerValidationEvaluation',1000)
+        num_batches_per_val_eval = config['Data Processing'].getint('NumBatchesPerValidationEvaluation',1000)
     except ValueError:
-        num_batches_per_validation_evaluation = None
+        num_batches_per_val_eval = None
     cut_condition = config['Data Processing']['CutCondition']
 
     # Load options to specify the model
@@ -316,21 +316,22 @@ def train(config):
     logger.info("Batch size: {}".format(batch_size))
 
     num_examples_per_training_epoch = num_batches_per_training_epoch * batch_size if num_batches_per_training_epoch is not None else num_training_examples
-    num_examples_per_evaluation = num_batches_per_evaluation * batch_size if num_batches_per_evaluation is not None else num_validation_examples
+    num_examples_per_train_eval = num_batches_per_train_eval * batch_size if num_batches_per_train_eval is not None else num_training_examples
+    num_examples_per_val_eval = num_batches_per_val_eval * batch_size if num_batches_per_val_eval is not None else num_validation_examples
 
     logger.info("Number of batches per epoch: {}".format(num_batches_per_training_epoch))
     logger.info("Number of examples per epoch: {}".format(num_examples_per_training_epoch))
-    logger.info("Number of batches per evaluation (training and validation datasets): {}".format(num_batches_per_evaluation))
-    logger.info("Number of examples per evaluation: {}".format(num_examples_per_evaluation))
+    logger.info("Number of examples per evaluation (training dataset): {}".format(num_examples_per_train_eval))
+    logger.info("Number of examples per evaluation (validation dataset): {}".format(num_examples_per_val_eval))
     estimator = tf.estimator.Estimator(model_fn, model_dir=model_dir, 
             params=params)
     while True:
         for _ in range(num_training_epochs_per_evaluation):
             estimator.train(lambda: input_fn(training_dataset,int(num_training_examples/batch_size)), steps=num_batches_per_training_epoch)
         estimator.evaluate(
-                lambda: input_fn(training_dataset), steps=num_batches_per_training_evaluation, name='training')
+                lambda: input_fn(training_dataset), steps=num_batches_per_train_eval, name='training')
         estimator.evaluate(
-                lambda: input_fn(validation_dataset), steps=num_batches_per_validation_evaluation, name='validation')
+                lambda: input_fn(validation_dataset), steps=num_batches_per_val_eval, name='validation')
 
 if __name__ == "__main__":
 
