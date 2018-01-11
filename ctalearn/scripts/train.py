@@ -319,8 +319,7 @@ def train(config):
     num_examples_per_train_eval = num_batches_per_train_eval * batch_size if num_batches_per_train_eval is not None else num_training_examples
     num_examples_per_val_eval = num_batches_per_val_eval * batch_size if num_batches_per_val_eval is not None else num_validation_examples
 
-    logger.info("Number of batches per epoch: {}".format(num_batches_per_training_epoch))
-    logger.info("Number of examples per epoch: {}".format(num_examples_per_training_epoch))
+    logger.info("Number of examples per training epoch: {}".format(num_examples_per_training_epoch))
     logger.info("Number of examples per evaluation (training dataset): {}".format(num_examples_per_train_eval))
     logger.info("Number of examples per evaluation (validation dataset): {}".format(num_examples_per_val_eval))
     estimator = tf.estimator.Estimator(model_fn, model_dir=model_dir, 
