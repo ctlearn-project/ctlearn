@@ -23,8 +23,10 @@ def train(config):
 
     # Load options relating to processing the data
     batch_size = config['Data Processing'].getint('BatchSize')
-    num_batches_per_training_epoch = config['Data Processing'].getint(
-            'NumBatchesPerTrainingEpoch', None)
+    try:
+        num_batches_per_training_epoch = config['Data Processing'].getint('NumBatchesPerTrainingEpoch',1000)
+    except ValueError:
+        num_batches_per_training_epoch = None
     num_training_epochs_per_evaluation = config['Data Processing'].getint(
             'NumTrainingEpochsPerEvaluation', None)
     num_parallel_calls = config['Data Processing'].getint('NumParallelCalls', 1)
@@ -32,11 +34,11 @@ def train(config):
     try:
         num_batches_per_training_evaluation = config['Data Processing'].getint('NumBatchesPerTrainingEvaluation',1000)
     except ValueError:
-        num_batches_per_training_evaluation = config['Data Processing']['NumBatchesPerTrainingEvaluation']
+        num_batches_per_training_evaluation = None
     try:
         num_batches_per_validation_evaluation = config['Data Processing'].getint('NumBatchesPerValidationEvaluation',1000)
     except ValueError:
-        num_batches_per_validation_evaluation = config['Data Processing']['NumBatchesPerValidationEvaluation']
+        num_batches_per_validation_evaluation = None
     cut_condition = config['Data Processing']['CutCondition']
 
     # Load options to specify the model
