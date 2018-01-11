@@ -10,7 +10,7 @@ IMAGE_SHAPES = {
 
 def __generate_table_MSTS():
     """
-    Function returning MSTS injunction table
+    Function returning MSTS mapping table
     """
     
     LENGTH = 120
@@ -63,7 +63,7 @@ def __generate_table_MSTS():
     return table
 
 
-INJUNCTION_TABLES = {
+MAPPING_TABLES = {
         'MSTS': __generate_table_MSTS()
         }
 
@@ -107,7 +107,7 @@ def load_HDF5_data(filename, index, auxiliary_data, metadata,sort_telescopes_by_
     # list of binary telescope triggers
     telescope_triggers = []
     for tel_type in sorted(image_indices):
-        if tel_type in INJUNCTION_TABLES:
+        if tel_type in MAPPING_TABLES:
             indices = image_indices[tel_type]
             image_shape = metadata['image_shapes'][tel_type]
             for i in indices:
@@ -270,7 +270,7 @@ def load_HDF5_image(data_file,tel_type,metadata,index):
     for x in range(image_shape[0]):
         row = []
         for y in range(image_shape[1]):
-            index = INJUNCTION_TABLES[tel_type][x][y]
+            index = MAPPING_TABLES[tel_type][x][y]
             if index == -1:
                 row.append(0.0)
             else:
