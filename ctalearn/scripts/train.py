@@ -13,13 +13,6 @@ slim = tf.contrib.slim
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 tf.logging.set_verbosity(tf.logging.WARN)
 
-# Logger
-logger = logging.getLogger()
-handler = logging.StreamHandler()
-formatter = logging.Formatter("%(levelname)s:%(message)s")
-handler.setFormatter(formatter)
-logger.addHandler(handler)
-
 
 def train(config):
     # Load options related to loading the data
@@ -31,9 +24,9 @@ def train(config):
     # Load options relating to processing the data
     batch_size = config['Data Processing'].getint('BatchSize')
     num_batches_per_training_epoch = config['Data Processing'].getint(
-            'NumBatchesPerTrainingEpoch', 10000)
+            'NumBatchesPerTrainingEpoch', None)
     num_training_epochs_per_evaluation = config['Data Processing'].getint(
-            'NumTrainingEpochsPerEvaluation', 1)
+            'NumTrainingEpochsPerEvaluation', None)
     num_parallel_calls = config['Data Processing'].getint('NumParallelCalls', 1)
     validation_split = config['Data Processing'].getfloat('ValidationSplit',0.1)
     num_batches_per_evaluation = config['Data Processing'].getint('NumBatchesPerEvaluation',1000)
@@ -67,6 +60,7 @@ def train(config):
     # Load options for training hyperparameters
     optimizer_type = config['Training']['Optimizer'].lower()
     base_learning_rate = config['Training'].getfloat('BaseLearningRate')
+    scale_learning_rate = config['Training'].getboolean('ScaleLearningRate',False)
     batch_norm_decay = config['Training'].getfloat('BatchNormDecay', 0.95)
     clip_gradient_norm = config['Training'].getfloat('ClipGradientNorm', 0.)
 
@@ -130,7 +124,7 @@ def train(config):
     # Merge dictionaries for passing to the model function
     params = {**hyperparameters, **metadata}
 
-    # Get number of examples by file
+    # Get number of examples by file (for single tel, number of MSTS images, for array-level, number of events)
     if model_type == 'single_tel':
         num_examples_by_file = metadata['num_images_by_file']['MSTS']
     else:
@@ -188,9 +182,9 @@ def train(config):
         def load_data(filename,index):
             return load_HDF5_data_single_tel(filename, index, metadata)
 
-        def input_fn(dataset):
-            # Shuffle
-            dataset.shuffle(num_examples)
+        def input_fn(dataset,shuffle_buffer_size=None):
+            if shuffle_buffer_size is not None:
+                dataset.shuffle(shuffle_buffer_size)
             # Get batches of data
             iterator = dataset.make_one_shot_iterator()
             (telescope_data, gamma_hadron_labels) = iterator.get_next()
@@ -217,9 +211,9 @@ def train(config):
         def load_data(filename,index):
             return load_HDF5_data(filename, index, auxiliary_data_flattened, metadata,sort_telescopes_by_trigger=sort_telescopes_by_trigger)
 
-        def input_fn(dataset):
-            # Shuffle
-            dataset.shuffle(num_examples)
+        def input_fn(dataset,shuffle_buffer_size=None):
+            if shuffle_buffer_size is not None:
+                dataset.shuffle(shuffle_buffer_size)           
             # Get batches of data
             iterator = dataset.make_one_shot_iterator()
             (telescope_data, telescope_triggers, telescope_positions,
@@ -234,24 +228,16 @@ def train(config):
                     }
             return features, labels
 
-
-
     # Set generator function to create dataset of elements (filename,index)
     def gen_fn():
         return generator(data_files,indices_by_file)
 
     # Create datasets
-    dataset = tf.data.Dataset.from_generator(gen_fn,(tf.string, tf.int64))
-    dataset = dataset.shuffle(num_examples)
+    dataset = tf.data.Dataset.from_generator(gen_fn,(tf.string, tf.int64)).shuffle(num_passing_examples)
     dataset = dataset.map(lambda filename, index: tuple(tf.py_func(load_data,[filename, index], data_types)),num_parallel_calls=num_parallel_calls)
    
-    training_dataset = dataset.skip(num_validation_examples)
-    training_dataset = training_dataset.batch(batch_size)
-    training_dataset = training_dataset.prefetch(5)
-    
-    validation_dataset = dataset.take(num_validation_examples)
-    validation_dataset = validation_dataset.batch(batch_size)
-    validation_dataset = validation_dataset.prefetch(5)
+    training_dataset = dataset.skip(num_validation_examples).batch(batch_size).prefetch(1) 
+    validation_dataset = dataset.take(num_validation_examples).batch(batch_size).prefetch(1)
 
     def model_fn(features, labels, mode, params, config):
         
@@ -272,9 +258,7 @@ def train(config):
                 }
  
         # Only apply learning rate scaling for array-level models (not single tel)
-        if model_type == 'singletel':
-            learning_rate = params['base_learning_rate']
-        else:
+        if scale_learning_rate:
             # Scale the learning rate so batches with fewer triggered
             # telescopes don't have smaller gradients
             trigger_rate = tf.reduce_mean(tf.cast(features['telescope_triggers'], 
@@ -284,7 +268,9 @@ def train(config):
             scaling_factor = tf.reciprocal(trigger_rate)
             learning_rate = tf.multiply(scaling_factor, 
                     params['base_learning_rate'])
-
+        else:
+            learning_rate = params['base_learning_rate']
+        
         # Define the train op
         if optimizer_type == 'adam':
             optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
@@ -319,15 +305,19 @@ def train(config):
     logger.info("Total number of training events: {}".format(num_training_examples))
     logger.info("Total number of validation events: {}".format(num_validation_examples))
     logger.info("Batch size: {}".format(batch_size))
+
+    num_examples_per_training_epoch = num_batches_per_training_epoch * batch_size if num_batches_per_training_epoch is not None else num_training_examples
+    num_examples_per_evaluation = num_batches_per_evaluation * batch_size if num_batches_per_evaluation is not None else num_validation_examples
+
     logger.info("Number of batches per epoch: {}".format(num_batches_per_training_epoch))
-    logger.info("Number of examples per epoch: {}".format(num_batches_per_training_epoch * batch_size))
+    logger.info("Number of examples per epoch: {}".format(num_examples_per_training_epoch))
     logger.info("Number of batches per evaluation (training and validation datasets): {}".format(num_batches_per_evaluation))
-    logger.info("Number of examples per evaluation: {}".format(num_batches_per_evaluation * batch_size))
+    logger.info("Number of examples per evaluation: {}".format(num_examples_per_evaluation))
     estimator = tf.estimator.Estimator(model_fn, model_dir=model_dir, 
             params=params)
     while True:
         for _ in range(num_training_epochs_per_evaluation):
-            estimator.train(lambda: input_fn(training_dataset), steps=num_batches_per_training_epoch)
+            estimator.train(lambda: input_fn(training_dataset,int(num_training_examples/batch_size)), steps=num_batches_per_training_epoch)
         estimator.evaluate(
                 lambda: input_fn(training_dataset), steps=num_batches_per_evaluation, name='training')
         estimator.evaluate(
@@ -336,20 +326,35 @@ def train(config):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
-    description=("Train a ctalearn model."))
+        description=("Train a ctalearn model."))
     parser.add_argument(
-    'config_file',
-    help='configuration file containing training options (to be parsed with configparser)')
+        'config_file',
+        help='configuration file containing training options (to be parsed with configparser)')
     parser.add_argument(
-    "--debug",
-    help="print debug/logger messages",
-    action="store_true")
+        "--debug",
+        help="print debug/logger messages",
+        action="store_true")
+    parser.add_argument(
+        "--log_file",
+        default=None,
+        help="name of log file to write to. If not provided, will write to terminal")
 
     args = parser.parse_args()
 
+    # Logger setup
+    logger = logging.getLogger()
     if args.debug:
         logger.setLevel(logging.DEBUG)
 
+    if args.log_file is None:
+        handler = logging.StreamHandler()
+    else:
+        handler = logging.FileHandler(args.log_file)
+
+    formatter = logging.Formatter("%(levelname)s:%(message)s")
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    
     # Parse configuration file
     config = configparser.ConfigParser(allow_no_value=True)
     try:
