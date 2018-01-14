@@ -76,6 +76,9 @@ def train(config):
     # Load options relating to logging and checkpointing
     model_dir = config['Logging']['ModelDirectory']
 
+    # Load options related to debugging
+    run_tfdbg = config['Debug'].getboolean('RunTFDBG',False)
+
     # Log a copy of the configuration file
     config_log_filename = time.strftime('%Y%m%d_%H%M%S_') + config_filename
     if not os.path.exists(model_dir):
@@ -322,15 +325,22 @@ def train(config):
     logger.info("Number of examples per training epoch: {}".format(num_examples_per_training_epoch))
     logger.info("Number of examples per evaluation (training dataset): {}".format(num_examples_per_train_eval))
     logger.info("Number of examples per evaluation (validation dataset): {}".format(num_examples_per_val_eval))
+    
+    # Tensorflow debugger
+    if run_tfdbg:
+        hooks = [tf.python.debug.LocalCLIDebugHook()]
+    else:
+        hooks = None
+
     estimator = tf.estimator.Estimator(model_fn, model_dir=model_dir, 
             params=params)
     while True:
         for _ in range(num_training_epochs_per_evaluation):
-            estimator.train(lambda: input_fn(training_dataset,int(num_training_examples/batch_size)), steps=num_batches_per_training_epoch)
+            estimator.train(lambda: input_fn(training_dataset,int(num_training_examples/batch_size)), steps=num_batches_per_training_epoch, hooks=hooks)
         estimator.evaluate(
-                lambda: input_fn(training_dataset), steps=num_batches_per_train_eval, name='training')
+                lambda: input_fn(training_dataset), steps=num_batches_per_train_eval,hooks=hooks, name='training')
         estimator.evaluate(
-                lambda: input_fn(validation_dataset), steps=num_batches_per_val_eval, name='validation')
+                lambda: input_fn(validation_dataset), steps=num_batches_per_val_eval,hooks=hooks,  name='validation')
 
 if __name__ == "__main__":
 
