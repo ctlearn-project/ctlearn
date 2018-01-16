@@ -352,26 +352,12 @@ if __name__ == "__main__":
         help="print debug/logger messages",
         action="store_true")
     parser.add_argument(
-        "--log_file",
-        default=None,
-        help="name of log file to write to. If not provided, will write to terminal")
+        "--log_to_file",
+        help="name of log file to write to. If not provided, will write to terminal",
+        action="store_true")
 
     args = parser.parse_args()
-
-    # Logger setup
-    logger = logging.getLogger()
-    if args.debug:
-        logger.setLevel(logging.DEBUG)
-
-    if args.log_file is None:
-        handler = logging.StreamHandler()
-    else:
-        handler = logging.FileHandler(args.log_file)
-
-    formatter = logging.Formatter("%(levelname)s:%(message)s")
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    
+   
     # Parse configuration file
     config = configparser.ConfigParser(allow_no_value=True)
     try:
@@ -380,5 +366,20 @@ if __name__ == "__main__":
     except IndexError:
         raise ValueError("Invalid config file: {}".format(config_full_path))
     config.read(config_full_path)
+    
+    # Logger setup
+    logger = logging.getLogger()
+    if args.debug:
+        logger.setLevel(logging.DEBUG)
+
+    if args.log_to_file:
+        handler = logging.FileHandler(os.path.join(config['Logging']['ModelDirectory'],time.strftime('%Y%m%d_%H%M%S_') + 'logfile.log'))
+    else:
+        handler = logging.StreamHandler()
+
+    formatter = logging.Formatter("%(levelname)s:%(message)s")
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+ 
 
     train(config)
