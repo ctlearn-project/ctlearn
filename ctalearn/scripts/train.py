@@ -81,8 +81,6 @@ def train(config):
 
     # Log a copy of the configuration file
     config_log_filename = time.strftime('%Y%m%d_%H%M%S_') + config_filename
-    if not os.path.exists(model_dir):
-        os.makedirs(model_dir)
     shutil.copy(config_full_path, os.path.join(model_dir, config_log_filename))
 
     # Read data file list
@@ -372,8 +370,13 @@ if __name__ == "__main__":
     if args.debug:
         logger.setLevel(logging.DEBUG)
 
+    model_dir = config['Logging']['ModelDirectory']
+
+    if not os.path.exists(model_dir):
+        os.makedirs(model_dir)
+ 
     if args.log_to_file:
-        handler = logging.FileHandler(os.path.join(config['Logging']['ModelDirectory'],time.strftime('%Y%m%d_%H%M%S_') + 'logfile.log'))
+        handler = logging.FileHandler(os.path.join(model_dir,time.strftime('%Y%m%d_%H%M%S_') + 'logfile.log'))
     else:
         handler = logging.StreamHandler()
 
