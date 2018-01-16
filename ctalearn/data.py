@@ -91,7 +91,7 @@ def load_HDF5_data(filename, index, auxiliary_data, metadata,sort_telescopes_by_
 
     # Read the data at the given table and index from the file
     f = synchronized_open_file(filename.decode('utf-8'), mode='r')
-    record = f.root.Event_Info.read[index]
+    record = f.root.Event_Info[index]
     
     # Get classification label by converting CORSIKA particle code
     particle_id = record['particle_id']
