@@ -137,7 +137,7 @@ def train(config):
     params = {**hyperparameters, **metadata}
 
     # Get number of examples by file (for single tel, number of MSTS images, for array-level, number of events)
-    if model_type == 'single_tel':
+    if model_type == 'singletel':
         num_examples_by_file = metadata['num_images_by_file']['MSTS']
     else:
         num_examples_by_file = metadata['num_events_by_file']
@@ -209,8 +209,6 @@ def train(config):
             return features, labels
     else:
         
-        num_examples_by_file = metadata['num_events_by_file']
-
         # For array-level methods, get auxiliary data (telescope positions + other) in dict
         auxiliary_data = load_auxiliary_data(data_files)
 
