@@ -12,7 +12,7 @@ NUM_DENSE_BLOCKS = 3
 NUM_LAYERS_PER_BLOCK = [6,12,24]
 
 """
-Combined densenet convolution layer (BN,ReLU,Conv)
+Combined densenet convolution layer (BN,ReLU,Conv) + Dropout
 """
 def densenet_conv_layer(inputs,kernel_size,num_filters,dropout_rate=0.2,training=True):
     
