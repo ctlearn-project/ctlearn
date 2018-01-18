@@ -289,7 +289,7 @@ def load_HDF5_image(data_file,tel_type,metadata,index):
 # Function to get all indices (by HDF5 file) passing a provided cut condition
 # Cut condition must be a string formatted as a Pytables selection condition
 # (i.e. for table.where()). See Pytables documentation for examples.
-def apply_cuts(data_files,cut_condition,model_type):
+def apply_cuts_HDF5(data_files,cut_condition,model_type):
     
     indices_by_file = []
     for filename in data_files:

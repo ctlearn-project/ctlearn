@@ -112,7 +112,7 @@ def train(config):
         # function, generator function, and apply cuts function
         from ctalearn.data import load_HDF5_metadata as load_metadata
         from ctalearn.data import HDF5_gen_fn as generator
-        from ctalearn.data import apply_cuts as apply_cuts
+        from ctalearn.data import apply_cuts_HDF5 as apply_cuts
     else:
         raise ValueError("Invalid data format: {}".format(data_format))
 
