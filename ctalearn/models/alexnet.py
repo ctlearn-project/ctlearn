@@ -75,7 +75,7 @@ def alexnet_block(inputs, triggers, params=None, is_training=True, reuse=None):
 
         #flatten output of pool5 layer to get feature vector of shape 
         # (num_batch,1024)
-        output = tf.multiply(flatten(pool5), tf.expand_dims(trig_values, 1))
+        output = tf.multiply(tf.layers.Flatten(pool5), tf.expand_dims(trig_values, 1))
 
         return output
 
