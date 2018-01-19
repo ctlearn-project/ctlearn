@@ -34,7 +34,7 @@ def __generate_table_MSTS():
         11,
         9,
         5]
-  
+    
     # bottom left corner of each 8 x 8 module in the camera
     # counting from the bottom row, left to right
     MODULE_START_POSITIONS = [(((IMAGE_SHAPES['MSTS'][0] - MODULES_PER_ROW[j] *
@@ -44,12 +44,17 @@ def __generate_table_MSTS():
                               for i in range(MODULES_PER_ROW[j])]
 
     # Fill appropriate positions with indices
-    table = []
+    # NOTE: we append a 0 entry to the (11328,) trace array to allow us to use fancy indexing to fill
+    # the empty areas of the (120,120) image. Accordingly, all indices in the mapping table are increased by 1
+    # (j starts at 1 rather than 0)
+    table = np.zeros(shape=(LENGTH,WIDTH),dtype=int)  
+    j = 1
     for (x_0,y_0) in MODULE_START_POSITIONS:
         for i in range(MODULE_DIM * MODULE_DIM):
             x = int(x_0 + i // MODULE_DIM)
             y = y_0 + i % MODULE_DIM
-            table.append((x,y))
+            table[x][y] = j
+            j += 1
 
     return table
 
@@ -57,7 +62,6 @@ def __generate_table_MSTS():
 MAPPING_TABLES = {
         'MSTS': __generate_table_MSTS()
         }
-
 
 # Functions for locking when opening and closing the same file in multiple threads
 
@@ -257,14 +261,14 @@ def load_HDF5_image(data_file,tel_type,metadata,index):
     telescope_image = []
     
     image_shape = metadata['image_shapes'][tel_type]
-    values = record['image_charge']
-
-    telescope_image = np.zeros(shape=image_shape,dtype=np.float32)
-
-    for i in range(len(values)):
-        x,y = MAPPING_TABLES[tel_type][i]
-        telescope_image[x][y] = values[i]        
-   
+    
+    trace = np.empty(shape=(record['image_charge'].shape[0] + 1),dtype=np.float32)
+    # Add 0 as first element in trace (used to fill in blank areas in the image)
+    trace[0] = 0.0
+    trace[1:] = record['image_charge']
+    
+    telescope_image = trace[MAPPING_TABLES[tel_type]]
+  
     # add dimension to give shape [120,120,1]
     telescope_image = np.expand_dims(telescope_image,2)
 
