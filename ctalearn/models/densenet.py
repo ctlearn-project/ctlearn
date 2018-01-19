@@ -16,7 +16,7 @@ Combined densenet convolution layer (BN,ReLU,Conv) + Dropout
 """
 def densenet_conv_layer(inputs,kernel_size,num_filters,dropout_rate=0.2,training=True):
     
-    output = tf.layers.batch_normalization(inputs,training=training)
+    output = tf.layers.batch_normalization(inputs,training=training,fused=True)
     output = tf.nn.relu(output)
     output = tf.layers.conv2d(output,filters=num_filters,kernel_size=kernel_size,padding='same')
     output = tf.layers.dropout(output,rate=dropout_rate,training=training)
