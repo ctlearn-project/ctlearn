@@ -262,7 +262,7 @@ def load_HDF5_image(data_file,tel_type,metadata,index):
     telescope_image = np.zeros(shape=image_shape,dtype=np.float32)
 
     for i in range(len(values)):
-        x,y = MAPPING_TABLES_OLD[tel_type][i]
+        x,y = MAPPING_TABLES[tel_type][i]
         telescope_image[x][y] = values[i]        
    
     # add dimension to give shape [120,120,1]
