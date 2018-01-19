@@ -34,15 +34,7 @@ def __generate_table_MSTS():
         11,
         9,
         5]
-
-    #fill blank list of lists (120, 12)
-    table = []
-    for i in range(LENGTH):
-        row = []
-        for j in range(WIDTH):
-            row.append(-1)
-        table.append(row)
-    
+  
     # bottom left corner of each 8 x 8 module in the camera
     # counting from the bottom row, left to right
     MODULE_START_POSITIONS = [(((IMAGE_SHAPES['MSTS'][0] - MODULES_PER_ROW[j] *
@@ -52,13 +44,12 @@ def __generate_table_MSTS():
                               for i in range(MODULES_PER_ROW[j])]
 
     # Fill appropriate positions with indices
-    j = 0
+    table = []
     for (x_0,y_0) in MODULE_START_POSITIONS:
         for i in range(MODULE_DIM * MODULE_DIM):
             x = int(x_0 + i // MODULE_DIM)
             y = y_0 + i % MODULE_DIM
-            table[x][y] = j
-            j +=1
+            table.append((x,y))
 
     return table
 
@@ -266,21 +257,14 @@ def load_HDF5_image(data_file,tel_type,metadata,index):
     telescope_image = []
     
     image_shape = metadata['image_shapes'][tel_type]
+    values = record['image_charge']
 
-    for x in range(image_shape[0]):
-        row = []
-        for y in range(image_shape[1]):
-            index = MAPPING_TABLES[tel_type][x][y]
-            if index == -1:
-                row.append(0.0)
-            else:
-                #normalize
-                value = record['image_charge'][index] - metadata['image_charge_min'][tel_type]
-                value /= (metadata['image_charge_max'][tel_type] - metadata['image_charge_min'][tel_type])
-                row.append(value)
-        telescope_image.append(row)
-    
-    telescope_image = np.array(telescope_image,dtype=np.float32)
+    telescope_image = np.zeros(shape=image_shape,dtype=np.float32)
+
+    for i in range(len(values)):
+        x,y = MAPPING_TABLES_OLD[tel_type][i]
+        telescope_image[x][y] = values[i]        
+   
     # add dimension to give shape [120,120,1]
     telescope_image = np.expand_dims(telescope_image,2)
 
