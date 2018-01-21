@@ -39,7 +39,8 @@ def train(config):
         num_batches_per_val_eval = config['Data Processing'].getint('NumBatchesPerValidationEvaluation',1000)
     except ValueError:
         num_batches_per_val_eval = None
-    cut_condition = config['Data Processing']['CutCondition']
+    
+    cut_condition = config['Data Processing']['CutCondition'] if config['Data Processing']['CutCondition'] else None
 
     # Load options to specify the model
     model_type = config['Model']['ModelType'].lower()
@@ -384,5 +385,4 @@ if __name__ == "__main__":
     handler.setFormatter(formatter)
     logger.addHandler(handler)
  
-
     train(config)
