@@ -8,10 +8,6 @@ IMAGE_SHAPES = {
         'MSTS': (120,120,1)
         }
 
-MAPPING_TABLES = {
-        'MSTS': __generate_table_MSTS()
-        }
-
 def __generate_table_MSTS():
     """
     Function returning MSTS mapping table (used to index into the trace when converting from trace to image).
@@ -58,6 +54,10 @@ def __generate_table_MSTS():
             j += 1
 
     return table
+
+MAPPING_TABLES = {
+        'MSTS': __generate_table_MSTS()
+        }
 
 # Multithread-safe PyTables open and close file fns
 lock = threading.Lock()
