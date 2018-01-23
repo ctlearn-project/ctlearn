@@ -65,7 +65,7 @@ See example_config.ini for an explanation of all available options.
 
 **Data**
 The only currently accepted data format is HDF5.
-A path to a single data file containing separate groups for the training and validation sets must be provided.
+A file list containing the paths to a set of HDF5 files containing the data must be provided. HDF5 files should be in the standard format specified by the [ImageExtractor](https://github.com/bryankim96/image-extractor) package.
 
 **Data Processing**
 Because the size of the full dataset may be very large, only a set of event indices is held in memory.
@@ -75,19 +75,14 @@ Batch loading of data may be parallelized using a specified number of threads.
 After every specified number of training epochs, the model is evaluated on the entire training set and validation set.
 
 **Model**
-A multiply-layered model is used to handle data from an array of telescopes.
-A CNN block processes each telescope image.
-For telescopes that didn't trigger, the output from the corresponding CNN is dropped out.
-The output from each telescope network is then combined into a single vector or stack of feature maps.
-The combined features are then processed by a network head.
+Several higher-level model types are provided to train networks for single-telescope classification (single_tel_model) and array (multiple image) classification (variable_input_model, cnn_rnn_model)
 
-Available CNN Blocks: AlexNet, MobileNet, ResNet
+Available CNN Blocks: AlexNet, MobileNet, ResNet, DenseNet
 
-Available Network Heads: AlexNet, MobileNet, ResNet
+Available Network Heads: AlexNet, MobileNet, ResNet, DenseNet
 
 **Training**
-To normalize the effects of non-triggering telescopes, each batch's learning rate is scaled by the inverse of its proportion of triggering telescopes.
-Model hyperparameters that can be specified are the base learning rate and the batch norm decay parameter.
+Training hyperparameters including the learning rate and optimizer can be set in the configuration file.
 
 **Logging**
 Tensorflow checkpoints and summaries are saved to the specified directory, as is a copy of the configuration file.
