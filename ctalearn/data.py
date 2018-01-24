@@ -195,7 +195,7 @@ def load_HDF5_metadata(file_list):
     num_events_by_file = []
     num_images_by_file = {}
     particle_id_by_file = []
-    telescope_types_ = []
+    telescope_types = []
     telescope_ids = {}
     image_charge_max = {}
     image_charge_min = {}
@@ -207,11 +207,14 @@ def load_HDF5_metadata(file_list):
             particle_id_by_file.append(f.root._v_attrs.particle_type)
             # Build telescope types list and telescope ids dict for current file
             # NOTE: telescope types list is sorted in order of tel_ids
+            telescope_types_ids = []
             telescope_types_current_file = []
             telescope_ids_current_file = {}
-            for row in f.root.Telescope_Info.itersorted('tel_id'):
+            for row in f.root.Telescope_Info.iterrows():
                 tel_type = row['tel_type'].decode('utf-8')
                 tel_id = row['tel_id']
+                telescope_types_ids.append((tel_id,tel_type))
+            for tel_id,tel_type in sorted(telescope_types_ids,key=lambda i: i[0]):
                 if tel_type not in telescope_types_current_file:
                     telescope_types_current_file.append(tel_type)
                 if tel_type not in telescope_ids_current_file:
@@ -226,10 +229,10 @@ def load_HDF5_metadata(file_list):
                     raise ValueError("Telescope type mismatch in file {}".format(filename))
 
             if not telescope_ids:
-                telescope_ids = telescope_ids_temp
+                telescope_ids = telescope_ids_current_file
             else:
                 for tel_type in telescope_types:
-                    if telescope_ids[tel_type] != telescope_ids_temp[tel_type]:
+                    if telescope_ids[tel_type] != telescope_ids_current_file[tel_type]:
                         raise ValueError("Telescope id mismatch in file {} (tel_type {})".format(filename,tel_type))
 
             # Number of images per telescope (for single tel data)
