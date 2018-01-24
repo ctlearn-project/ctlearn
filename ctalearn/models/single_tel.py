@@ -33,11 +33,8 @@ def single_tel_model(features, labels, params, is_training):
                 params=params,
                 is_training=is_training)
 
-    #flatten output of embedding CNN to (batch_size, _)
-    shape = output.get_shape().as_list()
-    dim = np.prod(shape[1:])
-    output_flattened = tf.reshape(output,[-1,dim])
- 
+    output_flattened = tf.layers.flatten(output)
+
     logits = tf.layers.dense(output_flattened,units=num_gamma_hadron_classes)
 
     onehot_labels = tf.one_hot(
