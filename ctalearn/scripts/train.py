@@ -211,14 +211,8 @@ def train(config):
         # For array-level methods, get auxiliary data (telescope positions + other) in dict
         auxiliary_data = load_auxiliary_data(data_files)
 
-        # Flatten auxiliary input dict into a list
-        auxiliary_data_flattened = []
-        for i in auxiliary_data.values():
-            for j in i.values():
-                auxiliary_data_flattened += j
-
         def load_data(filename,index):
-            return load_HDF5_data(filename, index, auxiliary_data_flattened, metadata,sort_telescopes_by_trigger=sort_telescopes_by_trigger)
+            return load_HDF5_data(filename, index, auxiliary_data, metadata,sort_telescopes_by_trigger=sort_telescopes_by_trigger)
 
         def input_fn(dataset,shuffle_buffer_size=None):
             if shuffle_buffer_size is not None:

@@ -4,6 +4,7 @@ import threading
 import tables
 import numpy as np
 
+
 IMAGE_SHAPES = {
         'MSTS': (120,120,1)
         }
@@ -97,7 +98,7 @@ def load_HDF5_data(filename, index, auxiliary_data, metadata,sort_telescopes_by_
     # Collect images and binary trigger values
     telescope_images = []
     telescope_triggers = []
-    for tel_type in sorted(image_indices):
+    for tel_type in telescope_types:
         # Only save MSTS (other telescope types do not have valid MAPPING_TABLES yet)
         if tel_type in MAPPING_TABLES:
             for i in image_indices[tel_type]:
@@ -115,7 +116,11 @@ def load_HDF5_data(filename, index, auxiliary_data, metadata,sort_telescopes_by_
     synchronized_close_file(f)
 
     # Collect flattened telescope positions from auxiliary data
-    telescope_positions = auxiliary_data
+    telescope_positions = []
+    for tel_type in telescope_types:
+        if tel_type in MAPPING_TABLES:
+            for tel_id in sorted(auxiliary_data[tel_type].keys):
+                telescope_positions = telescope_positions + auxiliary_data[tel_type][tel_id]
 
     if sort_telescopes_by_trigger:
         # Group the positions by telescope (also, making a copy prevents
@@ -163,21 +168,23 @@ def load_HDF5_data_single_tel(filename, index, metadata):
     return [telescope_image, gamma_hadron_label]
 
 # Return dict of auxiliary data values (currently only contains telescope position coordinates).
-# Contains all MSTS telescope positions by telescope id.
+# Structured as auxiliary_data[telescope_positions][tel_type][tel_id] = [x,y,z]
 # Checks that the same telescopes have the same position across all files.
-# NOTE: currently hardcoded to only collect MSTS telescope positions (in line with other functions)
 def load_HDF5_auxiliary_data(file_list): 
     telescope_positions = {}
     for filename in file_list:
         with tables.open_file(filename, mode='r') as f:
             # For every telescope in the telescope table
             for row in f.root.Telescope_Info.iterrows():
-                if row['tel_type'].decode('utf-8') == 'MSTS':
-                    if row['tel_id'] not in telescope_positions:
-                        telescope_positions[row['tel_id']] = [row["tel_x"],row["tel_y"],row["tel_z"]]
-                    else:
-                        if telescope_positions[row['tel_id']] != [row["tel_x"],row["tel_y"],row["tel_z"]]:
-                            raise ValueError("Telescope positions do not match for telescope {} in file {}.".format(row['tel_id'],filename))
+                tel_type = row['tel_type'].decode('utf-8')
+                tel_id = row['tel_id']
+                if tel_type not in telescope_positions:
+                    telescope_positions[tel_type] = []
+                if tel_id not in telescope_positions[tel_type]:
+                        telescope_positions[tel_type][tel_id] = [row["tel_x"],row["tel_y"],row["tel_z"]]
+                else:
+                    if telescope_positions[tel_type][tel_id] != [row["tel_x"],row["tel_y"],row["tel_z"]]:
+                        raise ValueError("Telescope positions do not match for telescope {} in file {}.".format(tel_id,filename))
     auxiliary_data = {
             'telescope_positions': telescope_positions
             }
@@ -188,7 +195,7 @@ def load_HDF5_metadata(file_list):
     num_events_by_file = []
     num_images_by_file = {}
     particle_id_by_file = []
-    telescope_types = []
+    telescope_types_ = []
     telescope_ids = {}
     image_charge_max = {}
     image_charge_min = {}
@@ -198,21 +205,32 @@ def load_HDF5_metadata(file_list):
             num_events_by_file.append(f.root.Event_Info.shape[0])
             # Particle ID (same for all events in a single file)
             particle_id_by_file.append(f.root._v_attrs.particle_type)
-            # Check that telescope types are the same across all files
+            # Build telescope types list and telescope ids dict for current file
+            # NOTE: telescope types list is sorted in order of tel_ids
+            telescope_types_current_file = []
+            telescope_ids_current_file = {}
+            for row in f.root.Telescope_Info.itersorted('tel_id'):
+                tel_type = row['tel_type'].decode('utf-8')
+                tel_id = row['tel_id']
+                if tel_type not in telescope_types_current_file:
+                    telescope_types_current_file.append(tel_type)
+                if tel_type not in telescope_ids_current_file:
+                    telescope_ids_current_file[tel_type] = []
+                telescope_ids_current_file[tel_type].append(tel_id)
+
+            # Check that telescope types and ids match across all files
             if not telescope_types:
-                telescope_types = sorted(list({row["tel_type"].decode('utf-8') for row in f.root.Telescope_Info.iterrows()}))
+                telescope_types = telescope_types_current_file
             else:
-                if telescope_types != sorted(list({row["tel_type"].decode('utf-8') for row in f.root.Telescope_Info.iterrows()})):
-                    raise ValueError("Telescope types do not match in file {}.".format(filename))
-     
-            # Check that telescope ids are the same across all files
+                if telescope_types != telescope_types_current_file:
+                    raise ValueError("Telescope type mismatch in file {}".format(filename))
+
             if not telescope_ids:
-                for tel_type in telescope_types:
-                    telescope_ids[tel_type] = sorted([row["tel_id"] for row in f.root.Telescope_Info.iterrows() if row["tel_type"].decode('utf-8') == tel_type])
+                telescope_ids = telescope_ids_temp
             else:
                 for tel_type in telescope_types:
-                    if telescope_ids[tel_type] != sorted([row["tel_id"] for row in f.root.Telescope_Info.iterrows() if row["tel_type"].decode('utf-8') == tel_type]):
-                            raise ValueError("Telescope ids do not match in file {}".format(filename))
+                    if telescope_ids[tel_type] != telescope_ids_temp[tel_type]:
+                        raise ValueError("Telescope id mismatch in file {} (tel_type {})".format(filename,tel_type))
 
             # Number of images per telescope (for single tel data)
             for tel_type in telescope_types:
