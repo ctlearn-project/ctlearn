@@ -1,66 +1,16 @@
 from operator import itemgetter
 import threading
+import logging
 
 import tables
 import numpy as np
 
+from ctalearn.image import MAPPING_TABLES, IMAGE_SHAPES
 
-IMAGE_SHAPES = {
-        'MSTS': (120,120,1)
-        }
+logger = logging.getLogger(__name__)
 
-def __generate_table_MSTS():
-    """
-    Function returning MSTS mapping table (used to index into the trace when converting from trace to image).
-    """
-    
-    ROWS = 15
-    MODULE_DIM = 8
-    MODULES_PER_ROW = [
-        5,
-        9,
-        11,
-        13,
-        13,
-        15,
-        15,
-        15,
-        15,
-        15,
-        13,
-        13,
-        11,
-        9,
-        5]
-    
-    # bottom left corner of each 8 x 8 module in the camera
-    # counting from the bottom row, left to right
-    MODULE_START_POSITIONS = [(((IMAGE_SHAPES['MSTS'][0] - MODULES_PER_ROW[j] *
-                                 MODULE_DIM) / 2) +
-                               (MODULE_DIM * i), j * MODULE_DIM)
-                              for j in range(ROWS)
-                              for i in range(MODULES_PER_ROW[j])]
-
-    table = np.zeros(shape=(IMAGE_SHAPES['MSTS'][0],IMAGE_SHAPES['MSTS'][1]),dtype=int)   
-    # Fill appropriate positions with indices
-    # NOTE: we append a 0 entry to the (11328,) trace array to allow us to use fancy indexing to fill
-    # the empty areas of the (120,120) image. Accordingly, all indices in the mapping table are increased by 1
-    # (j starts at 1 rather than 0)
-    j = 1
-    for (x_0,y_0) in MODULE_START_POSITIONS:
-        for i in range(MODULE_DIM * MODULE_DIM):
-            x = int(x_0 + i // MODULE_DIM)
-            y = y_0 + i % MODULE_DIM
-            table[x][y] = j
-            j += 1
-
-    return table
-
-MAPPING_TABLES = {
-        'MSTS': __generate_table_MSTS()
-        }
-
-# Multithread-safe PyTables open and close file fns
+# Multithread-safe PyTables open and close file functions
+# See http://www.pytables.org/latest/cookbook/threading.html
 lock = threading.Lock()
 
 def synchronized_open_file(*args, **kwargs):
@@ -73,13 +23,13 @@ def synchronized_close_file(self, *args, **kwargs):
 
 # Generator function used to produce a dataset of elements (HDF5_filename,index)
 # from a list of files and a list of lists of indices per file (constructed by applying cuts)
-def HDF5_gen_fn(file_list,indices_by_file):
+def gen_fn_HDF5(file_list,indices_by_file):
     for i,filename in enumerate(file_list):
         for j in indices_by_file[i]:
             yield (filename.encode('utf-8'),j)
 
 # Data loading function for event-wise (array-level) HDF5 data loading
-def load_HDF5_data(filename, index, auxiliary_data, metadata,sort_telescopes_by_trigger=False):
+def load_data_eventwise_HDF5(filename, index, auxiliary_data, metadata,sort_telescopes_by_trigger=False):
 
     # Read the event record for the given filename and index
     f = synchronized_open_file(filename.decode('utf-8'), mode='r')
@@ -90,8 +40,11 @@ def load_HDF5_data(filename, index, auxiliary_data, metadata,sort_telescopes_by_
         gamma_hadron_label = 1
     elif record['particle_id']  == 101: # proton
         gamma_hadron_label = 0
+    else:
+        raise ValueError("Unimplemented particle_id value: {}".format(record['particle_id']))
   
-    # Collect image indices for each telescope type in the data
+    # Collect image indices (indices into the image tables)
+    # for each telescope type in this event
     telescope_types = metadata['telescope_types']
     image_indices = {tel_type:record[tel_type+"_indices"] for tel_type in telescope_types}
    
@@ -99,44 +52,37 @@ def load_HDF5_data(filename, index, auxiliary_data, metadata,sort_telescopes_by_
     telescope_images = []
     telescope_triggers = []
     for tel_type in telescope_types:
-        # Only save MSTS (other telescope types do not have valid MAPPING_TABLES yet)
+        # Only save MSTS (other telescope types do not have implemented MAPPING_TABLES yet)
         if tel_type in MAPPING_TABLES:
             for i in image_indices[tel_type]:
                 if i == 0:
                     # Telescope did not trigger. Its outputs will be dropped
                     # out, so input is arbitrary. Use an empty array for
                     # efficiency.
-                    telescope_images.append(np.empty(metadata['image_shapes']['MSTS']))
+                    telescope_images.append(np.empty(metadata['image_shapes'][tel_type]))
                     telescope_triggers.append(0)
                 else:
-                    telescope_image = load_HDF5_image(f,'MSTS',i)
+                    telescope_image = load_image_HDF5(f,tel_type,i)
                     telescope_images.append(telescope_image)
                     telescope_triggers.append(1)
     
     synchronized_close_file(f)
 
-    # Collect flattened telescope positions from auxiliary data
+    # Collect telescope positions from auxiliary data
+    # telescope_positions is a list of lists ex. [[x1,y1,z1],[x2,y2,z2],...]
     telescope_positions = []
     for tel_type in telescope_types:
         if tel_type in MAPPING_TABLES:
-            for tel_id in sorted(auxiliary_data[tel_type].keys):
-                telescope_positions = telescope_positions + auxiliary_data[tel_type][tel_id]
+            for tel_id in sorted(auxiliary_data['telescope_positions'][tel_type].keys):
+                telescope_positions.append(auxiliary_data['telescope_positions'][tel_type][tel_id])
 
     if sort_telescopes_by_trigger:
-        # Group the positions by telescope (also, making a copy prevents
-        # modifying the original list)
-        group_size = metadata['num_auxiliary_inputs']
-        telescope_positions = [telescope_positions[n:n+group_size] for n in
-                range(0, len(telescope_positions), group_size)]
         # Sort the images, triggers, and grouped positions by trigger, listing
         # the triggered telescopes first
         telescope_images, telescope_triggers, telescope_positions = map(list,
                 zip(*sorted(zip(telescope_images, telescope_triggers,
                     telescope_positions), reverse=True, key=itemgetter(1))))
-        # Reflatten the position list
-        telescope_positions = [i for sublist in telescope_positions for i in
-                sublist]
- 
+
     # Convert to numpy arrays with correct types
     telescope_images = np.stack(telescope_images).astype(np.float32)
     telescope_triggers = np.array(telescope_triggers, dtype=np.int8)
@@ -146,15 +92,15 @@ def load_HDF5_data(filename, index, auxiliary_data, metadata,sort_telescopes_by_
             gamma_hadron_label]
 
 # Data loading function for single tel HDF5 data
-# NOTE: Hardcoded to work only for MSTS images
-def load_HDF5_data_single_tel(filename, index, metadata):
+# Loads the image in file 'filename', in image table 'tel_type' at index 'index'
+def load_data_single_tel_HDF5(filename, tel_type, index, metadata):
 
     # Load image table record from specified file and image table index
     f = synchronized_open_file(filename.decode('utf-8'), mode='r')
-    telescope_image = load_HDF5_image(f,'MSTS',index)
+    telescope_image = load_image_HDF5(f,tel_type,index)
 
     # Get corresponding event record using event_index column
-    event_index = f.root._f_get_child('MSTS')[index]['event_index']
+    event_index = f.root._f_get_child(tel_type)[index]['event_index']
     event_record = f.root.Event_Info[event_index]
 
     # Get classification label by converting CORSIKA particle code
@@ -162,7 +108,9 @@ def load_HDF5_data_single_tel(filename, index, metadata):
         gamma_hadron_label = 1
     elif event_record['particle_id'] == 101: # proton
         gamma_hadron_label = 0
-      
+    else:
+        raise ValueError("Unimplemented particle_id value: {}".format(record['particle_id']))
+  
     synchronized_close_file(f)
 
     return [telescope_image, gamma_hadron_label]
@@ -170,11 +118,12 @@ def load_HDF5_data_single_tel(filename, index, metadata):
 # Return dict of auxiliary data values (currently only contains telescope position coordinates).
 # Structured as auxiliary_data[telescope_positions][tel_type][tel_id] = [x,y,z]
 # Checks that the same telescopes have the same position across all files.
-def load_HDF5_auxiliary_data(file_list): 
+def load_auxiliary_data_HDF5(file_list): 
+    # Load telescope positions by telescope type and id
     telescope_positions = {}
     for filename in file_list:
         with tables.open_file(filename, mode='r') as f:
-            # For every telescope in the telescope table
+            # For every telescope in the file
             for row in f.root.Telescope_Info.iterrows():
                 tel_type = row['tel_type'].decode('utf-8')
                 tel_id = row['tel_id']
@@ -185,13 +134,14 @@ def load_HDF5_auxiliary_data(file_list):
                 else:
                     if telescope_positions[tel_type][tel_id] != [row["tel_x"],row["tel_y"],row["tel_z"]]:
                         raise ValueError("Telescope positions do not match for telescope {} in file {}.".format(tel_id,filename))
+    
     auxiliary_data = {
             'telescope_positions': telescope_positions
             }
     
     return auxiliary_data
 
-def load_HDF5_metadata(file_list):
+def load_metadata_HDF5(file_list):
     num_events_by_file = []
     num_images_by_file = {}
     particle_id_by_file = []
@@ -273,9 +223,9 @@ def load_HDF5_metadata(file_list):
 
     return metadata
 
-def load_HDF5_image(data_file,tel_type,index):
+def load_image_HDF5(data_file,tel_type,index):
+    
     record = data_file.root._f_get_child(tel_type)[index]
-    telescope_image = []
     
     # Allocate empty numpy array of shape (len_trace + 1,) to hold trace plus
     # "empty" pixel at index 0 (used to fill blank areas in image)
@@ -295,9 +245,15 @@ def load_HDF5_image(data_file,tel_type,index):
 # For array-level mode, returns all event table indices from events passing the cuts
 # Cut condition must be a string formatted as a Pytables selection condition
 # (i.e. for table.where()). See Pytables documentation for examples.
-def apply_cuts_HDF5(data_files,cut_condition,model_type):
+def apply_cuts_HDF5(file_list,cut_condition,model_type):
+
+    if cut_condition is not None:
+        logger.info("Cut condition: {}".format(cut_condition))
+    else:
+        logger.info("No cuts applied.")
+
     indices_by_file = []
-    for filename in data_files:
+    for filename in file_list:
         # No need to use the multithread-safe file open, as this function is only called once
         with tables.open_file(filename, mode='r') as f:
             # For single tel, get all passing events, then collect all non-zero MSTS image indices into a flat list
@@ -307,8 +263,75 @@ def apply_cuts_HDF5(data_files,cut_condition,model_type):
             # For array-level get all passing rows and return a list of all of the indices
             else:
                 indices = [row.nrow for row in table.where(cut_condition)] if cut_condition is not None else range(table.nrows)
-            
-            indices_by_file.append(indices)
+
+        indices_by_file.append(indices)
 
     return indices_by_file
 
+def split_indices_lists(indices_lists,validation_split):
+    training_lists = []
+    validation_lists = []
+    for indices_list in indices_lists:
+       num_validation = int(validation_split * len(indices_list))
+       
+       training_lists.append(indices_list[num_validation:len(indices_list)])
+       validation_lists.append(indices_list[0:num_validation])
+
+    return training_lists,validation_lists
+
+def get_data_generators_HDF5(file_list,cut_condition,model_type,validation_split=0.1):
+
+    metadata = load_metadata_HDF5(file_list)
+
+    # Get number of examples by file (for single tel, number of MSTS images, for array-level, number of events)
+    num_examples_by_file = metadata['num_images_by_file']['MSTS'] if model_type == 'singletel' else metadata['num_events_by_file']
+
+    # Log general information on dataset based on metadata dictionary
+    logger.info("{} data files read.".format(len(file_list)))
+    logger.info("Telescopes in data:")
+    for tel_type in metadata['telescope_ids']:
+        logger.info(tel_type + ": "+'[%s]' % ', '.join(map(str,metadata['telescope_ids'][tel_type]))) 
+    
+    num_examples_by_label = {}
+    for i,num_examples in enumerate(num_examples_by_file):
+        particle_id = metadata['particle_id_by_file'][i]
+        if particle_id not in num_examples_by_label: num_examples_by_label[particle_id] = 0
+        num_examples_by_label[particle_id] += num_examples
+
+    total_num_examples = sum(num_examples_by_label.values())
+
+    logger.info("{} total examples.".format(total_num_examples))
+    logger.info("Num examples by label:")
+    for label in num_examples_by_label:
+        logger.info("{}: {} ({}%)".format(label,num_examples_by_label[label], 100 * float(num_examples_by_label[label])/total_num_examples))
+
+    # Apply cuts
+    indices_by_file = apply_cuts_HDF5(file_list,cut_condition,model_type)
+
+    # Log info on cuts
+    num_passing_examples_by_label = {}
+    for i,index_list in enumerate(indices_by_file):
+        num_passing_examples = len(index_list)
+        particle_id = metadata['particle_id_by_file'][i]
+        if particle_id not in num_passing_examples_by_label:
+            num_passing_examples_by_label[particle_id] = 0
+        num_passing_examples_by_label[particle_id] += num_passing_examples
+
+    num_passing_examples = sum(num_passing_examples_by_label.values())
+    num_validation_examples = int(validation_split * num_passing_examples)
+    num_training_examples = num_passing_examples - num_validation_examples
+
+    logger.info("{} total examples passing cuts.".format(num_passing_examples))
+    logger.info("Num examples by label:")
+    for label in num_passing_examples_by_label:
+        logger.info("{}: {} ({}%)".format(label,num_passing_examples_by_label[label], 100 * float(num_passing_examples_by_label[label])/num_passing_examples))
+
+    # Split indices lists into training and validation
+    training_indices, validation_indices = split_indices_lists(indices_by_file,validation_split)
+
+    def training_generator():
+        return gen_fn_HDF5(file_list,training_indices)
+    def validation_generator():
+        return gen_fn_HDF5(file_list,validation_indices)
+
+    return training_generator, validation_generator
