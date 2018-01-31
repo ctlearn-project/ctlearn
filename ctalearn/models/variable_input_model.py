@@ -1,6 +1,15 @@
 import tensorflow as tf
 import numpy as np
 
+# Drop out all outputs if the telescope was not triggered
+def apply_trigger_dropout(inputs,triggers):
+    # Reshape triggers from [BATCH_SIZE] to [BATCH_SIZE, WIDTH, HEIGHT, 
+    # NUM_CHANNELS]
+    triggers = tf.reshape(triggers, [-1, 1, 1, 1])
+    triggers = tf.tile(triggers, tf.concat([[1], tf.shape(inputs)[1:]], 0))
+    
+    return tf.multiply(inputs, triggers)
+
 # Given a list of telescope output features and tensors storing the telescope
 # positions and trigger list, return a tensor of array features of the form 
 # [NUM_BATCHES, NUM_ARRAY_FEATURES]
@@ -64,8 +73,6 @@ def variable_input_model(features, labels, params, is_training):
     telescope_triggers = tf.cast(telescope_triggers, tf.float32)
 
     telescope_positions = features['telescope_positions']
-    telescope_positions = tf.reshape(telescope_positions, 
-            [-1, num_telescopes, 3])
     telescope_positions = tf.cast(telescope_positions, tf.float32)
     
     # Reshape labels to vector as expected by tf.one_hot
@@ -99,24 +106,23 @@ def variable_input_model(features, labels, params, is_training):
         from ctalearn.models.densenet import densenet_block as cnn_block
     else:
         sys.exit("Error: No valid CNN block specified.")
-    
-    # Choose how to combine telescope outputs
-    if params['telescope_combination'] == 'vector':
-        combine_telescopes = combine_telescopes_as_vectors
-    elif params['telescope_combination'] == 'featuremap':
-        combine_telescopes = combine_telescopes_as_feature_maps
-    else:
-        sys.exit("Error: Must combine telescopes as Vector or FeatureMap")
 
-    # Choose the network head
-    if params['network_head'] == 'alexnet':
-        from ctalearn.models.alexnet import alexnet_head as network_head
+    # Choose the network head and telescope combination method
+    if params['network_head'] == 'alexnet_fc':
+        from ctalearn.models.alexnet import alexnet_head_feature_vector as network_head
+        combine_telescopes = combine_telescopes_as_vectors
+    elif params['network_head'] == 'alexnet_conv':
+        from ctalearn.models.alexnet import alexnet_head_feature_map as network_head
+        combine_telescopes = combine_telescopes_as_feature_maps
     elif params['network_head'] == 'mobilenet':
         from ctalearn.models.mobilenet import mobilenet_head as network_head
+        combine_telescopes = combine_telescopes_as_feature_maps
     elif params['network_head'] == 'resnet':
         from ctalearn.models.resnet import resnet_head as network_head
-    elif params['network_head'] == 'resnetfeaturevector':
-        from ctalearn.models.resnet import resnet_head_feature_vector as network_head
+        combine_telescopes = combine_telescopes_as_feature_maps
+    elif params[['network_head'] == 'densenet':
+        from ctalearn.models.densenet import densenet_head as network_head
+        combine_telescopes = combine_telescopes_as_feature_maps
     else:
         sys.exit("Error: No valid network head specified.")
     
