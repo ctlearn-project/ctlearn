@@ -1,106 +1,65 @@
+"""
+Based on ImageNet Classification with Deep Convolutional Neural Networks (Krizhevsky, Sutskever, Hinton 2012)
+"""
+
 import tensorflow as tf
+from ctalearn.models.variable_input_model import apply_trigger_dropout
 
-#for use with train_datasets
-def alexnet_block(inputs, triggers, params=None, is_training=True, reuse=None):
 
-    with tf.variable_scope("Conv_block"):
+def alexnet_block(inputs, triggers, params={}, is_training=True, reuse=None):
 
-        #conv1
-        conv1 = tf.layers.conv2d(
-                inputs=inputs,
-                filters=96,
-                kernel_size=[11, 11],
-                strides=2, # changed from strides=4 for small image sizes
-                padding="valid",
-                activation=tf.nn.relu,
-                name="conv1",
-                reuse=reuse,
-                kernel_initializer = tf.zeros_initializer())
+    with tf.variable_scope("AlexNet_block"):
 
-        #local response normalization ???
+        # Initial conv layer stride decreased from 4 to 2 due to smaller input size
+        conv1 = tf.layers.conv2d(inputs,filters=96,kernel_size=[11, 11],strides=2,activation=tf.nn.relu,name="conv1",reuse=reuse)
+        pool1 = tf.layers.max_pooling2d(conv1, pool_size=[3, 3], strides=2,name="pool1")
+        
+        conv2 = tf.layers.conv2d(pool1,filters=256,kernel_size=[5, 5],activation=tf.nn.relu,name="conv2",reuse=reuse)
+        pool2 = tf.layers.max_pooling2d(conv2, pool_size=[3, 3], strides=2,name="pool2")
 
-        #pool1
-        pool1 = tf.layers.max_pooling2d(inputs=conv1, pool_size=[3, 3], 
-                strides=2)
+        conv3 = tf.layers.conv2d(pool2,filters=384,kernel_size=[3,3],activation=tf.nn.relu,name="conv3",reuse=reuse)
+        conv4 = tf.layers.conv2d(conv3,filters=384,kernel_size=[3, 3],activation=tf.nn.relu,name="conv4",reuse=reuse)
+        conv5 = tf.layers.conv2d(conv4,filters=256,kernel_size=[3, 3],activation=tf.nn.relu,name="conv5",reuse=reuse)
+        pool5 = tf.layers.max_pooling2d(conv5, pool_size=[3, 3], strides=2,name="pool5")
 
-        #conv2
-        conv2 = tf.layers.conv2d(
-                inputs=pool1,
-                filters=256,
-                kernel_size=[5, 5],
-                padding="valid",
-                activation=tf.nn.relu,
-                name="conv2",
-                reuse=reuse)
-
-        #normalization ????
-
-        #pool2
-        pool2 = tf.layers.max_pooling2d(inputs=conv2, pool_size=[3, 3], 
-                strides=2)
-
-        #conv3
-        conv3 = tf.layers.conv2d(
-                inputs=pool2,
-                filters=384,
-                kernel_size=[3,3],
-                padding="valid",
-                activation=tf.nn.relu,
-                name="conv3",
-                reuse=reuse)
-
-        #conv4
-        conv4 = tf.layers.conv2d(
-                inputs=conv3,
-                filters=384,
-                kernel_size=[3, 3],
-                padding="valid",
-                activation=tf.nn.relu,
-                name="conv4",
-                reuse=reuse)
-
-        #conv5
-        conv5 = tf.layers.conv2d(
-                inputs=conv4,
-                filters=256,
-                kernel_size=[3, 3],
-                padding="valid",
-                activation=tf.nn.relu,
-                name="conv5",
-                reuse=reuse)
-
-        #pool5
-        pool5 = tf.layers.max_pooling2d(inputs=conv5, pool_size=[3, 3], 
-                strides=2)
-
-        #flatten output of pool5 layer to get feature vector of shape 
-        # (num_batch,1024)
-        output = tf.multiply(tf.layers.Flatten(pool5), tf.expand_dims(trig_values, 1))
+        if triggers is not None:
+            output = apply_trigger_dropout(pool5,triggers)
 
         return output
 
-def alexnet_head(inputs, params=None, is_training=True):
+def alexnet_head_feature_vector(inputs, params={}, is_training=True):
     
     # Get hyperparameters
-    if not params:
-        params = {}
-    dropout_keep_prob = params.get('dropout_keep_prob', 0.5)
-    num_classes = params.get('num_gamma_hadron_classes', 2)
+    dropout_rate = params.get('dropout_rate', 0.5)
+    num_classes = params.get('num_classes', 2)
+
+    fc6 = tf.layers.dense(inputs_flattened, units=4096, activation=tf.nn.relu, name="fc6") 
+    dropout6 = tf.layers.dropout(fc6, rate=dropout_rate, training=is_training)
+
+    fc7 = tf.layers.dense(dropout6, units=4096, activation=tf.nn.relu, name="fc7")        
+    dropout7 = tf.layers.dropout(fc7, rate=dropout_keep_prob, training=is_training)        
+
+    logits = tf.layers.dense(dropout7, units=num_classes, name="logits")
+
+    return logits
+
+# Identical to the original Alexnet fully connected layer section but with the
+# fully connected layers replaced by additional convolutional layers
+# Based on example from https://github.com/tensorflow/models/blob/master/research/slim/nets/alexnet.py
+def alexnet_head_feature_maps(inputs, params={}, is_training=True):
     
-    #fc6
-    fc6 = tf.layers.dense(inputs=inputs, units=4096, activation=tf.nn.relu,
-    name="fc6") 
-    dropout6 = tf.layers.dropout(inputs=fc6, rate=dropout_keep_prob, 
-    training=is_training)
+    # Get hyperparameters
+    dropout_rate = params.get('dropout_rate', 0.5)
+    num_classes = params.get('num_classes', 2)
 
-    #fc7
-    fc7 = tf.layers.dense(inputs=dropout6, units=4096, activation=tf.nn.relu,
-    name="fc7")        
-    dropout7 = tf.layers.dropout(inputs=fc7, rate=dropout_keep_prob, 
-    training=is_training)        
+    conv6 = tf.layers.conv2d(inputs, filters=4096, kernel_size=[5, 5], activation=tf.nn.relu, name="conv6")
+    dropout6 = tf.layers.dropout(conv6, rate=dropout_rate, training=is_training)
 
-    #fc8
-    fc8 = tf.layers.dense(inputs=dropout7, units=num_classes, name="fc8")
+    conv7 = tf.layers.conv2d(dropout6, filters=4096, kernel_size=[1,1], activation=tf.nn.relu, name="conv7")        
+    dropout7 = tf.layers.dropout(conv7, rate=dropout_keep_prob, training=is_training)        
 
-    return fc8
+    logits = tf.layers.dense(dropout7, units=num_classes, name="logits")
+
+    return logits
+
 
