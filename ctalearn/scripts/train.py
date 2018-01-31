@@ -217,7 +217,7 @@ def train(config):
         
         # Select optimizer and set learning rate
         if optimizer_type == 'adam':
-            optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
+            optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate,epsilon=0.1)
         elif optimizer_type == 'rmsprop':
             optimizer = tf.train.RMSPropOptimizer(learning_rate=learning_rate)
         elif optimizer_type == 'adadelta':
