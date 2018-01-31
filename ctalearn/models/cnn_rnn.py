@@ -7,7 +7,7 @@ def cnn_rnn_model(features, labels, params, is_training):
     
     # Reshape and cast inputs into proper dimensions and types
     image_width, image_length, image_depth = params['image_shape']
-    num_telescopes = params['num_telescopes']
+    num_telescopes = params['num_telescopes']['MSTS']
     num_auxiliary_inputs = params['num_auxiliary_inputs']
     num_gamma_hadron_classes = params['num_gamma_hadron_classes']
     
@@ -20,17 +20,15 @@ def cnn_rnn_model(features, labels, params, is_training):
     telescope_triggers = tf.reshape(telescope_triggers, [-1, num_telescopes])
     telescope_triggers = tf.cast(telescope_triggers, tf.float32)
 
-    telescope_positions = features['telescope_positions']
+    telescope_positions = tf.cast(features['telescope_positions'], tf.float32)
     telescope_positions = tf.reshape(telescope_positions, [-1, num_telescopes,num_auxiliary_inputs])
-    telescope_positions = tf.cast(telescope_positions, tf.float32)
  
     # Reshape labels to vector as expected by tf.one_hot
-    gamma_hadron_labels = labels['gamma_hadron_labels']
+    gamma_hadron_labels = tf.cast(labels['gamma_hadron_label'],tf.int32)
     gamma_hadron_labels = tf.reshape(gamma_hadron_labels, [-1])
-    gamma_hadron_labels = tf.cast(gamma_hadron_labels, tf.int32)
 
-    # Split data by telescope by switching the batch and telescope dimensions
-    # leaving width, length, and channel depth unchanged
+    # Transpose telescope_data from [batch_size,num_tel,length,width,channels]
+    # to [num_tel,batch_size,length,width,channels].
     telescope_data = tf.transpose(telescope_data, perm=[1, 0, 2, 3, 4])
 
     # Define the network being used. Each CNN block analyzes a single
@@ -51,6 +49,8 @@ def cnn_rnn_model(features, labels, params, is_training):
         from ctalearn.models.mobilenet import mobilenet_block as cnn_block
     elif params['cnn_block'] == 'resnet':
         from ctalearn.models.resnet import resnet_block as cnn_block
+    elif params['cnn_block'] == 'densenet':
+        from ctalearn.models.densenet import densenet_block as cnn_block
     else:
         sys.exit("Error: No valid CNN block specified.")
 
@@ -60,17 +60,12 @@ def cnn_rnn_model(features, labels, params, is_training):
     telescope_outputs = []
     for telescope_index in range(num_telescopes):
         # Set all telescopes after the first to share weights
-        if telescope_index == 0:
-            reuse = None
-        else:
-            reuse = True
+        reuse = None if telescope_index == 0 else True
         
         output = cnn_block(tf.gather(telescope_data, telescope_index),None,params=params,reuse=reuse)
 
         #flatten output of embedding CNN to (batch_size, _)
-        shape = output.get_shape().as_list()
-        dim = np.prod(shape[1:])
-        output_flattened = tf.reshape(output,[-1,dim])
+        output_flattened = tf.layers.flatten(output)
 
         #compute image embedding for each telescope (batch_size,1024)
         image_embedding = tf.layers.dense(inputs=output_flattened, units=1024, activation=tf.nn.relu,reuse=reuse)
