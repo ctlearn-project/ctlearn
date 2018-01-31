@@ -13,7 +13,7 @@ def single_tel_model(features, labels, params, is_training):
     telescope_data = tf.cast(telescope_data, tf.float32)
 
     # Reshape labels to vector as expected by tf.one_hot
-    gamma_hadron_labels = labels['gamma_hadron_labels']
+    gamma_hadron_labels = labels['gamma_hadron_label']
     gamma_hadron_labels = tf.reshape(gamma_hadron_labels, [-1])
     gamma_hadron_labels = tf.cast(gamma_hadron_labels, tf.int32)
 
