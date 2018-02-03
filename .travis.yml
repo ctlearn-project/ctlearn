@@ -27,6 +27,6 @@ install:
       - conda install --q --yes --file requirements.txt -c conda-forge
       - python setup.py install
 script: 
-      - pytest --cov=ctalearn;
+      - pytest --cov=ctalearn tests/
 after_success:
       - coveralls
