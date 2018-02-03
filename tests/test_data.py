@@ -30,7 +30,7 @@ def test_gen_fn_HDF5():
     assert next(generator) == (b"test_file2.h5",4)
 
 
-def test_split_indices_lists(indices_lists,validation_split):
+def test_split_indices_lists():
     
     indices_lists = [[5,9,3,2,1,4,9,2,11,14,15],[1,3,5,7]]
     validation_split = 0.1
