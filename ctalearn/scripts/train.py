@@ -17,7 +17,7 @@ tf.logging.set_verbosity(tf.logging.WARN)
 
 def train(config):
     # Load options related to loading the data
-    data_file_or_list = config['Data']['File or FileList']
+    data_files_list = config['Data']['DataFilesList']
     data_format = config['Data']['Format'].lower()
     sort_telescopes_by_trigger = config['Data'].getboolean(
         'SortTelescopesByTrigger', False)
@@ -87,7 +87,7 @@ def train(config):
 
         # Load/read list of data files
         data_files = []
-        with open(data_file_or_list) as f:
+        with open(data_files_list) as f:
             for line in f:
                 line = line.strip()
                 if line and line[0] != "#":
