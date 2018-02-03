@@ -24,10 +24,10 @@ def test_gen_fn_HDF5():
 
     generator = gen_fn_HDF5(file_list,indices_by_file)
 
-    assert generator.next == (b"test_file1.h5",1)
-    assert generator.next == (b"test_file1.h5",2)
-    assert generator.next == (b"test_file2.h5",3)
-    assert generator.next == (b"test_file2.h5",4)
+    assert next(generator) == (b"test_file1.h5",1)
+    assert next(generator) == (b"test_file1.h5",2)
+    assert next(generator) == (b"test_file2.h5",3)
+    assert next(generator) == (b"test_file2.h5",4)
 
 
 def test_split_indices_lists(indices_lists,validation_split):
