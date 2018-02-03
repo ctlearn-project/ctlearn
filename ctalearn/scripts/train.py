@@ -17,7 +17,12 @@ tf.logging.set_verbosity(tf.logging.WARN)
 
 def train(config):
     # Load options related to loading the data
-    data_files_list = config['Data']['DataFilesList']
+    data_files = []
+    with open(config['Data']['DataFilesList']) as f:
+        for line in f:
+            line = line.strip()
+            if line and line[0] != "#":
+                data_files.append(line)
     data_format = config['Data']['Format'].lower()
     sort_telescopes_by_trigger = config['Data'].getboolean(
         'SortTelescopesByTrigger', False)
@@ -85,19 +90,12 @@ def train(config):
     # Define data loading functions
     if data_format == 'hdf5':
 
-        # Load/read list of data files
-        data_files = []
-        with open(data_files_list) as f:
-            for line in f:
-                line = line.strip()
-                if line and line[0] != "#":
-                    data_files.append(line)
-
         # Load metadata from HDF5 files
         metadata = ctalearn.data.load_metadata_HDF5(data_files)
  
         if model_type == 'singletel':
-            # NOTE: Single tel mode currently hardocded to read MSTS images only 
+            # NOTE: Single tel mode currently hardocoded to read MSTS images
+            # only 
             def load_data(filename,index):
                 return ctalearn.data.load_data_single_tel_HDF5(
                         filename,
@@ -111,7 +109,8 @@ def train(config):
             data_types = [tf.float32, tf.int64]
 
         else:
-            # For array-level methods, get auxiliary data (telescope positions + other) in dict
+            # For array-level methods, get a dict of auxiliary data (telescope
+            # positions and any other data)
             auxiliary_data = ctalearn.load_auxiliary_data_HDF5(data_files)
 
             def load_data(filename,index):
@@ -128,54 +127,62 @@ def train(config):
             #  gamma_hadron_label]
             data_types = [tf.float32, tf.int8, tf.float32, tf.int64]
 
-        # Define input function for TF Estimator
-        # Build from generator returning (HDF5_filename, index) pairs
+        # Define format for Tensorflow dataset
+        # Build dataset from generator returning (HDF5_filename, index) pairs
         # and a load_data function which maps (HDF5_filename, index) pairs
         # to full training examples (images and labels)
-        def input_fn(generator,repeat=False): 
-            # NOTE: Dataset.from_generator takes a callable (i.e. a generator function/ function returning a
-            # generator) not a python generator object. To get the generator object
-            # from the function (i.e. to measure its length), the function must be called
-            # (i.e. generator())
-            dataset = tf.data.Dataset.from_generator(generator,(tf.string, tf.int64)).shuffle(len(list(generator())))
-            dataset = dataset.map(lambda filename, index: tuple(tf.py_func(load_data,[filename, index], data_types)),
-                    num_parallel_calls=num_parallel_calls)
-            if repeat:
-                dataset = dataset.repeat() 
-            dataset = dataset.batch(batch_size)
-            dataset = dataset.prefetch(10)
-     
-            iterator = dataset.make_one_shot_iterator()
-
-            # For single tel, return a batch of images and labels
-            if model_type == 'singletel':
-                (telescope_data, gamma_hadron_label) = iterator.get_next()
-                features = {
-                        'telescope_data': telescope_data
-                        }
-                labels = {
-                        'gamma_hadron_label': gamma_hadron_label,
-                        }
-            # For array-level, return a batch of images, triggers, telescope
-            # positions, and labels
-            else:
-                (telescope_data, telescope_triggers, telescope_positions, gamma_hadron_label) = iterator.get_next()
-                features = {
-                        'telescope_data': telescope_data, 
-                        'telescope_triggers': telescope_triggers, 
-                        'telescope_positions': telescope_positions,
-                        }
-                labels = {
-                        'gamma_hadron_label': gamma_hadron_label,
-                        }
-                
-            return features, labels
-
+        generator_output_types = (tf.string, tf.int64)
+        map_func = lambda filename, index: tuple(tf.py_func(load_data,
+            [filename, index], data_types))
+        
         # Get data generators returning (filename,index) pairs from data files 
         # by applying cuts and splitting into training and validation
-        training_generator, validation_generator = ctalearn.data.get_data_generators_HDF5(data_files,cut_condition,model_type,validation_split) 
+        training_generator, validation_generator = (
+                ctalearn.data.get_data_generators_HDF5(data_files,
+                    cut_condition, model_type, validation_split))
+
     else:
         raise ValueError("Invalid data format: {}".format(data_format))
+
+    # Define input function for TF Estimator
+    def input_fn(generator, repeat=False): 
+        # NOTE: Dataset.from_generator takes a callable (i.e. a generator
+        # function / function returning a generator) not a python generator
+        # object. To get the generator object from the function (i.e. to
+        # measure its length), the function must be called (i.e. generator())
+        dataset = tf.data.Dataset.from_generator(generator,
+                generator_output_types).shuffle(len(list(generator())))
+        dataset = dataset.map(map_func, num_parallel_calls=num_parallel_calls)
+        if repeat:
+            dataset = dataset.repeat() 
+        dataset = dataset.batch(batch_size)
+        dataset = dataset.prefetch(10)
+    
+        iterator = dataset.make_one_shot_iterator()
+
+        # For single tel, return a batch of images and labels
+        if model_type == 'singletel':
+            (telescope_data, gamma_hadron_label) = iterator.get_next()
+            features = {
+                    'telescope_data': telescope_data
+                    }
+            labels = {
+                    'gamma_hadron_label': gamma_hadron_label,
+                    }
+        # For array-level, return a batch of images, triggers, telescope
+        # positions, and labels
+        else:
+            (telescope_data, telescope_triggers, telescope_positions, gamma_hadron_label) = iterator.get_next()
+            features = {
+                    'telescope_data': telescope_data, 
+                    'telescope_triggers': telescope_triggers, 
+                    'telescope_positions': telescope_positions,
+                    }
+            labels = {
+                    'gamma_hadron_label': gamma_hadron_label,
+                    }
+            
+        return features, labels
 
     # Merge dictionaries for passing to the model function
     params = {**hyperparameters, **metadata}
