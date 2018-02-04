@@ -31,6 +31,9 @@ def train(config):
     batch_size = config['Data Processing'].getint('BatchSize')
     num_training_steps_per_validation = config['Data Processing'].getint(
         'NumTrainingStepsPerValidation', 1000)
+    prefetch_buffer_size = (config['Data Processing'].getint(
+        'PrefetchBufferSize') if 
+        config['Data Processing']['PrefetchBufferSize'] else None)
     num_parallel_calls = config['Data Processing'].getint(
         'NumParallelCalls', 12)
     validation_split = config['Data Processing'].getfloat(
@@ -156,7 +159,8 @@ def train(config):
         if repeat:
             dataset = dataset.repeat() 
         dataset = dataset.batch(batch_size)
-        dataset = dataset.prefetch(10)
+        if prefetch_buffer_size:
+            dataset = dataset.prefetch(prefetch_buffer_size)
     
         iterator = dataset.make_one_shot_iterator()
 
