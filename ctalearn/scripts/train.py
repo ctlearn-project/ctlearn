@@ -31,9 +31,8 @@ def train(config):
     batch_size = config['Data Processing'].getint('BatchSize')
     num_training_steps_per_validation = config['Data Processing'].getint(
         'NumTrainingStepsPerValidation', 1000)
-    prefetch_buffer_size = (config['Data Processing'].getint(
-        'PrefetchBufferSize') if 
-        config['Data Processing']['PrefetchBufferSize'] else None)
+    prefetch = config['Data Processing'].getboolean('Prefetch', True)
+    buffer_size = config['Data Processing'].getint('BufferSize', 10)
     num_parallel_calls = config['Data Processing'].getint(
         'NumParallelCalls', 12)
     validation_split = config['Data Processing'].getfloat(
@@ -79,6 +78,15 @@ def train(config):
     config_log_filename = time.strftime('%Y%m%d_%H%M%S_') + config_filename
     shutil.copy(config_full_path, os.path.join(model_dir, config_log_filename))
 
+    # Define data input settings
+    data_input_settings = {
+            'batch_size': batch_size,
+            'prefetch': prefetch,
+            'buffer_size': buffer_size,
+            'map': False,
+            'num_parallel_calls': num_parallel_calls
+            }
+    
     # Define model hyperparameters
     hyperparameters = {
             'cnn_block': cnn_block,
@@ -89,7 +97,7 @@ def train(config):
             'pretrained_weights': pretrained_weights_file,
             'freeze_weights': freeze_weights
             }
- 
+
     # Define data loading functions
     if data_format == 'hdf5':
 
@@ -97,7 +105,7 @@ def train(config):
         metadata = ctalearn.data.load_metadata_HDF5(data_files)
  
         if model_type == 'singletel':
-            # NOTE: Single tel mode currently hardocoded to read MSTS images
+            # NOTE: Single tel mode currently hardcoded to read MSTS images
             # only 
             def load_data(filename,index):
                 return ctalearn.data.load_data_single_tel_HDF5(
@@ -107,9 +115,9 @@ def train(config):
                         metadata)
 
             # Output datatypes of load_data (required by tf.py_func)
-            # For single telescope data, data types correspond to:
-            # [telescope_data, gamma_hadron_label]
             data_types = [tf.float32, tf.int64]
+            output_names = ['telescope_data', 'gamma_hadron_label']
+            outputs_are_label = [False, True]
 
         else:
             # For array-level methods, get a dict of auxiliary data (telescope
@@ -125,10 +133,10 @@ def train(config):
                         sort_telescopes_by_trigger=sort_telescopes_by_trigger)
 
             # Output datatypes of load_data (required by tf.py_func)
-            # For array-level data, data types correspond to:
-            # [telescope_data, telescope_triggers, telescope_positions,
-            #  gamma_hadron_label]
             data_types = [tf.float32, tf.int8, tf.float32, tf.int64]
+            output_names = ['telescope_data', 'telescope_triggers',
+                    'telescope_positions', 'gamma_hadron_label']
+            outputs_are_label = [False, False, False, True]
 
         # Define format for Tensorflow dataset
         # Build dataset from generator returning (HDF5_filename, index) pairs
@@ -137,6 +145,12 @@ def train(config):
         generator_output_types = (tf.string, tf.int64)
         map_func = lambda filename, index: tuple(tf.py_func(load_data,
             [filename, index], data_types))
+
+        data_input_settings['generator_output_types'] = generator_output_types
+        data_input_settings['map'] = True
+        data_input_settings['map_func'] = map_func
+        data_input_settings['output_names'] = output_names
+        data_input_settings['outputs_are_label'] = outputs_are_label
         
         # Get data generators returning (filename,index) pairs from data files 
         # by applying cuts and splitting into training and validation
@@ -148,44 +162,40 @@ def train(config):
         raise ValueError("Invalid data format: {}".format(data_format))
 
     # Define input function for TF Estimator
-    def input_fn(generator, repeat=False): 
+    def input_fn(generator, settings, repeat=False): 
         # NOTE: Dataset.from_generator takes a callable (i.e. a generator
         # function / function returning a generator) not a python generator
         # object. To get the generator object from the function (i.e. to
         # measure its length), the function must be called (i.e. generator())
         dataset = tf.data.Dataset.from_generator(generator,
-                generator_output_types).shuffle(len(list(generator())))
-        dataset = dataset.map(map_func, num_parallel_calls=num_parallel_calls)
+                settings['generator_output_types']).shuffle(len(
+                    list(generator())))
+        if settings['map']:
+            dataset = dataset.map(settings['map_func'],
+                    num_parallel_calls=settings['num_parallel_calls'])
         if repeat:
-            dataset = dataset.repeat() 
-        dataset = dataset.batch(batch_size)
-        if prefetch_buffer_size:
-            dataset = dataset.prefetch(prefetch_buffer_size)
+            dataset = dataset.repeat()
+        dataset = dataset.batch(settings['batch_size'])
+        if settings['prefetch']:
+            dataset = dataset.prefetch(settings['buffer_size'])
     
         iterator = dataset.make_one_shot_iterator()
 
-        # For single tel, return a batch of images and labels
-        if model_type == 'singletel':
-            (telescope_data, gamma_hadron_label) = iterator.get_next()
-            features = {
-                    'telescope_data': telescope_data
-                    }
-            labels = {
-                    'gamma_hadron_label': gamma_hadron_label,
-                    }
-        # For array-level, return a batch of images, triggers, telescope
-        # positions, and labels
-        else:
-            (telescope_data, telescope_triggers, telescope_positions, gamma_hadron_label) = iterator.get_next()
-            features = {
-                    'telescope_data': telescope_data, 
-                    'telescope_triggers': telescope_triggers, 
-                    'telescope_positions': telescope_positions,
-                    }
-            labels = {
-                    'gamma_hadron_label': gamma_hadron_label,
-                    }
-            
+        # Return a batch of features and labels. For example, for an
+        # array-level network the features are images, triggers, and telescope
+        # positions, and the labels are the gamma-hadron labels
+        iterator_outputs = iterator.get_next()
+        features = {}
+        labels = {}
+        for output, output_name, is_label in zip(
+                iterator_outputs,
+                settings['output_names'],
+                settings['outputs_are_label']):
+            if is_label:
+                labels[output_name] = output
+            else:
+                features[output_name] = output
+
         return features, labels
 
     # Merge dictionaries for passing to the model function
@@ -275,7 +285,8 @@ def train(config):
     # Set monitors and hooks
     monitors_and_hooks = [
             tf.contrib.learn.monitors.ValidationMonitor(
-                input_fn= lambda: input_fn(validation_generator,repeat=False),
+                input_fn= lambda: input_fn(validation_generator,
+                    data_input_settings, repeat=False),
                 every_n_steps=num_training_steps_per_validation,
                 name="validation")]
 
@@ -286,7 +297,8 @@ def train(config):
         hooks.append(tf.python.debug.LocalCLIDebugHook())
 
     # Train and evaluate model
-    estimator.train(lambda: input_fn(training_generator,repeat=True), steps=None, hooks=hooks)
+    estimator.train(lambda: input_fn(training_generator, data_input_settings,
+        repeat=True), steps=None, hooks=hooks)
 
     """
     while True:
