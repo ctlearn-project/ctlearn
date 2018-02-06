@@ -120,7 +120,7 @@ def variable_input_model(features, labels, params, is_training):
     elif params['network_head'] == 'resnet':
         from ctalearn.models.resnet import resnet_head as network_head
         combine_telescopes = combine_telescopes_as_feature_maps
-    elif params[['network_head'] == 'densenet':
+    elif params['network_head'] == 'densenet':
         from ctalearn.models.densenet import densenet_head as network_head
         combine_telescopes = combine_telescopes_as_feature_maps
     else:
