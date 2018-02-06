@@ -16,28 +16,28 @@ tf.logging.set_verbosity(tf.logging.WARN)
 
 
 def train(config):
-    # Load options related to loading the data
+    # Load options related to the data format and location
+    data_format = config['Data Format']['Format'].lower()
     data_files = []
-    with open(config['Data']['DataFilesList']) as f:
+    with open(config['Data Format']['DataFilesList']) as f:
         for line in f:
             line = line.strip()
             if line and line[0] != "#":
                 data_files.append(line)
-    data_format = config['Data']['Format'].lower()
-    sort_telescopes_by_trigger = config['Data'].getboolean(
-        'SortTelescopesByTrigger', False)
 
-    # Load options relating to processing the data
-    batch_size = config['Data Processing'].getint('BatchSize')
-    num_training_steps_per_validation = config['Data Processing'].getint(
-        'NumTrainingStepsPerValidation', 1000)
-    prefetch = config['Data Processing'].getboolean('Prefetch', True)
-    buffer_size = config['Data Processing'].getint('BufferSize', 10)
-    num_parallel_calls = config['Data Processing'].getint(
-        'NumParallelCalls', 12)
+    # Load options related to data input
+    batch_size = config['Data Input'].getint('BatchSize')
+    num_parallel_calls = config['Data Input'].getint(
+        'NumParallelCalls', 1)
+    prefetch = config['Data Input'].getboolean('Prefetch', True)
+    buffer_size = config['Data Input'].getint('BufferSize', 10)
+
+    # Load options related to data processing
     validation_split = config['Data Processing'].getfloat(
         'ValidationSplit',0.1)
-    cut_condition = config['Data Processing']['CutCondition'] if config['Data Processing']['CutCondition'] else None
+    cut_condition = config['Data Processing'].get('CutCondition', '')
+    sort_telescopes_by_trigger = config['Data Processing'].getboolean(
+        'SortTelescopesByTrigger', False)
 
     # Load options to specify the model
     model_type = config['Model']['ModelType'].lower()
@@ -58,21 +58,24 @@ def train(config):
         raise ValueError("Invalid model type: {}".format(model_type))
 
     # Load options related to pretrained weights
-    pretrained_weights_file = config['Model']['PretrainedWeights'] if config['Model']['PretrainedWeights'] else None
-    freeze_weights = config['Model'].getboolean('FreezeWeights',False)
+    pretrained_weights = config['Model'].get('PretrainedWeights', '')
+    freeze_weights = config['Model'].getboolean('FreezeWeights', False)
 
-    # Load options for training hyperparameters
+    # Load options related to training
     optimizer_type = config['Training']['Optimizer'].lower()
     base_learning_rate = config['Training'].getfloat('BaseLearningRate')
-    scale_learning_rate = config['Training'].getboolean('ScaleLearningRate',False)
+    scale_learning_rate = config['Training'].getboolean('ScaleLearningRate',
+            False)
     batch_norm_decay = config['Training'].getfloat('BatchNormDecay', 0.95)
     clip_gradient_norm = config['Training'].getfloat('ClipGradientNorm', 0.)
+    num_training_steps_per_validation = config['Data Processing'].getint(
+        'NumTrainingStepsPerValidation', 1000)
     
     # Load options relating to logging and checkpointing
     model_dir = config['Logging']['ModelDirectory']
 
     # Load options related to debugging
-    run_tfdbg = config['Debug'].getboolean('RunTFDBG',False)
+    run_tfdbg = config['Debug'].getboolean('RunTFDBG', False)
 
     # Log a copy of the configuration file
     config_log_filename = time.strftime('%Y%m%d_%H%M%S_') + config_filename
@@ -94,7 +97,7 @@ def train(config):
             'base_learning_rate': base_learning_rate,
             'batch_norm_decay': batch_norm_decay,
             'clip_gradient_norm': clip_gradient_norm,
-            'pretrained_weights': pretrained_weights_file,
+            'pretrained_weights': pretrained_weights,
             'freeze_weights': freeze_weights
             }
 

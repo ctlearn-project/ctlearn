@@ -245,24 +245,28 @@ def load_image_HDF5(data_file,tel_type,index):
 # For array-level mode, returns all event table indices from events passing the cuts
 # Cut condition must be a string formatted as a Pytables selection condition
 # (i.e. for table.where()). See Pytables documentation for examples.
-def apply_cuts_HDF5(file_list,cut_condition,model_type):
+# If cut condition is empty, do not apply any cuts.
+def apply_cuts_HDF5(file_list, cut_condition, model_type):
 
-    if cut_condition is not None:
+    if cut_condition:
         logger.info("Cut condition: {}".format(cut_condition))
     else:
         logger.info("No cuts applied.")
 
     indices_by_file = []
     for filename in file_list:
-        # No need to use the multithread-safe file open, as this function is only called once
+        # No need to use the multithread-safe file open, as this function
+        # is only called once
         with tables.open_file(filename, mode='r') as f:
-            # For single tel, get all passing events, then collect all non-zero MSTS image indices into a flat list
+            # For single tel, get all passing events, then collect all non-zero 
+            # MSTS image indices into a flat list
             if model_type == 'singletel':
-                passing_events = f.root.Event_Info.where(cut_condition) if cut_condition is not None else f.root.Event_Info.iterrows()
+                passing_events = f.root.Event_Info.where(cut_condition) if cut_condition else f.root.Event_Info.iterrows()
                 indices = [i for row in passing_events for i in row['MSTS_indices'] if i != 0]
-            # For array-level get all passing rows and return a list of all of the indices
+            # For array-level get all passing rows and return a list of all of
+            # the indices
             else:
-                indices = [row.nrow for row in table.where(cut_condition)] if cut_condition is not None else range(table.nrows)
+                indices = [row.nrow for row in table.where(cut_condition)] if cut_condition else range(table.nrows)
 
         indices_by_file.append(indices)
 
