@@ -1,6 +1,7 @@
 from operator import itemgetter
 import threading
 import logging
+import math
 
 import tables
 import numpy as np
@@ -23,10 +24,10 @@ def synchronized_close_file(self, *args, **kwargs):
 
 # Generator function used to produce a dataset of elements (HDF5_filename,index)
 # from a list of files and a list of lists of indices per file (constructed by applying cuts)
-def gen_fn_HDF5(file_list,indices_by_file):
-    for i,filename in enumerate(file_list):
-        for j in indices_by_file[i]:
-            yield (filename.encode('utf-8'),j)
+def gen_fn_HDF5(file_list,indices_by_file): 
+    for filename,indices_list in zip(file_list,indices_by_file):
+        for i in indices_list:
+            yield (filename.encode('utf-8'),i)
 
 # Data loading function for event-wise (array-level) HDF5 data loading
 def load_data_eventwise_HDF5(filename, index, auxiliary_data, metadata,sort_telescopes_by_trigger=False):
@@ -272,7 +273,7 @@ def split_indices_lists(indices_lists,validation_split):
     training_lists = []
     validation_lists = []
     for indices_list in indices_lists:
-       num_validation = int(validation_split * len(indices_list))
+       num_validation = math.ceil(validation_split * len(indices_list))
        
        training_lists.append(indices_list[num_validation:len(indices_list)])
        validation_lists.append(indices_list[0:num_validation])
