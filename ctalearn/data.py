@@ -216,7 +216,7 @@ def load_metadata_HDF5(file_list):
             'particle_id_by_file': particle_id_by_file,
             'image_shapes': IMAGE_SHAPES,
             'num_classes': len(set(particle_id_by_file)),
-            'num_auxiliary_inputs':3,
+            'num_position_coordinates': 3,
             'image_charge_min': image_charge_min,
             'image_charge_max': image_charge_max
             }

@@ -10,8 +10,8 @@ def cnn_rnn_model(features, labels, params, is_training):
     # Reshape and cast inputs into proper dimensions and types
     image_width, image_length, image_depth = params['image_shape']
     num_telescopes = params['num_telescopes']['MSTS']
-    num_auxiliary_inputs = params['num_auxiliary_inputs']
-    num_gamma_hadron_classes = params['num_gamma_hadron_classes']
+    num_position_coordinates = params['num_position_coordinates']
+    num_gamma_hadron_classes = params['num__classes']
     
     telescope_data = features['telescope_data']
     telescope_data = tf.reshape(telescope_data, [-1, num_telescopes, 
@@ -23,7 +23,8 @@ def cnn_rnn_model(features, labels, params, is_training):
     telescope_triggers = tf.cast(telescope_triggers, tf.float32)
 
     telescope_positions = tf.cast(features['telescope_positions'], tf.float32)
-    telescope_positions = tf.reshape(telescope_positions, [-1, num_telescopes,num_auxiliary_inputs])
+    telescope_positions = tf.reshape(telescope_positions, [-1, num_telescopes,
+        num_position_coordinates])
  
     # Reshape labels to vector as expected by tf.one_hot
     gamma_hadron_labels = tf.cast(labels['gamma_hadron_label'],tf.int32)

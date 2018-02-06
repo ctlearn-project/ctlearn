@@ -63,6 +63,7 @@ def variable_input_model(features, labels, params, is_training):
     # Reshape and cast inputs into proper dimensions and types
     image_width, image_length, image_depth = params['image_shapes']['MSTS']
     num_telescopes = params['num_telescopes']['MSTS']
+    num_position_coordinates = params['num_position_coordinates']
     num_gamma_hadron_classes = params['num_classes']
     
     telescope_data = features['telescope_data']
@@ -75,6 +76,8 @@ def variable_input_model(features, labels, params, is_training):
     telescope_triggers = tf.cast(telescope_triggers, tf.float32)
 
     telescope_positions = features['telescope_positions']
+    telescope_positions = tf.reshape(telescope_positions, [-1, num_telescopes,
+        num_position_coordinates])
     telescope_positions = tf.cast(telescope_positions, tf.float32)
     
     # Reshape labels to vector as expected by tf.one_hot
