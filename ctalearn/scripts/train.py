@@ -9,6 +9,7 @@ import time
 import tensorflow as tf
 
 import ctalearn.data
+import ctalearn.models
 
 # Disable Tensorflow info and warning messages (not error messages)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -42,16 +43,15 @@ def train(config):
     # Load options to specify the model
     model_type = config['Model']['ModelType'].lower()
     if model_type == 'variableinputmodel':
-        from ctalearn.models.variable_input_model import (
-                variable_input_model as model)
+        model = ctalearn.models.variable_input_model.variable_input_model
         cnn_block = config['Model']['CNNBlock'].lower()
         network_head = config['Model']['NetworkHead'].lower()
     elif model_type == 'cnnrnn':
-        from ctalearn.models.cnn_rnn import cnn_rnn_model as model
+        model = ctalearn.models.cnn_rnn.cnn_rnn_model
         cnn_block = config['Model']['CNNBlock'].lower()
         network_head = None
     elif model_type == 'singletel':
-        from ctalearn.models.single_tel import single_tel_model as model
+        model = ctalearn.models.single_tel.single_tel_model
         cnn_block = config['Model']['CNNBlock'].lower()
         network_head = None
     else:

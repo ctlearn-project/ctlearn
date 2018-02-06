@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 
+import ctalearn.models
 
 def single_tel_model(features, labels, params, is_training):
     
@@ -17,7 +18,7 @@ def single_tel_model(features, labels, params, is_training):
     gamma_hadron_labels = tf.reshape(gamma_hadron_labels, [-1])
     gamma_hadron_labels = tf.cast(gamma_hadron_labels, tf.int32)
 
-    # Choose the CNN base
+    # Choose the CNN block
     if params['cnn_block'] == 'alexnet':
         from ctalearn.models.alexnet import alexnet_block as cnn_block
     elif params['cnn_block'] == 'mobilenet':
