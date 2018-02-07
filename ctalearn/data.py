@@ -21,13 +21,6 @@ def synchronized_close_file(self, *args, **kwargs):
     with lock:
         return self.close(*args, **kwargs)
 
-# Generator function used to produce a dataset of elements (HDF5_filename,index)
-# from a list of files and a list of lists of indices per file (constructed by applying cuts)
-def gen_fn_HDF5(file_list,indices_by_file):
-    for i,filename in enumerate(file_list):
-        for j in indices_by_file[i]:
-            yield (filename.encode('utf-8'),j)
-
 # Data loading function for event-wise (array-level) HDF5 data loading
 def load_data_eventwise_HDF5(filename, index, auxiliary_data, metadata,sort_telescopes_by_trigger=False):
 
@@ -282,6 +275,13 @@ def split_indices_lists(indices_lists,validation_split):
        validation_lists.append(indices_list[0:num_validation])
 
     return training_lists,validation_lists
+
+# Generator function used to produce a dataset of elements (HDF5_filename,index)
+# from a list of files and a list of lists of indices per file (constructed by applying cuts)
+def gen_fn_HDF5(file_list,indices_by_file):
+    for i,filename in enumerate(file_list):
+        for j in indices_by_file[i]:
+            yield (filename.encode('utf-8'),j)
 
 def get_data_generators_HDF5(file_list,cut_condition,model_type,validation_split=0.1):
 
