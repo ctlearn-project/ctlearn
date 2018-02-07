@@ -227,8 +227,13 @@ def train(config):
         else:
             raise ValueError("Invalid optimizer choice: {}".format(optimizer_type))
 
-        train_op = tf.contrib.slim.learning.create_train_op(loss, optimizer,
-                clip_gradient_norm=params['clip_gradient_norm'])
+        # Control dependencies on update ops for batch normalization
+        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+        with tf.control_dependencies(update_ops):
+            train_op = optimizer.minimize(loss,
+                    global_step=tf.train.get_global_step())
+        #train_op = tf.contrib.slim.learning.create_train_op(loss, optimizer,
+        #        clip_gradient_norm=params['clip_gradient_norm'])
         
         # Define the evaluation metrics
         eval_metric_ops = {
@@ -262,6 +267,11 @@ def train(config):
             params=params)
 
     # Set monitors and hooks
+    monitors_and_hooks = [
+            tf.contrib.learn.monitors.ValidationMonitor(
+                input_fn= lambda: input_fn(training_generator,repeat=False),
+                every_n_steps=num_training_steps_per_validation,
+                name="training")]
     monitors_and_hooks = [
             tf.contrib.learn.monitors.ValidationMonitor(
                 input_fn= lambda: input_fn(validation_generator,repeat=False),
