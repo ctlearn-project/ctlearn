@@ -42,7 +42,7 @@ def alexnet_head_feature_vector(inputs, params={}, is_training=True):
 # Identical to the original Alexnet fully connected layer section but with the
 # fully connected layers replaced by additional convolutional layers
 # Based on example from https://github.com/tensorflow/models/blob/master/research/slim/nets/alexnet.py
-def alexnet_head_feature_maps(inputs, params={}, is_training=True):
+def alexnet_head_feature_map(inputs, params={}, is_training=True):
     
     # Get hyperparameters
     dropout_rate = params.get('dropout_rate', 0.5)
