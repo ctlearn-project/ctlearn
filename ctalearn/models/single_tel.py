@@ -1,6 +1,10 @@
 import tensorflow as tf
 import numpy as np
 
+from ctalearn.models.alexnet import alexnet_block
+from ctalearn.models.mobilenet import mobilenet_block
+from ctalearn.models.resnet import resnet_block
+from ctalearn.models.densenet import densenet_block
 
 def single_tel_model(features, labels, params, is_training):
     
@@ -17,21 +21,19 @@ def single_tel_model(features, labels, params, is_training):
     gamma_hadron_labels = tf.reshape(gamma_hadron_labels, [-1])
     gamma_hadron_labels = tf.cast(gamma_hadron_labels, tf.int32)
 
-    # Choose the CNN base
+    # Choose the CNN block
     if params['cnn_block'] == 'alexnet':
-        from ctalearn.models.alexnet import alexnet_block as cnn_block
+        cnn_block = alexnet_block
     elif params['cnn_block'] == 'mobilenet':
-        from ctalearn.models.mobilenet import mobilenet_block as cnn_block
+        cnn_block = mobilenet_block
     elif params['cnn_block'] == 'resnet':
-        from ctalearn.models.resnet import resnet_block as cnn_block
+        cnn_block = resnet_block
     elif params['cnn_block'] == 'densenet':
-        from ctalearn.models.densenet import densenet_block as cnn_block
+        cnn_block = densenet_block
     else:
         sys.exit("Error: No valid CNN block specified.")
 
-    output = cnn_block(telescope_data,triggers=None,
-                params=params,
-                is_training=is_training)
+    output = cnn_block(telescope_data, params=params, is_training=is_training)
 
     output_flattened = tf.layers.flatten(output)
 

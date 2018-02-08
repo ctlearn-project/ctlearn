@@ -1,6 +1,13 @@
 import tensorflow as tf
 import numpy as np
 
+from ctalearn.models.alexnet import (alexnet_block,
+        alexnet_head_feature_vector, alexnet_head_feature_map)
+from ctalearn.models.mobilenet import mobilenet_block, mobilenet_head
+from ctalearn.models.resnet import (resnet_block, resnet_head,
+        resnet_head_feature_vector)
+from ctalearn.models.densenet import densenet_block
+
 # Drop out all outputs if the telescope was not triggered
 def apply_trigger_dropout(inputs,triggers):
     # Reshape triggers from [BATCH_SIZE] to [BATCH_SIZE, WIDTH, HEIGHT, 
@@ -61,6 +68,7 @@ def variable_input_model(features, labels, params, is_training):
     # Reshape and cast inputs into proper dimensions and types
     image_width, image_length, image_depth = params['image_shapes']['MSTS']
     num_telescopes = params['num_telescopes']['MSTS']
+    num_position_coordinates = params['num_position_coordinates']
     num_gamma_hadron_classes = params['num_classes']
     
     telescope_data = features['telescope_data']
@@ -73,6 +81,8 @@ def variable_input_model(features, labels, params, is_training):
     telescope_triggers = tf.cast(telescope_triggers, tf.float32)
 
     telescope_positions = features['telescope_positions']
+    telescope_positions = tf.reshape(telescope_positions, [-1, num_telescopes,
+        num_position_coordinates])
     telescope_positions = tf.cast(telescope_positions, tf.float32)
     
     # Reshape labels to vector as expected by tf.one_hot
@@ -97,32 +107,32 @@ def variable_input_model(features, labels, params, is_training):
 
     # Choose the CNN block
     if params['cnn_block'] == 'alexnet':
-        from ctalearn.models.alexnet import alexnet_block as cnn_block
+        cnn_block = alexnet_block
     elif params['cnn_block'] == 'mobilenet':
-        from ctalearn.models.mobilenet import mobilenet_block as cnn_block
+        cnn_block = mobilenet_block
     elif params['cnn_block'] == 'resnet':
-        from ctalearn.models.resnet import resnet_block as cnn_block
+        cnn_block = resnet_block
     elif params['cnn_block'] == 'densenet':
-        from ctalearn.models.densenet import densenet_block as cnn_block
+        cnn_block = densenet_block
     else:
         sys.exit("Error: No valid CNN block specified.")
 
     # Choose the network head and telescope combination method
     if params['network_head'] == 'alexnet_fc':
-        from ctalearn.models.alexnet import alexnet_head_feature_vector as network_head
+        network_head = alexnet_head_feature_vector
         combine_telescopes = combine_telescopes_as_vectors
     elif params['network_head'] == 'alexnet_conv':
-        from ctalearn.models.alexnet import alexnet_head_feature_map as network_head
+        network_head = alexnet_head_feature_map
         combine_telescopes = combine_telescopes_as_feature_maps
     elif params['network_head'] == 'mobilenet':
-        from ctalearn.models.mobilenet import mobilenet_head as network_head
+        network_head = mobilenet_head
         combine_telescopes = combine_telescopes_as_feature_maps
     elif params['network_head'] == 'resnet':
-        from ctalearn.models.resnet import resnet_head as network_head
+        network_head = resnet_head
         combine_telescopes = combine_telescopes_as_feature_maps
-    elif params['network_head'] == 'densenet':
-        from ctalearn.models.densenet import densenet_head as network_head
-        combine_telescopes = combine_telescopes_as_feature_maps
+    elif params['network_head'] == 'resnetfeaturevector':
+        network_head = resnet_head_feature_vector
+        combine_telescopes = combine_telescopes_as_vectors
     else:
         sys.exit("Error: No valid network head specified.")
     
@@ -136,10 +146,11 @@ def variable_input_model(features, labels, params, is_training):
             reuse = True
         telescope_features = cnn_block(
                 tf.gather(telescope_data, telescope_index), 
-                tf.gather(telescope_triggers, telescope_index, axis=1),
                 params=params,
                 is_training=is_training,
                 reuse=reuse)
+        telescope_features = apply_trigger_dropout(telescope_features,
+                tf.gather(telescope_triggers, telescope_index, axis=1))
         telescope_outputs.append(telescope_features)
 
     with tf.variable_scope("NetworkHead"):

@@ -5,8 +5,6 @@ import tensorflow as tf
 from tensorflow.contrib.layers import flatten
 import tensorflow.contrib.slim as slim
 
-from ctalearn.models.variable_input_model import apply_trigger_dropout
-
 
 NUM_CLASSES = 2
 
@@ -101,19 +99,13 @@ def mobilenet_base(scope, inputs, conv_defs, batch_norm_decay=0.95,
                                 'layer %d' % (conv_def.ltype, i))
     return net, end_points
 
-def mobilenet_block(inputs, triggers=None, params={}, is_training=True, reuse=None):
+def mobilenet_block(inputs, params={}, is_training=True, reuse=None):
     
     # Get hyperparameters
     batch_norm_decay = params.get('batch_norm_decay', 0.95)
 
     net, end_points = mobilenet_base("MobileNetBlock", inputs, BLOCK_CONV_DEFS,
             batch_norm_decay, is_training, reuse)
-    
-    if triggers is not None:
-        # Drop out all outputs if the telescope was not triggered
-        end_point = "Trigger_multiplier"
-        end_points[end_point] = apply_trigger_dropout(net,triggers)
-        net = end_points[end_point]
 
     # For compatibility with variable_input_model, do not return
     # end_points for now

@@ -1,6 +1,11 @@
 import tensorflow as tf
 import numpy as np
 
+from ctalearn.models.alexnet import alexnet_block
+from ctalearn.models.mobilenet import mobilenet_block
+from ctalearn.models.resnet import resnet_block
+from ctalearn.models.densenet import densenet_block
+
 LSTM_SIZE = 2048
 
 def cnn_rnn_model(features, labels, params, is_training):
@@ -8,8 +13,8 @@ def cnn_rnn_model(features, labels, params, is_training):
     # Reshape and cast inputs into proper dimensions and types
     image_width, image_length, image_depth = params['image_shape']
     num_telescopes = params['num_telescopes']['MSTS']
-    num_auxiliary_inputs = params['num_auxiliary_inputs']
-    num_gamma_hadron_classes = params['num_gamma_hadron_classes']
+    num_position_coordinates = params['num_position_coordinates']
+    num_gamma_hadron_classes = params['num__classes']
     
     telescope_data = features['telescope_data']
     telescope_data = tf.reshape(telescope_data, [-1, num_telescopes, 
@@ -21,7 +26,8 @@ def cnn_rnn_model(features, labels, params, is_training):
     telescope_triggers = tf.cast(telescope_triggers, tf.float32)
 
     telescope_positions = tf.cast(features['telescope_positions'], tf.float32)
-    telescope_positions = tf.reshape(telescope_positions, [-1, num_telescopes,num_auxiliary_inputs])
+    telescope_positions = tf.reshape(telescope_positions, [-1, num_telescopes,
+        num_position_coordinates])
  
     # Reshape labels to vector as expected by tf.one_hot
     gamma_hadron_labels = tf.cast(labels['gamma_hadron_label'],tf.int32)
@@ -44,13 +50,13 @@ def cnn_rnn_model(features, labels, params, is_training):
 
     # Choose the CNN block
     if params['cnn_block'] == 'alexnet':
-        from ctalearn.models.alexnet import alexnet_block as cnn_block
+        cnn_block = alexnet_block
     elif params['cnn_block'] == 'mobilenet':
-        from ctalearn.models.mobilenet import mobilenet_block as cnn_block
+        cnn_block = mobilenet_block
     elif params['cnn_block'] == 'resnet':
-        from ctalearn.models.resnet import resnet_block as cnn_block
+        cnn_block = resnet_block
     elif params['cnn_block'] == 'densenet':
-        from ctalearn.models.densenet import densenet_block as cnn_block
+        cnn_block = densenet_block
     else:
         sys.exit("Error: No valid CNN block specified.")
 
@@ -62,7 +68,8 @@ def cnn_rnn_model(features, labels, params, is_training):
         # Set all telescopes after the first to share weights
         reuse = None if telescope_index == 0 else True
         
-        output = cnn_block(tf.gather(telescope_data, telescope_index),None,params=params,reuse=reuse)
+        output = cnn_block(tf.gather(telescope_data, telescope_index),
+                params=params, reuse=reuse)
 
         #flatten output of embedding CNN to (batch_size, _)
         output_flattened = tf.layers.flatten(output)
