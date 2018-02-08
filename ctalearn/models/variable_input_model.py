@@ -149,10 +149,11 @@ def variable_input_model(features, labels, params, is_training):
             reuse = True
         telescope_features = cnn_block(
                 tf.gather(telescope_data, telescope_index), 
-                tf.gather(telescope_triggers, telescope_index, axis=1),
                 params=params,
                 is_training=is_training,
                 reuse=reuse)
+        telescope_features = apply_trigger_dropout(telescope_features,
+                tf.gather(telescope_triggers, telescope_index, axis=1))
         telescope_outputs.append(telescope_features)
 
     with tf.variable_scope("NetworkHead"):

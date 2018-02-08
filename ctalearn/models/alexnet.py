@@ -3,10 +3,9 @@ Based on ImageNet Classification with Deep Convolutional Neural Networks (Krizhe
 """
 
 import tensorflow as tf
-from ctalearn.models.variable_input_model import apply_trigger_dropout
 
 
-def alexnet_block(inputs, triggers, params={}, is_training=True, reuse=None):
+def alexnet_block(inputs, params={}, is_training=True, reuse=None):
 
     with tf.variable_scope("AlexNet_block"):
 
@@ -22,12 +21,7 @@ def alexnet_block(inputs, triggers, params={}, is_training=True, reuse=None):
         conv5 = tf.layers.conv2d(conv4,filters=256,kernel_size=[3, 3],activation=tf.nn.relu,name="conv5",reuse=reuse)
         pool5 = tf.layers.max_pooling2d(conv5, pool_size=[3, 3], strides=2,name="pool5")
 
-        if triggers:
-            output = apply_trigger_dropout(pool5,triggers)
-        else:
-            output = pool5
-
-        return output
+        return pool5
 
 def alexnet_head_feature_vector(inputs, params={}, is_training=True):
     

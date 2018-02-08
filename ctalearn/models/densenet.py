@@ -4,7 +4,6 @@ Based on Densely Connected Convolutional Networks (Huang et. al., 2016)
 
 import numpy as np
 import tensorflow as tf
-from ctalearn.models.variable_input_model import trigger_dropout
 
 NUM_CLASSES = 2
 
@@ -61,7 +60,7 @@ def densenet_transition_layer(inputs,training,theta=0.5):
 Densenet CNN (kernel sizes, pool sizes, strides based on densenet-bc imagenet model)
 With a 120x120 input, returns
 """
-def densenet_block(inputs, k=GROWTH_RATE,num_dense_blocks=NUM_DENSE_BLOCKS,triggers=None, params=None, is_training=True, reuse=None):
+def densenet_block(inputs, k=GROWTH_RATE,num_dense_blocks=NUM_DENSE_BLOCKS, params=None, is_training=True, reuse=None):
 
     with tf.variable_scope("DenseNet_block",reuse=reuse):
         with tf.variable_scope("initial_conv"):
@@ -75,10 +74,6 @@ def densenet_block(inputs, k=GROWTH_RATE,num_dense_blocks=NUM_DENSE_BLOCKS,trigg
                 if i != num_dense_blocks-1:
                     with tf.variable_scope("transition_after_block_{}".format(i+1)):
                         output = densenet_transition_layer(output,training=is_training)
-
-    # Trigger dropout (mask outputs with binary trigger values)
-    if triggers is not None:
-        output = trigger_dropout(output,triggers)
 
     return output
     

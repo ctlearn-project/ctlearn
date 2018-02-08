@@ -224,7 +224,7 @@ def resnet_base(inputs,size,scope_name,reuse,is_training):
     return inputs
 
 
-def resnet_block(inputs, triggers, params=None, is_training=True, reuse=None):
+def resnet_block(inputs, params=None, is_training=True, reuse=None):
 
     #preliminary convolution and pooling on raw input
     inputs = conv2d_fixed_padding(
@@ -240,13 +240,8 @@ def resnet_block(inputs, triggers, params=None, is_training=True, reuse=None):
     inputs = resnet_base(inputs, RESNET_BLOCK_SIZE, "RESNET_BLOCK", reuse,
             is_training)
 
-    #zero out based on trigger value
-    triggers = tf.reshape(triggers, [-1, 1, 1, 1])
-    triggers = tf.tile(triggers, tf.concat([[1], tf.shape(inputs)[1:]], 0))
-    output = tf.multiply(inputs, triggers)
-
     output = tf.layers.max_pooling2d(
-            inputs=output, pool_size=5, strides=3, padding='SAME',
+            inputs=inputs, pool_size=5, strides=3, padding='SAME',
             data_format=DATA_FORMAT)
  
     return output   
