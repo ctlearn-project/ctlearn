@@ -68,7 +68,8 @@ def cnn_rnn_model(features, labels, params, is_training):
         # Set all telescopes after the first to share weights
         reuse = None if telescope_index == 0 else True
         
-        output = cnn_block(tf.gather(telescope_data, telescope_index),None,params=params,reuse=reuse)
+        output = cnn_block(tf.gather(telescope_data, telescope_index),
+                params=params, reuse=reuse)
 
         #flatten output of embedding CNN to (batch_size, _)
         output_flattened = tf.layers.flatten(output)

@@ -33,9 +33,7 @@ def single_tel_model(features, labels, params, is_training):
     else:
         sys.exit("Error: No valid CNN block specified.")
 
-    output = cnn_block(telescope_data,triggers=None,
-                params=params,
-                is_training=is_training)
+    output = cnn_block(telescope_data, params=params, is_training=is_training)
 
     output_flattened = tf.layers.flatten(output)
 
