@@ -285,33 +285,20 @@ def train(config):
             model_dir=model_dir, 
             params=params)
 
-    # Set monitors and hooks
-    monitors_and_hooks = [
-            tf.contrib.learn.monitors.ValidationMonitor(
-                input_fn= lambda: input_fn(validation_generator,
-                    data_input_settings, repeat=False),
-                every_n_steps=num_training_steps_per_validation,
-                name="validation")]
-
-    hooks = tf.contrib.learn.monitors.replace_monitors_with_hooks(monitors_and_hooks, estimator)
-
+    hooks = None
     # Activate Tensorflow debugger if appropriate option set
     if run_tfdbg:
+        if not isinstance(hooks, list):
+            hooks = []
         hooks.append(tf.python.debug.LocalCLIDebugHook())
 
-    # Train and evaluate model
-    estimator.train(lambda: input_fn(training_generator, data_input_settings,
-        repeat=True), steps=None, hooks=hooks)
-
-    """
     while True:
-        for _ in range(num_training_epochs_per_evaluation):
-            estimator.train(lambda: input_fn(training_generator,shuffle=True), steps=num_batches_per_training_epoch, hooks=hooks)
+        estimator.train(
+                lambda: input_fn(training_generator, data_input_settings),
+                steps=num_training_steps_per_validation, hooks=hooks)
         estimator.evaluate(
-                lambda: input_fn(training_generator,shuffle=True), steps=num_batches_per_train_eval,hooks=hooks, name='training')
-        estimator.evaluate(
-                lambda: input_fn(validation_generator,shuffle=True), steps=num_batches_per_val_eval,hooks=hooks,  name='validation')
-    """
+                lambda: input_fn(validation_generator, data_input_settings),
+                steps=num_validation_steps, hooks=hooks, name='validation')
 
 if __name__ == "__main__":
 
