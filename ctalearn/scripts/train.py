@@ -61,15 +61,26 @@ def train(config):
     pretrained_weights = config['Model'].get('PretrainedWeights', '')
     freeze_weights = config['Model'].getboolean('FreezeWeights', False)
 
-    # Load options related to training
-    optimizer_type = config['Training']['Optimizer'].lower()
-    base_learning_rate = config['Training'].getfloat('BaseLearningRate')
-    scale_learning_rate = config['Training'].getboolean('ScaleLearningRate',
-            False)
-    batch_norm_decay = config['Training'].getfloat('BatchNormDecay', 0.95)
-    clip_gradient_norm = config['Training'].getfloat('ClipGradientNorm', 0.)
-    num_training_steps_per_validation = config['Data Processing'].getint(
+    # Load options related to training hyperparameters
+    optimizer_type = config['Training Hyperparameters']['Optimizer'].lower()
+    base_learning_rate = config['Training Hyperparameters'].getfloat(
+            'BaseLearningRate')
+    scale_learning_rate = config['Training Hyperparameters'].getboolean(
+            'ScaleLearningRate', False)
+    batch_norm_decay = config['Training Hyperparameters'].getfloat(
+            'BatchNormDecay', 0.95)
+    clip_gradient_norm = config['Training Hyperparameters'].getfloat(
+            'ClipGradientNorm', 0.)
+
+    # Load options related to training settings
+    num_epochs = config['Training Settings'].getint('NumEpochs', 0)
+    if num_epochs < 0:
+        raise ValueError("NumEpochs must be positive or 0: invalid value {}".format(num_epochs))
+    train_forever = False if num_epochs else True
+    num_training_steps_per_validation = config['Training Settings'].getint(
         'NumTrainingStepsPerValidation', 1000)
+    num_validation_steps = config['Training Settings'].getint(
+            'NumValidationSteps', 1000)
     
     # Load options relating to logging and checkpointing
     model_dir = config['Logging']['ModelDirectory']
@@ -289,14 +300,17 @@ def train(config):
         if not isinstance(hooks, list):
             hooks = []
         hooks.append(tf.python.debug.LocalCLIDebugHook())
-
-    while True:
+    
+    num_epochs_remaining = num_epochs
+    while train_forever or num_epochs_remaining:
         estimator.train(
                 lambda: input_fn(training_generator, data_input_settings),
                 steps=num_training_steps_per_validation, hooks=hooks)
         estimator.evaluate(
                 lambda: input_fn(validation_generator, data_input_settings),
                 steps=num_validation_steps, hooks=hooks, name='validation')
+        if not train_forever:
+            num_epochs_remaining -= 1
 
 if __name__ == "__main__":
 
