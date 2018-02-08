@@ -81,8 +81,6 @@ def train(config):
     train_forever = False if num_epochs else True
     num_training_steps_per_validation = config['Training Settings'].getint(
         'NumTrainingStepsPerValidation', 1000)
-    num_validation_steps = config['Training Settings'].getint(
-            'NumValidationSteps', 1000)
     
     # Load options relating to logging and checkpointing
     model_dir = config['Logging']['ModelDirectory']
@@ -310,7 +308,7 @@ def train(config):
                 steps=num_training_steps_per_validation, hooks=hooks)
         estimator.evaluate(
                 lambda: input_fn(validation_generator, data_input_settings),
-                steps=num_validation_steps, hooks=hooks, name='validation')
+                hooks=hooks, name='validation')
         if not train_forever:
             num_epochs_remaining -= 1
 
