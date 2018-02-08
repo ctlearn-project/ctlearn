@@ -1,7 +1,10 @@
 import tensorflow as tf
 import numpy as np
 
-import ctalearn.models
+from ctalearn.models.alexnet import alexnet_block
+from ctalearn.models.mobilenet import mobilenet_block
+from ctalearn.models.resnet import resnet_block
+from ctalearn.models.densenet import densenet_block
 
 def single_tel_model(features, labels, params, is_training):
     
@@ -20,13 +23,13 @@ def single_tel_model(features, labels, params, is_training):
 
     # Choose the CNN block
     if params['cnn_block'] == 'alexnet':
-        from ctalearn.models.alexnet import alexnet_block as cnn_block
+        cnn_block = alexnet_block
     elif params['cnn_block'] == 'mobilenet':
-        from ctalearn.models.mobilenet import mobilenet_block as cnn_block
+        cnn_block = mobilenet_block
     elif params['cnn_block'] == 'resnet':
-        from ctalearn.models.resnet import resnet_block as cnn_block
+        cnn_block = resnet_block
     elif params['cnn_block'] == 'densenet':
-        from ctalearn.models.densenet import densenet_block as cnn_block
+        cnn_block = densenet_block
     else:
         sys.exit("Error: No valid CNN block specified.")
 

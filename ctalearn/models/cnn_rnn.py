@@ -1,7 +1,10 @@
 import tensorflow as tf
 import numpy as np
 
-import ctalearn.models
+from ctalearn.models.alexnet import alexnet_block
+from ctalearn.models.mobilenet import mobilenet_block
+from ctalearn.models.resnet import resnet_block
+from ctalearn.models.densenet import densenet_block
 
 LSTM_SIZE = 2048
 
@@ -47,13 +50,13 @@ def cnn_rnn_model(features, labels, params, is_training):
 
     # Choose the CNN block
     if params['cnn_block'] == 'alexnet':
-        cnn_block = ctalearn.models.alexnet.alexnet_block
+        cnn_block = alexnet_block
     elif params['cnn_block'] == 'mobilenet':
-        cnn_block = ctalearn.models.mobilenet.mobilenet_block
+        cnn_block = mobilenet_block
     elif params['cnn_block'] == 'resnet':
-        cnn_block = ctalearn.models.resnet.resnet_block
+        cnn_block = resnet_block
     elif params['cnn_block'] == 'densenet':
-        cnn_block = ctalearn.models.densenet.densenet_block
+        cnn_block = densenet_block
     else:
         sys.exit("Error: No valid CNN block specified.")
 
