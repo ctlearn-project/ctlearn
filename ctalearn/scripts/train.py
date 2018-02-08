@@ -165,7 +165,7 @@ def train(config):
         raise ValueError("Invalid data format: {}".format(data_format))
 
     # Define input function for TF Estimator
-    def input_fn(generator, settings, repeat=False): 
+    def input_fn(generator, settings): 
         # NOTE: Dataset.from_generator takes a callable (i.e. a generator
         # function / function returning a generator) not a python generator
         # object. To get the generator object from the function (i.e. to
@@ -176,8 +176,6 @@ def train(config):
         if settings['map']:
             dataset = dataset.map(settings['map_func'],
                     num_parallel_calls=settings['num_parallel_calls'])
-        if repeat:
-            dataset = dataset.repeat()
         dataset = dataset.batch(settings['batch_size'])
         if settings['prefetch']:
             dataset = dataset.prefetch(settings['buffer_size'])
