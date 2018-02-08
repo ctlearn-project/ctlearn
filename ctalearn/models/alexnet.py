@@ -22,8 +22,10 @@ def alexnet_block(inputs, triggers, params={}, is_training=True, reuse=None):
         conv5 = tf.layers.conv2d(conv4,filters=256,kernel_size=[3, 3],activation=tf.nn.relu,name="conv5",reuse=reuse)
         pool5 = tf.layers.max_pooling2d(conv5, pool_size=[3, 3], strides=2,name="pool5")
 
-        if triggers is not None:
+        if triggers:
             output = apply_trigger_dropout(pool5,triggers)
+        else:
+            output = pool5
 
         return output
 
