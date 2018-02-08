@@ -6,7 +6,7 @@ from ctalearn.models.alexnet import (alexnet_block,
 from ctalearn.models.mobilenet import mobilenet_block, mobilenet_head
 from ctalearn.models.resnet import (resnet_block, resnet_head,
         resnet_head_feature_vector)
-from ctalearn.models.densenet import densenet_block, densenet_head
+from ctalearn.models.densenet import densenet_block
 
 # Drop out all outputs if the telescope was not triggered
 def apply_trigger_dropout(inputs,triggers):
@@ -133,9 +133,6 @@ def variable_input_model(features, labels, params, is_training):
     elif params['network_head'] == 'resnetfeaturevector':
         network_head = resnet_head_feature_vector
         combine_telescopes = combine_telescopes_as_vectors
-    elif params['network_head'] == 'densenet':
-        network_head = densenet.densenet_head
-        combine_telescopes = combine_telescopes_as_feature_maps
     else:
         sys.exit("Error: No valid network head specified.")
     
