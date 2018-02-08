@@ -22,13 +22,6 @@ def synchronized_close_file(self, *args, **kwargs):
     with lock:
         return self.close(*args, **kwargs)
 
-# Generator function used to produce a dataset of elements (HDF5_filename,index)
-# from a list of files and a list of lists of indices per file (constructed by applying cuts)
-def gen_fn_HDF5(file_list,indices_by_file): 
-    for filename,indices_list in zip(file_list,indices_by_file):
-        for i in indices_list:
-            yield (filename.encode('utf-8'),i)
-
 # Data loading function for event-wise (array-level) HDF5 data loading
 def load_data_eventwise_HDF5(filename, index, auxiliary_data, metadata,sort_telescopes_by_trigger=False):
 
@@ -217,7 +210,7 @@ def load_metadata_HDF5(file_list):
             'particle_id_by_file': particle_id_by_file,
             'image_shapes': IMAGE_SHAPES,
             'num_classes': len(set(particle_id_by_file)),
-            'num_auxiliary_inputs':3,
+            'num_position_coordinates': 3,
             'image_charge_min': image_charge_min,
             'image_charge_max': image_charge_max
             }
@@ -246,24 +239,28 @@ def load_image_HDF5(data_file,tel_type,index):
 # For array-level mode, returns all event table indices from events passing the cuts
 # Cut condition must be a string formatted as a Pytables selection condition
 # (i.e. for table.where()). See Pytables documentation for examples.
-def apply_cuts_HDF5(file_list,cut_condition,model_type):
+# If cut condition is empty, do not apply any cuts.
+def apply_cuts_HDF5(file_list, cut_condition, model_type):
 
-    if cut_condition is not None:
+    if cut_condition:
         logger.info("Cut condition: {}".format(cut_condition))
     else:
         logger.info("No cuts applied.")
 
     indices_by_file = []
     for filename in file_list:
-        # No need to use the multithread-safe file open, as this function is only called once
+        # No need to use the multithread-safe file open, as this function
+        # is only called once
         with tables.open_file(filename, mode='r') as f:
-            # For single tel, get all passing events, then collect all non-zero MSTS image indices into a flat list
+            # For single tel, get all passing events, then collect all non-zero 
+            # MSTS image indices into a flat list
             if model_type == 'singletel':
-                passing_events = f.root.Event_Info.where(cut_condition) if cut_condition is not None else f.root.Event_Info.iterrows()
+                passing_events = f.root.Event_Info.where(cut_condition) if cut_condition else f.root.Event_Info.iterrows()
                 indices = [i for row in passing_events for i in row['MSTS_indices'] if i != 0]
-            # For array-level get all passing rows and return a list of all of the indices
+            # For array-level get all passing rows and return a list of all of
+            # the indices
             else:
-                indices = [row.nrow for row in table.where(cut_condition)] if cut_condition is not None else range(table.nrows)
+                indices = [row.nrow for row in table.where(cut_condition)] if cut_condition else range(table.nrows)
 
         indices_by_file.append(indices)
 
@@ -279,6 +276,13 @@ def split_indices_lists(indices_lists,validation_split):
        validation_lists.append(indices_list[0:num_validation])
 
     return training_lists,validation_lists
+
+# Generator function used to produce a dataset of elements (HDF5_filename,index)
+# from a list of files and a list of lists of indices per file (constructed by applying cuts)
+def gen_fn_HDF5(file_list,indices_by_file): 
+    for filename,indices_list in zip(file_list,indices_by_file):
+        for i in indices_list:
+            yield (filename.encode('utf-8'),i)
 
 def get_data_generators_HDF5(file_list,cut_condition,model_type,validation_split=0.1):
 
