@@ -227,13 +227,8 @@ def train(config):
         else:
             raise ValueError("Invalid optimizer choice: {}".format(optimizer_type))
 
-        # Control dependencies on update ops for batch normalization
-        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-        with tf.control_dependencies(update_ops):
-            train_op = optimizer.minimize(loss,
-                    global_step=tf.train.get_global_step())
-        #train_op = tf.contrib.slim.learning.create_train_op(loss, optimizer,
-        #        clip_gradient_norm=params['clip_gradient_norm'])
+        train_op = tf.contrib.slim.learning.create_train_op(loss, optimizer,
+                clip_gradient_norm=params['clip_gradient_norm'])
         
         # Define the evaluation metrics
         eval_metric_ops = {
@@ -266,36 +261,20 @@ def train(config):
             model_dir=model_dir, 
             params=params)
 
-    # Set monitors and hooks
-    monitors_and_hooks = [
-            tf.contrib.learn.monitors.ValidationMonitor(
-                input_fn= lambda: input_fn(training_generator,repeat=False),
-                every_n_steps=num_training_steps_per_validation,
-                name="training")]
-    monitors_and_hooks = [
-            tf.contrib.learn.monitors.ValidationMonitor(
-                input_fn= lambda: input_fn(validation_generator,repeat=False),
-                every_n_steps=num_training_steps_per_validation,
-                name="validation")]
-
-    hooks = tf.contrib.learn.monitors.replace_monitors_with_hooks(monitors_and_hooks, estimator)
-
+    hooks = None
     # Activate Tensorflow debugger if appropriate option set
     if run_tfdbg:
+        if not isinstance(hooks, list):
+            hooks = []
         hooks.append(tf.python.debug.LocalCLIDebugHook())
 
-    # Train and evaluate model
-    estimator.train(lambda: input_fn(training_generator,repeat=True), steps=None, hooks=hooks)
-
-    """
     while True:
-        for _ in range(num_training_epochs_per_evaluation):
-            estimator.train(lambda: input_fn(training_generator,shuffle=True), steps=num_batches_per_training_epoch, hooks=hooks)
+        estimator.train(
+                lambda: input_fn(training_generator, shuffle=True),
+                steps=num_training_steps_per_validation, hooks=hooks)
         estimator.evaluate(
-                lambda: input_fn(training_generator,shuffle=True), steps=num_batches_per_train_eval,hooks=hooks, name='training')
-        estimator.evaluate(
-                lambda: input_fn(validation_generator,shuffle=True), steps=num_batches_per_val_eval,hooks=hooks,  name='validation')
-    """
+                lambda: input_fn(validation_generator, shuffle=False),
+                steps=num_validation_steps, hooks=hooks, name='validation')
 
 if __name__ == "__main__":
 
