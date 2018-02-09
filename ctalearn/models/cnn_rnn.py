@@ -58,7 +58,7 @@ def cnn_rnn_model(features, labels, params, is_training):
     elif params['cnn_block'] == 'densenet':
         cnn_block = densenet_block
     else:
-        sys.exit("Error: No valid CNN block specified.")
+        raise ValueError("Invalid CNN block specified: {}.".format(params['cnn_block']))
 
     #calculate number of valid images per event
     num_tels_triggered = tf.to_int32(tf.reduce_sum(telescope_triggers,1))
