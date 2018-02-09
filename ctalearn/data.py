@@ -87,7 +87,7 @@ def load_data_eventwise_HDF5(filename, index, auxiliary_data, metadata,sort_tele
 
 # Data loading function for single tel HDF5 data
 # Loads the image in file 'filename', in image table 'tel_type' at index 'index'
-def load_data_single_tel_HDF5(filename, tel_type, index, metadata):
+def load_data_single_tel_HDF5(filename, tel_type, index):
 
     # Load image table record from specified file and image table index
     f = synchronized_open_file(filename.decode('utf-8'), mode='r')
@@ -243,7 +243,7 @@ def load_image_HDF5(data_file,tel_type,index):
 def apply_cuts_HDF5(file_list, cut_condition, model_type):
 
     if cut_condition:
-        logger.info("Cut condition: {}".format(cut_condition))
+        logger.info("Cut condition: %s", cut_condition)
     else:
         logger.info("No cuts applied.")
 
@@ -293,7 +293,7 @@ def get_data_generators_HDF5(file_list,cut_condition,model_type,validation_split
     num_examples_by_file = metadata['num_images_by_file']['MSTS'] if model_type == 'singletel' else metadata['num_events_by_file']
 
     # Log general information on dataset based on metadata dictionary
-    logger.info("{} data files read.".format(len(file_list)))
+    logger.info("%d data files read.", len(file_list))
     logger.info("Telescopes in data:")
     for tel_type in metadata['telescope_ids']:
         logger.info(tel_type + ": "+'[%s]' % ', '.join(map(str,metadata['telescope_ids'][tel_type]))) 
@@ -306,10 +306,10 @@ def get_data_generators_HDF5(file_list,cut_condition,model_type,validation_split
 
     total_num_examples = sum(num_examples_by_label.values())
 
-    logger.info("{} total examples.".format(total_num_examples))
+    logger.info("%d total examples.", total_num_examples)
     logger.info("Num examples by label:")
     for label in num_examples_by_label:
-        logger.info("{}: {} ({}%)".format(label,num_examples_by_label[label], 100 * float(num_examples_by_label[label])/total_num_examples))
+        logger.info("%s: %d (%f%%)", label, num_examples_by_label[label], 100 * float(num_examples_by_label[label])/total_num_examples)
 
     # Apply cuts
     indices_by_file = apply_cuts_HDF5(file_list,cut_condition,model_type)
@@ -325,12 +325,11 @@ def get_data_generators_HDF5(file_list,cut_condition,model_type,validation_split
 
     num_passing_examples = sum(num_passing_examples_by_label.values())
     num_validation_examples = int(validation_split * num_passing_examples)
-    num_training_examples = num_passing_examples - num_validation_examples
 
-    logger.info("{} total examples passing cuts.".format(num_passing_examples))
+    logger.info("%d total examples passing cuts.", num_passing_examples)
     logger.info("Num examples by label:")
     for label in num_passing_examples_by_label:
-        logger.info("{}: {} ({}%)".format(label,num_passing_examples_by_label[label], 100 * float(num_passing_examples_by_label[label])/num_passing_examples))
+        logger.info("%s: %d (%f%%)", label, num_passing_examples_by_label[label], 100 * float(num_passing_examples_by_label[label])/num_passing_examples)
 
     # Split indices lists into training and validation
     training_indices, validation_indices = split_indices_lists(indices_by_file,validation_split)
