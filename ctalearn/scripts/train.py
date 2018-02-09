@@ -125,8 +125,7 @@ def train(config):
                 return ctalearn.data.load_data_single_tel_HDF5(
                         filename,
                         'MSTS',
-                        index,
-                        metadata)
+                        index)
 
             # Output datatypes of load_data (required by tf.py_func)
             data_types = [tf.float32, tf.int64]
