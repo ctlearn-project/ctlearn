@@ -1,8 +1,5 @@
-"""
-Based on Densely Connected Convolutional Networks (Huang et. al., 2016)
-"""
+# Based on Densely Connected Convolutional Networks (Huang et. al., 2016)
 
-import numpy as np
 import tensorflow as tf
 
 NUM_CLASSES = 2
@@ -13,9 +10,7 @@ GROWTH_RATE = 32
 NUM_DENSE_BLOCKS = 3
 NUM_LAYERS_PER_BLOCK = [6,12,24]
 
-"""
-Combined densenet convolution layer (BN,ReLU,Conv) + Dropout
-"""
+# Combined densenet convolution layer (BN,ReLU,Conv) + Dropout
 def densenet_conv_layer(inputs,kernel_size,num_filters,dropout_rate=0.2,training=True):
     
     output = tf.layers.batch_normalization(inputs,training=training,fused=True)
@@ -25,9 +20,8 @@ def densenet_conv_layer(inputs,kernel_size,num_filters,dropout_rate=0.2,training
 
     return output
 
-"""
-densenet block of multiple convolution and bottleneck layers
-"""
+
+# densenet block of multiple convolution and bottleneck layers
 def densenet_dense_block(inputs,k,num_layers,training):
     
     output = inputs
@@ -42,10 +36,9 @@ def densenet_dense_block(inputs,k,num_layers,training):
 
     return output
 
-"""
-densenet transition layer
-theta is compression factor from original paper. num_input_feature_maps * theta = num_output_feature_maps
-"""
+
+# densenet transition layer
+# theta is compression factor from original paper. num_input_feature_maps * theta = num_output_feature_maps
 def densenet_transition_layer(inputs,training,theta=0.5):
 
     input_num_filters = int(inputs.get_shape()[-1])
@@ -56,10 +49,9 @@ def densenet_transition_layer(inputs,training,theta=0.5):
 
     return output
 
-"""
-Densenet CNN (kernel sizes, pool sizes, strides based on densenet-bc imagenet model)
-With a 120x120 input, returns
-"""
+
+# Densenet CNN (kernel sizes, pool sizes, strides based on densenet-bc imagenet model)
+# With a 120x120 input, returns output of shape (15, 15, filters)
 def densenet_block(inputs, k=GROWTH_RATE,num_dense_blocks=NUM_DENSE_BLOCKS, params=None, is_training=True, reuse=None):
 
     with tf.variable_scope("DenseNet_block",reuse=reuse):

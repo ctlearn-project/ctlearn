@@ -1,5 +1,4 @@
 import tensorflow as tf
-import numpy as np
 
 from ctalearn.models.alexnet import (alexnet_block,
         alexnet_head_feature_vector, alexnet_head_feature_map)

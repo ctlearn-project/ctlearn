@@ -1,5 +1,4 @@
 import tensorflow as tf
-import numpy as np
 
 from ctalearn.models.alexnet import alexnet_block
 from ctalearn.models.mobilenet import mobilenet_block
