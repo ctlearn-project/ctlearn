@@ -104,7 +104,7 @@ def load_data_single_tel_HDF5(filename, tel_type, index, metadata):
     elif event_record['particle_id'] == 101: # proton
         gamma_hadron_label = 0
     else:
-        raise ValueError("Unimplemented particle_id value: {}".format(record['particle_id']))
+        raise ValueError("Unimplemented particle_id value: {}".format(event_record['particle_id']))
   
     synchronized_close_file(f)
 
@@ -257,13 +257,14 @@ def apply_cuts_HDF5(file_list, cut_condition, model_type):
         with tables.open_file(filename, mode='r') as f:
             # For single tel, get all passing events, then collect all non-zero 
             # MSTS image indices into a flat list
+            event_table = f.root.Event_Info
             if model_type == 'singletel':
-                passing_events = f.root.Event_Info.where(cut_condition) if cut_condition else f.root.Event_Info.iterrows()
+                passing_events = event_table.where(cut_condition) if cut_condition else event_table.iterrows()
                 indices = [i for row in passing_events for i in row['MSTS_indices'] if i != 0]
             # For array-level get all passing rows and return a list of all of
             # the indices
             else:
-                indices = [row.nrow for row in f.root.Event_Info.where(cut_condition)] if cut_condition else range(f.root.Event_Info.nrows)
+                indices = [row.nrow for row in event_table.where(cut_condition)] if cut_condition else range(event_table.nrows)
 
         indices_by_file.append(indices)
 

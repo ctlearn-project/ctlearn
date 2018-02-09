@@ -5,7 +5,7 @@ Based on ImageNet Classification with Deep Convolutional Neural Networks (Krizhe
 import tensorflow as tf
 
 
-def alexnet_block(inputs, params={}, is_training=True, reuse=None):
+def alexnet_block(inputs, params=None, is_training=True, reuse=None):
 
     with tf.variable_scope("AlexNet_block"):
 
@@ -23,17 +23,18 @@ def alexnet_block(inputs, params={}, is_training=True, reuse=None):
 
         return pool5
 
-def alexnet_head_feature_vector(inputs, params={}, is_training=True):
+def alexnet_head_feature_vector(inputs, params=None, is_training=True):
     
     # Get hyperparameters
+    if params is None: params = {}
     dropout_rate = params.get('dropout_rate', 0.5)
     num_classes = params.get('num_classes', 2)
 
-    fc6 = tf.layers.dense(inputs_flattened, units=4096, activation=tf.nn.relu, name="fc6") 
+    fc6 = tf.layers.dense(inputs, units=4096, activation=tf.nn.relu, name="fc6") 
     dropout6 = tf.layers.dropout(fc6, rate=dropout_rate, training=is_training)
 
     fc7 = tf.layers.dense(dropout6, units=4096, activation=tf.nn.relu, name="fc7")        
-    dropout7 = tf.layers.dropout(fc7, rate=dropout_keep_prob, training=is_training)        
+    dropout7 = tf.layers.dropout(fc7, rate=dropout_rate, training=is_training)        
 
     logits = tf.layers.dense(dropout7, units=num_classes, name="logits")
 
@@ -42,9 +43,10 @@ def alexnet_head_feature_vector(inputs, params={}, is_training=True):
 # Identical to the original Alexnet fully connected layer section but with the
 # fully connected layers replaced by additional convolutional layers
 # Based on example from https://github.com/tensorflow/models/blob/master/research/slim/nets/alexnet.py
-def alexnet_head_feature_map(inputs, params={}, is_training=True):
+def alexnet_head_feature_map(inputs, params=None, is_training=True):
     
     # Get hyperparameters
+    if params is None: params = {}
     dropout_rate = params.get('dropout_rate', 0.5)
     num_classes = params.get('num_classes', 2)
 
@@ -52,7 +54,7 @@ def alexnet_head_feature_map(inputs, params={}, is_training=True):
     dropout6 = tf.layers.dropout(conv6, rate=dropout_rate, training=is_training)
 
     conv7 = tf.layers.conv2d(dropout6, filters=4096, kernel_size=[1,1], activation=tf.nn.relu, name="conv7")        
-    dropout7 = tf.layers.dropout(conv7, rate=dropout_keep_prob, training=is_training)        
+    dropout7 = tf.layers.dropout(conv7, rate=dropout_rate, training=is_training)        
 
     logits = tf.layers.dense(dropout7, units=num_classes, name="logits")
 

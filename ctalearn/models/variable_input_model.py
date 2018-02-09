@@ -115,7 +115,7 @@ def variable_input_model(features, labels, params, is_training):
     elif params['cnn_block'] == 'densenet':
         cnn_block = densenet_block
     else:
-        sys.exit("Error: No valid CNN block specified.")
+        raise ValueError("Invalid CNN block specified: {}.".format(params['cnn_block']))
 
     # Choose the network head and telescope combination method
     if params['network_head'] == 'alexnet_fc':
@@ -134,7 +134,7 @@ def variable_input_model(features, labels, params, is_training):
         network_head = resnet_head_feature_vector
         combine_telescopes = combine_telescopes_as_vectors
     else:
-        sys.exit("Error: No valid network head specified.")
+        raise ValueError("Invalid network head specified: {}.".format(params['network_head']))
     
     # Process the input for each telescope
     telescope_outputs = []

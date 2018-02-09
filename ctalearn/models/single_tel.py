@@ -31,7 +31,7 @@ def single_tel_model(features, labels, params, is_training):
     elif params['cnn_block'] == 'densenet':
         cnn_block = densenet_block
     else:
-        sys.exit("Error: No valid CNN block specified.")
+        raise ValueError("Invalid CNN block specified: {}.".format(params['cnn_block']))
 
     output = cnn_block(telescope_data, params=params, is_training=is_training)
 
