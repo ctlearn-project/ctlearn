@@ -7,6 +7,7 @@ import sys
 import time
 
 import tensorflow as tf
+from tensorflow.python import debug as tf_debug
 
 import ctalearn.data
 from ctalearn.models.variable_input_model import variable_input_model
@@ -135,13 +136,13 @@ def train(config):
         else:
             # For array-level methods, get a dict of auxiliary data (telescope
             # positions and any other data)
-            auxiliary_data = ctalearn.load_auxiliary_data_HDF5(data_files)
+            auxiliary_data = ctalearn.data.load_auxiliary_data_HDF5(data_files)
 
             def load_data(filename,index):
                 return ctalearn.data.load_data_eventwise_HDF5(
-                        filename, 
-                        index, 
-                        auxiliary_data, 
+                        filename,
+                        index,
+                        auxiliary_data,
                         metadata,
                         sort_telescopes_by_trigger=sort_telescopes_by_trigger)
 
@@ -298,7 +299,7 @@ def train(config):
     if run_tfdbg:
         if not isinstance(hooks, list):
             hooks = []
-        hooks.append(tf.python.debug.LocalCLIDebugHook())
+        hooks.append(tf_debug.LocalCLIDebugHook())
     
     num_epochs_remaining = num_epochs
     while train_forever or num_epochs_remaining:
