@@ -3,7 +3,6 @@ Based on Deep Residual Learning for Image Recognition (He et. al.)
 """
 
 import tensorflow as tf
-from ctalearn.models.variable_input_model import trigger_dropout
 
 RESNET_HEAD_SIZE = 18
 RESNET_BLOCK_SIZE = 18
