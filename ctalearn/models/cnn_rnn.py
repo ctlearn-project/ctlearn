@@ -1,5 +1,4 @@
 import tensorflow as tf
-import numpy as np
 
 from ctalearn.models.alexnet import alexnet_block
 from ctalearn.models.mobilenet import mobilenet_block
@@ -88,7 +87,7 @@ def cnn_rnn_model(features, labels, params, is_training):
     attention_cell = tf.contrib.rnn.AttentionCellWrapper(tf.contrib.rnn.LayerNormBasicLSTMCell(LSTM_SIZE),num_telescopes)
 
     # outputs = shape(batch_size, num_tel, output_size)
-    outputs, final_state = tf.nn.dynamic_rnn(
+    outputs, _  = tf.nn.dynamic_rnn(
                         attention_cell,
                         embeddings,
                         dtype=tf.float32,
