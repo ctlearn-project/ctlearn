@@ -23,7 +23,8 @@ def synchronized_close_file(self, *args, **kwargs):
         return self.close(*args, **kwargs)
 
 # Data loading function for event-wise (array-level) HDF5 data loading
-def load_data_eventwise_HDF5(filename, index, auxiliary_data, metadata,sort_telescopes_by_trigger=False):
+def load_data_eventwise_HDF5(filename, index, auxiliary_data, metadata,
+        sort_telescopes_by_trigger=False):
 
     # Read the event record for the given filename and index
     f = synchronized_open_file(filename.decode('utf-8'), mode='r')
@@ -36,7 +37,7 @@ def load_data_eventwise_HDF5(filename, index, auxiliary_data, metadata,sort_tele
         gamma_hadron_label = 0
     else:
         raise ValueError("Unimplemented particle_id value: {}".format(record['particle_id']))
-  
+ 
     # Collect image indices (indices into the image tables)
     # for each telescope type in this event
     telescope_types = metadata['telescope_types']
@@ -67,7 +68,7 @@ def load_data_eventwise_HDF5(filename, index, auxiliary_data, metadata,sort_tele
     telescope_positions = []
     for tel_type in telescope_types:
         if tel_type in MAPPING_TABLES:
-            for tel_id in sorted(auxiliary_data['telescope_positions'][tel_type].keys):
+            for tel_id in sorted(auxiliary_data['telescope_positions'][tel_type].keys()):
                 telescope_positions.append(auxiliary_data['telescope_positions'][tel_type][tel_id])
 
     if sort_telescopes_by_trigger:
@@ -122,11 +123,13 @@ def load_auxiliary_data_HDF5(file_list):
                 tel_type = row['tel_type'].decode('utf-8')
                 tel_id = row['tel_id']
                 if tel_type not in telescope_positions:
-                    telescope_positions[tel_type] = []
+                    telescope_positions[tel_type] = {}
                 if tel_id not in telescope_positions[tel_type]:
-                        telescope_positions[tel_type][tel_id] = [row["tel_x"],row["tel_y"],row["tel_z"]]
+                        telescope_positions[tel_type][tel_id] = [row["tel_x"],
+                                row["tel_y"], row["tel_z"]]
                 else:
-                    if telescope_positions[tel_type][tel_id] != [row["tel_x"],row["tel_y"],row["tel_z"]]:
+                    if telescope_positions[tel_type][tel_id] != [row["tel_x"],
+                            row["tel_y"], row["tel_z"]]:
                         raise ValueError("Telescope positions do not match for telescope {} in file {}.".format(tel_id,filename))
     
     auxiliary_data = {
@@ -260,7 +263,7 @@ def apply_cuts_HDF5(file_list, cut_condition, model_type):
             # For array-level get all passing rows and return a list of all of
             # the indices
             else:
-                indices = [row.nrow for row in table.where(cut_condition)] if cut_condition else range(table.nrows)
+                indices = [row.nrow for row in f.root.Event_Info.where(cut_condition)] if cut_condition else range(f.root.Event_Info.nrows)
 
         indices_by_file.append(indices)
 

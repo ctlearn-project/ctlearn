@@ -64,7 +64,7 @@ def combine_telescopes_as_feature_maps(telescope_outputs, telescope_positions,
     return array_features
 
 def variable_input_model(features, labels, params, is_training):
-    
+   
     # Reshape and cast inputs into proper dimensions and types
     image_width, image_length, image_depth = params['image_shapes']['MSTS']
     num_telescopes = params['num_telescopes']['MSTS']
@@ -86,7 +86,7 @@ def variable_input_model(features, labels, params, is_training):
     telescope_positions = tf.cast(telescope_positions, tf.float32)
     
     # Reshape labels to vector as expected by tf.one_hot
-    gamma_hadron_labels = labels['gamma_hadron_labels']
+    gamma_hadron_labels = labels['gamma_hadron_label']
     gamma_hadron_labels = tf.reshape(gamma_hadron_labels, [-1])
     gamma_hadron_labels = tf.cast(gamma_hadron_labels, tf.int32)
 
