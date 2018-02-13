@@ -35,7 +35,7 @@ def single_tel_model(features, labels, params, is_training):
     with tf.variable_scope("CNN_block"):
         output = cnn_block(telescope_data, params=params, is_training=is_training)
 
-    if params['pretrained_weights'] is not None:
+    if params['pretrained_weights']:
         tf.contrib.framework.init_from_checkpoint(params['pretrained_weights'],{'CNN_block/':'CNN_block/'})
 
     output_flattened = tf.layers.flatten(output)

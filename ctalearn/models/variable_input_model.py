@@ -146,7 +146,7 @@ def variable_input_model(features, labels, params, is_training):
                 is_training=is_training,
                 reuse=reuse)
 
-        if params['pretrained_weights'] is not None:
+        if params['pretrained_weights']:
             tf.contrib.framework.init_from_checkpoint(params['pretrained_weights'],{'CNN_block/':'CNN_block/'})
 
         telescope_features = apply_trigger_dropout(telescope_features,

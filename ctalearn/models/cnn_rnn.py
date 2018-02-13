@@ -66,7 +66,15 @@ def cnn_rnn_model(features, labels, params, is_training):
     for telescope_index in range(num_telescopes):
         # Set all telescopes after the first to share weights
         reuse = None if telescope_index == 0 else True
-        
+       
+       
+        with tf.variable_scope("CNN_block"):
+            output = cnn_block(tf.gather(telescope_data, telescope_index),
+                params=params, reuse=reuse, is_training=is_training)
+
+        if params['pretrained_weights']:
+            tf.contrib.framework.init_from_checkpoint(params['pretrained_weights'],{'CNN_block/':'CNN_block/'})
+
         output = cnn_block(tf.gather(telescope_data, telescope_index),
                 params=params, reuse=reuse)
 
