@@ -296,9 +296,7 @@ def gen_fn_HDF5(file_list,indices_by_file):
         for i in indices_list:
             yield (filename.encode('utf-8'),i)
 
-def get_data_generators_HDF5(file_list,cut_condition,model_type,validation_split=0.1):
-
-    metadata = load_metadata_HDF5(file_list)
+def get_data_generators_HDF5(file_list,cut_condition,model_type, metadata, validation_split=0.1):
 
     # Get number of examples by file (for single tel, number of MSTS images, for array-level, number of events)
     num_examples_by_file = metadata['num_images_by_file']['MSTS'] if model_type == 'singletel' else metadata['num_events_by_file']

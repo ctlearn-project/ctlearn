@@ -170,7 +170,7 @@ def train(config):
         # by applying cuts and splitting into training and validation
         training_generator, validation_generator = (
                 ctalearn.data.get_data_generators_HDF5(data_files,
-                    cut_condition, model_type, validation_split))
+                    cut_condition, model_type, metadata, validation_split))
 
     else:
         raise ValueError("Invalid data format: {}".format(data_format))
