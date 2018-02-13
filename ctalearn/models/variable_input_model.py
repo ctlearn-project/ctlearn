@@ -3,8 +3,7 @@ import tensorflow as tf
 from ctalearn.models.alexnet import (alexnet_block,
         alexnet_head_feature_vector, alexnet_head_feature_map)
 from ctalearn.models.mobilenet import mobilenet_block, mobilenet_head
-from ctalearn.models.resnet import (resnet_block, resnet_head,
-        resnet_head_feature_vector)
+from ctalearn.models.resnet import (resnet_block, resnet_head)
 from ctalearn.models.densenet import densenet_block
 
 # Drop out all outputs if the telescope was not triggered
@@ -129,9 +128,6 @@ def variable_input_model(features, labels, params, is_training):
     elif params['network_head'] == 'resnet':
         network_head = resnet_head
         combine_telescopes = combine_telescopes_as_feature_maps
-    elif params['network_head'] == 'resnetfeaturevector':
-        network_head = resnet_head_feature_vector
-        combine_telescopes = combine_telescopes_as_vectors
     else:
         raise ValueError("Invalid network head specified: {}.".format(params['network_head']))
     
@@ -143,11 +139,16 @@ def variable_input_model(features, labels, params, is_training):
             reuse = None
         else:
             reuse = True
-        telescope_features = cnn_block(
+        with tf.variable_scope("CNN_block", reuse=reuse):
+            telescope_features = cnn_block(
                 tf.gather(telescope_data, telescope_index), 
                 params=params,
                 is_training=is_training,
                 reuse=reuse)
+
+        if params['pretrained_weights'] is not None:
+            tf.contrib.framework.init_from_checkpoint(params['pretrained_weights'],{'CNN_block/':'CNN_block/'})
+
         telescope_features = apply_trigger_dropout(telescope_features,
                 tf.gather(telescope_triggers, telescope_index, axis=1))
         telescope_outputs.append(telescope_features)
