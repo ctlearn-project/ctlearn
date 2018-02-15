@@ -396,23 +396,27 @@ def get_data_generators_HDF5(file_list, metadata, settings):
 # mask
 def crop_image(image, settings):
 
-    bounding_box_size = settings['bounding_box_size']
-    picture_threshold = settings['picture_threshold']
-    boundary_threshold = settings['boundary_threshold']
+    # Apply image cleaning
+    image_cleaning_method = settings['image_cleaning_method']
+    if image_cleaning_method == "none":
+        cleaned_image = image
+    else if image_cleaning_method == "twolevel":
+        # get only the first channel (charge) of an image of arbitrary depth
+        image_charge = image[:,:,0]
 
-    # get only the first channel (charge) of an image of arbitrary depth
-    image_charge = image[:,:,0]
+        # apply picture threshold to charge image to get mask, then dilate the mask once 
+        # to add all adjacent pixels (i.e. kernel is 3x3)
+        m = (image_charge > settings['picture_threshold']).astype(np.uint8)
+        kernel = np.ones((3,3), np.uint8) 
+        m = cv2.dilate(m,kernel)
 
-    # apply picture threshold to charge image to get mask, then dilate the mask once 
-    # to add all adjacent pixels (i.e. kernel is 3x3)
-    m = (image_charge > picture_threshold).astype(np.uint8)
-    kernel = np.ones((3,3), np.uint8) 
-    m = cv2.dilate(m,kernel)
-
-    # multiply the charge image by the dilated mask
-    # then mask out all surviving pixels which are smaller than
-    # the boundary threshold
-    image_cleaned = (m * image_charge) * ((m * image_charge) > boundary_threshold).astype(np.uint8)
+        # multiply the charge image by the dilated mask
+        # then mask out all surviving pixels which are smaller than
+        # the boundary threshold
+        cleaned_image = (m * image_charge) * ((m * image_charge) > settings['boundary_threshold']).astype(np.uint8)
+    else:
+        raise ValueError('Unrecognized image cleaning method: {}'.format(
+            image_cleaning_method))
 
     # compute image moments, then use them to compute the centroid
     # coordinates (x_0, y_0)
@@ -420,7 +424,7 @@ def crop_image(image, settings):
     # y_0 refers to a coordinate value along array axis 1 (columns, left to right)
     # NOTE: when the image is blank after cleaning (sum of pixels is 0), set the
     # centroid to center of image to avoid divide by zero errors
-    moments = cv2.moments(image_cleaned)
+    moments = cv2.moments(cleaned_image)
     x_0 = moments['m01']/moments['m00'] if moments['m00'] != 0 else image.shape[1]/2
     y_0 = moments['m10']/moments['m00'] if moments['m00'] != 0 else image.shape[0]/2
 
@@ -430,6 +434,7 @@ def crop_image(image, settings):
     # NOTE: rounding (and subtracting one from the max values) ensures that for all
     # float values of x_0, y_0, the values of indices x_min, x_max, y_min, y_max mark 
     # a bounding box of exactly shape (BOUNDING_BOX_SIZE, BOUNDING_BOX_SIZE)
+    bounding_box_size = settings['bounding_box_size']
     x_min = int(round(x_0 - bounding_box_size/2))
     x_max = int(round(x_0 + bounding_box_size/2)) - 1
     y_min = int(round(y_0 - bounding_box_size/2))
@@ -456,8 +461,11 @@ def crop_image(image, settings):
     y_min_cropped = -y_min if y_min < 0 else 0
     y_max_cropped = (bounding_box_size - (y_max - y_max_image) - 1) if y_max >= (image.shape[1] - 1) else bounding_box_size - 1
 
-    # transfer the cropped portion of the original image array into the smaller, padded cropped_image array.
-    cropped_image[x_min_cropped:x_max_cropped+1,y_min_cropped:y_max_cropped+1,:] = image[x_min_image:x_max_image+1,y_min_image:y_max_image+1,:]
+    # transfer the cropped portion of the image array into the smaller, padded cropped_image array.
+    # Use either the cleaned or uncleaned image as specified
+    returned_image = (cleaned_image if settings['return_cleaned_images'] else
+            image)
+    cropped_image[x_min_cropped:x_max_cropped+1,y_min_cropped:y_max_cropped+1,:] = returned_image[x_min_image:x_max_image+1,y_min_image:y_max_image+1,:]
 
     return cropped_image, x_0, y_0
 
