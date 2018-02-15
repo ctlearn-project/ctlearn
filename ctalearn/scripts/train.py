@@ -39,6 +39,16 @@ def train(config):
     # Load options related to data processing
     validation_split = config['Data Processing'].getfloat(
         'ValidationSplit',0.1)
+    crop_images = config['Data Processing'].getboolean('CropImages', False)
+    image_cleaning_method = config['Data Processing'].get(
+            'ImageCleaningMethod', 'None').lower()
+    return_cleaned_images = config['Data Processing'].getboolean(
+            'ReturnCleanedImages', False)
+    picture_threshold = config['Data Processing'].getfloat(
+            'PictureThreshold', 5.5)
+    boundary_threshold = config['Data Processing'].getfloat(
+            'BoundaryThreshold', 1.0)
+    bounding_box_size = config['Data Processing'].getint('BoundingBoxSize', 48)
     cut_condition = config['Data Processing'].get('CutCondition', '')
     sort_telescopes_by_trigger = config['Data Processing'].getboolean(
         'SortTelescopesByTrigger', False)
@@ -100,6 +110,20 @@ def train(config):
             'buffer_size': buffer_size,
             'map': False,
             'num_parallel_calls': num_parallel_calls
+            }
+
+    # Define data processing settings
+    data_processing_settings = {
+            'validation_split': validation_split,
+            'crop_images': crop_images,
+            'image_cleaning_method': image_cleaning_method,
+            'return_cleaned_images': return_cleaned_images,
+            'picture_threshold': picture_threshold,
+            'boundary_threshold': boundary_threshold,
+            'bounding_box_size': bounding_box_size,
+            'cut_condition': cut_condition,
+            'sort_telescopes_by_trigger': cut_condition
+            'telescope_types': ['MSTS']
             }
     
     # Define model hyperparameters
