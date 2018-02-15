@@ -42,6 +42,14 @@ def train(config):
     cut_condition = config['Data Processing'].get('CutCondition', '')
     sort_telescopes_by_trigger = config['Data Processing'].getboolean(
         'SortTelescopesByTrigger', False)
+    segment_images = config['Data Processing'].getboolean(
+        'SegmentImages', False)
+    bounding_box_size = config['Data Processing'].getint(
+        'BoundingBoxSize',48)
+    picture_threshold = config['Data Processing'].getfloat(
+        'PictureThreshold',5.5)
+    boundary_threshold = config['Data Processing'].getfloat(
+        'BoundaryThreshold',1.0)
 
     # Load options to specify the model
     model_type = config['Model']['ModelType'].lower()
@@ -101,7 +109,16 @@ def train(config):
             'map': False,
             'num_parallel_calls': num_parallel_calls
             }
-    
+
+    # Define data augmentation/processing settings
+    data_processing_settings = {
+            'sort_telescopes_by_trigger': sort_telescopes_by_trigger,
+            'segment_images': segment_images,
+            'bounding_box_size': bounding_box_size,
+            'picture_threshold': picture_threshold,
+            'boundary_threshold': boundary_threshold
+            }
+
     # Define model hyperparameters
     hyperparameters = {
             'cnn_block': cnn_block,
@@ -126,7 +143,8 @@ def train(config):
                 return ctalearn.data.load_data_single_tel_HDF5(
                         filename,
                         'MSTS',
-                        index)
+                        index,
+                        data_processing_settings)
 
             # Output datatypes of load_data (required by tf.py_func)
             data_types = [tf.float32, tf.int64]
@@ -144,7 +162,7 @@ def train(config):
                         index,
                         auxiliary_data,
                         metadata,
-                        sort_telescopes_by_trigger=sort_telescopes_by_trigger)
+                        data_processing_settings)
 
             # Output datatypes of load_data (required by tf.py_func)
             data_types = [tf.float32, tf.int8, tf.float32, tf.int64]
@@ -211,7 +229,7 @@ def train(config):
         return features, labels
 
     # Merge dictionaries for passing to the model function
-    params = {**hyperparameters, **metadata}
+    params = {**hyperparameters, **metadata, **data_processing_settings}
 
     # Define model function with model, mode (train/predict),
     # metrics, optimizer, learning rate, etc.

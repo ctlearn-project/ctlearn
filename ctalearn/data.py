@@ -5,6 +5,7 @@ import math
 
 import tables
 import numpy as np
+import cv2
 
 from ctalearn.image import MAPPING_TABLES, IMAGE_SHAPES
 
@@ -36,7 +37,7 @@ def return_file_handle(filename, file_handle_dict={}):
 
 # Data loading function for event-wise (array-level) HDF5 data loading
 def load_data_eventwise_HDF5(filename, index, auxiliary_data, metadata,
-        sort_telescopes_by_trigger=False):
+        params):
 
     # Read the event record for the given filename and index
     f = return_file_handle(filename)
@@ -54,22 +55,36 @@ def load_data_eventwise_HDF5(filename, index, auxiliary_data, metadata,
     # for each telescope type in this event
     telescope_types = metadata['telescope_types']
     image_indices = {tel_type:record[tel_type+"_indices"] for tel_type in telescope_types}
-   
+
     # Collect images and binary trigger values
     telescope_images = []
     telescope_triggers = []
     for tel_type in telescope_types:
         # Only save MSTS (other telescope types do not have implemented MAPPING_TABLES yet)
         if tel_type in MAPPING_TABLES:
+            # set image shape (if no segmentation is applied, it is given by image_shapes)
+            # otherwise it is given by the size of the bounding boxes
+            if params['segment_images']:
+                image_shape = (params['bounding_box_size'],params['bounding_box_size'],metadata['image_shapes'][tel_type][2])
+            else:
+                image_shape = metadata['image_shapes'][tel_type]
+
             for i in image_indices[tel_type]:
                 if i == 0:
                     # Telescope did not trigger. Its outputs will be dropped
                     # out, so input is arbitrary. Use an empty array for
                     # efficiency.
-                    telescope_images.append(np.empty(metadata['image_shapes'][tel_type]))
+                    telescope_images.append(np.empty(image_shape))
                     telescope_triggers.append(0)
                 else:
                     telescope_image = load_image_HDF5(f,tel_type,i)
+                    # segment image if the appropriate flag is set
+                    if params['segment_images']:
+                        telescope_image, _ , _ = segment_image(telescope_image,
+                                                        bounding_box_size=params['bounding_box_size'],
+                                                        picture_threshold=params['picture_threshold'],
+                                                        boundary_threshold=params['boundary_threshold'])
+
                     telescope_images.append(telescope_image)
                     telescope_triggers.append(1)
 
@@ -81,7 +96,7 @@ def load_data_eventwise_HDF5(filename, index, auxiliary_data, metadata,
             for tel_id in sorted(auxiliary_data['telescope_positions'][tel_type].keys()):
                 telescope_positions.append(auxiliary_data['telescope_positions'][tel_type][tel_id])
 
-    if sort_telescopes_by_trigger:
+    if params['sort_telescopes_by_trigger']:
         # Sort the images, triggers, and grouped positions by trigger, listing
         # the triggered telescopes first
         telescope_images, telescope_triggers, telescope_positions = map(list,
@@ -98,11 +113,18 @@ def load_data_eventwise_HDF5(filename, index, auxiliary_data, metadata,
 
 # Data loading function for single tel HDF5 data
 # Loads the image in file 'filename', in image table 'tel_type' at index 'index'
-def load_data_single_tel_HDF5(filename, tel_type, index):
+def load_data_single_tel_HDF5(filename, tel_type, index, params):
 
     # Load image table record from specified file and image table index
     f = return_file_handle(filename)
     telescope_image = load_image_HDF5(f,tel_type,index)
+
+    # segment image if the appropriate flag is set
+    if params['segment_images']:
+        telescope_image, _ , _ = segment_image(telescope_image,
+                                        bounding_box_size=params['bounding_box_size'],
+                                        picture_threshold=params['picture_threshold'],
+                                        boundary_threshold=params['boundary_threshold'])
 
     # Get corresponding event record using event_index column
     event_index = f.root._f_get_child(tel_type)[index]['event_index']
@@ -349,3 +371,74 @@ def get_data_generators_HDF5(file_list,cut_condition,model_type, metadata, valid
         return gen_fn_HDF5(file_list,validation_indices)
 
     return training_generator, validation_generator
+
+# segment (crop) an image around the shower by applying two-threshold cleaning to isolate the shower,
+# computing the centroid of the cleaned image, and placing a bounding box around the centroid
+# bounding_box_size is the length of one side of the square bounding box
+# picture threshold is the first applied threshold (applied on the whole image to get a mask,
+# which is then dilated by 1).
+# boundary threshold is the second applied threshold, applied to all pixels surviving the first
+# mask
+def segment_image(image, bounding_box_size=48, picture_threshold=5.5, boundary_threshold=1.0):
+
+    # get only the first channel (charge) of an image of arbitrary depth
+    image_charge = image[:,:,0]
+
+    # apply picture threshold to charge image to get mask, then dilate the mask once 
+    # to add all adjacent pixels (i.e. kernel is 3x3)
+    m = (image_charge > picture_threshold).astype(np.uint8)
+    kernel = np.ones((3,3), np.uint8) 
+    m = cv2.dilate(m,kernel)
+
+    # multiply the charge image by the dilated mask
+    # then mask out all surviving pixels which are smaller than
+    # the boundary threshold
+    image_cleaned = (m * image_charge) * ((m * image_charge) > boundary_threshold).astype(np.uint8)
+
+    # compute image moments, then use them to compute the centroid
+    # coordinates (x_0, y_0)
+    # NOTE: x_0 refers to a coordinate value along array axis 0 (rows, top to bottom)
+    # y_0 refers to a coordinate value along array axis 1 (columns, left to right)
+    # NOTE: when the image is blank after cleaning (sum of pixels is 0), set the
+    # centroid to center of image to avoid divide by zero errors
+    moments = cv2.moments(image_cleaned)
+    x_0 = moments['m01']/moments['m00'] if moments['m00'] != 0 else image.shape[1]/2
+    y_0 = moments['m10']/moments['m00'] if moments['m00'] != 0 else image.shape[0]/2
+
+    # compute min and max x and y indices (along axis 0 and axis 1 respectively)
+    # NOTE: these values are rounded and cast to integers, so they are valid indices
+    # into the array
+    # NOTE: rounding (and subtracting one from the max values) ensures that for all
+    # float values of x_0, y_0, the values of indices x_min, x_max, y_min, y_max mark 
+    # a bounding box of exactly shape (BOUNDING_BOX_SIZE, BOUNDING_BOX_SIZE)
+    x_min = int(round(x_0 - bounding_box_size/2))
+    x_max = int(round(x_0 + bounding_box_size/2)) - 1
+    y_min = int(round(y_0 - bounding_box_size/2))
+    y_max = int(round(y_0 + bounding_box_size/2)) - 1
+
+    cropped_image = np.zeros((bounding_box_size,bounding_box_size,image.shape[2]),dtype=np.float32)
+
+    # indices into the original image array which correspond to the bounding box region
+    # when the bounding box goes over the edge of the original image array,
+    # we truncate the appropriate indices so that all of x_min_image, x_max_image, etc.
+    # are valid indices into the array
+    x_min_image = x_min if x_min >= 0 else 0
+    x_max_image = x_max if x_max <= (image.shape[0] - 1) else (image.shape[0] -1)
+    y_min_image = y_min if y_min >= 0 else 0
+    y_max_image = y_max if y_max <= (image.shape[1] - 1) else (image.shape[1] -1)
+
+    # indices into the cropped image array of shape (BOUNDING_BOX_SIZE,BOUNDING_BOX_SIZE,image.shape[2])
+    # which correspond to the region described by x_min, x_max, etc. in the original
+    # image array. The region of the cropped image array which does not correspond to valid 
+    # positions in the original image (the part which goes over the edges) are left filled
+    # with zeros as padding.
+    x_min_cropped = -x_min if x_min < 0 else 0
+    x_max_cropped = (bounding_box_size - (x_max - x_max_image) - 1) if x_max >= (image.shape[0] - 1) else bounding_box_size - 1
+    y_min_cropped = -y_min if y_min < 0 else 0
+    y_max_cropped = (bounding_box_size - (y_max - y_max_image) - 1) if y_max >= (image.shape[1] - 1) else bounding_box_size - 1
+
+    # transfer the cropped portion of the original image array into the smaller, padded cropped_image array.
+    cropped_image[x_min_cropped:x_max_cropped+1,y_min_cropped:y_max_cropped+1,:] = image[x_min_image:x_max_image+1,y_min_image:y_max_image+1,:]
+
+    return cropped_image, x_0, y_0
+
