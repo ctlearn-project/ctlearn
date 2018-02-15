@@ -123,7 +123,8 @@ def train(config):
             'bounding_box_size': bounding_box_size,
             'cut_condition': cut_condition,
             'sort_telescopes_by_trigger': cut_condition
-            'telescope_types': ['MSTS']
+            'model_type': model_type # for applying cuts
+            'telescope_types': ['MSTS'] # hardcode reading SCT images only
             }
     
     # Define model hyperparameters
@@ -144,13 +145,11 @@ def train(config):
         metadata = ctalearn.data.load_metadata_HDF5(data_files)
  
         if model_type == 'singletel':
-            # NOTE: Single tel mode currently hardcoded to read MSTS images
-            # only 
-            def load_data(filename,index):
+            def load_data(filename, index):
                 return ctalearn.data.load_data_single_tel_HDF5(
                         filename,
-                        'MSTS',
-                        index)
+                        index,
+                        data_processing_settings)
 
             # Output datatypes of load_data (required by tf.py_func)
             data_types = [tf.float32, tf.int64]
@@ -168,7 +167,7 @@ def train(config):
                         index,
                         auxiliary_data,
                         metadata,
-                        sort_telescopes_by_trigger=sort_telescopes_by_trigger)
+                        data_processing_settings)
 
             # Output datatypes of load_data (required by tf.py_func)
             data_types = [tf.float32, tf.int8, tf.float32, tf.int64]
@@ -193,8 +192,8 @@ def train(config):
         # Get data generators returning (filename,index) pairs from data files 
         # by applying cuts and splitting into training and validation
         training_generator, validation_generator = (
-                ctalearn.data.get_data_generators_HDF5(data_files,
-                    cut_condition, model_type, metadata, validation_split))
+                ctalearn.data.get_data_generators_HDF5(data_files, metadata,
+                    data_processing_settings))
 
     else:
         raise ValueError("Invalid data format: {}".format(data_format))
