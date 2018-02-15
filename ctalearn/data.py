@@ -104,7 +104,7 @@ def load_data_single_tel_HDF5(filename, index, settings):
 
     # Load image table record from specified file and image table index
     f = return_file_handle(filename)
-    tel_type = settings['chosen_telescope_types'][0]
+    tel_type = settings['processed_telescope_types'][0]
     telescope_image = load_image_HDF5(f, tel_type, index)
     if settings['crop_images']:
         telescope_image, _, _ = crop_image(telescope_image, settings)
@@ -233,6 +233,10 @@ def load_metadata_HDF5(file_list):
 
     return metadata
 
+# Use the data processing settings from the user and metadata from the dataset
+# to determine the final parameters of the data after processing. This is
+# needed for passing to the model and for efficient data loading.
+# Save the processed parameters in both dictionaries.
 def add_processed_parameters(data_processing_settings, metadata):
     # Choose telescope types for this event. They must be available in the
     # data, chosen in the settings, and have a MAPPING_TABLE
@@ -241,6 +245,10 @@ def add_processed_parameters(data_processing_settings, metadata):
     chosen_telescope_types = data_processing_settings['chosen_telescope_types']
     processed_telescope_types = [ttype for ttype in available_telescope_types
             if ttype in chosen_telescope_types and ttype in MAPPING_TABLES]
+    # If single telescope mode, check that only one telescope type is enabled
+    if data_processing_settings['model_type'] == 'single_tel':
+        if not len(processed_telescope_types) == 1:
+            raise ValueError('Exactly one telescope type must be enabled for single telescope models, number requested is: {}'.format(len(processed_telescope_types)))
     processed_parameters = {
             'processed_telescope_types': processed_telescope_types,
             'processed_image_shapes': {},
@@ -332,7 +340,7 @@ def get_data_generators_HDF5(file_list, metadata, settings):
 
     # Get number of examples by file
     if settings['model_type'] == 'singletel': # get number of images
-        telescope_type = settings['chosen_telescope_types'][0]
+        telescope_type = settings['processed_telescope_types'][0]
         num_examples_by_file = metadata['num_images_by_file'][telescope_type]
     else: # get number of events
         num_examples_by_file = metadata['num_events_by_file']
