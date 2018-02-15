@@ -8,7 +8,11 @@ from ctalearn.models.densenet import densenet_block
 def single_tel_model(features, labels, params, is_training):
     
     # Reshape and cast inputs into proper dimensions and types
-    image_width, image_length, image_depth = params['image_shapes']['MSTS']
+    num_telescope_types = len(params['processed_telescope_types']) 
+    if not num_telescope_types == 1:
+        raise ValueError('Must use a single telescope type for single telescope model. Number used: {}'.format(num_telescope_types))
+    telescope_type = params['processed_telescope_types'][0]
+    image_width, image_length, image_depth = params['processed_image_shapes'][telescope_type]
     num_gamma_hadron_classes = params['num_classes']
     
     telescope_data = features['telescope_data']

@@ -34,6 +34,12 @@ def return_file_handle(filename, file_handle_dict={}):
                 filename.decode('utf-8'), mode='r')
     return file_handle_dict[filename]
 
+# Crop the image according to the specified settings.
+# Apply cleaning and calculate the image center, then return an image cropped
+# about the center with the specified size.
+def crop_image(image, settings):
+    pass
+
 # Data loading function for event-wise (array-level) HDF5 data loading
 def load_data_eventwise_HDF5(filename, index, auxiliary_data, metadata,
         settings):
@@ -49,17 +55,10 @@ def load_data_eventwise_HDF5(filename, index, auxiliary_data, metadata,
         gamma_hadron_label = 0
     else:
         raise ValueError("Unimplemented particle_id value: {}".format(record['particle_id']))
- 
-    # Choose telescope types for this event. They must be available in the
-    # data, chosen in the settings, and have a MAPPING_TABLE
-    # NOTE: Only MSTS has a MAPPING_TABLE so far regardless of chosen types
-    available_telescope_types = metadata['telescope_types']
-    chosen_telescope_types = settings['telescope_types']
-    telescope_types = [ttype for ttype in available_telescope_types if
-            ttype in chosen_telescope_types and ttype in MAPPING_TABLES]
     
     # Collect image indices (indices into the image tables)
     # for each telescope type in this event
+    telescope_types = settings['processed_telescope_types']
     image_indices = {tel_type:record[tel_type+"_indices"] for tel_type in
             telescope_types}
    
@@ -67,16 +66,18 @@ def load_data_eventwise_HDF5(filename, index, auxiliary_data, metadata,
     telescope_images = []
     telescope_triggers = []
     for tel_type in telescope_types:
+        shape = settings['processed_image_shape'][tel_type]
         for i in image_indices[tel_type]:
             if i == 0:
                 # Telescope did not trigger. Its outputs will be dropped
                 # out, so input is arbitrary. Use an empty array for
                 # efficiency.
-                telescope_images.append(np.empty(
-                    metadata['image_shapes'][tel_type]))
+                telescope_images.append(np.empty(shape))
                 telescope_triggers.append(0)
             else:
-                telescope_image = load_image_HDF5(f,tel_type,i)
+                telescope_image = load_image_HDF5(f, tel_type, i)
+                if settings['crop_images']:
+                    telescope_image = crop_image(telescope_image, settings)
                 telescope_images.append(telescope_image)
                 telescope_triggers.append(1)
 
@@ -108,8 +109,10 @@ def load_data_single_tel_HDF5(filename, index, settings):
 
     # Load image table record from specified file and image table index
     f = return_file_handle(filename)
-    tel_type = settings['tel_types'][0]
-    telescope_image = load_image_HDF5(f,tel_type,index)
+    tel_type = settings['chosen_telescope_types'][0]
+    telescope_image = load_image_HDF5(f, tel_type, index)
+    if settings['crop_images']:
+        telescope_image = crop_image(telescope_image, settings)
 
     # Get corresponding event record using event_index column
     event_index = f.root._f_get_child(tel_type)[index]['event_index']
@@ -234,6 +237,31 @@ def load_metadata_HDF5(file_list):
             }
 
     return metadata
+
+def add_processed_parameters(data_processing_settings, metadata):
+    # Choose telescope types for this event. They must be available in the
+    # data, chosen in the settings, and have a MAPPING_TABLE
+    # NOTE: Only MSTS has a MAPPING_TABLE so far regardless of chosen types
+    available_telescope_types = metadata['telescope_types']
+    chosen_telescope_types = settings['chosen_telescope_types']
+    processed_telescope_types = [ttype for ttype in available_telescope_types
+            if ttype in chosen_telescope_types and ttype in MAPPING_TABLES]
+    processed_parameters = {
+            'processed_telescope_types': processed_telescope_types,
+            'processed_image_shapes': {},
+            'processed_num_telescopes': {},
+            }
+    for tel_type in processed_telescope_types:
+        processed_image_shape = metadata['image_shapes'][tel_type]
+        if data_processing_settings['crop_images']:
+            processed_image_shape[0] = data_processing_settings['bounding_box_size']
+            processed_image_shape[1] = data_processing_settings['bounding_box_size']
+        processed_parameters['processed_image_shape'][tel_type] = processed_image_shape
+        processed_parameters['processed_num_telescopes'][tel_type] = metadata['num_telescopes'][tel_type]
+
+    metadata = {**metadata, **processed_parameters}
+    data_processing_settings = {**data_processing_settings,
+            **processed_parameters}
 
 def load_image_HDF5(data_file,tel_type,index):
     

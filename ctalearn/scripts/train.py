@@ -124,7 +124,7 @@ def train(config):
             'cut_condition': cut_condition,
             'sort_telescopes_by_trigger': cut_condition
             'model_type': model_type # for applying cuts
-            'telescope_types': ['MSTS'] # hardcode reading SCT images only
+            'chosen_telescope_types': ['MSTS'] # hardcode using SCT images only
             }
     
     # Define model hyperparameters
@@ -143,6 +143,12 @@ def train(config):
 
         # Load metadata from HDF5 files
         metadata = ctalearn.data.load_metadata_HDF5(data_files)
+
+        # Calculate the post-processing image and telescope parameters that
+        # depend on both the data processing and metadata, adding them to both
+        # dictionaries
+        ctalearn.data.add_processed_parameters(data_processing_settings,
+                metadata)
  
         if model_type == 'singletel':
             def load_data(filename, index):

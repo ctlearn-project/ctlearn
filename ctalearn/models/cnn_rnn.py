@@ -10,10 +10,14 @@ LSTM_SIZE = 2048
 def cnn_rnn_model(features, labels, params, is_training):
     
     # Reshape and cast inputs into proper dimensions and types
-    image_width, image_length, image_depth = params['image_shape']
-    num_telescopes = params['num_telescopes']['MSTS']
+    num_telescope_types = len(params['processed_telescope_types']) 
+    if not num_telescope_types == 1:
+        raise ValueError('Must use a single telescope type for CNN-RNN. Number used: {}'.format(num_telescope_types))
+    telescope_type = params['processed_telescope_types'][0]
+    image_width, image_length, image_depth = params['processed_image_shapes'][telescope_type]
+    num_telescopes = params['processed_num_telescopes'][telescope_type]
     num_position_coordinates = params['num_position_coordinates']
-    num_gamma_hadron_classes = params['num__classes']
+    num_gamma_hadron_classes = params['num_classes']
     
     telescope_data = features['telescope_data']
     telescope_data = tf.reshape(telescope_data, [-1, num_telescopes, 
