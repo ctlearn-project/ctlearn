@@ -9,7 +9,7 @@ def single_tel_model(features, labels, params, is_training):
     
     # Reshape inputs into proper dimensions
     num_telescope_types = len(params['processed_telescope_types']) 
-    if not num_telescope_types == 1:
+    if num_telescope_types != 1:
         raise ValueError('Must use a single telescope type for single telescope model. Number used: {}'.format(num_telescope_types))
     telescope_type = params['processed_telescope_types'][0]
     image_width, image_length, image_depth = params['processed_image_shapes'][telescope_type]

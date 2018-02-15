@@ -117,14 +117,14 @@ def train(config):
     data_processing_settings = {
             'validation_split': validation_split,
             'cut_condition': cut_condition,
-            'sort_telescopes_by_trigger': cut_condition
+            'sort_telescopes_by_trigger': cut_condition,
             'crop_images': crop_images,
             'image_cleaning_method': image_cleaning_method,
             'return_cleaned_images': return_cleaned_images,
             'picture_threshold': picture_threshold,
             'boundary_threshold': boundary_threshold,
             'bounding_box_size': bounding_box_size,
-            'model_type': model_type # for applying cuts
+            'model_type': model_type, # for applying cuts
             'chosen_telescope_types': ['MSTS'] # hardcode using SCT images only
             }
     

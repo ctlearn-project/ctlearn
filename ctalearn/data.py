@@ -238,7 +238,7 @@ def add_processed_parameters(data_processing_settings, metadata):
     # data, chosen in the settings, and have a MAPPING_TABLE
     # NOTE: Only MSTS has a MAPPING_TABLE so far regardless of chosen types
     available_telescope_types = metadata['telescope_types']
-    chosen_telescope_types = settings['chosen_telescope_types']
+    chosen_telescope_types = data_processing_settings['chosen_telescope_types']
     processed_telescope_types = [ttype for ttype in available_telescope_types
             if ttype in chosen_telescope_types and ttype in MAPPING_TABLES]
     processed_parameters = {
@@ -247,16 +247,18 @@ def add_processed_parameters(data_processing_settings, metadata):
             'processed_num_telescopes': {},
             }
     for tel_type in processed_telescope_types:
-        processed_image_shape = metadata['image_shapes'][tel_type]
         if data_processing_settings['crop_images']:
-            processed_image_shape[0] = data_processing_settings['bounding_box_size']
-            processed_image_shape[1] = data_processing_settings['bounding_box_size']
-        processed_parameters['processed_image_shape'][tel_type] = processed_image_shape
+            processed_image_shape = (
+                    data_processing_settings['bounding_box_size'],
+                    data_processing_settings['bounding_box_size'],
+                    metadata['image_shapes'][tel_type][2])
+        else:
+            processed_image_shape = metadata['image_shapes'][tel_type]
+        processed_parameters['processed_image_shapes'][tel_type] = processed_image_shape
         processed_parameters['processed_num_telescopes'][tel_type] = metadata['num_telescopes'][tel_type]
 
-    metadata = {**metadata, **processed_parameters}
-    data_processing_settings = {**data_processing_settings,
-            **processed_parameters}
+    data_processing_settings.update(processed_parameters)
+    metadata.update(processed_parameters)
 
 def load_image_HDF5(data_file,tel_type,index):
     
@@ -330,7 +332,7 @@ def get_data_generators_HDF5(file_list, metadata, settings):
 
     # Get number of examples by file
     if settings['model_type'] == 'singletel': # get number of images
-        telescope_type = settings['telescope_types'][0]
+        telescope_type = settings['chosen_telescope_types'][0]
         num_examples_by_file = metadata['num_images_by_file'][telescope_type]
     else: # get number of events
         num_examples_by_file = metadata['num_events_by_file']
@@ -400,7 +402,7 @@ def crop_image(image, settings):
     image_cleaning_method = settings['image_cleaning_method']
     if image_cleaning_method == "none":
         cleaned_image = image
-    else if image_cleaning_method == "twolevel":
+    elif image_cleaning_method == "twolevel":
         # get only the first channel (charge) of an image of arbitrary depth
         image_charge = image[:,:,0]
 
