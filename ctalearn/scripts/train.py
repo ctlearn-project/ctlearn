@@ -42,14 +42,17 @@ def train(config):
     cut_condition = config['Data Processing'].get('CutCondition', '')
     sort_telescopes_by_trigger = config['Data Processing'].getboolean(
         'SortTelescopesByTrigger', False)
-    segment_images = config['Data Processing'].getboolean(
-        'SegmentImages', False)
+    crop_images = config['Data Processing'].getboolean('CropImages', False)
+    image_cleaning_method = config['Data Processing'].get(
+            'ImageCleaningMethod', 'None').lower()
+    return_cleaned_images = config['Data Processing'].getboolean(
+            'ReturnCleanedImages', False)
     bounding_box_size = config['Data Processing'].getint(
-        'BoundingBoxSize',48)
+        'BoundingBoxSize', 48)
     picture_threshold = config['Data Processing'].getfloat(
-        'PictureThreshold',5.5)
+        'PictureThreshold', 5.5)
     boundary_threshold = config['Data Processing'].getfloat(
-        'BoundaryThreshold',1.0)
+        'BoundaryThreshold', 1.0)
 
     # Load options to specify the model
     model_type = config['Model']['ModelType'].lower()
@@ -110,15 +113,21 @@ def train(config):
             'num_parallel_calls': num_parallel_calls
             }
 
-    # Define data augmentation/processing settings
+    # Define data processing settings
     data_processing_settings = {
-            'sort_telescopes_by_trigger': sort_telescopes_by_trigger,
-            'segment_images': segment_images,
-            'bounding_box_size': bounding_box_size,
+            'validation_split': validation_split,
+            'cut_condition': cut_condition,
+            'sort_telescopes_by_trigger': cut_condition,
+            'crop_images': crop_images,
+            'image_cleaning_method': image_cleaning_method,
+            'return_cleaned_images': return_cleaned_images,
             'picture_threshold': picture_threshold,
-            'boundary_threshold': boundary_threshold
+            'boundary_threshold': boundary_threshold,
+            'bounding_box_size': bounding_box_size,
+            'model_type': model_type, # for applying cuts
+            'chosen_telescope_types': ['MSTS'] # hardcode using SCT images only
             }
-
+    
     # Define model hyperparameters
     hyperparameters = {
             'cnn_block': cnn_block,
@@ -135,14 +144,17 @@ def train(config):
 
         # Load metadata from HDF5 files
         metadata = ctalearn.data.load_metadata_HDF5(data_files)
+
+        # Calculate the post-processing image and telescope parameters that
+        # depend on both the data processing and metadata, adding them to both
+        # dictionaries
+        ctalearn.data.add_processed_parameters(data_processing_settings,
+                metadata)
  
         if model_type == 'singletel':
-            # NOTE: Single tel mode currently hardcoded to read MSTS images
-            # only 
-            def load_data(filename,index):
+            def load_data(filename, index):
                 return ctalearn.data.load_data_single_tel_HDF5(
                         filename,
-                        'MSTS',
                         index,
                         data_processing_settings)
 
@@ -187,8 +199,8 @@ def train(config):
         # Get data generators returning (filename,index) pairs from data files 
         # by applying cuts and splitting into training and validation
         training_generator, validation_generator = (
-                ctalearn.data.get_data_generators_HDF5(data_files,
-                    cut_condition, model_type, metadata, validation_split))
+                ctalearn.data.get_data_generators_HDF5(data_files, metadata,
+                    data_processing_settings))
 
     else:
         raise ValueError("Invalid data format: {}".format(data_format))
@@ -229,7 +241,7 @@ def train(config):
         return features, labels
 
     # Merge dictionaries for passing to the model function
-    params = {**hyperparameters, **metadata, **data_processing_settings}
+    params = {**hyperparameters, **metadata}
 
     # Define model function with model, mode (train/predict),
     # metrics, optimizer, learning rate, etc.

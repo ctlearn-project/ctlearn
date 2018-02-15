@@ -37,7 +37,7 @@ def return_file_handle(filename, file_handle_dict={}):
 
 # Data loading function for event-wise (array-level) HDF5 data loading
 def load_data_eventwise_HDF5(filename, index, auxiliary_data, metadata,
-        params):
+        settings):
 
     # Read the event record for the given filename and index
     f = return_file_handle(filename)
@@ -50,53 +50,40 @@ def load_data_eventwise_HDF5(filename, index, auxiliary_data, metadata,
         gamma_hadron_label = 0
     else:
         raise ValueError("Unimplemented particle_id value: {}".format(record['particle_id']))
- 
+    
     # Collect image indices (indices into the image tables)
     # for each telescope type in this event
-    telescope_types = metadata['telescope_types']
-    image_indices = {tel_type:record[tel_type+"_indices"] for tel_type in telescope_types}
-
+    telescope_types = settings['processed_telescope_types']
+    image_indices = {tel_type:record[tel_type+"_indices"] for tel_type in
+            telescope_types}
     # Collect images and binary trigger values
     telescope_images = []
     telescope_triggers = []
     for tel_type in telescope_types:
-        # Only save MSTS (other telescope types do not have implemented MAPPING_TABLES yet)
-        if tel_type in MAPPING_TABLES:
-            # set image shape (if no segmentation is applied, it is given by image_shapes)
-            # otherwise it is given by the size of the bounding boxes
-            if params['segment_images']:
-                image_shape = (params['bounding_box_size'],params['bounding_box_size'],metadata['image_shapes'][tel_type][2])
+        image_shape = settings['processed_image_shape'][tel_type]
+        for i in image_indices[tel_type]:
+            if i == 0:
+                # Telescope did not trigger. Its outputs will be dropped
+                # out, so input is arbitrary. Use an empty array for
+                # efficiency.
+                telescope_images.append(np.empty(image_shape))
+                telescope_triggers.append(0)
             else:
-                image_shape = metadata['image_shapes'][tel_type]
-
-            for i in image_indices[tel_type]:
-                if i == 0:
-                    # Telescope did not trigger. Its outputs will be dropped
-                    # out, so input is arbitrary. Use an empty array for
-                    # efficiency.
-                    telescope_images.append(np.empty(image_shape))
-                    telescope_triggers.append(0)
-                else:
-                    telescope_image = load_image_HDF5(f,tel_type,i)
-                    # segment image if the appropriate flag is set
-                    if params['segment_images']:
-                        telescope_image, _ , _ = segment_image(telescope_image,
-                                                        bounding_box_size=params['bounding_box_size'],
-                                                        picture_threshold=params['picture_threshold'],
-                                                        boundary_threshold=params['boundary_threshold'])
-
-                    telescope_images.append(telescope_image)
-                    telescope_triggers.append(1)
+                telescope_image = load_image_HDF5(f, tel_type, i)
+                if settings['crop_images']:
+                    telescope_image, _, _ = crop_image(telescope_image,
+                            settings)
+                telescope_images.append(telescope_image)
+                telescope_triggers.append(1)
 
     # Collect telescope positions from auxiliary data
     # telescope_positions is a list of lists ex. [[x1,y1,z1],[x2,y2,z2],...]
     telescope_positions = []
     for tel_type in telescope_types:
-        if tel_type in MAPPING_TABLES:
-            for tel_id in sorted(auxiliary_data['telescope_positions'][tel_type].keys()):
-                telescope_positions.append(auxiliary_data['telescope_positions'][tel_type][tel_id])
+        for tel_id in sorted(auxiliary_data['telescope_positions'][tel_type].keys()):
+            telescope_positions.append(auxiliary_data['telescope_positions'][tel_type][tel_id])
 
-    if params['sort_telescopes_by_trigger']:
+    if settings['sort_telescopes_by_trigger']:
         # Sort the images, triggers, and grouped positions by trigger, listing
         # the triggered telescopes first
         telescope_images, telescope_triggers, telescope_positions = map(list,
@@ -113,18 +100,14 @@ def load_data_eventwise_HDF5(filename, index, auxiliary_data, metadata,
 
 # Data loading function for single tel HDF5 data
 # Loads the image in file 'filename', in image table 'tel_type' at index 'index'
-def load_data_single_tel_HDF5(filename, tel_type, index, params):
+def load_data_single_tel_HDF5(filename, index, settings):
 
     # Load image table record from specified file and image table index
     f = return_file_handle(filename)
-    telescope_image = load_image_HDF5(f,tel_type,index)
-
-    # segment image if the appropriate flag is set
-    if params['segment_images']:
-        telescope_image, _ , _ = segment_image(telescope_image,
-                                        bounding_box_size=params['bounding_box_size'],
-                                        picture_threshold=params['picture_threshold'],
-                                        boundary_threshold=params['boundary_threshold'])
+    tel_type = settings['processed_telescope_types'][0]
+    telescope_image = load_image_HDF5(f, tel_type, index)
+    if settings['crop_images']:
+        telescope_image, _, _ = crop_image(telescope_image, settings)
 
     # Get corresponding event record using event_index column
     event_index = f.root._f_get_child(tel_type)[index]['event_index']
@@ -250,6 +233,41 @@ def load_metadata_HDF5(file_list):
 
     return metadata
 
+# Use the data processing settings from the user and metadata from the dataset
+# to determine the final parameters of the data after processing. This is
+# needed for passing to the model and for efficient data loading.
+# Save the processed parameters in both dictionaries.
+def add_processed_parameters(data_processing_settings, metadata):
+    # Choose telescope types for this event. They must be available in the
+    # data, chosen in the settings, and have a MAPPING_TABLE
+    # NOTE: Only MSTS has a MAPPING_TABLE so far regardless of chosen types
+    available_telescope_types = metadata['telescope_types']
+    chosen_telescope_types = data_processing_settings['chosen_telescope_types']
+    processed_telescope_types = [ttype for ttype in available_telescope_types
+            if ttype in chosen_telescope_types and ttype in MAPPING_TABLES]
+    # If single telescope mode, check that only one telescope type is enabled
+    if data_processing_settings['model_type'] == 'single_tel':
+        if not len(processed_telescope_types) == 1:
+            raise ValueError('Exactly one telescope type must be enabled for single telescope models, number requested is: {}'.format(len(processed_telescope_types)))
+    processed_parameters = {
+            'processed_telescope_types': processed_telescope_types,
+            'processed_image_shapes': {},
+            'processed_num_telescopes': {},
+            }
+    for tel_type in processed_telescope_types:
+        if data_processing_settings['crop_images']:
+            processed_image_shape = (
+                    data_processing_settings['bounding_box_size'],
+                    data_processing_settings['bounding_box_size'],
+                    metadata['image_shapes'][tel_type][2])
+        else:
+            processed_image_shape = metadata['image_shapes'][tel_type]
+        processed_parameters['processed_image_shapes'][tel_type] = processed_image_shape
+        processed_parameters['processed_num_telescopes'][tel_type] = metadata['num_telescopes'][tel_type]
+
+    data_processing_settings.update(processed_parameters)
+    metadata.update(processed_parameters)
+
 def load_image_HDF5(data_file,tel_type,index):
     
     record = data_file.root._f_get_child(tel_type)[index]
@@ -318,10 +336,14 @@ def gen_fn_HDF5(file_list,indices_by_file):
         for i in indices_list:
             yield (filename.encode('utf-8'),i)
 
-def get_data_generators_HDF5(file_list,cut_condition,model_type, metadata, validation_split=0.1):
+def get_data_generators_HDF5(file_list, metadata, settings):
 
-    # Get number of examples by file (for single tel, number of MSTS images, for array-level, number of events)
-    num_examples_by_file = metadata['num_images_by_file']['MSTS'] if model_type == 'singletel' else metadata['num_events_by_file']
+    # Get number of examples by file
+    if settings['model_type'] == 'singletel': # get number of images
+        telescope_type = settings['processed_telescope_types'][0]
+        num_examples_by_file = metadata['num_images_by_file'][telescope_type]
+    else: # get number of events
+        num_examples_by_file = metadata['num_events_by_file']
 
     # Log general information on dataset based on metadata dictionary
     logger.info("%d data files read.", len(file_list))
@@ -343,7 +365,8 @@ def get_data_generators_HDF5(file_list,cut_condition,model_type, metadata, valid
         logger.info("%s: %d (%f%%)", label, num_examples_by_label[label], 100 * float(num_examples_by_label[label])/total_num_examples)
 
     # Apply cuts
-    indices_by_file = apply_cuts_HDF5(file_list,cut_condition,model_type)
+    indices_by_file = apply_cuts_HDF5(file_list, settings['cut_condition'],
+            settings['model_type'])
 
     # Log info on cuts
     num_passing_examples_by_label = {}
@@ -355,7 +378,8 @@ def get_data_generators_HDF5(file_list,cut_condition,model_type, metadata, valid
         num_passing_examples_by_label[particle_id] += num_passing_examples
 
     num_passing_examples = sum(num_passing_examples_by_label.values())
-    num_validation_examples = int(validation_split * num_passing_examples)
+    num_validation_examples = int(settings['validation_split'] * 
+            num_passing_examples)
 
     logger.info("%d total examples passing cuts.", num_passing_examples)
     logger.info("Num examples by label:")
@@ -363,7 +387,8 @@ def get_data_generators_HDF5(file_list,cut_condition,model_type, metadata, valid
         logger.info("%s: %d (%f%%)", label, num_passing_examples_by_label[label], 100 * float(num_passing_examples_by_label[label])/num_passing_examples)
 
     # Split indices lists into training and validation
-    training_indices, validation_indices = split_indices_lists(indices_by_file,validation_split)
+    training_indices, validation_indices = split_indices_lists(indices_by_file,
+            settings['validation_split'])
 
     def training_generator():
         return gen_fn_HDF5(file_list,training_indices)
@@ -379,21 +404,29 @@ def get_data_generators_HDF5(file_list,cut_condition,model_type, metadata, valid
 # which is then dilated by 1).
 # boundary threshold is the second applied threshold, applied to all pixels surviving the first
 # mask
-def segment_image(image, bounding_box_size=48, picture_threshold=5.5, boundary_threshold=1.0):
+def crop_image(image, settings):
 
-    # get only the first channel (charge) of an image of arbitrary depth
-    image_charge = image[:,:,0]
+    # Apply image cleaning
+    image_cleaning_method = settings['image_cleaning_method']
+    if image_cleaning_method == "none":
+        cleaned_image = image
+    elif image_cleaning_method == "twolevel":
+        # get only the first channel (charge) of an image of arbitrary depth
+        image_charge = image[:,:,0]
 
-    # apply picture threshold to charge image to get mask, then dilate the mask once 
-    # to add all adjacent pixels (i.e. kernel is 3x3)
-    m = (image_charge > picture_threshold).astype(np.uint8)
-    kernel = np.ones((3,3), np.uint8) 
-    m = cv2.dilate(m,kernel)
+        # apply picture threshold to charge image to get mask, then dilate the mask once 
+        # to add all adjacent pixels (i.e. kernel is 3x3)
+        m = (image_charge > settings['picture_threshold']).astype(np.uint8)
+        kernel = np.ones((3,3), np.uint8) 
+        m = cv2.dilate(m,kernel)
 
-    # multiply the charge image by the dilated mask
-    # then mask out all surviving pixels which are smaller than
-    # the boundary threshold
-    image_cleaned = (m * image_charge) * ((m * image_charge) > boundary_threshold).astype(np.uint8)
+        # multiply the charge image by the dilated mask
+        # then mask out all surviving pixels which are smaller than
+        # the boundary threshold
+        cleaned_image = (m * image_charge) * ((m * image_charge) > settings['boundary_threshold']).astype(np.uint8)
+    else:
+        raise ValueError('Unrecognized image cleaning method: {}'.format(
+            image_cleaning_method))
 
     # compute image moments, then use them to compute the centroid
     # coordinates (x_0, y_0)
@@ -401,7 +434,7 @@ def segment_image(image, bounding_box_size=48, picture_threshold=5.5, boundary_t
     # y_0 refers to a coordinate value along array axis 1 (columns, left to right)
     # NOTE: when the image is blank after cleaning (sum of pixels is 0), set the
     # centroid to center of image to avoid divide by zero errors
-    moments = cv2.moments(image_cleaned)
+    moments = cv2.moments(cleaned_image)
     x_0 = moments['m01']/moments['m00'] if moments['m00'] != 0 else image.shape[1]/2
     y_0 = moments['m10']/moments['m00'] if moments['m00'] != 0 else image.shape[0]/2
 
@@ -411,6 +444,7 @@ def segment_image(image, bounding_box_size=48, picture_threshold=5.5, boundary_t
     # NOTE: rounding (and subtracting one from the max values) ensures that for all
     # float values of x_0, y_0, the values of indices x_min, x_max, y_min, y_max mark 
     # a bounding box of exactly shape (BOUNDING_BOX_SIZE, BOUNDING_BOX_SIZE)
+    bounding_box_size = settings['bounding_box_size']
     x_min = int(round(x_0 - bounding_box_size/2))
     x_max = int(round(x_0 + bounding_box_size/2)) - 1
     y_min = int(round(y_0 - bounding_box_size/2))
@@ -437,8 +471,11 @@ def segment_image(image, bounding_box_size=48, picture_threshold=5.5, boundary_t
     y_min_cropped = -y_min if y_min < 0 else 0
     y_max_cropped = (bounding_box_size - (y_max - y_max_image) - 1) if y_max >= (image.shape[1] - 1) else bounding_box_size - 1
 
-    # transfer the cropped portion of the original image array into the smaller, padded cropped_image array.
-    cropped_image[x_min_cropped:x_max_cropped+1,y_min_cropped:y_max_cropped+1,:] = image[x_min_image:x_max_image+1,y_min_image:y_max_image+1,:]
+    # transfer the cropped portion of the image array into the smaller, padded cropped_image array.
+    # Use either the cleaned or uncleaned image as specified
+    returned_image = (cleaned_image if settings['return_cleaned_images'] else
+            image)
+    cropped_image[x_min_cropped:x_max_cropped+1,y_min_cropped:y_max_cropped+1,:] = returned_image[x_min_image:x_max_image+1,y_min_image:y_max_image+1,:]
 
     return cropped_image, x_0, y_0
 
