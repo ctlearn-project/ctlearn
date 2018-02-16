@@ -397,33 +397,39 @@ def get_data_generators_HDF5(file_list, metadata, settings):
 
     return training_generator, validation_generator
 
-# segment (crop) an image around the shower by applying two-threshold cleaning to isolate the shower,
-# computing the centroid of the cleaned image, and placing a bounding box around the centroid
-# bounding_box_size is the length of one side of the square bounding box
-# picture threshold is the first applied threshold (applied on the whole image to get a mask,
-# which is then dilated by 1).
-# boundary threshold is the second applied threshold, applied to all pixels surviving the first
-# mask
+# Crop an image about the shower center, optionally applying image cleaning
+# to obtain a better fit. The shower centroid is calculated as the mean of
+# pixel positions weighted by the charge, after cleaning. The cropped image is
+# obtained as a square bounding box centered on the centroid of side length
+# bounding_box_size.
 def crop_image(image, settings):
 
     # Apply image cleaning
     image_cleaning_method = settings['image_cleaning_method']
-    if image_cleaning_method == "none":
+    if image_cleaning_method == "none"
+        # Don't apply any cleaning
         cleaned_image = image
     elif image_cleaning_method == "twolevel":
-        # get only the first channel (charge) of an image of arbitrary depth
+        # Apply two-level cleaning to isolate the shower. First, filter for
+        # shower pixels by applying a high charge cut (picture threshold).
+        # Next, retain weaker pixels at the shower edge by allowing pixels
+        # adjacent to those passing the first cut to pass a weaker cut
+        # (boundary threshold).
+        
+        # Get only the first channel (charge) of an image of arbitrary depth
         image_charge = image[:,:,0]
 
-        # apply picture threshold to charge image to get mask, then dilate the mask once 
-        # to add all adjacent pixels (i.e. kernel is 3x3)
+        # Apply picture threshold to charge image to get mask
         m = (image_charge > settings['picture_threshold']).astype(np.uint8)
+        # Dilate the mask once to add all adjacent pixels (i.e. kernel is 3x3)
         kernel = np.ones((3,3), np.uint8) 
-        m = cv2.dilate(m,kernel)
+        m = cv2.dilate(m, kernel)
+        # Apply boundary threshold to keep weaker but adjacent pixels
+        m = (m * image_charge > settings['boundary_threshold']).astype(np.uint8)
+        m = np.expand_dims(m, 2)
 
-        # multiply the charge image by the dilated mask
-        # then mask out all surviving pixels which are smaller than
-        # the boundary threshold
-        cleaned_image = (m * image_charge) * ((m * image_charge) > settings['boundary_threshold']).astype(np.uint8)
+        # Multiply by the mask to get the cleaned image
+        cleaned_image = image * m
     else:
         raise ValueError('Unrecognized image cleaning method: {}'.format(
             image_cleaning_method))
@@ -434,7 +440,7 @@ def crop_image(image, settings):
     # y_0 refers to a coordinate value along array axis 1 (columns, left to right)
     # NOTE: when the image is blank after cleaning (sum of pixels is 0), set the
     # centroid to center of image to avoid divide by zero errors
-    moments = cv2.moments(cleaned_image)
+    moments = cv2.moments(cleaned_image[:,:,0])
     x_0 = moments['m01']/moments['m00'] if moments['m00'] != 0 else image.shape[1]/2
     y_0 = moments['m10']/moments['m00'] if moments['m00'] != 0 else image.shape[0]/2
 
