@@ -132,7 +132,7 @@ def load_auxiliary_data_HDF5(file_list):
     for filename in file_list:
         with tables.open_file(filename, mode='r') as f:
             # For every telescope in the file
-            for row in f.root.Telescope_Info.iterrows():
+            for row in f.root.Array_Info.iterrows():
                 tel_type = row['tel_type'].decode('utf-8')
                 tel_id = row['tel_id']
                 if tel_type not in telescope_positions:
@@ -152,50 +152,47 @@ def load_auxiliary_data_HDF5(file_list):
     return auxiliary_data
 
 def load_metadata_HDF5(file_list):
-    num_events_by_file = []
-    num_images_by_file = {}
-    particle_id_by_file = []
-    telescope_types = []
-    telescope_ids = {}
-    image_charge_max = {}
-    image_charge_min = {}
+    num_events_by_file, particle_id_by_file , num_images_by_file = [], [], {}
+    telescope_types, telescope_ids = [], {}
+    image_charge_min, image_charge_max = {}, {}
     for filename in file_list:
         with tables.open_file(filename, mode='r') as f:
-            # Number of events
             num_events_by_file.append(f.root.Event_Info.shape[0])
-            # Particle ID (same for all events in a single file)
+            # Particle ID is same for all events in a given file and
+            # is therefore saved in the root attributes
             particle_id_by_file.append(f.root._v_attrs.particle_type)
             # Build telescope types list and telescope ids dict for current file
             # NOTE: telescope types list is sorted in order of tel_ids
-            telescope_types_ids = []
-            telescope_types_current_file = []
-            telescope_ids_current_file = {}
-            for row in f.root.Telescope_Info.iterrows():
+            tel_ids_types, tel_ids_types_temp = [], []
+            for row in f.root.Array_Info.iterrows():
+                # note: tel type strings stored in Pytables as byte strings, must be decoded
                 tel_type = row['tel_type'].decode('utf-8')
                 tel_id = row['tel_id']
-                telescope_types_ids.append((tel_id,tel_type))
-            for tel_id,tel_type in sorted(telescope_types_ids,key=lambda i: i[0]):
-                if tel_type not in telescope_types_current_file:
-                    telescope_types_current_file.append(tel_type)
-                if tel_type not in telescope_ids_current_file:
-                    telescope_ids_current_file[tel_type] = []
-                telescope_ids_current_file[tel_type].append(tel_id)
-
+                tel_ids_types_temp.append((tel_id,tel_type))
+            # sort all (telescope id, telescope type) pairs by tel_id
+            tel_ids_types_temp.sort(key=lambda i: i[0])
+            
             # Check that telescope types and ids match across all files
+            if tel_ids_types != tel_ids_types_temp:
+                if not tel_ids_types:
+                    tel_ids_types = tel_ids_types_temp
+                else:
+                    raise ValueError("Telescope type/id mismatch in file {}".format(filename))
+           
+            # save sorted list of telescope types
             if not telescope_types:
-                telescope_types = telescope_types_current_file
-            else:
-                if telescope_types != telescope_types_current_file:
-                    raise ValueError("Telescope type mismatch in file {}".format(filename))
-
+                for tel_id, tel_type in tel_ids_types:
+                    if tel_type not in telescope_types: 
+                        telescope_types.append(tel_type)
+            
+            # save dict of telescope_ids
             if not telescope_ids:
-                telescope_ids = telescope_ids_current_file
-            else:
-                for tel_type in telescope_types:
-                    if telescope_ids[tel_type] != telescope_ids_current_file[tel_type]:
-                        raise ValueError("Telescope id mismatch in file {} (tel_type {})".format(filename,tel_type))
-
-            # Number of images per telescope (for single tel data)
+                for tel_id, tel_type in tel_ids_types:
+                    if tel_type not in telescope_ids:
+                        telescope_ids[tel_type] = []
+                    telescope_ids[tel_type].append(tel_id)
+            
+            # Save dict of number of images by tel type per telescope (for single tel data)
             for tel_type in telescope_types:
                 if tel_type not in num_images_by_file:
                     num_images_by_file[tel_type] = []
