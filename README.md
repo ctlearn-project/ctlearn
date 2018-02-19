@@ -51,12 +51,15 @@ The path to the environment directory for the environment you wish to install in
 conda env list
 ```
 
+Note that the package must be reinstalled after making any changes for them to take effect.
+
 ## Dependencies
 
 - Python 3.6
 - Tensorflow 1.4
 - Pytables
 - Numpy
+- OpenCV
 
 ## Configuration
 
@@ -72,24 +75,25 @@ Because the size of the full dataset may be very large, only a set of event indi
 During each epoch of training, a specified number of event examples is randomly drawn from the training dataset.
 Until the total number is reached, batches of a specified size are loaded and used to train the model.
 Batch loading of data may be parallelized using a specified number of threads.
-After every specified number of training epochs, the model is evaluated on the entire training set and validation set.
+After each training epoch, the model is evaluated on the validation set.
 
 **Model**
 Several higher-level model types are provided to train networks for single-telescope classification (single_tel_model) and array (multiple image) classification (variable_input_model, cnn_rnn_model)
 
 Available CNN Blocks: AlexNet, MobileNet, ResNet, DenseNet
 
-Available Network Heads: AlexNet, MobileNet, ResNet, DenseNet
+Available Network Heads: AlexNet (fully connected telescope combination), AlexNet (convolutional telescope combination), MobileNet, ResNet
 
 **Training**
 Training hyperparameters including the learning rate and optimizer can be set in the configuration file.
 
 **Logging**
-Tensorflow checkpoints and summaries are saved to the specified directory, as is a copy of the configuration file.
+Tensorflow checkpoints and summaries are saved to the specified model directory, as is a copy of the configuration file.
 
 ## Usage
 
 To train a model, run `python train.py myconfig.ini`. 
+The following flags may be set: `--debug` to set DEBUG logging level, `--log_to_file` to save logger messages to a file in the model directory.
 The model's progress can be viewed in real time using Tensorboard: `tensorboard --logdir=/path/to/my/model_dir`.
 
 ## Links
