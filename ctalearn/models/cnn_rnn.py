@@ -16,7 +16,7 @@ def cnn_rnn_model(features, labels, params, is_training):
     telescope_type = params['processed_telescope_types'][0]
     image_width, image_length, image_depth = params['processed_image_shapes'][telescope_type]
     num_telescopes = params['processed_num_telescopes'][telescope_type]
-    num_position_coordinates = params['num_position_coordinates']
+    num_aux_inputs = sum(params['processed_aux_input_nums'].values())
     num_gamma_hadron_classes = params['num_classes']
     
     telescope_data = features['telescope_data']
@@ -25,10 +25,11 @@ def cnn_rnn_model(features, labels, params, is_training):
 
     telescope_triggers = features['telescope_triggers']
     telescope_triggers = tf.reshape(telescope_triggers, [-1, num_telescopes])
+    telescope_triggers = tf.cast(telescope_triggers, tf.float32)
 
-    telescope_positions = features['telescope_positions']
-    telescope_positions = tf.reshape(telescope_positions, [-1, num_telescopes,
-        num_position_coordinates])
+    telescope_aux_inputs = features['telescope_aux_inputs']
+    telescope_aux_inputs = tf.reshape(telescope_aux_inputs, [-1, num_telescopes,
+        num_aux_inputs])
  
     # Reshape labels to vector as expected by tf.one_hot
     gamma_hadron_labels = labels['gamma_hadron_label']
@@ -90,7 +91,7 @@ def cnn_rnn_model(features, labels, params, is_training):
     #combine image embeddings (batch_size,num_tel,num_units_embedding)
     embeddings = tf.stack(telescope_outputs,axis=1)
     #add telescope position auxiliary input to each embedding (batch_size, num_tel, num_units_embedding+3)
-    embeddings = tf.concat([embeddings,telescope_positions],axis=2)
+    embeddings = tf.concat([embeddings,telescope_aux_inputs],axis=2)
 
     #implement attention mechanism with range num_tel (covering all timesteps)
     #define LSTM cell size
