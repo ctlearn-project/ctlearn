@@ -289,9 +289,15 @@ def train(config):
             optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
         else:
             raise ValueError("Invalid optimizer choice: {}".format(optimizer_type))
+    
+        if params['freeze_weights']:
+            vars_to_train = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, "NetworkHead")
+        else:
+            vars_to_train = None
 
         train_op = tf.contrib.slim.learning.create_train_op(loss, optimizer,
-                clip_gradient_norm=params['clip_gradient_norm'])
+                clip_gradient_norm=params['clip_gradient_norm'],
+                variables_to_train=vars_to_train)
         
         # Define the evaluation metrics
         eval_metric_ops = {
