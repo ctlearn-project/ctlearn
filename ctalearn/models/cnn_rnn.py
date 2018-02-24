@@ -83,37 +83,41 @@ def cnn_rnn_model(features, labels, params, is_training):
         #flatten output of embedding CNN to (batch_size, _)
         output_flattened = tf.layers.flatten(output)
 
-        #compute image embedding for each telescope (batch_size,1024)
-        image_embedding = tf.layers.dense(inputs=output_flattened, units=1024, activation=tf.nn.relu,reuse=reuse)
-        telescope_outputs.append(image_embedding)
+        with tf.variable_scope("NetworkHead"):
 
-    #combine image embeddings (batch_size,num_tel,num_units_embedding)
-    embeddings = tf.stack(telescope_outputs,axis=1)
-    #add telescope position auxiliary input to each embedding (batch_size, num_tel, num_units_embedding+3)
-    embeddings = tf.concat([embeddings,telescope_positions],axis=2)
+            #compute image embedding for each telescope (batch_size,1024)
+            image_embedding = tf.layers.dense(inputs=output_flattened, units=1024, activation=tf.nn.relu,reuse=reuse)
+            telescope_outputs.append(image_embedding)
 
-    #implement attention mechanism with range num_tel (covering all timesteps)
-    #define LSTM cell size
-    attention_cell = tf.contrib.rnn.AttentionCellWrapper(tf.contrib.rnn.LayerNormBasicLSTMCell(LSTM_SIZE),num_telescopes)
+    with tf.variable_scope("NetworkHead"):
 
-    # outputs = shape(batch_size, num_tel, output_size)
-    outputs, _  = tf.nn.dynamic_rnn(
-                        attention_cell,
-                        embeddings,
-                        dtype=tf.float32,
-                        sequence_length=num_tels_triggered)
+        #combine image embeddings (batch_size,num_tel,num_units_embedding)
+        embeddings = tf.stack(telescope_outputs,axis=1)
+        #add telescope position auxiliary input to each embedding (batch_size, num_tel, num_units_embedding+3)
+        embeddings = tf.concat([embeddings,telescope_positions],axis=2)
 
-    # (batch_size*num_tel,output_size)
-    outputs_reshaped = tf.reshape(outputs, [-1, LSTM_SIZE])
-    #indices (0 except at every n+(num_tel-1) where n in range(batch_size))
-    indices = tf.range(0, tf.shape(outputs)[0]) * outputs.get_shape()[1] + (outputs.get_shape()[1] - 1)
-    #partition outputs to select only the last LSTM output for each example in the batch
-    partitions = tf.reduce_sum(tf.one_hot(indices, tf.shape(outputs_reshaped)[0],dtype='int32'),0)
-    partitioned_output = tf.dynamic_partition(outputs_reshaped, partitions, 2)    
-    #shape (batch_size, output_size)
-    last_output = partitioned_output[1]
+        #implement attention mechanism with range num_tel (covering all timesteps)
+        #define LSTM cell size
+        attention_cell = tf.contrib.rnn.AttentionCellWrapper(tf.contrib.rnn.LayerNormBasicLSTMCell(LSTM_SIZE),num_telescopes)
 
-    logits = tf.layers.dense(inputs=last_output,units=num_gamma_hadron_classes)
+        # outputs = shape(batch_size, num_tel, output_size)
+        outputs, _  = tf.nn.dynamic_rnn(
+                            attention_cell,
+                            embeddings,
+                            dtype=tf.float32,
+                            sequence_length=num_tels_triggered)
+
+        # (batch_size*num_tel,output_size)
+        outputs_reshaped = tf.reshape(outputs, [-1, LSTM_SIZE])
+        #indices (0 except at every n+(num_tel-1) where n in range(batch_size))
+        indices = tf.range(0, tf.shape(outputs)[0]) * outputs.get_shape()[1] + (outputs.get_shape()[1] - 1)
+        #partition outputs to select only the last LSTM output for each example in the batch
+        partitions = tf.reduce_sum(tf.one_hot(indices, tf.shape(outputs_reshaped)[0],dtype='int32'),0)
+        partitioned_output = tf.dynamic_partition(outputs_reshaped, partitions, 2)    
+        #shape (batch_size, output_size)
+        last_output = partitioned_output[1]
+
+        logits = tf.layers.dense(inputs=last_output,units=num_gamma_hadron_classes)
 
     onehot_labels = tf.one_hot(
             indices=gamma_hadron_labels,
