@@ -375,8 +375,6 @@ def get_data_generators_HDF5(file_list, metadata, settings):
         num_passing_examples_by_label[particle_id] += num_passing_examples
 
     num_passing_examples = sum(num_passing_examples_by_label.values())
-    num_validation_examples = int(settings['validation_split'] * 
-            num_passing_examples)
 
     logger.info("%d total examples passing cuts.", num_passing_examples)
     logger.info("Num examples by label:")
