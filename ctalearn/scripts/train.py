@@ -303,9 +303,17 @@ def train(config):
         eval_metric_ops = {
                 'accuracy': tf.metrics.accuracy(true_classes, 
                     predicted_classes),
-                'auc': tf.metrics.auc(true_classes, predicted_classes),
+                'auc': tf.metrics.auc(true_classes, predicted_classes)
                 }
         
+        # add class-wise accuracies
+        classwise_accuracies = {}
+        for i in range(params['num_classes']):
+            classwise_accuracies[i] = tf.divide(
+                    tf.reduce_sum(tf.cast(tf.logical_and(tf.equal(predicted_classes,tf.constant(i)),tf.equal(true_classes,tf.constant(i))),tf.int32)),
+                            tf.reduce_sum(tf.cast(tf.equal(true_classes,tf.constant(i)),tf.int32)))
+            eval_metric_ops['accuracy_{}'.format(params['class_to_name'][i])] = tf.metrics.mean(classwise_accuracies[i])
+
         return tf.estimator.EstimatorSpec(
                 mode=mode,
                 predictions=predictions,
