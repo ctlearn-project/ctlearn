@@ -11,6 +11,11 @@ from ctalearn.image import MAPPING_TABLES, IMAGE_SHAPES
 
 logger = logging.getLogger(__name__)
 
+# dict mapping CORSIKA particle ids to class number
+PARTICLE_ID_TO_CLASS = {101:0, 0:1}
+# dict mapping class number to particle name
+CLASS_TO_NAME = {0:'proton',1:'gamma'}
+
 # Multithread-safe PyTables open and close file functions
 # See http://www.pytables.org/latest/cookbook/threading.html
 lock = threading.Lock()
@@ -44,13 +49,8 @@ def load_data_eventwise_HDF5(filename, index, auxiliary_data, metadata,
     record = f.root.Event_Info[index]
     
     # Get classification label by converting CORSIKA particle code
-    if record['particle_id'] == 0: # gamma ray
-        gamma_hadron_label = 1
-    elif record['particle_id']  == 101: # proton
-        gamma_hadron_label = 0
-    else:
-        raise ValueError("Unimplemented particle_id value: {}".format(record['particle_id']))
-    
+    gamma_hadron_label = PARTICLE_ID_TO_CLASS[record['particle_id']][1]
+   
     # Collect image indices (indices into the image tables)
     # for each telescope type in this event
     telescope_types = settings['processed_telescope_types']
@@ -114,12 +114,7 @@ def load_data_single_tel_HDF5(filename, index, settings):
     event_record = f.root.Event_Info[event_index]
 
     # Get classification label by converting CORSIKA particle code
-    if event_record['particle_id'] == 0: # gamma ray
-        gamma_hadron_label = 1
-    elif event_record['particle_id'] == 101: # proton
-        gamma_hadron_label = 0
-    else:
-        raise ValueError("Unimplemented particle_id value: {}".format(event_record['particle_id']))
+    gamma_hadron_label = PARTICLE_ID_TO_CLASS[event_record['particle_id']][1]
 
     return [telescope_image, gamma_hadron_label]
 
@@ -222,6 +217,7 @@ def load_metadata_HDF5(file_list):
             'num_images_by_file': num_images_by_file,
             'particle_id_by_file': particle_id_by_file,
             'image_shapes': IMAGE_SHAPES,
+            'class_to_name': CLASS_TO_NAME,
             'num_classes': len(set(particle_id_by_file)),
             'num_position_coordinates': 3,
             'image_charge_min': image_charge_min,
@@ -401,7 +397,7 @@ def crop_image(image, settings):
 
     # Apply image cleaning
     image_cleaning_method = settings['image_cleaning_method']
-    if image_cleaning_method == "none"
+    if image_cleaning_method == "none":
         # Don't apply any cleaning
         cleaned_image = image
     elif image_cleaning_method == "twolevel":
