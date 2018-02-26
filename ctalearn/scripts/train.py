@@ -42,6 +42,8 @@ def train(config):
     cut_condition = config['Data Processing'].get('CutCondition', '')
     sort_telescopes_by_trigger = config['Data Processing'].getboolean(
         'SortTelescopesByTrigger', False)
+    use_telescope_positions = config['Data Processing'].getboolean(
+            'UseTelescopeImages', True)
     crop_images = config['Data Processing'].getboolean('CropImages', False)
     image_cleaning_method = config['Data Processing'].get(
             'ImageCleaningMethod', 'None').lower()
@@ -118,12 +120,14 @@ def train(config):
             'validation_split': validation_split,
             'cut_condition': cut_condition,
             'sort_telescopes_by_trigger': cut_condition,
+            'use_telescope_positions': use_telescope_positions,
             'crop_images': crop_images,
             'image_cleaning_method': image_cleaning_method,
             'return_cleaned_images': return_cleaned_images,
             'picture_threshold': picture_threshold,
             'boundary_threshold': boundary_threshold,
             'bounding_box_size': bounding_box_size,
+            'num_shower_coordinates': 2,
             'model_type': model_type, # for applying cuts
             'chosen_telescope_types': ['MSTS'] # hardcode using SCT images only
             }
@@ -179,7 +183,7 @@ def train(config):
             # Output datatypes of load_data (required by tf.py_func)
             data_types = [tf.float32, tf.int8, tf.float32, tf.int64]
             output_names = ['telescope_data', 'telescope_triggers',
-                    'telescope_positions', 'gamma_hadron_label']
+                    'telescope_aux_inputs', 'gamma_hadron_label']
             outputs_are_label = [False, False, False, True]
 
         # Define format for Tensorflow dataset

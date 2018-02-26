@@ -16,19 +16,19 @@ def apply_trigger_dropout(inputs,triggers):
     return tf.multiply(inputs, triggers)
 
 # Given a list of telescope output features and tensors storing the telescope
-# positions and trigger list, return a tensor of array features of the form 
-# [NUM_BATCHES, NUM_ARRAY_FEATURES]
-def combine_telescopes_as_vectors(telescope_outputs, telescope_positions, 
+# auxiliary parameters (e.g. positions) and trigger list, return a tensor of
+# array features of the form [NUM_BATCHES, NUM_ARRAY_FEATURES]
+def combine_telescopes_as_vectors(telescope_outputs, telescope_aux_inputs, 
         telescope_triggers):
     array_inputs = []
     for i, telescope_features in enumerate(telescope_outputs):
         # Flatten output features to get feature vectors
         telescope_features = tf.layers.flatten(telescope_features)
-        telescope_position = telescope_positions[:, i, :]
+        telescope_aux_input = telescope_aux_inputs[:, i, :]
         telescope_trigger = tf.expand_dims(telescope_triggers[:, i], 1)
         # Insert auxiliary input into each feature vector
         telescope_features = tf.concat([telescope_features, 
-            telescope_position, telescope_trigger], 1)
+            telescope_aux_input, telescope_trigger], 1)
         array_inputs.append(telescope_features)
     array_features = tf.concat(array_inputs, axis=1)
     return array_features
@@ -37,18 +37,19 @@ def combine_telescopes_as_vectors(telescope_outputs, telescope_positions,
 # positions and trigger list, return a tensor of array features of the form
 # [NUM_BATCHES, TEL_OUTPUT_WIDTH, TEL_OUTPUT_HEIGHT, (TEL_OUTPUT_CHANNELS + 
 #       NUM_AUXILIARY_INPUTS_PER_TELESCOPE) * NUM_TELESCOPES]
-def combine_telescopes_as_feature_maps(telescope_outputs, telescope_positions, 
+def combine_telescopes_as_feature_maps(telescope_outputs, telescope_aux_inputs, 
         telescope_triggers):
     array_inputs = []
     for i, telescope_features in enumerate(telescope_outputs):
-        # Get the telescope position and if it triggered
-        # [NUM_BATCH, NUM_AUX_INFO]
-        telescope_position = telescope_positions[:, i, :]
-        telescope_trigger = telescope_triggers[:, i] # [NUM_BATCH]
-        # Tile the position along the width and height dimensions
-        telescope_position = tf.expand_dims(telescope_position, 1)
-        telescope_position = tf.expand_dims(telescope_position, 1)
-        telescope_position = tf.tile(telescope_position,
+        # Get the telescope auxiliary parameters (e.g. position)
+        # [NUM_BATCH, NUM_AUX_PARAMS]
+        telescope_aux_input = telescope_aux_inputs[:, i, :]
+        # Get whether the telescope triggered [NUM_BATCH]
+        telescope_trigger = telescope_triggers[:, i]
+        # Tile the aux params along the width and height dimensions
+        telescope_aux_input = tf.expand_dims(telescope_aux_input, 1)
+        telescope_aux_input = tf.expand_dims(telescope_aux_input, 1)
+        telescope_aux_input = tf.tile(telescope_aux_input,
                 tf.concat([[1], tf.shape(telescope_features)[1:-1], [1]], 0))
         # Tile the trigger along the width, height, and channel dimensions
         telescope_trigger = tf.reshape(telescope_trigger, [-1, 1, 1, 1])
@@ -56,7 +57,7 @@ def combine_telescopes_as_feature_maps(telescope_outputs, telescope_positions,
                 tf.concat([[1], tf.shape(telescope_features)[1:-1], [1]], 0))
         # Insert auxiliary input as additional channels in feature maps
         telescope_features = tf.concat([telescope_features, 
-            telescope_position, telescope_trigger], 3)
+            telescope_aux_input, telescope_trigger], 3)
         array_inputs.append(telescope_features)
     array_features = tf.concat(array_inputs, axis=3)
     return array_features
@@ -70,19 +71,20 @@ def variable_input_model(features, labels, params, is_training):
     telescope_type = params['processed_telescope_types'][0]
     image_width, image_length, image_depth = params['processed_image_shapes'][telescope_type]
     num_telescopes = params['processed_num_telescopes'][telescope_type]
-    num_position_coordinates = params['num_position_coordinates']
+    num_aux_inputs = sum(params['processed_aux_input_nums'].values())
     num_gamma_hadron_classes = params['num_classes']
     
     telescope_data = features['telescope_data']
     telescope_data = tf.reshape(telescope_data, [-1, num_telescopes, 
         image_width, image_length, image_depth])
-
+    
     telescope_triggers = features['telescope_triggers']
     telescope_triggers = tf.reshape(telescope_triggers, [-1, num_telescopes])
+    telescope_triggers = tf.cast(telescope_triggers, tf.float32)
 
-    telescope_positions = features['telescope_positions']
-    telescope_positions = tf.reshape(telescope_positions, [-1, num_telescopes,
-        num_position_coordinates])
+    telescope_aux_inputs = features['telescope_aux_inputs']
+    telescope_aux_inputs = tf.reshape(telescope_aux_inputs,
+            [-1, num_telescopes, num_aux_inputs])
     
     # Reshape labels to vector as expected by tf.one_hot
     gamma_hadron_labels = labels['gamma_hadron_label']
@@ -157,7 +159,7 @@ def variable_input_model(features, labels, params, is_training):
         # Process the single telescope data into array-level input
         array_features = combine_telescopes(
                 telescope_outputs, 
-                telescope_positions, 
+                telescope_aux_inputs, 
                 telescope_triggers)
         # Process the combined array features
         logits = network_head(array_features, params=params,

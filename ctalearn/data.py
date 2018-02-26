@@ -2,6 +2,7 @@ from operator import itemgetter
 import threading
 import logging
 import math
+from collections import OrderedDict
 
 import tables
 import numpy as np
@@ -56,46 +57,66 @@ def load_data_eventwise_HDF5(filename, index, auxiliary_data, metadata,
     telescope_types = settings['processed_telescope_types']
     image_indices = {tel_type:record[tel_type+"_indices"] for tel_type in
             telescope_types}
-    # Collect images and binary trigger values
+    # Collect images, auxiliary info, and binary trigger values
     telescope_images = []
     telescope_triggers = []
+    shower_positions = [] # only used when cropping images
     for tel_type in telescope_types:
-        image_shape = settings['processed_image_shape'][tel_type]
+        image_shape = settings['processed_image_shapes'][tel_type]
         for i in image_indices[tel_type]:
             if i == 0:
                 # Telescope did not trigger. Its outputs will be dropped
                 # out, so input is arbitrary. Use an empty array for
                 # efficiency.
                 telescope_images.append(np.empty(image_shape))
+                if settings['crop_images']:
+                    shower_positions.append([0, 0])
                 telescope_triggers.append(0)
             else:
                 telescope_image = load_image_HDF5(f, tel_type, i)
                 if settings['crop_images']:
-                    telescope_image, _, _ = crop_image(telescope_image,
-                            settings)
+                    telescope_image, *shower_position = crop_image(
+                            telescope_image, settings)
+                    shower_positions.append(shower_position)
                 telescope_images.append(telescope_image)
                 telescope_triggers.append(1)
+    
+    if settings['use_telescope_positions']:
+        telescope_positions = []
+        for tel_type in telescope_types:
+            # Collect telescope positions from auxiliary data
+            # telescope_positions is a list of lists
+            # ex. [[x1,y1,z1],[x2,y2,z2],...]
+            for tel_id in sorted(auxiliary_data['telescope_positions'][tel_type].keys()):
+                telescope_positions.append(auxiliary_data['telescope_positions'][tel_type][tel_id])
 
-    # Collect telescope positions from auxiliary data
-    # telescope_positions is a list of lists ex. [[x1,y1,z1],[x2,y2,z2],...]
-    telescope_positions = []
-    for tel_type in telescope_types:
-        for tel_id in sorted(auxiliary_data['telescope_positions'][tel_type].keys()):
-            telescope_positions.append(auxiliary_data['telescope_positions'][tel_type][tel_id])
+    # Construct telescope auxiliary inputs as specified
+    telescope_aux_inputs = []
+    for aux_input in settings['processed_aux_input_nums'].keys():
+        if aux_input == 'telescope_position':
+            telescope_aux_inputs.append(telescope_positions)
+        elif aux_input == 'shower_position':
+            telescope_aux_inputs.append(shower_positions)
+    # Group parameters by telescope
+    telescope_aux_inputs = [tel_params for [*tel_params] in
+            zip(*telescope_aux_inputs)]
+    # For each telescope, merge the parameters into a single list
+    telescope_aux_inputs = [[param for param_list in tel_list for param in
+        param_list] for tel_list in telescope_aux_inputs]
 
     if settings['sort_telescopes_by_trigger']:
-        # Sort the images, triggers, and grouped positions by trigger, listing
-        # the triggered telescopes first
-        telescope_images, telescope_triggers, telescope_positions = map(list,
+        # Sort the images, triggers, and grouped auxiliary inputs by
+        # trigger, listing the triggered telescopes first
+        telescope_images, telescope_triggers, telescope_aux_inputs = map(list,
                 zip(*sorted(zip(telescope_images, telescope_triggers,
-                    telescope_positions), reverse=True, key=itemgetter(1))))
+                    telescope_aux_inputs), reverse=True, key=itemgetter(1))))
 
     # Convert to numpy arrays with correct types
     telescope_images = np.stack(telescope_images).astype(np.float32)
     telescope_triggers = np.array(telescope_triggers, dtype=np.int8)
-    telescope_positions = np.array(telescope_positions, dtype=np.float32)
+    telescope_aux_inputs = np.array(telescope_aux_inputs, dtype=np.float32)
 
-    return [telescope_images, telescope_triggers, telescope_positions,
+    return [telescope_images, telescope_triggers, telescope_aux_inputs,
             gamma_hadron_label]
 
 # Data loading function for single tel HDF5 data
@@ -231,6 +252,7 @@ def load_metadata_HDF5(file_list):
 # needed for passing to the model and for efficient data loading.
 # Save the processed parameters in both dictionaries.
 def add_processed_parameters(data_processing_settings, metadata):
+    
     # Choose telescope types for this event. They must be available in the
     # data, chosen in the settings, and have a MAPPING_TABLE
     # NOTE: Only MSTS has a MAPPING_TABLE so far regardless of chosen types
@@ -238,15 +260,20 @@ def add_processed_parameters(data_processing_settings, metadata):
     chosen_telescope_types = data_processing_settings['chosen_telescope_types']
     processed_telescope_types = [ttype for ttype in available_telescope_types
             if ttype in chosen_telescope_types and ttype in MAPPING_TABLES]
+    
     # If single telescope mode, check that only one telescope type is enabled
     if data_processing_settings['model_type'] == 'single_tel':
         if not len(processed_telescope_types) == 1:
             raise ValueError('Exactly one telescope type must be enabled for single telescope models, number requested is: {}'.format(len(processed_telescope_types)))
+
     processed_parameters = {
             'processed_telescope_types': processed_telescope_types,
             'processed_image_shapes': {},
             'processed_num_telescopes': {},
+            'processed_aux_input_nums': OrderedDict()
             }
+
+    # Determine the processed image size which will be different if cropping
     for tel_type in processed_telescope_types:
         if data_processing_settings['crop_images']:
             processed_image_shape = (
@@ -257,6 +284,13 @@ def add_processed_parameters(data_processing_settings, metadata):
             processed_image_shape = metadata['image_shapes'][tel_type]
         processed_parameters['processed_image_shapes'][tel_type] = processed_image_shape
         processed_parameters['processed_num_telescopes'][tel_type] = metadata['num_telescopes'][tel_type]
+
+    # Calculate the total number of auxiliary inputs
+    if data_processing_settings['use_telescope_positions']:
+        processed_parameters['processed_aux_input_nums']['telescope_position'] = metadata['num_position_coordinates']
+    if data_processing_settings['crop_images']:
+        # Image centroid x, y
+        processed_parameters['processed_aux_input_nums']['shower_position'] = data_processing_settings['num_shower_coordinates']
 
     data_processing_settings.update(processed_parameters)
     metadata.update(processed_parameters)
