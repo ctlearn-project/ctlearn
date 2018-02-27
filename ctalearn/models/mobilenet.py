@@ -3,6 +3,7 @@ from collections import namedtuple
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
 
+# https://github.com/tensorflow/models/blob/master/research/slim/nets/mobilenet_v1.py
 
 NUM_CLASSES = 2
 
@@ -34,6 +35,10 @@ BLOCK_CONV_DEFS = [
     DepthSepConv(kernel=[3, 3], stride=1, depth=64),
     DepthSepConv(kernel=[3, 3], stride=1, depth=64)
 ]
+# Define the factor by which the input image sizes will be reduced. Combined
+# with the processed image size, this allows the network head to account for
+# having smaller images (i.e. from cropping) when pooling.
+IMAGE_SIZE_REDUCTION = 8
 
 # Specifies the MobileNet body for the array level network
 # Custom MobileNet array level network. The input should be stacked MobileNet
@@ -116,13 +121,25 @@ def mobilenet_head(inputs, params=None, is_training=True):
     if params is None: params = {}
     dropout_keep_prob = params.get('dropout_keep_prob', 0.9)
     num_classes = params.get('num_gamma_hadron_classes', 2)
+    try: 
+        telescope_type = params['processed_telescope_types'][0]
+        image_width, image_length, image_depth = (
+                params['processed_image_shapes'][telescope_type])
+    except KeyError:
+        image_width, image_length = 120, 120
+    if (image_width % IMAGE_SIZE_REDUCTION) != 0 or (image_length % 
+            IMAGE_SIZE_REDUCTION) != 0:
+        raise ValueError("Image dimensions not a multiple of {}".format(
+            IMAGE_SIZE_REDUCTION))
+    pool_width = int(image_width / IMAGE_SIZE_REDUCTION)
+    pool_length = int(image_length / IMAGE_SIZE_REDUCTION)
 
     # Define the network
     net, end_points = mobilenet_base("MobileNetHead", inputs, HEAD_CONV_DEFS, 
             is_training=is_training)
     
     with tf.variable_scope('Logits'):
-        net = slim.avg_pool2d(net, [15, 15], padding='VALID', 
+        net = slim.avg_pool2d(net, [pool_width, pool_length], padding='VALID', 
                 scope='AvgPool_1a')
         end_points['AvgPool_1a'] = net
         # 1 x 1 x 1024
