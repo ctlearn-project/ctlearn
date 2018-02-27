@@ -43,7 +43,7 @@ def train(config):
     sort_telescopes_by_trigger = config['Data Processing'].getboolean(
         'SortTelescopesByTrigger', False)
     use_telescope_positions = config['Data Processing'].getboolean(
-            'UseTelescopeImages', True)
+            'UseTelescopePositions', True)
     crop_images = config['Data Processing'].getboolean('CropImages', False)
     image_cleaning_method = config['Data Processing'].get(
             'ImageCleaningMethod', 'None').lower()
