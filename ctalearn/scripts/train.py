@@ -269,11 +269,8 @@ def train(config):
 
         # Scale the learning rate so batches with fewer triggered
         # telescopes don't have smaller gradients
-        if scale_learning_rate:
-            # Only apply learning rate scaling for array-level models (not single tel)
-            if model_type == 'singletel': 
-                raise ValueError("Learning rate scaling not valid for single tel model")
-            
+        # Only apply learning rate scaling for array-level models
+        if scale_learning_rate and model_type != 'singletel':
             trigger_rate = tf.reduce_mean(tf.cast(features['telescope_triggers'], tf.float32))
             trigger_rate = tf.maximum(trigger_rate, 0.1) # Avoid division by 0
             scaling_factor = tf.reciprocal(trigger_rate)
