@@ -87,7 +87,7 @@ def cnn_rnn_model(features, labels, params, is_training):
         with tf.variable_scope("NetworkHead"):
 
             #compute image embedding for each telescope (batch_size,1024)
-            image_embedding = tf.layers.dense(inputs=output_flattened, units=1024, activation=tf.nn.relu,reuse=reuse)
+            image_embedding = tf.layers.dense(inputs=output_flattened, units=1024, activation=tf.nn.relu,reuse=reuse,name='image_embedding')
             telescope_outputs.append(image_embedding)
 
     with tf.variable_scope("NetworkHead"):
@@ -95,7 +95,7 @@ def cnn_rnn_model(features, labels, params, is_training):
         #combine image embeddings (batch_size,num_tel,num_units_embedding)
         embeddings = tf.stack(telescope_outputs,axis=1)
         #add telescope position auxiliary input to each embedding (batch_size, num_tel, num_units_embedding+3)
-        embeddings = tf.concat([embeddings,telescope_positions],axis=2)
+        embeddings = tf.concat([embeddings,telescope_aux_inputs],axis=2)
 
         #implement attention mechanism with range num_tel (covering all timesteps)
         #define LSTM cell size
@@ -118,7 +118,7 @@ def cnn_rnn_model(features, labels, params, is_training):
         #shape (batch_size, output_size)
         last_output = partitioned_output[1]
 
-        logits = tf.layers.dense(inputs=last_output,units=num_gamma_hadron_classes)
+        logits = tf.layers.dense(inputs=last_output,units=num_gamma_hadron_classes,name="logits")
 
     onehot_labels = tf.one_hot(
             indices=gamma_hadron_labels,
