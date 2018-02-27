@@ -50,7 +50,7 @@ def load_data_eventwise_HDF5(filename, index, auxiliary_data, metadata,
     record = f.root.Event_Info[index]
     
     # Get classification label by converting CORSIKA particle code
-    gamma_hadron_label = PARTICLE_ID_TO_CLASS[record['particle_id']][1]
+    gamma_hadron_label = PARTICLE_ID_TO_CLASS[record['particle_id']]
    
     # Collect image indices (indices into the image tables)
     # for each telescope type in this event
@@ -135,7 +135,7 @@ def load_data_single_tel_HDF5(filename, index, settings):
     event_record = f.root.Event_Info[event_index]
 
     # Get classification label by converting CORSIKA particle code
-    gamma_hadron_label = PARTICLE_ID_TO_CLASS[event_record['particle_id']][1]
+    gamma_hadron_label = PARTICLE_ID_TO_CLASS[event_record['particle_id']]
 
     return [telescope_image, gamma_hadron_label]
 
