@@ -1,5 +1,6 @@
 import tensorflow as tf
 
+from ctalearn.models.basic import basic_conv_block
 from ctalearn.models.alexnet import alexnet_block
 from ctalearn.models.mobilenet import mobilenet_block
 from ctalearn.models.resnet import resnet_block
@@ -59,6 +60,8 @@ def cnn_rnn_model(features, labels, params, is_training):
         cnn_block = resnet_block
     elif params['cnn_block'] == 'densenet':
         cnn_block = densenet_block
+    elif params['cnn_block'] == 'basic':
+        cnn_block = basic_conv_block
     else:
         raise ValueError("Invalid CNN block specified: {}.".format(params['cnn_block']))
 
@@ -120,11 +123,4 @@ def cnn_rnn_model(features, labels, params, is_training):
 
         logits = tf.layers.dense(inputs=last_output,units=num_gamma_hadron_classes,name="logits")
 
-    onehot_labels = tf.one_hot(
-            indices=gamma_hadron_labels,
-            depth=num_gamma_hadron_classes)
-
-    loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels, 
-            logits=logits)
-
-    return loss, logits
+    return logits

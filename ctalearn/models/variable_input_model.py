@@ -1,5 +1,6 @@
 import tensorflow as tf
 
+from ctalearn.models.basic import basic_conv_block, basic_head_feature_vector
 from ctalearn.models.alexnet import (alexnet_block,
         alexnet_head_feature_vector, alexnet_head_feature_map)
 from ctalearn.models.mobilenet import mobilenet_block, mobilenet_head
@@ -114,6 +115,8 @@ def variable_input_model(features, labels, params, is_training):
         cnn_block = resnet_block
     elif params['cnn_block'] == 'densenet':
         cnn_block = densenet_block
+    elif params['cnn_block'] == 'basic':
+        cnn_block = basic_conv_block
     else:
         raise ValueError("Invalid CNN block specified: {}.".format(params['cnn_block']))
 
@@ -130,6 +133,9 @@ def variable_input_model(features, labels, params, is_training):
     elif params['network_head'] == 'resnet':
         network_head = resnet_head
         combine_telescopes = combine_telescopes_as_feature_maps
+    elif params['network_head'] == 'basic_fc':
+        network_head = basic_head_feature_vector
+        combine_telescopes = combine_telescopes_as_vectors
     else:
         raise ValueError("Invalid network head specified: {}.".format(params['network_head']))
     
@@ -165,11 +171,4 @@ def variable_input_model(features, labels, params, is_training):
         logits = network_head(array_features, params=params,
                 is_training=is_training)
         
-    # Calculate loss
-    onehot_labels = tf.one_hot(
-            indices=gamma_hadron_labels,
-            depth=num_gamma_hadron_classes)
-    loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels, 
-            logits=logits)
-
-    return loss, logits
+    return logits
