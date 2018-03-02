@@ -3,6 +3,7 @@ import threading
 import logging
 import math
 from collections import OrderedDict
+import random
 
 import tables
 import numpy as np
@@ -358,10 +359,13 @@ def split_indices_lists(indices_lists,validation_split):
 
 # Generator function used to produce a dataset of elements (HDF5_filename,index)
 # from a list of files and a list of lists of indices per file (constructed by applying cuts)
-def gen_fn_HDF5(file_list,indices_by_file): 
-    for filename,indices_list in zip(file_list,indices_by_file):
-        for i in indices_list:
-            yield (filename.encode('utf-8'),i)
+def gen_fn_HDF5(file_list,indices_by_file):
+    # produce all filename,index pairs and shuffle
+    filename_index_pairs = [(filename,i) for (filename, indices_list) in zip(file_list,indices_by_file) for i in indices_list]
+    random.shuffle(filename_index_pairs)
+
+    for (filename,i) in filename_index_pairs:
+        yield (filename.encode('utf-8'),i)
 
 def get_data_generators_HDF5(file_list, metadata, settings):
 
@@ -414,6 +418,11 @@ def get_data_generators_HDF5(file_list, metadata, settings):
     # Split indices lists into training and validation
     training_indices, validation_indices = split_indices_lists(indices_by_file,
             settings['validation_split'])
+
+    # Add post-cut computed class weights to metadata dictionary
+    metadata['class_weights'] = [] 
+    for particle_id in sorted(num_passing_examples_by_label,key=lambda x: PARTICLE_ID_TO_CLASS[x]):
+        metadata['class_weights'].append(num_passing_examples/float(num_passing_examples_by_label[particle_id]))
 
     def training_generator():
         return gen_fn_HDF5(file_list,training_indices)
