@@ -34,7 +34,9 @@ def train(config):
     num_parallel_calls = config['Data Input'].getint(
         'NumParallelCalls', 1)
     prefetch = config['Data Input'].getboolean('Prefetch', True)
-    buffer_size = config['Data Input'].getint('BufferSize', 10)
+    prefetch_buffer_size = config['Data Input'].getint('PrefetchBufferSize', 10)
+    shuffle = config['Data Input'].getboolean('Shuffle', True)
+    shuffle_buffer_size = config['Data Input'].getint('ShuffleBufferSize',10000)
 
     # Load options related to data processing
     validation_split = config['Data Processing'].getfloat(
@@ -87,6 +89,8 @@ def train(config):
             'BatchNormDecay', 0.95)
     clip_gradient_norm = config['Training Hyperparameters'].getfloat(
             'ClipGradientNorm', 0.)
+    apply_class_weights = config['Training Hyperparameters'].getboolean(
+            'ApplyClassWeights', False)
 
     # Load options related to training settings
     num_epochs = config['Training Settings'].getint('NumEpochs', 0)
@@ -110,9 +114,11 @@ def train(config):
     data_input_settings = {
             'batch_size': batch_size,
             'prefetch': prefetch,
-            'buffer_size': buffer_size,
+            'prefetch_buffer_size': prefetch_buffer_size,
             'map': False,
-            'num_parallel_calls': num_parallel_calls
+            'num_parallel_calls': num_parallel_calls,
+            'shuffle': shuffle,
+            'shuffle_buffer_size': shuffle_buffer_size
             }
 
     # Define data processing settings
@@ -140,7 +146,8 @@ def train(config):
             'batch_norm_decay': batch_norm_decay,
             'clip_gradient_norm': clip_gradient_norm,
             'pretrained_weights': pretrained_weights,
-            'freeze_weights': freeze_weights
+            'freeze_weights': freeze_weights,
+            'apply_class_weights': apply_class_weights
             }
 
     # Define data loading functions
@@ -216,14 +223,15 @@ def train(config):
         # object. To get the generator object from the function (i.e. to
         # measure its length), the function must be called (i.e. generator())
         dataset = tf.data.Dataset.from_generator(generator,
-                settings['generator_output_types']).shuffle(len(
-                    list(generator())))
+                settings['generator_output_types'])
+        if settings['shuffle']:
+            dataset = dataset.shuffle(settings['shuffle_buffer_size'])
         if settings['map']:
             dataset = dataset.map(settings['map_func'],
                     num_parallel_calls=settings['num_parallel_calls'])
         dataset = dataset.batch(settings['batch_size'])
         if settings['prefetch']:
-            dataset = dataset.prefetch(settings['buffer_size'])
+            dataset = dataset.prefetch(settings['prefetch_buffer_size'])
     
         iterator = dataset.make_one_shot_iterator()
 
@@ -254,13 +262,30 @@ def train(config):
         
         is_training = True if mode == tf.estimator.ModeKeys.TRAIN else False
        
-        loss, logits = model(features, labels, params, is_training)
+        logits = model(features, labels, params, is_training)
 
-        # Calculate metrics
-        true_classes = tf.cast(labels['gamma_hadron_label'], tf.int32)
-        predicted_classes = tf.cast(tf.argmax(logits, axis=1), tf.int32)
+        # Collect true labels and predictions
+        true_classes = tf.cast(labels['gamma_hadron_label'], tf.int32, name="true_classes")
+        predicted_classes = tf.cast(tf.argmax(logits, axis=1), tf.int32, name="predicted_classes")
+        
+        # Compute class-weighted softmax-cross-entropy
+
+        # get class weights
+        if params['apply_class_weights']:
+            class_weights = tf.constant(params['class_weights'], dtype=tf.float32, name="class_weights") 
+            weights = tf.gather(class_weights, true_classes, name="weights")
+        else:
+            weights = 1.0
+
+        onehot_labels = tf.one_hot(indices=true_classes,depth=params['num_classes'])
+
+        # compute cross-entropy loss
+        loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels, 
+            logits=logits,weights=weights)
+
+        # compute accuracy and predictions 
         training_accuracy = tf.reduce_mean(tf.cast(tf.equal(true_classes, 
-            predicted_classes), tf.float32))
+            predicted_classes), tf.float32),name="training_accuracy")
         predictions = {
                 'classes': predicted_classes
                 }
@@ -271,11 +296,11 @@ def train(config):
         # telescopes don't have smaller gradients
         # Only apply learning rate scaling for array-level models
         if scale_learning_rate and model_type != 'singletel':
-            trigger_rate = tf.reduce_mean(tf.cast(features['telescope_triggers'], tf.float32))
+            trigger_rate = tf.reduce_mean(tf.cast(features['telescope_triggers'], tf.float32), name="trigger_rate")
             trigger_rate = tf.maximum(trigger_rate, 0.1) # Avoid division by 0
-            scaling_factor = tf.reciprocal(trigger_rate)
+            scaling_factor = tf.reciprocal(trigger_rate, name="scaling_factor")
             learning_rate = tf.multiply(scaling_factor, 
-                params['base_learning_rate'])
+                params['base_learning_rate'], name="learning_rate")
         else:
             learning_rate = params['base_learning_rate']
         
@@ -308,12 +333,9 @@ def train(config):
                 }
         
         # add class-wise accuracies
-        classwise_accuracies = {}
         for i in range(params['num_classes']):
-            classwise_accuracies[i] = tf.divide(
-                    tf.reduce_sum(tf.cast(tf.logical_and(tf.equal(predicted_classes,tf.constant(i)),tf.equal(true_classes,tf.constant(i))),tf.int32)),
-                            tf.reduce_sum(tf.cast(tf.equal(true_classes,tf.constant(i)),tf.int32)))
-            eval_metric_ops['accuracy_{}'.format(params['class_to_name'][i])] = tf.metrics.mean(classwise_accuracies[i])
+            weights = tf.cast(tf.equal(true_classes,tf.constant(i)),tf.int32)
+            eval_metric_ops['accuracy_{}'.format(params['class_to_name'][i])] = tf.metrics.accuracy(true_classes,predicted_classes,weights=weights)
 
         return tf.estimator.EstimatorSpec(
                 mode=mode,
