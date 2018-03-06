@@ -134,8 +134,11 @@ def variable_input_model(features, labels, params, is_training):
         network_head = resnet_head
         combine_telescopes = combine_telescopes_as_feature_maps
     elif params['network_head'] == 'basic_fc':
-        network_head = basic_head_feature_vector
+        network_head = basic_head_fc
         combine_telescopes = combine_telescopes_as_vectors
+    elif params['network_head'] == 'basic_conv':
+        network_head = basic_head_conv
+        combine_telescopes = combine_telescopes_as_feature_maps
     else:
         raise ValueError("Invalid network head specified: {}.".format(params['network_head']))
     
@@ -161,14 +164,16 @@ def variable_input_model(features, labels, params, is_training):
                 tf.gather(telescope_triggers, telescope_index, axis=1))
         telescope_outputs.append(telescope_features)
 
+
+    # Process the single telescope data into array-level input
+    array_features = combine_telescopes(
+            telescope_outputs, 
+            telescope_aux_inputs, 
+            telescope_triggers)
+    
     with tf.variable_scope("NetworkHead"):
-        # Process the single telescope data into array-level input
-        array_features = combine_telescopes(
-                telescope_outputs, 
-                telescope_aux_inputs, 
-                telescope_triggers)
         # Process the combined array features
         logits = network_head(array_features, params=params,
                 is_training=is_training)
-        
+
     return logits
