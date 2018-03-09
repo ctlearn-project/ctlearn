@@ -17,11 +17,11 @@ def single_tel_model(features, labels, params, is_training):
     num_gamma_hadron_classes = params['num_classes']
     
     telescope_data = features['telescope_data']
-    telescope_data = tf.reshape(telescope_data,[-1,image_width,image_length,image_depth])
+    telescope_data = tf.reshape(telescope_data,[-1,image_width,image_length,image_depth], name="telescope_images")
 
     # Reshape labels to vector as expected by tf.one_hot
     gamma_hadron_labels = labels['gamma_hadron_label']
-    gamma_hadron_labels = tf.reshape(gamma_hadron_labels, [-1])
+    gamma_hadron_labels = tf.reshape(gamma_hadron_labels, [-1], name="gamma_hadron_labels")
 
     # Choose the CNN block
     if params['cnn_block'] == 'alexnet':
