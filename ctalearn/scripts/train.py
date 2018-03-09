@@ -47,6 +47,7 @@ def train(config):
     use_telescope_positions = config['Data Processing'].getboolean(
             'UseTelescopePositions', True)
     crop_images = config['Data Processing'].getboolean('CropImages', False)
+    log_normalize_charge = config['Data Processing'].getboolean('LogNormalizeCharge', False)
     image_cleaning_method = config['Data Processing'].get(
             'ImageCleaningMethod', 'None').lower()
     return_cleaned_images = config['Data Processing'].getboolean(
@@ -128,6 +129,7 @@ def train(config):
             'sort_telescopes_by_trigger': cut_condition,
             'use_telescope_positions': use_telescope_positions,
             'crop_images': crop_images,
+            'log_normalize_charge': log_normalize_charge,
             'image_cleaning_method': image_cleaning_method,
             'return_cleaned_images': return_cleaned_images,
             'picture_threshold': picture_threshold,
@@ -167,6 +169,7 @@ def train(config):
                 return ctalearn.data.load_data_single_tel_HDF5(
                         filename,
                         index,
+                        metadata,
                         data_processing_settings)
 
             # Output datatypes of load_data (required by tf.py_func)

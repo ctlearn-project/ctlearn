@@ -78,10 +78,12 @@ def load_data_eventwise_HDF5(filename, index, auxiliary_data, metadata,
                 if settings['crop_images']:
                     telescope_image, *shower_position = crop_image(
                             telescope_image, settings)
-                    shower_positions.append(shower_position)
+                    shower_positions.append([float(i)/metadata['image_shapes'][tel_type][0] for i in shower_position])
+                if settings['log_normalize_charge']:
+                    telescope_image[:,:,0] = np.log(telescope_image[:,:,0] - metadata['image_charge_min'][tel_type] + 1.0)
                 telescope_images.append(telescope_image)
                 telescope_triggers.append(1)
-    
+   
     if settings['use_telescope_positions']:
         telescope_positions = []
         for tel_type in telescope_types:
@@ -89,7 +91,10 @@ def load_data_eventwise_HDF5(filename, index, auxiliary_data, metadata,
             # telescope_positions is a list of lists
             # ex. [[x1,y1,z1],[x2,y2,z2],...]
             for tel_id in sorted(auxiliary_data['telescope_positions'][tel_type].keys()):
-                telescope_positions.append(auxiliary_data['telescope_positions'][tel_type][tel_id])
+                # normalize the x, y and z coordinates in the telescope position based on the maximum value of each
+                x, y, z = auxiliary_data['telescope_positions'][tel_type][tel_id]
+                tel_pos = [float(x)/metadata['max_telescope_pos'][0], float(y)/metadata['max_telescope_pos'][1], float(z)/metadata['max_telescope_pos'][2]] 
+                telescope_positions.append(tel_pos)
 
     # Construct telescope auxiliary inputs as specified
     telescope_aux_inputs = []
@@ -122,7 +127,7 @@ def load_data_eventwise_HDF5(filename, index, auxiliary_data, metadata,
 
 # Data loading function for single tel HDF5 data
 # Loads the image in file 'filename', in image table 'tel_type' at index 'index'
-def load_data_single_tel_HDF5(filename, index, settings):
+def load_data_single_tel_HDF5(filename, index, metadata, settings):
 
     # Load image table record from specified file and image table index
     f = return_file_handle(filename)
@@ -130,6 +135,8 @@ def load_data_single_tel_HDF5(filename, index, settings):
     telescope_image = load_image_HDF5(f, tel_type, index)
     if settings['crop_images']:
         telescope_image, _, _ = crop_image(telescope_image, settings)
+    if settings['log_normalize_charge']:
+        telescope_image[:,:,0] = np.log(telescope_image[:,:,0] - metadata['image_charge_min'][tel_type] + 1.0)
 
     # Get corresponding event record using event_index column
     event_index = f.root._f_get_child(tel_type)[index]['event_index']
@@ -188,7 +195,14 @@ def load_metadata_HDF5(file_list):
                 tel_ids_types_temp.append((tel_id,tel_type))
             # sort all (telescope id, telescope type) pairs by tel_id
             tel_ids_types_temp.sort(key=lambda i: i[0])
-            
+           
+            #get max x, y, z telescope coordinates
+            max_tel_x = max(row['tel_x'] for row in f.root.Array_Info.iterrows())
+            max_tel_y = max(row['tel_y'] for row in f.root.Array_Info.iterrows())
+            max_tel_z = max(row['tel_z'] for row in f.root.Array_Info.iterrows())
+
+            max_telescope_pos = [max_tel_x, max_tel_y, max_tel_z]
+
             # Check that telescope types and ids match across all files
             if tel_ids_types != tel_ids_types_temp:
                 if not tel_ids_types:
@@ -243,7 +257,8 @@ def load_metadata_HDF5(file_list):
             'num_classes': len(set(particle_id_by_file)),
             'num_position_coordinates': 3,
             'image_charge_min': image_charge_min,
-            'image_charge_max': image_charge_max
+            'image_charge_max': image_charge_max,
+            'max_telescope_pos': max_telescope_pos
             }
 
     return metadata
