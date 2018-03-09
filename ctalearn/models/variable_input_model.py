@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from ctalearn.models.basic import basic_conv_block, basic_head_feature_vector
+from ctalearn.models.basic import basic_conv_block, basic_head_fc, basic_head_conv
 from ctalearn.models.alexnet import (alexnet_block,
         alexnet_head_feature_vector, alexnet_head_feature_map)
 from ctalearn.models.mobilenet import mobilenet_block, mobilenet_head
@@ -18,20 +18,29 @@ def apply_trigger_dropout(inputs,triggers):
 
 # Given a list of telescope output features and tensors storing the telescope
 # auxiliary parameters (e.g. positions) and trigger list, return a tensor of
-# array features of the form [NUM_BATCHES, NUM_ARRAY_FEATURES]
+# array features of the form [NUM_BATCHES, NUM_TEL, NUM_ARRAY_FEATURES]
 def combine_telescopes_as_vectors(telescope_outputs, telescope_aux_inputs, 
-        telescope_triggers):
+        telescope_triggers, is_training):
     array_inputs = []
+    combined_telescope_features = []
+    combined_telescope_aux_inputs = []
+    combined_telescope_triggers = []
     for i, telescope_features in enumerate(telescope_outputs):
         # Flatten output features to get feature vectors
-        telescope_features = tf.layers.flatten(telescope_features)
-        telescope_aux_input = telescope_aux_inputs[:, i, :]
-        telescope_trigger = tf.expand_dims(telescope_triggers[:, i], 1)
-        # Insert auxiliary input into each feature vector
-        telescope_features = tf.concat([telescope_features, 
-            telescope_aux_input, telescope_trigger], 1)
-        array_inputs.append(telescope_features)
-    array_features = tf.concat(array_inputs, axis=1)
+        combined_telescope_features.append(tf.layers.flatten(telescope_features))
+        combined_telescope_aux_inputs.append(telescope_aux_inputs[:, i, :])
+        combined_telescope_triggers.append(tf.expand_dims(telescope_triggers[:, i], 1))
+
+    # combine telescope features
+    combined_telescope_features = tf.stack(combined_telescope_features, axis=1, name="combined_telescope_features")
+   
+    # aux inputs and telescope triggers are already normalized when loaded
+    combined_telescope_aux_inputs = tf.stack(combined_telescope_aux_inputs, axis=1, name="combined_telescope_aux_inputs")
+    combined_telescope_triggers = tf.stack(combined_telescope_triggers, axis=1, name="combined_telescope_triggers") 
+
+    # Insert auxiliary input into each feature vector
+    array_features = tf.concat([combined_telescope_features,combined_telescope_aux_inputs,combined_telescope_triggers], axis=2, name="combined_array_features") 
+   
     return array_features
 
 # Given a list of telescope output features and tensors storing the telescope
@@ -39,7 +48,7 @@ def combine_telescopes_as_vectors(telescope_outputs, telescope_aux_inputs,
 # [NUM_BATCHES, TEL_OUTPUT_WIDTH, TEL_OUTPUT_HEIGHT, (TEL_OUTPUT_CHANNELS + 
 #       NUM_AUXILIARY_INPUTS_PER_TELESCOPE) * NUM_TELESCOPES]
 def combine_telescopes_as_feature_maps(telescope_outputs, telescope_aux_inputs, 
-        telescope_triggers):
+        telescope_triggers, is_training):
     array_inputs = []
     for i, telescope_features in enumerate(telescope_outputs):
         # Get the telescope auxiliary parameters (e.g. position)
@@ -61,6 +70,7 @@ def combine_telescopes_as_feature_maps(telescope_outputs, telescope_aux_inputs,
             telescope_aux_input, telescope_trigger], 3)
         array_inputs.append(telescope_features)
     array_features = tf.concat(array_inputs, axis=3)
+
     return array_features
 
 def variable_input_model(features, labels, params, is_training):
@@ -77,15 +87,15 @@ def variable_input_model(features, labels, params, is_training):
     
     telescope_data = features['telescope_data']
     telescope_data = tf.reshape(telescope_data, [-1, num_telescopes, 
-        image_width, image_length, image_depth])
+        image_width, image_length, image_depth], name="telescope_images")
     
     telescope_triggers = features['telescope_triggers']
     telescope_triggers = tf.reshape(telescope_triggers, [-1, num_telescopes])
-    telescope_triggers = tf.cast(telescope_triggers, tf.float32)
+    telescope_triggers = tf.cast(telescope_triggers, tf.float32, name="telescope_triggers")
 
     telescope_aux_inputs = features['telescope_aux_inputs']
     telescope_aux_inputs = tf.reshape(telescope_aux_inputs,
-            [-1, num_telescopes, num_aux_inputs])
+            [-1, num_telescopes, num_aux_inputs], name="telescope_aux_inputs")
     
     # Reshape labels to vector as expected by tf.one_hot
     gamma_hadron_labels = labels['gamma_hadron_label']
@@ -164,13 +174,13 @@ def variable_input_model(features, labels, params, is_training):
                 tf.gather(telescope_triggers, telescope_index, axis=1))
         telescope_outputs.append(telescope_features)
 
-
     # Process the single telescope data into array-level input
     array_features = combine_telescopes(
             telescope_outputs, 
             telescope_aux_inputs, 
-            telescope_triggers)
-    
+            telescope_triggers,
+            is_training)
+   
     with tf.variable_scope("NetworkHead"):
         # Process the combined array features
         logits = network_head(array_features, params=params,
