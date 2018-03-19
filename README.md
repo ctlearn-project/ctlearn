@@ -7,6 +7,14 @@
 
 Deep learning models for analysis and classification of image data for [CTA](https://www.cta-observatory.org/) (the Cherenkov Telescope Array).
 
+## Example
+
+The following plots were produced with ctalearn v0.1 using the "Basic" single-telescope classification model to classify gamma-ray and proton showers using CTA prod3b simulated data after training for ~4.5 hours.
+
+![Loss](https://github.com/bryankim96/ctalearn/blob/master/misc/images/v0_1_benchmark_loss.png)
+![Accuracy](https://github.com/bryankim96/ctalearn/blob/master/misc/images/v0_1_benchmark_accuracy.png)
+![AUC](https://github.com/bryankim96/ctalearn/blob/master/misc/images/v0_1_benchmark_auc.png)
+
 ## Installation
 
 ### Package Install w/ Anaconda (Recommended)
