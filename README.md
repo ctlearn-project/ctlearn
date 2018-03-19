@@ -9,15 +9,9 @@ Deep learning models for analysis and classification of image data for [CTA](htt
 
 ## Installation
 
-To install Tensorflow, follow the [instructions](https://www.tensorflow.org/install/). 
-Tensorflow with GPU support must be installed to train models on GPU.
+### Package Install w/ Pip
 
-A data file of CTA data or simulations must be available in HDF5 format. 
-The [ImageExtractor](https://github.com/bryankim96/image-extractor) package is available to process, calibrate, and write CTA simtel files into the HDF5 format required by the scripts here.
-
-### Package Install
-
-Install dependencies with:
+Install other dependencies (besides Tensorflow) with:
 
 ```bash
 pip install -r requirements.txt
@@ -29,16 +23,25 @@ Install with pip:
 pip install .
 ```
 
-### Package Install w/ Anaconda
+Finally, install the CPU or GPU version of Tensorflow using the instructions [here](https://www.tensorflow.org/install/install_linux#installing_with_native_pip). 
+Tensorflow with GPU support must be installed to train models on GPU.
+
+NOTE: The current version of ctalearn uses Tensorflow 1.4.1, so use the following links to download (for Python 3.6):
+
+CPU: https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-1.4.1-cp36-cp36m-linux_x86_64.whl  
+GPU: https://storage.googleapis.com/tensorflow/linux/gpu/tensorflow_gpu-1.4.1-cp36-cp36m-linux_x86_64.whl
+
+### Package Install w/ Anaconda (Recommended)
 
 Setup Anaconda environment with:
 
 ```bash
-conda create -n [ENV_NAME] --file requirements.txt
+conda config --add channels conda-forge
+conda create -n [ENV_NAME] --file requirements.txt python=3.6
 source activate [ENV_NAME]
 ```
 
-Install package with pip:
+Install package into the conda environment with pip:
 
 ```bash
 /path/to/anaconda/install/envs/[ENV_NAME]/bin/pip install .
@@ -50,16 +53,25 @@ The path to the environment directory for the environment you wish to install in
 ```bash
 conda env list
 ```
+Finally, install the CPU or GPU version of Tensorflow using the instructions [here](https://www.tensorflow.org/install/install_linux#installing_with_native_pip). 
+Tensorflow with GPU support must be installed to train models on GPU.
 
-Note that the package must be reinstalled after making any changes for them to take effect.
+NOTE: The current version of ctalearn uses Tensorflow 1.4.1, so use the following links to download (for Python 3.6):
+
+CPU: https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-1.4.1-cp36-cp36m-linux_x86_64.whl  
+GPU: https://storage.googleapis.com/tensorflow/linux/gpu/tensorflow_gpu-1.4.1-cp36-cp36m-linux_x86_64.whl
+
+NOTE for developers: If you wish to fork/clone the respository and make changes to any of the ctalearn modules, the package should be reinstalled for the changes to take effect.
 
 ## Dependencies
 
 - Python 3.6
-- Tensorflow 1.4
-- Pytables
-- Numpy
-- OpenCV
+- Tensorflow 1.4.1
+- Pytables 3.4.2
+- Numpy 1.14.2
+- OpenCV 3.3.1
+
+and others specified in requirements.txt
 
 ## Configuration
 
@@ -67,8 +79,10 @@ All options for training a model are set by a single configuration file.
 See example_config.ini for an explanation of all available options.
 
 **Data**
-The only currently accepted data format is HDF5.
-A file list containing the paths to a set of HDF5 files containing the data must be provided. HDF5 files should be in the standard format specified by the [ImageExtractor](https://github.com/bryankim96/image-extractor) package.
+The only currently accepted data format is HDF5/Pytables.
+A file list containing the paths to a set of HDF5 files containing the data must be provided. The [ImageExtractor](https://github.com/bryankim96/image-extractor) package is available to process, calibrate, and write CTA simtel files into the HDF5 format required by the scripts here. HDF5 files should be in the standard format specified by ImageExtractor.
+
+For instructions on how to download the full pre-processed Prod3b dataset in ImageExtractor HDF5 format, see the wiki page [here](https://forge.in2p3.fr/projects/cta_analysis-and-simulations/wiki/Machine_Learning_for_Event_Reconstruction). (NOTE: requires a CTA account). 
 
 **Data Processing**
 Because the size of the full dataset may be very large, only a set of event indices is held in memory.
@@ -80,9 +94,9 @@ After each training epoch, the model is evaluated on the validation set.
 **Model**
 Several higher-level model types are provided to train networks for single-telescope classification (single_tel_model) and array (multiple image) classification (variable_input_model, cnn_rnn_model)
 
-Available CNN Blocks: AlexNet, MobileNet, ResNet, DenseNet
+Available CNN Blocks: Basic, AlexNet, MobileNet, ResNet, DenseNet
 
-Available Network Heads: AlexNet (fully connected telescope combination), AlexNet (convolutional telescope combination), MobileNet, ResNet
+Available Network Heads: AlexNet (fully connected telescope combination), AlexNet (convolutional telescope combination), MobileNet, ResNet, Basic (fully connected telescope combination), Basic (convolutional telescope combination)
 
 **Training**
 Training hyperparameters including the learning rate and optimizer can be set in the configuration file.
