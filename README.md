@@ -9,28 +9,6 @@ Deep learning models for analysis and classification of image data for [CTA](htt
 
 ## Installation
 
-### Package Install w/ Pip
-
-Install other dependencies (besides Tensorflow) with:
-
-```bash
-pip install -r requirements.txt
-```
-
-Install with pip:
-
-```bash
-pip install .
-```
-
-Finally, install the CPU or GPU version of Tensorflow using the instructions [here](https://www.tensorflow.org/install/install_linux#installing_with_native_pip). 
-Tensorflow with GPU support must be installed to train models on GPU.
-
-NOTE: The current version of ctalearn uses Tensorflow 1.4.1, so use the following links to download (for Python 3.6):
-
-CPU: https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-1.4.1-cp36-cp36m-linux_x86_64.whl  
-GPU: https://storage.googleapis.com/tensorflow/linux/gpu/tensorflow_gpu-1.4.1-cp36-cp36m-linux_x86_64.whl
-
 ### Package Install w/ Anaconda (Recommended)
 
 Setup Anaconda environment with:
@@ -62,6 +40,28 @@ CPU: https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-1.4.1-cp36-c
 GPU: https://storage.googleapis.com/tensorflow/linux/gpu/tensorflow_gpu-1.4.1-cp36-cp36m-linux_x86_64.whl
 
 NOTE for developers: If you wish to fork/clone the respository and make changes to any of the ctalearn modules, the package should be reinstalled for the changes to take effect.
+
+### Package Install w/ Pip
+
+Install other dependencies (besides Tensorflow) with:
+
+```bash
+pip install -r requirements.txt
+```
+
+Install with pip:
+
+```bash
+pip install .
+```
+
+Finally, install the CPU or GPU version of Tensorflow using the instructions [here](https://www.tensorflow.org/install/install_linux#installing_with_native_pip). 
+Tensorflow with GPU support must be installed to train models on GPU.
+
+NOTE: The current version of ctalearn uses Tensorflow 1.4.1, so use the following links to download (for Python 3.6):
+
+CPU: https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-1.4.1-cp36-cp36m-linux_x86_64.whl  
+GPU: https://storage.googleapis.com/tensorflow/linux/gpu/tensorflow_gpu-1.4.1-cp36-cp36m-linux_x86_64.whl
 
 ## Dependencies
 
