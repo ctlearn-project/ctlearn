@@ -98,7 +98,7 @@ readline=7.0=hac23ff0_3
 requests=2.18.4=py36_1
 scikit-image=0.13.1=py36h14c3975_1
 scipy=1.0.0=py36hbf646e7_0
-setuptools=36.5.0=py36he42e2e1_0
+setuptools=39.0.1=py36_0
 sip=4.18.1=py36h51ed4ed_2
 six=1.11.0=py36h372c433_1
 sortedcontainers=1.5.9=py36_0
@@ -108,6 +108,7 @@ tk=8.6.7=h5979e9b_1
 toolz=0.9.0=py36_0
 tornado=4.5.3=py36_0
 urllib3=1.22=py36_0
+webencodings=0.5=py36_0
 werkzeug=0.12.2=py36hc703753_0
 wheel=0.29.0=py36he7f4e38_1
 xz=5.2.3=h2bcbf08_1
