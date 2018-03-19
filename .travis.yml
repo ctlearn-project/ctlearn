@@ -1,6 +1,6 @@
 language: python
 python:
-      - "3.5"
+      - "3.6"
 notifications:
     email:
         on_success: change # default: change
@@ -22,9 +22,10 @@ install:
       - conda update -q conda
         # Useful for debugging any issues with conda
       - conda info -a
+      - conda config --add channels conda-forge
       - conda create -q --name test
       - source activate test
-      - conda install --q --yes --file requirements.txt -c conda-forge -c menpo
+      - conda install --q --yes --file requirements.txt
       - python setup.py install
 script: 
       - pytest --cov=ctalearn tests/
