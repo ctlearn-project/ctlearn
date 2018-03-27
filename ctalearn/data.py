@@ -223,11 +223,14 @@ def load_metadata_HDF5(file_list):
                         telescope_ids[tel_type] = []
                     telescope_ids[tel_type].append(tel_id)
             
-            # Save dict of number of images by tel type per telescope (for single tel data)
+            # Save dict of number of images by tel type per telescope
+            # for single tel data
+            # Subtract one since index 0 corresponds to a blank template
             for tel_type in telescope_types:
                 if tel_type not in num_images_by_file:
                     num_images_by_file[tel_type] = []
-                num_images_by_file[tel_type].append(f.root._f_get_child(tel_type).shape[0])
+                num_images_by_file[tel_type].append(
+                        f.root._f_get_child(tel_type).shape[0] - 1)
 
             # Compute dataset image max and min for normalization
             for tel_type in telescope_types:
