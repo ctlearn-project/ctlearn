@@ -358,7 +358,11 @@ def apply_cuts_HDF5(file_list, cut_condition, model_type):
             # For array-level get all passing rows and return a list of all of
             # the indices
             else:
-                indices = [row.nrow for row in event_table.where(cut_condition)] if cut_condition else range(event_table.nrows)
+                rows = [row for row in event_table.where(cut_condition)] if cut_condition else event_table.iterrows()
+                # Enforce that only events containing at least one MSTS are 
+                # included. This is necessary because PyTables cut conditions
+                # cannot operate on multidimensional fields.
+                indices = [row.nrow for row in rows if np.count_nonzero(row['MSTS_indices']) > 0]
 
         indices_by_file.append(indices)
 
