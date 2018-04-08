@@ -72,8 +72,7 @@ def cnn_rnn_model(features, labels, params, is_training):
     for telescope_index in range(num_telescopes):
         # Set all telescopes after the first to share weights
         reuse = None if telescope_index == 0 else True
-       
-       
+              
         with tf.variable_scope("CNN_block"):
             output = cnn_block(tf.gather(telescope_data, telescope_index),
                 params=params, reuse=reuse, is_training=is_training)
@@ -81,38 +80,38 @@ def cnn_rnn_model(features, labels, params, is_training):
         if params['pretrained_weights']:
             tf.contrib.framework.init_from_checkpoint(params['pretrained_weights'],{'CNN_block/':'CNN_block/'})
 
-        output = cnn_block(tf.gather(telescope_data, telescope_index),
-                params=params, reuse=reuse)
-
         #flatten output of embedding CNN to (batch_size, _)
-        output_flattened = tf.layers.flatten(output)
-
-        with tf.variable_scope("NetworkHead"):
-
-            #compute image embedding for each telescope (batch_size,1024)
-            image_embedding = tf.layers.dense(inputs=output_flattened, units=1024, activation=tf.nn.relu,reuse=reuse,name='image_embedding')
-            telescope_outputs.append(image_embedding)
+        image_embedding = tf.layers.flatten(output, name='image_embedding')
+        image_embedding_dropout = tf.layers.dropout(image_embedding, training=is_training)
+        telescope_outputs.append(image_embedding_dropout)
 
     with tf.variable_scope("NetworkHead"):
 
-        #combine image embeddings (batch_size,num_tel,num_units_embedding)
+        #combine image embeddings (batch_size, num_tel, num_units_embedding)
         embeddings = tf.stack(telescope_outputs,axis=1)
+
         #add telescope position auxiliary input to each embedding (batch_size, num_tel, num_units_embedding+3)
-        embeddings = tf.concat([embeddings,telescope_aux_inputs],axis=2)
+        #embeddings = tf.concat([embeddings,telescope_aux_inputs],axis=2)
 
         #implement attention mechanism with range num_tel (covering all timesteps)
         #define LSTM cell size
-        attention_cell = tf.contrib.rnn.AttentionCellWrapper(tf.contrib.rnn.LayerNormBasicLSTMCell(LSTM_SIZE),num_telescopes)
+        rnn_cell = tf.contrib.rnn.BasicLSTMCell(LSTM_SIZE) 
+        #attention_cell = tf.contrib.rnn.AttentionCellWrapper(tf.contrib.rnn.LayerNormBasicLSTMCell(LSTM_SIZE),num_telescopes)
 
         # outputs = shape(batch_size, num_tel, output_size)
         outputs, _  = tf.nn.dynamic_rnn(
-                            attention_cell,
+                            rnn_cell,
                             embeddings,
                             dtype=tf.float32,
+                            swap_memory=True,
                             sequence_length=num_tels_triggered)
 
-        # (batch_size*num_tel,output_size)
-        outputs_reshaped = tf.reshape(outputs, [-1, LSTM_SIZE])
+        # (batch_size, max_num_tel * LSTM_SIZE)
+        outputs = tf.layers.flatten(outputs)
+        #last_output = tf.gather(outputs, num_telescopes-1, axis=1, name="rnn_output")
+        output_dropout = tf.layers.dropout(outputs, training=is_training, name="rnn_output_dropout")
+        
+        """
         #indices (0 except at every n+(num_tel-1) where n in range(batch_size))
         indices = tf.range(0, tf.shape(outputs)[0]) * outputs.get_shape()[1] + (outputs.get_shape()[1] - 1)
         #partition outputs to select only the last LSTM output for each example in the batch
@@ -120,7 +119,14 @@ def cnn_rnn_model(features, labels, params, is_training):
         partitioned_output = tf.dynamic_partition(outputs_reshaped, partitions, 2)    
         #shape (batch_size, output_size)
         last_output = partitioned_output[1]
+        """
 
-        logits = tf.layers.dense(inputs=last_output,units=num_gamma_hadron_classes,name="logits")
+        fc1 = tf.layers.dense(inputs=output_dropout, units=1024, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.004), name="fc1")
+        dropout_1 = tf.layers.dropout(inputs=fc1, training=is_training)
+        
+        fc2 = tf.layers.dense(inputs=dropout_1, units=512, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.004), name="fc2")
+        dropout_2 = tf.layers.dropout(inputs=fc2, training=is_training)
+
+        logits = tf.layers.dense(inputs=dropout_2, units=num_gamma_hadron_classes, name="logits")
 
     return logits
