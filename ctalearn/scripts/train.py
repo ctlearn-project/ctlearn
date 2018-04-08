@@ -42,6 +42,7 @@ def train(config):
     validation_split = config['Data Processing'].getfloat(
         'ValidationSplit',0.1)
     cut_condition = config['Data Processing'].get('CutCondition', '')
+    min_num_tels = config['Data Processing'].getint('MinNumTels', 1)
     sort_telescopes_by_trigger = config['Data Processing'].getboolean(
         'SortTelescopesByTrigger', False)
     use_telescope_positions = config['Data Processing'].getboolean(
@@ -125,8 +126,9 @@ def train(config):
     # Define data processing settings
     data_processing_settings = {
             'validation_split': validation_split,
+            'min_num_tels': min_num_tels,
             'cut_condition': cut_condition,
-            'sort_telescopes_by_trigger': cut_condition,
+            'sort_telescopes_by_trigger': sort_telescopes_by_trigger,
             'use_telescope_positions': use_telescope_positions,
             'crop_images': crop_images,
             'log_normalize_charge': log_normalize_charge,
@@ -285,6 +287,10 @@ def train(config):
         # compute cross-entropy loss
         loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels, 
             logits=logits,weights=weights)
+    
+        # add regularization loss
+        regularization_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
+        loss = tf.add_n([loss] + regularization_losses, name="loss")
 
         # compute accuracy and predictions 
         training_accuracy = tf.reduce_mean(tf.cast(tf.equal(true_classes, 
