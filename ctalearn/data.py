@@ -69,7 +69,7 @@ def load_data_eventwise_HDF5(filename, index, auxiliary_data, metadata,
                 # Telescope did not trigger. Its outputs will be dropped
                 # out, so input is arbitrary. Use an empty array for
                 # efficiency.
-                telescope_images.append(np.empty(image_shape))
+                telescope_images.append(np.zeros(image_shape))
                 if settings['crop_images']:
                     shower_positions.append([0, 0])
                 telescope_triggers.append(0)
@@ -113,10 +113,16 @@ def load_data_eventwise_HDF5(filename, index, auxiliary_data, metadata,
     if settings['sort_telescopes_by_trigger']:
         # Sort the images, triggers, and grouped auxiliary inputs by
         # trigger, listing the triggered telescopes first
+        """
         telescope_images, telescope_triggers, telescope_aux_inputs = map(list,
                 zip(*sorted(zip(telescope_images, telescope_triggers,
                     telescope_aux_inputs), reverse=True, key=itemgetter(1))))
+        """
 
+        telescope_images, telescope_triggers, telescope_aux_inputs = map(list,
+                zip(*sorted(zip(telescope_images, telescope_triggers,
+                    telescope_aux_inputs), reverse=True, key=lambda x: np.sum(x[0]))))
+      
     # Convert to numpy arrays with correct types
     telescope_images = np.stack(telescope_images).astype(np.float32)
     telescope_triggers = np.array(telescope_triggers, dtype=np.int8)
@@ -337,7 +343,7 @@ def load_image_HDF5(data_file,tel_type,index):
 # Cut condition must be a string formatted as a Pytables selection condition
 # (i.e. for table.where()). See Pytables documentation for examples.
 # If cut condition is empty, do not apply any cuts.
-def apply_cuts_HDF5(file_list, cut_condition, model_type):
+def apply_cuts_HDF5(file_list, cut_condition, model_type, min_num_tels=1):
 
     if cut_condition:
         logger.info("Cut condition: %s", cut_condition)
@@ -354,7 +360,8 @@ def apply_cuts_HDF5(file_list, cut_condition, model_type):
             event_table = f.root.Event_Info
             if model_type == 'singletel':
                 passing_events = event_table.where(cut_condition) if cut_condition else event_table.iterrows()
-                indices = [i for row in passing_events for i in row['MSTS_indices'] if i != 0]
+                rows = [row for row in passing_events if np.count_nonzero(row['MSTS_indices']) >= min_num_tels]
+                indices = [i for row in rows for i in row['MSTS_indices'] if i != 0]
             # For array-level get all passing rows and return a list of all of
             # the indices
             else:
@@ -362,7 +369,7 @@ def apply_cuts_HDF5(file_list, cut_condition, model_type):
                 # Enforce that only events containing at least one MSTS are 
                 # included. This is necessary because PyTables cut conditions
                 # cannot operate on multidimensional fields.
-                indices = [row.nrow for row in rows if np.count_nonzero(row['MSTS_indices']) > 0]
+                indices = [row.nrow for row in rows if np.count_nonzero(row['MSTS_indices']) >= min_num_tels]
 
         indices_by_file.append(indices)
 
@@ -389,7 +396,7 @@ def gen_fn_HDF5(file_list,indices_by_file):
     for (filename,i) in filename_index_pairs:
         yield (filename.encode('utf-8'),i)
 
-def get_data_generators_HDF5(file_list, metadata, settings):
+def get_data_generators_HDF5(file_list, metadata, settings, mode='train'):
 
     # Get number of examples by file
     if settings['model_type'] == 'singletel': # get number of images
@@ -418,8 +425,7 @@ def get_data_generators_HDF5(file_list, metadata, settings):
         logger.info("%s: %d (%f%%)", label, num_examples_by_label[label], 100 * float(num_examples_by_label[label])/total_num_examples)
 
     # Apply cuts
-    indices_by_file = apply_cuts_HDF5(file_list, settings['cut_condition'],
-            settings['model_type'])
+    indices_by_file = apply_cuts_HDF5(file_list, settings['cut_condition'], settings['model_type'], min_num_tels=settings['min_num_tels'])
 
     # Log info on cuts
     num_passing_examples_by_label = {}
@@ -437,21 +443,26 @@ def get_data_generators_HDF5(file_list, metadata, settings):
     for label in num_passing_examples_by_label:
         logger.info("%s: %d (%f%%)", label, num_passing_examples_by_label[label], 100 * float(num_passing_examples_by_label[label])/num_passing_examples)
 
-    # Split indices lists into training and validation
-    training_indices, validation_indices = split_indices_lists(indices_by_file,
-            settings['validation_split'])
-
     # Add post-cut computed class weights to metadata dictionary
     metadata['class_weights'] = [] 
     for particle_id in sorted(num_passing_examples_by_label,key=lambda x: PARTICLE_ID_TO_CLASS[x]):
         metadata['class_weights'].append(num_passing_examples/float(num_passing_examples_by_label[particle_id]))
 
-    def training_generator():
-        return gen_fn_HDF5(file_list,training_indices)
-    def validation_generator():
-        return gen_fn_HDF5(file_list,validation_indices)
+    if mode == 'train':
+        # Split indices lists into training and validation
+        training_indices, validation_indices = split_indices_lists(indices_by_file,
+                settings['validation_split'])
 
-    return training_generator, validation_generator
+        def training_generator():
+            return gen_fn_HDF5(file_list,training_indices)
+        def validation_generator():
+            return gen_fn_HDF5(file_list,validation_indices)
+
+        return training_generator, validation_generator
+
+    elif mode == 'test':
+
+        return indices_by_file
 
 # Crop an image about the shower center, optionally applying image cleaning
 # to obtain a better fit. The shower centroid is calculated as the mean of
@@ -535,8 +546,7 @@ def crop_image(image, settings):
 
     # transfer the cropped portion of the image array into the smaller, padded cropped_image array.
     # Use either the cleaned or uncleaned image as specified
-    returned_image = (cleaned_image if settings['return_cleaned_images'] else
-            image)
+    returned_image = (cleaned_image if settings['return_cleaned_images'] else image)
     cropped_image[x_min_cropped:x_max_cropped+1,y_min_cropped:y_max_cropped+1,:] = returned_image[x_min_image:x_max_image+1,y_min_image:y_max_image+1,:]
 
     return cropped_image, x_0, y_0
