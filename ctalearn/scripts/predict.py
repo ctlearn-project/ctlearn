@@ -367,7 +367,7 @@ def predict(config, test_data):
 
     # write predictions to a csv file
     with open('predictions.csv','wb') as predict_file:
-        predict_file.write("true class, predicted_class, classifier_value_0, classifier_value_1\n")
+        predict_file.write("predicted_class, true_class, classifier_value_0, classifier_value_1\n")
         for prediction in predictions:
             predicted_class = prediction['predicted_class'][0]
             true_class = prediction['true_class'][0]
