@@ -1,10 +1,9 @@
+import argparse
 from itertools import cycle
 
 from matplotlib import pyplot as plt
 import numpy as np
 import sklearn.metrics
-
-import argparse
 
 parser = argparse.ArgumentParser(
     description=("Plot ROC curves."))
@@ -52,6 +51,6 @@ plt.title('Receiver Operating Characteristic')
 
 plt.legend(loc='lower right')
 
-plt.show()
-#plt.savefig(args.output_filename, bbox_inches='tight')
+#plt.show()
+plt.savefig(args.output_filename, bbox_inches='tight')
 
