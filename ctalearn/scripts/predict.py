@@ -408,4 +408,4 @@ if __name__ == "__main__":
     
     logger.addHandler(handler)
  
-    predict(config, test_data)
+    predict(config, args.test_data)
