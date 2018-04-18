@@ -31,10 +31,6 @@ def cnn_rnn_model(features, labels, params, is_training):
     telescope_aux_inputs = features['telescope_aux_inputs']
     telescope_aux_inputs = tf.reshape(telescope_aux_inputs, [-1, num_telescopes,
         num_aux_inputs])
- 
-    # Reshape labels to vector as expected by tf.one_hot
-    gamma_hadron_labels = labels['gamma_hadron_label']
-    gamma_hadron_labels = tf.reshape(gamma_hadron_labels, [-1])
 
     # Transpose telescope_data from [batch_size,num_tel,length,width,channels]
     # to [num_tel,batch_size,length,width,channels].

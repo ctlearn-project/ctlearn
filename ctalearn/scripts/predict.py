@@ -114,7 +114,7 @@ def predict(config, test_data):
             'prefetch': prefetch,
             'prefetch_buffer_size': prefetch_buffer_size,
             'map': False,
-            'num_parallel_calls': num_parallel_calls,
+            'num_parallel_calls': 1, # hardcode for predict mode
             'shuffle': shuffle,
             'shuffle_buffer_size': shuffle_buffer_size
             }
@@ -263,24 +263,39 @@ def predict(config, test_data):
        
         logits = model(features, labels, params, is_training)
 
-        # Collect true labels and predictions
-        true_classes = tf.cast(labels['gamma_hadron_label'], tf.int32, name="true_classes")
-        predicted_classes = tf.cast(tf.argmax(logits, axis=1), tf.int32, name="predicted_classes")
+        # Collect predictions
+        predicted_classes = tf.cast(tf.argmax(logits, axis=1), tf.int32,
+                name="predicted_classes")
+        predictions = {
+                'predicted_class': predicted_classes,
+                'classifier_values': tf.nn.softmax(logits)
+                }
+        
+        # For predict mode, we're done
+        if mode == tf.estimator.ModeKeys.PREDICT:
+            return tf.estimator.EstimatorSpec(
+                    mode=mode,
+                    predictions=predictions)
         
         # Compute class-weighted softmax-cross-entropy
 
-        # get class weights
+        true_classes = tf.cast(labels['gamma_hadron_label'], tf.int32,
+                name="true_classes")
+        
+        # Get class weights
         if params['apply_class_weights']:
-            class_weights = tf.constant(params['class_weights'], dtype=tf.float32, name="class_weights") 
+            class_weights = tf.constant(params['class_weights'],
+                    dtype=tf.float32, name="class_weights") 
             weights = tf.gather(class_weights, true_classes, name="weights")
         else:
             weights = 1.0
 
-        onehot_labels = tf.one_hot(indices=true_classes,depth=params['num_classes'])
+        onehot_labels = tf.one_hot(indices=true_classes,
+                depth=params['num_classes'])
 
         # compute cross-entropy loss
         loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels, 
-            logits=logits,weights=weights)
+            logits=logits, weights=weights)
     
         # add regularization loss
         regularization_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
@@ -289,11 +304,6 @@ def predict(config, test_data):
         # compute accuracy and predictions 
         training_accuracy = tf.reduce_mean(tf.cast(tf.equal(true_classes, 
             predicted_classes), tf.float32),name="training_accuracy")
-        predictions = {
-                'predicted_class': predicted_classes,
-                'true_class': true_classes,
-                'classifier_values': tf.nn.softmax(logits)
-                }
 
         tf.summary.scalar("accuracy",training_accuracy)
 
@@ -349,7 +359,7 @@ def predict(config, test_data):
                 train_op=train_op,
                 eval_metric_ops=eval_metric_ops)
 
-    # Log information on number of training and validation events
+    # Log information on number of test events
     num_test_examples = len(list(test_generator()))
     
     logger.info("Predicting...")
@@ -362,17 +372,28 @@ def predict(config, test_data):
             params=params)
 
     predictions = estimator.predict(
-        lambda: input_fn(test_generator, data_input_settings),
-                steps=num_training_steps_per_validation)
+        lambda: input_fn(test_generator, data_input_settings))
 
-    # write predictions to a csv file
-    with open('predictions.csv','wb') as predict_file:
+    # Get true classes
+    true_classes = []
+    features, labels = input_fn(test_generator, data_input_settings)
+    with tf.Session() as sess:
+        while True:
+            try:
+                batch_labels = sess.run(labels['gamma_hadron_label'])
+                true_classes.extend(batch_labels)
+            except tf.errors.OutOfRangeError:
+                break
+
+    # Write predictions to a csv file
+    with open('predictions.csv','w') as predict_file:
         predict_file.write("predicted_class, true_class, classifier_value_0, classifier_value_1\n")
-        for prediction in predictions:
-            predicted_class = prediction['predicted_class'][0]
-            true_class = prediction['true_class'][0]
-            classifier_value_0, classifier_value_1 = prediction['classifier_values']
-            predict_file.write("{}, {}, {}, {}\n".format(predicted_class, true_class, classifier_value_0, classifier_value_1))
+        for prediction, true_class in zip(predictions, true_classes):
+            predicted_class = prediction['predicted_class']
+            classifier_value_0 = prediction['classifier_values'][0]
+            classifier_value_1 = prediction['classifier_values'][1]
+            predict_file.write("{}, {}, {}, {}\n".format(predicted_class,
+                true_class, classifier_value_0, classifier_value_1))
 
 if __name__ == "__main__":
 

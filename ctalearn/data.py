@@ -388,10 +388,11 @@ def split_indices_lists(indices_lists,validation_split):
 
 # Generator function used to produce a dataset of elements (HDF5_filename,index)
 # from a list of files and a list of lists of indices per file (constructed by applying cuts)
-def gen_fn_HDF5(file_list,indices_by_file):
+def gen_fn_HDF5(file_list,indices_by_file, shuffle=True):
     # produce all filename,index pairs and shuffle
     filename_index_pairs = [(filename,i) for (filename, indices_list) in zip(file_list,indices_by_file) for i in indices_list]
-    random.shuffle(filename_index_pairs)
+    if shuffle:
+        random.shuffle(filename_index_pairs)
 
     for (filename,i) in filename_index_pairs:
         yield (filename.encode('utf-8'),i)
@@ -462,7 +463,10 @@ def get_data_generators_HDF5(file_list, metadata, settings, mode='train'):
 
     elif mode == 'test':
 
-        return indices_by_file
+        def test_generator():
+            return gen_fn_HDF5(file_list, indices_by_file, shuffle=False)
+
+        return test_generator
 
 # Crop an image about the shower center, optionally applying image cleaning
 # to obtain a better fit. The shower centroid is calculated as the mean of
