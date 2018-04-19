@@ -243,7 +243,10 @@ def train(config):
         return features, labels
 
     # Merge dictionaries for passing to the model function
-    params = {**model_hyperparameters, **training_hyperparameters, **metadata}
+    params = {
+            'model': {**model_hyperparameters, **metadata},
+            'training': {**training_hyperparameters, **metadata}
+            }
 
     # Define model function with model, mode (train/predict),
     # metrics, optimizer, learning rate, etc.
@@ -252,22 +255,28 @@ def train(config):
         
         is_training = True if mode == tf.estimator.ModeKeys.TRAIN else False
        
-        logits = model(features, labels, params, is_training)
+        logits = model(features, labels, params['model'], is_training)
+
+        training_params = params['training']
 
         # Collect true labels and predictions
-        true_classes = tf.cast(labels['gamma_hadron_label'], tf.int32, name="true_classes")
-        predicted_classes = tf.cast(tf.argmax(logits, axis=1), tf.int32, name="predicted_classes")
+        true_classes = tf.cast(labels['gamma_hadron_label'], tf.int32,
+                name="true_classes")
+        predicted_classes = tf.cast(tf.argmax(logits, axis=1), tf.int32,
+                name="predicted_classes")
         
         # Compute class-weighted softmax-cross-entropy
 
         # get class weights
-        if params['apply_class_weights']:
-            class_weights = tf.constant(params['class_weights'], dtype=tf.float32, name="class_weights") 
+        if training_params['apply_class_weights']:
+            class_weights = tf.constant(training_params['class_weights'],
+                    dtype=tf.float32, name="class_weights") 
             weights = tf.gather(class_weights, true_classes, name="weights")
         else:
             weights = 1.0
 
-        onehot_labels = tf.one_hot(indices=true_classes,depth=params['num_classes'])
+        onehot_labels = tf.one_hot(indices=true_classes,
+                depth=training_params['num_classes'])
 
         # compute cross-entropy loss
         loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels, 
@@ -290,13 +299,15 @@ def train(config):
         # telescopes don't have smaller gradients
         # Only apply learning rate scaling for array-level models
         if scale_learning_rate and model_type != 'singletel':
-            trigger_rate = tf.reduce_mean(tf.cast(features['telescope_triggers'], tf.float32), name="trigger_rate")
+            trigger_rate = tf.reduce_mean(tf.cast(
+                features['telescope_triggers'], tf.float32),
+                name="trigger_rate")
             trigger_rate = tf.maximum(trigger_rate, 0.1) # Avoid division by 0
             scaling_factor = tf.reciprocal(trigger_rate, name="scaling_factor")
             learning_rate = tf.multiply(scaling_factor, 
-                params['base_learning_rate'], name="learning_rate")
+                training_params['base_learning_rate'], name="learning_rate")
         else:
-            learning_rate = params['base_learning_rate']
+            learning_rate = training_params['base_learning_rate']
         
         # Select optimizer and set learning rate
         if optimizer_type == 'adam':
@@ -310,14 +321,14 @@ def train(config):
         else:
             raise ValueError("Invalid optimizer choice: {}".format(optimizer_type))
     
-        if params['variables_to_train']:
+        if training_params['variables_to_train']:
             vars_to_train = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
-                    params['variables_to_train'])
+                    training_params['variables_to_train'])
         else:
             vars_to_train = None
 
         train_op = tf.contrib.slim.learning.create_train_op(loss, optimizer,
-                clip_gradient_norm=params['clip_gradient_norm'],
+                clip_gradient_norm=training_params['clip_gradient_norm'],
                 variables_to_train=vars_to_train)
         
         # Define the evaluation metrics
@@ -328,9 +339,11 @@ def train(config):
                 }
         
         # add class-wise accuracies
-        for i in range(params['num_classes']):
+        for i in range(training_params['num_classes']):
             weights = tf.cast(tf.equal(true_classes,tf.constant(i)),tf.int32)
-            eval_metric_ops['accuracy_{}'.format(params['class_to_name'][i])] = tf.metrics.accuracy(true_classes,predicted_classes,weights=weights)
+            eval_metric_ops['accuracy_{}'.format(
+                training_params['class_to_name'][i])] = tf.metrics.accuracy(
+                        true_classes, predicted_classes, weights=weights)
 
         return tf.estimator.EstimatorSpec(
                 mode=mode,
