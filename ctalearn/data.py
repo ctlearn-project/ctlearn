@@ -359,9 +359,8 @@ def apply_cuts_HDF5(file_list, cut_condition, model_type, min_num_tels=1):
             # MSTS image indices into a flat list
             event_table = f.root.Event_Info
             if model_type == 'singletel':
-                passing_events = event_table.where(cut_condition) if cut_condition else event_table.iterrows()
-                rows = [row for row in passing_events if np.count_nonzero(row['MSTS_indices']) >= min_num_tels]
-                indices = [i for row in rows for i in row['MSTS_indices'] if i != 0]
+                rows = [row for row in event_table.where(cut_condition)] if cut_condition else event_table.iterrows()
+                indices = [i for row in rows for i in row['MSTS_indices'] if np.count_nonzero(row['MSTS_indices']) >= min_num_tels if i != 0]
             # For array-level get all passing rows and return a list of all of
             # the indices
             else:
