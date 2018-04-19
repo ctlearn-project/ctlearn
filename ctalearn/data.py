@@ -287,7 +287,7 @@ def add_processed_parameters(data_processing_settings, metadata):
             if ttype in chosen_telescope_types and ttype in MAPPING_TABLES]
     
     # If single telescope mode, check that only one telescope type is enabled
-    if data_processing_settings['model_type'] == 'single_tel':
+    if data_processing_settings['model_type'] == 'singletel':
         if not len(processed_telescope_types) == 1:
             raise ValueError('Exactly one telescope type must be enabled for single telescope models, number requested is: {}'.format(len(processed_telescope_types)))
 

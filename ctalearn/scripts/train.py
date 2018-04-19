@@ -16,7 +16,6 @@ import ctalearn.data
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 tf.logging.set_verbosity(tf.logging.WARN)
 
-
 def train(config):
     # Load options related to the data format and location
     data_format = config['Data Format']['Format'].lower()
@@ -59,30 +58,15 @@ def train(config):
         'BoundaryThreshold', 1.0)
 
     # Load options to specify the model
-    model_type = config['Model']['ModelType'].lower()
-    sys.path.append('/home/shevek/brill/ctalearn/models/')
+    sys.path.append(config['Model']['ModelDirectory'])
+    model_module = importlib.import_module(config['Model']['ModelModule'])
+    model = getattr(model_module, config['Model']['ModelFunction'])
+    model_type = config['Model']['ModelType']
+    if model_type not in ['singletel', 'multipletel']:
+        raise ValueError("model_type must be 'singletel' or 'multipletel', value provided: {}".format(model_type))
 
-    if model_type == 'variableinputmodel':
-        model_module = importlib.import_module('variable_input_model')
-        model = getattr(model_module, 'variable_input_model')
-        cnn_block = config['Model']['CNNBlock'].lower()
-        network_head = config['Model']['NetworkHead'].lower()
-    elif model_type == 'cnnrnn':
-        model_module = importlib.import_module('cnn_rnn')
-        model = getattr(model_module, 'cnn_rnn_model')
-        cnn_block = config['Model']['CNNBlock'].lower()
-        network_head = None
-    elif model_type == 'singletel':
-        model_module = importlib.import_module('single_tel')
-        model = getattr(model_module, 'single_tel_model')
-        cnn_block = config['Model']['CNNBlock'].lower()
-        network_head = None
-    else:
-        raise ValueError("Invalid model type: {}".format(model_type))
 
-    # Load options related to pretrained weights
-    pretrained_weights = config['Model'].get('PretrainedWeights', '')
-    freeze_weights = config['Model'].getboolean('FreezeWeights', False)
+    model_hyperparameters = dict(config['Model'])
 
     # Load options related to training hyperparameters
     optimizer_type = config['Training Hyperparameters']['Optimizer'].lower()
@@ -90,12 +74,22 @@ def train(config):
             'BaseLearningRate')
     scale_learning_rate = config['Training Hyperparameters'].getboolean(
             'ScaleLearningRate', False)
-    batch_norm_decay = config['Training Hyperparameters'].getfloat(
-            'BatchNormDecay', 0.95)
     clip_gradient_norm = config['Training Hyperparameters'].getfloat(
             'ClipGradientNorm', 0.)
     apply_class_weights = config['Training Hyperparameters'].getboolean(
             'ApplyClassWeights', False)
+    variables_to_train = config['Training Hyperparameters'].getboolean(
+            'VariablesToTrain', False)
+
+    # Define training hyperparameters
+    training_hyperparameters = {
+            'optimizer_type': optimizer_type,
+            'base_learning_rate': base_learning_rate,
+            'scale_learning_rate': scale_learning_rate,
+            'clip_gradient_norm': clip_gradient_norm,
+            'apply_class_weights': apply_class_weights,
+            'variables_to_train': variables_to_train
+            }
 
     # Load options related to training settings
     num_epochs = config['Training Settings'].getint('NumEpochs', 0)
@@ -145,18 +139,6 @@ def train(config):
             'chosen_telescope_types': ['MSTS'] # hardcode using SCT images only
             }
     
-    # Define model hyperparameters
-    hyperparameters = {
-            'cnn_block': cnn_block,
-            'network_head': network_head,
-            'base_learning_rate': base_learning_rate,
-            'batch_norm_decay': batch_norm_decay,
-            'clip_gradient_norm': clip_gradient_norm,
-            'pretrained_weights': pretrained_weights,
-            'freeze_weights': freeze_weights,
-            'apply_class_weights': apply_class_weights
-            }
-
     # Define data loading functions
     if data_format == 'hdf5':
 
@@ -261,7 +243,7 @@ def train(config):
         return features, labels
 
     # Merge dictionaries for passing to the model function
-    params = {**hyperparameters, **metadata}
+    params = {**model_hyperparameters, **training_hyperparameters, **metadata}
 
     # Define model function with model, mode (train/predict),
     # metrics, optimizer, learning rate, etc.
@@ -328,8 +310,9 @@ def train(config):
         else:
             raise ValueError("Invalid optimizer choice: {}".format(optimizer_type))
     
-        if params['freeze_weights']:
-            vars_to_train = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, "NetworkHead")
+        if params['variables_to_train']:
+            vars_to_train = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
+                    params['variables_to_train'])
         else:
             vars_to_train = None
 
