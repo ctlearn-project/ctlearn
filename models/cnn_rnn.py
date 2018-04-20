@@ -1,14 +1,11 @@
-import tensorflow as tf
+import importlib
+import sys
 
-from ctalearn.models.basic import basic_conv_block
-from ctalearn.models.alexnet import alexnet_block
-from ctalearn.models.mobilenet import mobilenet_block
-from ctalearn.models.resnet import resnet_block
-from ctalearn.models.densenet import densenet_block
+import tensorflow as tf
 
 LSTM_SIZE = 2048
 
-def cnn_rnn_model(features, labels, params, is_training):
+def cnn_rnn_model(features, params, is_training):
     
     # Reshape inputs into proper dimensions
     num_telescope_types = len(params['processed_telescope_types']) 
@@ -47,19 +44,10 @@ def cnn_rnn_model(features, labels, params, is_training):
     # The array-level processing is then performed by the network head. The
     # logits are returned and fed into a classifier.
 
-    # Choose the CNN block
-    if params['cnn_block'] == 'alexnet':
-        cnn_block = alexnet_block
-    elif params['cnn_block'] == 'mobilenet':
-        cnn_block = mobilenet_block
-    elif params['cnn_block'] == 'resnet':
-        cnn_block = resnet_block
-    elif params['cnn_block'] == 'densenet':
-        cnn_block = densenet_block
-    elif params['cnn_block'] == 'basic':
-        cnn_block = basic_conv_block
-    else:
-        raise ValueError("Invalid CNN block specified: {}.".format(params['cnn_block']))
+    # Load CNN block model
+    sys.path.append(params['modeldirectory'])
+    cnn_block_module = importlib.import_module(params['cnnblockmodule'])
+    cnn_block = getattr(cnn_block_module, params['cnnblockfunction'])
 
     #calculate number of valid images per event
     num_tels_triggered = tf.to_int32(tf.reduce_sum(telescope_triggers,1))
@@ -73,8 +61,8 @@ def cnn_rnn_model(features, labels, params, is_training):
             output = cnn_block(tf.gather(telescope_data, telescope_index),
                 params=params, reuse=reuse, is_training=is_training)
 
-        if params['pretrained_weights']:
-            tf.contrib.framework.init_from_checkpoint(params['pretrained_weights'],{'CNN_block/':'CNN_block/'})
+        if params['pretrainedweights']:
+            tf.contrib.framework.init_from_checkpoint(params['pretrainedweights'],{'CNN_block/':'CNN_block/'})
 
         #flatten output of embedding CNN to (batch_size, _)
         image_embedding = tf.layers.flatten(output, name='image_embedding')
