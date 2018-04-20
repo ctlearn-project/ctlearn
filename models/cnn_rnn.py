@@ -6,7 +6,10 @@ import tensorflow as tf
 LSTM_SIZE = 2048
 
 def cnn_rnn_model(features, params, is_training):
-    
+
+    # Get hyperparameters
+    dropout_rate = float(params.get('dropoutrate', 0.5))
+
     # Reshape inputs into proper dimensions
     num_telescope_types = len(params['processed_telescope_types']) 
     if not num_telescope_types == 1:
@@ -93,7 +96,8 @@ def cnn_rnn_model(features, params, is_training):
         # (batch_size, max_num_tel * LSTM_SIZE)
         outputs = tf.layers.flatten(outputs)
         #last_output = tf.gather(outputs, num_telescopes-1, axis=1, name="rnn_output")
-        output_dropout = tf.layers.dropout(outputs, training=is_training, name="rnn_output_dropout")
+        output_dropout = tf.layers.dropout(outputs, rate=dropout_rate,
+                training=is_training, name="rnn_output_dropout")
         
         """
         #indices (0 except at every n+(num_tel-1) where n in range(batch_size))
@@ -106,10 +110,12 @@ def cnn_rnn_model(features, params, is_training):
         """
 
         fc1 = tf.layers.dense(inputs=output_dropout, units=1024, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.004), name="fc1")
-        dropout_1 = tf.layers.dropout(inputs=fc1, training=is_training)
+        dropout_1 = tf.layers.dropout(inputs=fc1, rate=dropout_rate,
+                training=is_training)
         
         fc2 = tf.layers.dense(inputs=dropout_1, units=512, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.004), name="fc2")
-        dropout_2 = tf.layers.dropout(inputs=fc2, training=is_training)
+        dropout_2 = tf.layers.dropout(inputs=fc2, rate=dropout_rate,
+                training=is_training)
 
         logits = tf.layers.dense(inputs=dropout_2, units=num_gamma_hadron_classes, name="logits")
 

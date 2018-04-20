@@ -12,18 +12,38 @@ def basic_conv_block(inputs, params=None, is_training=True, reuse=None):
     with tf.variable_scope("Basic_conv_block", reuse=reuse):
 
         x = inputs
-        # x = tf.layers.batch_normalization(inputs, training=is_training)
 
         for i, (filters, kernel_size) in enumerate(BASIC_CONV_MODEL_LAYERS):
             x = tf.layers.conv2d(x, filters=filters,kernel_size=kernel_size,activation=tf.nn.relu,padding="same",reuse=reuse,name="conv_{}".format(i+1))
             x = tf.layers.max_pooling2d(x, pool_size=2, strides=2, name="pool_{}".format(i+1))
-            #x = tf.layers.batch_normalization(x, training=is_training)
 
-        # global max pool
+    return x
+
+def basic_single_tel(inputs, params, is_training, reuse=None):
+
+    with tf.variable_scope("Basic_conv_block", reuse=reuse):
+
+        # Get hyperparameters
+        bn_momentum = float(params.get('batchnormdecay', 0.99))
+
+        x = tf.layers.batch_normalization(inputs, momentum=bn_momentum,
+                training=is_training)
+
+        for i, (filters, kernel_size) in enumerate(BASIC_CONV_MODEL_LAYERS):
+            x = tf.layers.conv2d(x, filters=filters, kernel_size=kernel_size,
+                    activation=tf.nn.relu, padding="same", reuse=reuse,
+                    name="conv_{}".format(i+1))
+            x = tf.layers.max_pooling2d(x, pool_size=2, strides=2,
+                    name="pool_{}".format(i+1))
+            x = tf.layers.batch_normalization(x, momentum=bn_momentum,
+                    training=is_training)
 
         # bottleneck layer
-        # x = tf.layers.conv2d(x,filters=BASIC_CONV_MODEL_BOTTLENECK,kernel_size=1,activation=tf.nn.relu,padding="same",reuse=reuse,name="bottleneck")
-        # x = tf.layers.batch_normalization(x, training=is_training)
+        x = tf.layers.conv2d(x, filters=BASIC_CONV_MODEL_BOTTLENECK,
+                kernel_size=1, activation=tf.nn.relu, padding="same",
+                reuse=reuse,name="bottleneck")
+        x = tf.layers.batch_normalization(x, momentum=bn_momentum,
+                training=is_training)
 
     return x
 
