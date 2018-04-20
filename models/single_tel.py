@@ -3,7 +3,7 @@ import sys
 
 import tensorflow as tf
 
-def single_tel_model(features, labels, params, is_training):
+def single_tel_model(features, params, is_training):
     
     # Reshape inputs into proper dimensions
     num_telescope_types = len(params['processed_telescope_types']) 
