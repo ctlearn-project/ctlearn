@@ -17,6 +17,17 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 tf.logging.set_verbosity(tf.logging.WARN)
 
 def train(config):
+    
+    # Load options to specify the model
+    sys.path.append(config['Model']['ModelDirectory'])
+    model_module = importlib.import_module(config['Model']['ModelModule'])
+    model = getattr(model_module, config['Model']['ModelFunction'])
+    model_type = config['Model']['ModelType']
+    if model_type not in ['singletel', 'multipletel']:
+        raise ValueError("model_type must be 'singletel' or 'multipletel', value provided: {}".format(model_type))
+
+    model_hyperparameters = dict(config['Model'])
+    
     # Load options related to the data format and location
     data_format = config['Data Format']['Format'].lower()
     data_files = []
@@ -27,68 +38,62 @@ def train(config):
                 data_files.append(line)
 
     # Load options related to data input
-    batch_size = config['Data Input'].getint('BatchSize')
-    num_parallel_calls = config['Data Input'].getint(
-        'NumParallelCalls', 1)
-    prefetch = config['Data Input'].getboolean('Prefetch', True)
-    prefetch_buffer_size = config['Data Input'].getint('PrefetchBufferSize', 10)
-    shuffle = config['Data Input'].getboolean('Shuffle', True)
-    shuffle_buffer_size = config['Data Input'].getint('ShuffleBufferSize',10000)
-
+    data_input_settings = {
+            'batch_size': config['Data Input'].getint('BatchSize'),
+            'prefetch': config['Data Input'].getboolean('Prefetch', True),
+            'prefetch_buffer_size': config['Data Input'].getint(
+                'PrefetchBufferSize', 10),
+            'map': False, # default - will be set by data format
+            'num_parallel_calls': config['Data Input'].getint(
+                'NumParallelCalls', 1),
+            'shuffle': config['Data Input'].getboolean('Shuffle', True),
+            'shuffle_buffer_size': config['Data Input'].getint(
+                'ShuffleBufferSize',10000)
+            }
+    
     # Load options related to data processing
-    validation_split = config['Data Processing'].getfloat(
-        'ValidationSplit',0.1)
-    cut_condition = config['Data Processing'].get('CutCondition', '')
-    min_num_tels = config['Data Processing'].getint('MinNumTels', 1)
-    sort_telescopes_by_trigger = config['Data Processing'].getboolean(
-        'SortTelescopesByTrigger', False)
-    use_telescope_positions = config['Data Processing'].getboolean(
-            'UseTelescopePositions', True)
-    crop_images = config['Data Processing'].getboolean('CropImages', False)
-    log_normalize_charge = config['Data Processing'].getboolean('LogNormalizeCharge', False)
-    image_cleaning_method = config['Data Processing'].get(
-            'ImageCleaningMethod', 'None').lower()
-    return_cleaned_images = config['Data Processing'].getboolean(
-            'ReturnCleanedImages', False)
-    bounding_box_size = config['Data Processing'].getint(
-        'BoundingBoxSize', 48)
-    picture_threshold = config['Data Processing'].getfloat(
-        'PictureThreshold', 5.5)
-    boundary_threshold = config['Data Processing'].getfloat(
-        'BoundaryThreshold', 1.0)
-
-    # Load options to specify the model
-    sys.path.append(config['Model']['ModelDirectory'])
-    model_module = importlib.import_module(config['Model']['ModelModule'])
-    model = getattr(model_module, config['Model']['ModelFunction'])
-    model_type = config['Model']['ModelType']
-    if model_type not in ['singletel', 'multipletel']:
-        raise ValueError("model_type must be 'singletel' or 'multipletel', value provided: {}".format(model_type))
-
-
-    model_hyperparameters = dict(config['Model'])
+    data_processing_settings = {
+            'validation_split': config['Data Processing'].getfloat(
+                'ValidationSplit',0.1),
+            'min_num_tels': config['Data Processing'].getint('MinNumTels', 1),
+            'cut_condition': config['Data Processing']['CutCondition'],
+            'sort_telescopes_by_trigger': config['Data Processing'].getboolean(
+                'SortTelescopesByTrigger', False),
+            'use_telescope_positions': config['Data Processing'].getboolean(
+                'UseTelescopePositions', True),
+            'crop_images': config['Data Processing'].getboolean('CropImages',
+                False),
+            'log_normalize_charge': config['Data Processing'].getboolean(
+                'LogNormalizeCharge', False),
+            'image_cleaning_method': config['Data Processing'].get(
+                'ImageCleaningMethod', 'None').lower(),
+            'return_cleaned_images': config['Data Processing'].getboolean(
+                'ReturnCleanedImages', False),
+            'picture_threshold': config['Data Processing'].getfloat(
+                'PictureThreshold', 5.5),
+            'boundary_threshold': config['Data Processing'].getfloat(
+                'BoundaryThreshold', 1.0),
+            'bounding_box_size': config['Data Processing'].getint(
+                'BoundingBoxSize', 48),
+            'num_shower_coordinates': 2, # position on camera needs 2 coords
+            'model_type': model_type, # for applying cuts
+            'chosen_telescope_types': ['MSTS'] # hardcode using SCT images only
+            }
 
     # Load options related to training hyperparameters
-    optimizer_type = config['Training Hyperparameters']['Optimizer'].lower()
-    base_learning_rate = config['Training Hyperparameters'].getfloat(
-            'BaseLearningRate')
-    scale_learning_rate = config['Training Hyperparameters'].getboolean(
-            'ScaleLearningRate', False)
-    clip_gradient_norm = config['Training Hyperparameters'].getfloat(
-            'ClipGradientNorm', 0.)
-    apply_class_weights = config['Training Hyperparameters'].getboolean(
-            'ApplyClassWeights', False)
-    variables_to_train = config['Training Hyperparameters'].getboolean(
-            'VariablesToTrain', False)
-
-    # Define training hyperparameters
     training_hyperparameters = {
-            'optimizer_type': optimizer_type,
-            'base_learning_rate': base_learning_rate,
-            'scale_learning_rate': scale_learning_rate,
-            'clip_gradient_norm': clip_gradient_norm,
-            'apply_class_weights': apply_class_weights,
-            'variables_to_train': variables_to_train
+            'optimizer': config['Training Hyperparameters']['Optimizer'].lower(),
+            'base_learning_rate': config['Training Hyperparameters'].getfloat(
+                'BaseLearningRate'),
+            'scale_learning_rate': config['Training Hyperparameters'].getboolean('ScaleLearningRate', False),
+            'clip_gradient_norm': config['Training Hyperparameters'].getfloat(
+                'ClipGradientNorm', 0.),
+            'apply_class_weights': config['Training Hyperparameters'].getboolean('ApplyClassWeights', False),
+            'variables_to_train': config['Training Hyperparameters'].getboolean(
+                'VariablesToTrain', False),
+            'adam_epsilon': config['Training Hyperparameters'].getfloat(
+                'AdamEpsilon', 1e-8),
+            'model_type': model_type
             }
 
     # Load options related to training settings
@@ -108,36 +113,6 @@ def train(config):
     # Log a copy of the configuration file
     config_log_filename = time.strftime('%Y%m%d_%H%M%S_') + config_filename
     shutil.copy(config_full_path, os.path.join(model_dir, config_log_filename))
-
-    # Define data input settings
-    data_input_settings = {
-            'batch_size': batch_size,
-            'prefetch': prefetch,
-            'prefetch_buffer_size': prefetch_buffer_size,
-            'map': False,
-            'num_parallel_calls': num_parallel_calls,
-            'shuffle': shuffle,
-            'shuffle_buffer_size': shuffle_buffer_size
-            }
-
-    # Define data processing settings
-    data_processing_settings = {
-            'validation_split': validation_split,
-            'min_num_tels': min_num_tels,
-            'cut_condition': cut_condition,
-            'sort_telescopes_by_trigger': sort_telescopes_by_trigger,
-            'use_telescope_positions': use_telescope_positions,
-            'crop_images': crop_images,
-            'log_normalize_charge': log_normalize_charge,
-            'image_cleaning_method': image_cleaning_method,
-            'return_cleaned_images': return_cleaned_images,
-            'picture_threshold': picture_threshold,
-            'boundary_threshold': boundary_threshold,
-            'bounding_box_size': bounding_box_size,
-            'num_shower_coordinates': 2,
-            'model_type': model_type, # for applying cuts
-            'chosen_telescope_types': ['MSTS'] # hardcode using SCT images only
-            }
     
     # Define data loading functions
     if data_format == 'hdf5':
@@ -298,7 +273,8 @@ def train(config):
         # Scale the learning rate so batches with fewer triggered
         # telescopes don't have smaller gradients
         # Only apply learning rate scaling for array-level models
-        if scale_learning_rate and model_type != 'singletel':
+        if (training_params['scale_learning_rate'] and
+                model_type == 'multipletel'):
             trigger_rate = tf.reduce_mean(tf.cast(
                 features['telescope_triggers'], tf.float32),
                 name="trigger_rate")
@@ -309,17 +285,27 @@ def train(config):
         else:
             learning_rate = training_params['base_learning_rate']
         
-        # Select optimizer and set learning rate
-        if optimizer_type == 'adam':
-            optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate,epsilon=0.1)
-        elif optimizer_type == 'rmsprop':
-            optimizer = tf.train.RMSPropOptimizer(learning_rate=learning_rate)
-        elif optimizer_type == 'adadelta':
-            optimizer = tf.train.AdadeltaOptimizer(learning_rate=learning_rate)
-        elif optimizer_type == 'sgd':
-            optimizer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
-        else:
-            raise ValueError("Invalid optimizer choice: {}".format(optimizer_type))
+        # Select optimizer with appropriate arguments
+
+        # Dict of optimizer_name: (optimizer_fn, optimizer_args)
+        optimizers = {
+                'adadelta': (tf.train.AdadeltaOptimizer,
+                    dict(learning_rate=learning_rate)),
+                'adam': (tf.train.AdamOptimizer,
+                    dict(learning_rate=learning_rate,
+                        epsilon=training_params['adam_epsilon'])),
+                'rmsprop': (tf.train.RMSPropOptimizer,
+                    dict(learning_rate=learning_rate)),
+                'sgd': (tf.train.GradientDescentOptimizer,
+                    dict(learning_rate=learning_rate))
+                }
+
+        if training_params['optimizer'] not in optimizers:
+            raise ValueError("Optimizer {} not supported".format(
+                training_params['optimizer']))
+
+        optimizer_fn, optimizer_args = optimizers[training_params['optimizer']]
+        optimizer = optimizer_fn(**optimizer_args)
     
         if training_params['variables_to_train']:
             vars_to_train = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
@@ -359,9 +345,9 @@ def train(config):
     logger.info("Training and evaluating...")
     logger.info("Total number of training events: {}".format(num_training_examples))
     logger.info("Total number of validation events: {}".format(num_validation_examples))
-    logger.info("Batch size: {}".format(batch_size))
+    logger.info("Batch size: {}".format(data_input_settings['batch_size']))
 
-    logger.info("Number of training steps per epoch: {}".format(int(num_training_examples/batch_size)))
+    logger.info("Number of training steps per epoch: {}".format(int(num_training_examples/data_input_settings['batch_size'])))
     logger.info("Number of training steps per validation: {}".format(num_training_steps_per_validation))
  
     estimator = tf.estimator.Estimator(
