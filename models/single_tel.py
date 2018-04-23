@@ -3,7 +3,7 @@ import sys
 
 import tensorflow as tf
 
-def single_tel_model(features, params, is_training):
+def single_tel_model(features, params, training):
     
     # Reshape inputs into proper dimensions
     num_telescope_types = len(params['processed_telescope_types']) 
@@ -22,7 +22,7 @@ def single_tel_model(features, params, is_training):
     network = getattr(network_module, params['networkfunction'])
 
     with tf.variable_scope("Network"):
-        output = network(telescope_data, params=params, is_training=is_training)
+        output = network(telescope_data, params=params, training=training)
 
     if params['pretrainedweights']:
         tf.contrib.framework.init_from_checkpoint(params['pretrainedweights'],{'Network/':'Network/'})

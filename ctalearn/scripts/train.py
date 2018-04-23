@@ -228,9 +228,9 @@ def train(config):
     # to pass into TF Estimator
     def model_fn(features, labels, mode, params, config):
         
-        is_training = True if mode == tf.estimator.ModeKeys.TRAIN else False
+        training = True if mode == tf.estimator.ModeKeys.TRAIN else False
        
-        logits = model(features, params['model'], is_training)
+        logits = model(features, params['model'], training)
 
         training_params = params['training']
 
