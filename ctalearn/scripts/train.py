@@ -86,8 +86,6 @@ def train(config):
             'base_learning_rate': config['Training Hyperparameters'].getfloat(
                 'BaseLearningRate'),
             'scale_learning_rate': config['Training Hyperparameters'].getboolean('ScaleLearningRate', False),
-            'clip_gradient_norm': config['Training Hyperparameters'].getfloat(
-                'ClipGradientNorm', 0.),
             'apply_class_weights': config['Training Hyperparameters'].getboolean('ApplyClassWeights', False),
             'variables_to_train': config['Training Hyperparameters'].getboolean(
                 'VariablesToTrain', False),
@@ -307,15 +305,17 @@ def train(config):
         optimizer_fn, optimizer_args = optimizers[training_params['optimizer']]
         optimizer = optimizer_fn(**optimizer_args)
     
+        var_list = None
         if training_params['variables_to_train']:
-            vars_to_train = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
+            var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
                     training_params['variables_to_train'])
-        else:
-            vars_to_train = None
-
-        train_op = tf.contrib.slim.learning.create_train_op(loss, optimizer,
-                clip_gradient_norm=training_params['clip_gradient_norm'],
-                variables_to_train=vars_to_train)
+       
+        # Define train op with update ops dependency for batch norm
+        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+        with tf.control_dependencies(update_ops):
+            train_op = optimizer.minimize(loss,
+                    global_step=tf.train.get_global_step(),
+                    var_list=var_list)
         
         # Define the evaluation metrics
         eval_metric_ops = {
