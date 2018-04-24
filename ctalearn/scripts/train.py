@@ -16,7 +16,31 @@ import ctalearn.data
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 tf.logging.set_verbosity(tf.logging.WARN)
 
-def train(config):
+def setup_logger(debug, logfile_dir=None):
+    logger = logging.getLogger()
+    
+    if debug: logger.setLevel(logging.DEBUG)
+
+    if not logfile_dir:
+        handler = logging.StreamHandler()
+    else:
+        handler = logging.FileHandler(os.path.join(model_dir,
+            time.strftime('%Y%m%d_%H%M%S_') + 'logfile.log'))
+    handler.setFormatter(logging.Formatter("%(levelname)s:%(message)s"))
+    logger.addHandler(handler)
+    
+    return logger
+
+def train(config, debug=False, log_to_file=False):
+    
+    # Load options relating to logging and checkpointing
+    model_dir = config['Logging']['ModelDirectory']
+    # Create model directory if it doesn't exist already
+    if not os.path.exists(model_dir): os.makedirs(model_dir)
+
+    # Set up logger
+    logfile_dir = model_dir if log_to_file else None
+    logger = setup_logger(debug, logfile_dir=logfile_dir)
     
     # Load options to specify the model
     sys.path.append(config['Model']['ModelDirectory'])
@@ -102,9 +126,6 @@ def train(config):
     num_training_steps_per_validation = config['Training Settings'].getint(
         'NumTrainingStepsPerValidation', 1000)
     
-    # Load options relating to logging and checkpointing
-    model_dir = config['Logging']['ModelDirectory']
-
     # Load options related to debugging
     run_tfdbg = config['Debug'].getboolean('RunTFDBG', False)
 
@@ -400,17 +421,4 @@ if __name__ == "__main__":
         raise ValueError("Invalid config file: {}".format(config_full_path))
     config.read(config_full_path)
     
-    # Logger setup
-    logger = logging.getLogger()
-    if args.debug: logger.setLevel(logging.DEBUG)
-
-    # Create model directory if it doesn't exist already
-    model_dir = config['Logging']['ModelDirectory']
-    if not os.path.exists(model_dir): os.makedirs(model_dir)
- 
-    handler = logging.FileHandler(os.path.join(model_dir,time.strftime('%Y%m%d_%H%M%S_') + 'logfile.log')) if args.log_to_file else logging.StreamHandler() 
-    handler.setFormatter(logging.Formatter("%(levelname)s:%(message)s"))
-    
-    logger.addHandler(handler)
- 
-    train(config)
+    train(config, args.debug, args.log_to_file)
