@@ -16,16 +16,24 @@ import ctalearn.data
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 tf.logging.set_verbosity(tf.logging.WARN)
 
-def setup_logger(debug, logfile_dir=None):
+def setup_logging(config, log_dir, debug, log_to_file):
+
+    # Log configuration
+    time_str = time.strftime('%Y%m%d_%H%M%S')
+    config_filename = os.path.join(log_dir, time_str + '_config.ini')
+    with open(config_filename, 'w') as config_file:
+        config.write(config_file)
+
+    # Set up logger
     logger = logging.getLogger()
     
     if debug: logger.setLevel(logging.DEBUG)
 
-    if not logfile_dir:
+    if not log_to_file:
         handler = logging.StreamHandler()
     else:
-        handler = logging.FileHandler(os.path.join(model_dir,
-            time.strftime('%Y%m%d_%H%M%S_') + 'logfile.log'))
+        logging_filename = os.path.join(log_dir, time_str + '_logfile.log')
+        handler = logging.FileHandler(logging_filename)
     handler.setFormatter(logging.Formatter("%(levelname)s:%(message)s"))
     logger.addHandler(handler)
     
@@ -38,9 +46,8 @@ def train(config, debug=False, log_to_file=False):
     # Create model directory if it doesn't exist already
     if not os.path.exists(model_dir): os.makedirs(model_dir)
 
-    # Set up logger
-    logfile_dir = model_dir if log_to_file else None
-    logger = setup_logger(debug, logfile_dir=logfile_dir)
+    # Set up logging, saving the config and optionally logging to a file
+    logger = setup_logging(config, model_dir, debug, log_to_file)
     
     # Load options to specify the model
     sys.path.append(config['Model']['ModelDirectory'])
@@ -129,10 +136,6 @@ def train(config, debug=False, log_to_file=False):
     # Load options related to debugging
     run_tfdbg = config['Debug'].getboolean('RunTFDBG', False)
 
-    # Log a copy of the configuration file
-    config_log_filename = time.strftime('%Y%m%d_%H%M%S_') + config_filename
-    shutil.copy(config_full_path, os.path.join(model_dir, config_log_filename))
-    
     # Define data loading functions
     if data_format == 'hdf5':
 
