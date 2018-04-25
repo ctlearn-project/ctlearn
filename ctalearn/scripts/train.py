@@ -1,11 +1,10 @@
 import argparse
-import logging
 import configparser
+import importlib
+import logging
 import os
-import shutil
 import sys
 import time
-import importlib
 
 import tensorflow as tf
 from tensorflow.python import debug as tf_debug
@@ -28,7 +27,8 @@ def setup_logging(config, log_dir, debug, log_to_file):
     logger = logging.getLogger()
     
     if debug: logger.setLevel(logging.DEBUG)
-
+    
+    logger.handlers = [] # remove existing handlers from any previous runs
     if not log_to_file:
         handler = logging.StreamHandler()
     else:
@@ -403,25 +403,20 @@ if __name__ == "__main__":
         description=("Train a ctalearn model."))
     parser.add_argument(
         'config_file',
-        help='configuration file containing training options (to be parsed with configparser)')
+        help="path to configparser configuration file with training options")
     parser.add_argument(
-        "--debug",
-        help="print debug/logger messages",
-        action="store_true")
+        '--debug',
+        action='store_true',
+        help="print debug/logger messages")
     parser.add_argument(
-        "--log_to_file",
-        help="name of log file to write to. If not provided, will write to terminal",
-        action="store_true")
+        '--log_to_file',
+        action='store_true',
+        help="log to a file in model directory instead of terminal")
 
     args = parser.parse_args()
    
-    # Parse configuration file
+    # Load configuration file
     config = configparser.ConfigParser(allow_no_value=True)
-    try:
-        config_full_path = os.path.abspath(args.config_file)
-        config_path, config_filename = os.path.split(config_full_path)
-    except IndexError:
-        raise ValueError("Invalid config file: {}".format(config_full_path))
-    config.read(config_full_path)
+    config.read(os.path.abspath(args.config_file))
     
     train(config, args.debug, args.log_to_file)
