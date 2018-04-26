@@ -1,15 +1,15 @@
-import tensorflow as tf
+import importlib
+import sys
 
-from ctalearn.models.basic import basic_conv_block
-from ctalearn.models.alexnet import alexnet_block
-from ctalearn.models.mobilenet import mobilenet_block
-from ctalearn.models.resnet import resnet_block
-from ctalearn.models.densenet import densenet_block
+import tensorflow as tf
 
 LSTM_SIZE = 2048
 
-def cnn_rnn_model(features, labels, params, is_training):
-    
+def cnn_rnn_model(features, params, training):
+
+    # Get hyperparameters
+    dropout_rate = float(params.get('dropoutrate', 0.5))
+
     # Reshape inputs into proper dimensions
     num_telescope_types = len(params['processed_telescope_types']) 
     if not num_telescope_types == 1:
@@ -47,19 +47,10 @@ def cnn_rnn_model(features, labels, params, is_training):
     # The array-level processing is then performed by the network head. The
     # logits are returned and fed into a classifier.
 
-    # Choose the CNN block
-    if params['cnn_block'] == 'alexnet':
-        cnn_block = alexnet_block
-    elif params['cnn_block'] == 'mobilenet':
-        cnn_block = mobilenet_block
-    elif params['cnn_block'] == 'resnet':
-        cnn_block = resnet_block
-    elif params['cnn_block'] == 'densenet':
-        cnn_block = densenet_block
-    elif params['cnn_block'] == 'basic':
-        cnn_block = basic_conv_block
-    else:
-        raise ValueError("Invalid CNN block specified: {}.".format(params['cnn_block']))
+    # Load CNN block model
+    sys.path.append(params['modeldirectory'])
+    cnn_block_module = importlib.import_module(params['cnnblockmodule'])
+    cnn_block = getattr(cnn_block_module, params['cnnblockfunction'])
 
     #calculate number of valid images per event
     num_tels_triggered = tf.to_int32(tf.reduce_sum(telescope_triggers,1))
@@ -71,14 +62,14 @@ def cnn_rnn_model(features, labels, params, is_training):
               
         with tf.variable_scope("CNN_block"):
             output = cnn_block(tf.gather(telescope_data, telescope_index),
-                params=params, reuse=reuse, is_training=is_training)
+                params=params, reuse=reuse, training=training)
 
-        if params['pretrained_weights']:
-            tf.contrib.framework.init_from_checkpoint(params['pretrained_weights'],{'CNN_block/':'CNN_block/'})
+        if params['pretrainedweights']:
+            tf.contrib.framework.init_from_checkpoint(params['pretrainedweights'],{'CNN_block/':'CNN_block/'})
 
         #flatten output of embedding CNN to (batch_size, _)
         image_embedding = tf.layers.flatten(output, name='image_embedding')
-        image_embedding_dropout = tf.layers.dropout(image_embedding, training=is_training)
+        image_embedding_dropout = tf.layers.dropout(image_embedding, training=training)
         telescope_outputs.append(image_embedding_dropout)
 
     with tf.variable_scope("NetworkHead"):
@@ -105,7 +96,8 @@ def cnn_rnn_model(features, labels, params, is_training):
         # (batch_size, max_num_tel * LSTM_SIZE)
         outputs = tf.layers.flatten(outputs)
         #last_output = tf.gather(outputs, num_telescopes-1, axis=1, name="rnn_output")
-        output_dropout = tf.layers.dropout(outputs, training=is_training, name="rnn_output_dropout")
+        output_dropout = tf.layers.dropout(outputs, rate=dropout_rate,
+                training=training, name="rnn_output_dropout")
         
         """
         #indices (0 except at every n+(num_tel-1) where n in range(batch_size))
@@ -118,10 +110,12 @@ def cnn_rnn_model(features, labels, params, is_training):
         """
 
         fc1 = tf.layers.dense(inputs=output_dropout, units=1024, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.004), name="fc1")
-        dropout_1 = tf.layers.dropout(inputs=fc1, training=is_training)
+        dropout_1 = tf.layers.dropout(inputs=fc1, rate=dropout_rate,
+                training=training)
         
         fc2 = tf.layers.dense(inputs=dropout_1, units=512, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.004), name="fc2")
-        dropout_2 = tf.layers.dropout(inputs=fc2, training=is_training)
+        dropout_2 = tf.layers.dropout(inputs=fc2, rate=dropout_rate,
+                training=training)
 
         logits = tf.layers.dense(inputs=dropout_2, units=num_gamma_hadron_classes, name="logits")
 
