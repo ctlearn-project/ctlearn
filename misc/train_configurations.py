@@ -2,7 +2,7 @@
 Conduct an automated hyperparameter search using the specified configuration
 options.
 
-train_configurations.py <constant_config_path> <changing_configs_path> <model_dir> <combinations_multiplier>
+train_configurations.py <constant_config_path> <changing_configs_path> <run_combinations_path> <model_dir> <combinations_multiplier>
 
 <constant_config_path>: path to configuration file containing all options meant
 to be the same for every run
@@ -14,6 +14,9 @@ Each line of the file has one of the formats:
 <section>, <key>, random_range: <lower_bound>, <upper_bound>, <spacing>
 where <spacing> is one of "linear" or "log". Lines starting with '#' are
 skipped as comments.
+
+<run_combinations_path>: path to file in which to save the combinations of 
+options corresponding to each run number
 
 <model_dir>: model directory path for storing checkpoints and log files. Each
 run will be put in a subdirectory 'run0/', 'run1/', etc. Any
@@ -44,7 +47,10 @@ parser.add_argument(
         help="path to configuration file with constant options")
 parser.add_argument(
         'changing_configs_path',
-        help="path to file listing configuraiton options to change")
+        help="path to file listing configuration options to change")
+parser.add_argument(
+        'run_combinations_path',
+        help="path to file in which to save combinations for each run")
 parser.add_argument(
         'model_dir',
         help="model directory path for checkpoints and logging"
@@ -73,17 +79,8 @@ def yield_config(constant_config_path, changing_configs, model_dir,
     # Get all the combinations
     discrete_combinations = (list(itertools.product(*discrete_configs)) *
             combinations_multiplier)
-    num_configs = len(list(discrete_combinations))
-    # List tuples of the config coordinates and value for each value of each
-    # random config
-    random_configs = [[(c['section'], c['key'], v) for v in
-        [c['value_fn']() for __ in range(num_configs)]] for
-        c in changing_configs if c['random']]
-    # Reorder to list by combinations
-    random_combinations = list(zip(*random_configs))
-    # Add the combinations together
-    combinations = [d + r for d, r in zip(discrete_combinations,
-        random_combinations)]
+    combinations = [d + tuple([(c['section'], c['key'], c['value_fn']()) for
+        c in changing_configs if c['random']]) for d in discrete_combinations]
     for run_num, combination in enumerate(combinations):
         config = configparser.ConfigParser()
         config.read(constant_config_path)
@@ -94,7 +91,7 @@ def yield_config(constant_config_path, changing_configs, model_dir,
         # Set the model directory to that corresponding to this run
         run_model_directory = os.path.join(model_dir, 'run'+str(run_num))
         config['Logging']['ModelDirectory'] = run_model_directory
-        yield config
+        yield config, combination
 
 # Load a file specifying config options to run over
 changing_configs = []
@@ -134,7 +131,14 @@ with open(args.changing_configs_path) as f:
                             np.log10(lower_bound), np.log10(upper_bound)))
         changing_configs.append(config)
 
-for run_num, config in enumerate(yield_config(args.constant_config_path,
-    changing_configs, args.model_dir, args.combinations_multiplier)):
-    print("Training run", run_num, "...")
+for run_num, (config, combination) in enumerate(yield_config(
+    args.constant_config_path, changing_configs, args.model_dir,
+    args.combinations_multiplier)):
+    print(f"Training run {run_num}...")
+    # Save the hyperparameter combination for each run to a file
+    with open(args.run_combinations_path, 'a') as runs_file:
+        runs_file.write(f"Run {run_num}\n")
+        for param in combination:
+            runs_file.write(','.join(map(str, param))+'\n')
+        runs_file.write("\n")
     train(config, debug=args.debug, log_to_file=args.log_to_file)

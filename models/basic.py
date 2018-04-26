@@ -13,9 +13,9 @@ def basic_conv_block(inputs, training, params=None, reuse=None):
         bn_momentum = float(params.get('batchnormdecay', 0.99))
         # Get custom hyperparameters
         filters_list = [int(f) for f in
-                params.get('basicconvblockfilters').split(',')]
+                params.get('basicconvblockfilters').split('|')]
         kernels = [int(k) for k in
-                params.get('basicconvblockkernels').split(',')]
+                params.get('basicconvblockkernels').split('|')]
         max_pool = bool(params.get('basicconvblockmaxpool', True))
         if max_pool:
             max_pool_size = int(params.get('basicconvblockmaxpoolsize'))
