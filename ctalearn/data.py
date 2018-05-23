@@ -80,7 +80,7 @@ def load_data_eventwise_HDF5(filename, index, auxiliary_data, metadata,
                             telescope_image, settings)
                     shower_positions.append([float(i)/metadata['image_shapes'][tel_type][0] for i in shower_position])
                 if settings['log_normalize_charge']:
-                    telescope_image[:,:,0] = np.log(telescope_image[:,:,0] - metadata['image_charge_min'][tel_type] + 1.0)
+                    telescope_image[:,:,0] = np.log(telescope_image[:,:,0] - metadata['image_charge_mins'][tel_type] + 1.0)
                 telescope_images.append(telescope_image)
                 telescope_triggers.append(1)
    
@@ -142,7 +142,7 @@ def load_data_single_tel_HDF5(filename, index, metadata, settings):
     if settings['crop_images']:
         telescope_image, _, _ = crop_image(telescope_image, settings)
     if settings['log_normalize_charge']:
-        telescope_image[:,:,0] = np.log(telescope_image[:,:,0] - metadata['image_charge_min'][tel_type] + 1.0)
+        telescope_image[:,:,0] = np.log(telescope_image[:,:,0] - metadata['image_charge_mins'][tel_type] + 1.0)
 
     # Get corresponding event record using event_index column
     event_index = f.root._f_get_child(tel_type)[index]['event_index']
@@ -182,95 +182,116 @@ def load_auxiliary_data_HDF5(file_list):
     return auxiliary_data
 
 def load_metadata_HDF5(file_list):
-    num_events_by_file, particle_id_by_file , num_images_by_file = [], [], {}
-    telescope_types, telescope_ids = [], {}
-    image_charge_min, image_charge_max = {}, {}
+    # list of length num_files with CORSIKA particle ID for each file
+    particle_ids_by_file = []
+    # OrderedDict with telescope types as keys and list of telescope ids
+    # of each type (in sorted order) as values
+    # NOTE: the telescope types are ordered by increasing telescope id
+    telescopes = OrderedDict()
+    num_events_by_file, num_images_by_file = [], {}
+    num_events_by_particle_id, num_images_by_particle_id = {}, {}
+    image_charge_mins, image_charge_maxes = {}, {}
+    
     for filename in file_list:
         with tables.open_file(filename, mode='r') as f:
-            num_events_by_file.append(f.root.Event_Info.shape[0])
             # Particle ID is same for all events in a given file and
             # is therefore saved in the root attributes
-            particle_id_by_file.append(f.root._v_attrs.particle_type)
-            # Build telescope types list and telescope ids dict for current file
-            # NOTE: telescope types list is sorted in order of tel_ids
-            tel_ids_types, tel_ids_types_temp = [], []
+            particle_id = f.root._v_attrs.particle_type
+            num_events = f.root.Event_Info.shape[0]
+    
+            num_events_by_file.append(num_events)
+            particle_ids_by_file.append(particle_id)
+
+            if particle_id not in num_events_by_particle_id:
+                num_events_by_particle_id[particle_id] = 0
+            num_events_by_particle_id[particle_id] += num_events 
+
+            tel_ids_types = []
             for row in f.root.Array_Info.iterrows():
                 # note: tel type strings stored in Pytables as byte strings, must be decoded
                 tel_type = row['tel_type'].decode('utf-8')
                 tel_id = row['tel_id']
-                tel_ids_types_temp.append((tel_id,tel_type))
+                tel_ids_types.append((tel_id,tel_type))
             # sort all (telescope id, telescope type) pairs by tel_id
-            tel_ids_types_temp.sort(key=lambda i: i[0])
-           
-            #get max x, y, z telescope coordinates
+            tel_ids_types.sort(key=lambda i: i[0])
+          
+            # create OrderedDict of telescope types and ids
+            # should be same for every file in dataset
+            telescopes_temp = OrderedDict()
+            for tel_id, tel_type in tel_ids_types:
+                if tel_type not in telescopes_temp:
+                    telescopes_temp[tel_type] = []
+                telescopes_temp[tel_type].append(tel_id)
+
+            if not telescopes:
+                telescopes = telescopes_temp
+
+            # Check that telescope types and ids match for every file
+            if telescopes_temp != telescopes:
+                raise ValueError("Telescope type/id mismatch in file {}".format(filename))
+ 
+            # Compute max x, y, z telescope coordinates for normalization
             max_tel_x = max(row['tel_x'] for row in f.root.Array_Info.iterrows())
             max_tel_y = max(row['tel_y'] for row in f.root.Array_Info.iterrows())
             max_tel_z = max(row['tel_z'] for row in f.root.Array_Info.iterrows())
 
             max_telescope_pos = [max_tel_x, max_tel_y, max_tel_z]
+                     
+            # Save dict of number of images by tel type for each
+            # file and for each label
+            # Subtract one when calculating number of images since index 0 
+            # in each telescope table corresponds to a blank image
+            for tel_type in telescopes.keys():
+                num_images = f.root._f_get_child(tel_type).shape[0] - 1
 
-            # Check that telescope types and ids match across all files
-            if tel_ids_types != tel_ids_types_temp:
-                if not tel_ids_types:
-                    tel_ids_types = tel_ids_types_temp
-                else:
-                    raise ValueError("Telescope type/id mismatch in file {}".format(filename))
-           
-            # save sorted list of telescope types
-            if not telescope_types:
-                for tel_id, tel_type in tel_ids_types:
-                    if tel_type not in telescope_types: 
-                        telescope_types.append(tel_type)
-            
-            # save dict of telescope_ids
-            if not telescope_ids:
-                for tel_id, tel_type in tel_ids_types:
-                    if tel_type not in telescope_ids:
-                        telescope_ids[tel_type] = []
-                    telescope_ids[tel_type].append(tel_id)
-            
-            # Save dict of number of images by tel type per telescope
-            # for single tel data
-            # Subtract one since index 0 corresponds to a blank template
-            for tel_type in telescope_types:
                 if tel_type not in num_images_by_file:
                     num_images_by_file[tel_type] = []
-                num_images_by_file[tel_type].append(
-                        f.root._f_get_child(tel_type).shape[0] - 1)
+                num_images_by_file[tel_type].append(num_images)
+    
+                if tel_type not in num_images_by_particle_id:
+                    num_images_by_particle_id[tel_type] = {}
+                if particle_id not in num_images_by_particle_id[tel_type]:
+                    num_images_by_particle_id[tel_type][particle_id] = 0
 
-            # Compute dataset image max and min for normalization
-            for tel_type in telescope_types:
+                num_images_by_particle_id[tel_type][particle_id] += num_images
+
+            # Compute max and min pixel value in each telescope image
+            # type for normalization
+            # NOTE: This step is time-intensive.
+            for tel_type in telescopes.keys():
                 tel_table = f.root._f_get_child(tel_type)
                 record = tel_table.read(1,tel_table.shape[0])
                 images = record['image_charge']
 
-                if tel_type not in image_charge_min:
-                    image_charge_min[tel_type] = np.amin(images)
-                if tel_type not in image_charge_max:
-                    image_charge_max[tel_type] = np.amax(images)
+                if tel_type not in image_charge_mins:
+                    image_charge_mins[tel_type] = np.amin(images)
+                if tel_type not in image_charge_maxes:
+                    image_charge_maxes[tel_type] = np.amax(images)
 
-                if np.amin(images) < image_charge_min[tel_type]:
-                    image_charge_min[tel_type] = np.amin(images)
-                if np.amax(images) > image_charge_max[tel_type]:
-                    image_charge_max[tel_type] = np.amax(images)
+                if np.amin(images) < image_charge_mins[tel_type]:
+                    image_charge_mins[tel_type] = np.amin(images)
+                if np.amax(images) > image_charge_maxes[tel_type]:
+                    image_charge_maxes[tel_type] = np.amax(images)
 
     metadata = {
-            'num_events_by_file': num_events_by_file,
-            'num_telescopes': {tel_type:len(telescope_ids[tel_type]) for tel_type in telescope_types},
-            'telescope_ids': telescope_ids,
-            'telescope_types': telescope_types,
-            'num_images_by_file': num_images_by_file,
-            'particle_id_by_file': particle_id_by_file,
+            'num_classes': len(set(particle_ids_by_file)),
+            'particle_ids': list(set(particle_ids_by_file)),
+            'num_telescopes': {tel_type:len(telescopes[tel_type]) 
+                for tel_type in telescopes.keys()},
+            'telescopes': telescopes,
             'image_shapes': IMAGE_SHAPES,
-            'class_to_name': CLASS_TO_NAME,
-            'num_classes': len(set(particle_id_by_file)),
+            'particle_ids_by_file': particle_ids_by_file,
+            'num_events_by_file': num_events_by_file,
+            'num_images_by_file': num_images_by_file,
+            'num_events_by_particle_id': num_events_by_particle_id,
+            'num_images_by_particle_id': num_images_by_particle_id,
             'num_position_coordinates': 3,
-            'image_charge_min': image_charge_min,
-            'image_charge_max': image_charge_max,
-            'max_telescope_pos': max_telescope_pos
+            'max_telescope_pos': max_telescope_pos,
+            'image_charge_mins': image_charge_mins,
+            'image_charge_maxes': image_charge_maxes
             }
 
-    return metadata
+    return OrderedDict(metadata)
 
 # Use the data processing settings from the user and metadata from the dataset
 # to determine the final parameters of the data after processing. This is
@@ -281,7 +302,7 @@ def add_processed_parameters(data_processing_settings, metadata):
     # Choose telescope types for this event. They must be available in the
     # data, chosen in the settings, and have a MAPPING_TABLE
     # NOTE: Only MSTS has a MAPPING_TABLE so far regardless of chosen types
-    available_telescope_types = metadata['telescope_types']
+    available_telescope_types = metadata['telescopes'].keys()
     chosen_telescope_types = data_processing_settings['chosen_telescope_types']
     processed_telescope_types = [ttype for ttype in available_telescope_types
             if ttype in chosen_telescope_types and ttype in MAPPING_TABLES]
@@ -408,12 +429,12 @@ def get_data_generators_HDF5(file_list, metadata, settings, mode='train'):
     # Log general information on dataset based on metadata dictionary
     logger.info("%d data files read.", len(file_list))
     logger.info("Telescopes in data:")
-    for tel_type in metadata['telescope_ids']:
+    for tel_type in metadata['telescopes'].keys():
         logger.info(tel_type + ": "+'[%s]' % ', '.join(map(str,metadata['telescope_ids'][tel_type]))) 
     
     num_examples_by_label = {}
     for i,num_examples in enumerate(num_examples_by_file):
-        particle_id = metadata['particle_id_by_file'][i]
+        particle_id = metadata['particle_ids_by_file'][i]
         if particle_id not in num_examples_by_label: num_examples_by_label[particle_id] = 0
         num_examples_by_label[particle_id] += num_examples
 
@@ -431,7 +452,7 @@ def get_data_generators_HDF5(file_list, metadata, settings, mode='train'):
     num_passing_examples_by_label = {}
     for i,index_list in enumerate(indices_by_file):
         num_passing_examples = len(index_list)
-        particle_id = metadata['particle_id_by_file'][i]
+        particle_id = metadata['particle_ids_by_file'][i]
         if particle_id not in num_passing_examples_by_label:
             num_passing_examples_by_label[particle_id] = 0
         num_passing_examples_by_label[particle_id] += num_passing_examples
