@@ -140,6 +140,9 @@ def train(config, debug=False, log_to_file=False, predict=False):
                 False)
         if export_prediction_file:
             prediction_filename = config['Predict']['PredictionFilename']
+        # Don't allow parallelism in predict mode. This can lead to errors
+        # when reading from too many open files at once.
+        data_input_settings['num_parallel_calls'] = 1
     
     # Load options related to debugging
     run_tfdbg = config['Debug'].getboolean('RunTFDBG', False)
@@ -204,9 +207,14 @@ def train(config, debug=False, log_to_file=False, predict=False):
         
         # Get data generators returning (filename,index) pairs from data files 
         # by applying cuts and splitting into training and validation
-        training_generator, validation_generator = (
-                ctalearn.data.get_data_generators_HDF5(data_files, metadata,
-                    data_processing_settings))
+        if not predict:
+            training_generator, validation_generator = (
+                    ctalearn.data.get_data_generators_HDF5(data_files,
+                        metadata, data_processing_settings))
+        else:
+            test_generator = ctalearn.data.get_data_generators_HDF5(
+                    data_files, metadata, data_processing_settings,
+                    mode='test')
 
     else:
         raise ValueError("Invalid data format: {}".format(data_format))
@@ -261,18 +269,29 @@ def train(config, debug=False, log_to_file=False, predict=False):
         training = True if mode == tf.estimator.ModeKeys.TRAIN else False
        
         logits = model(features, params['model'], training)
+        
+        # Collect predictions
+        predicted_classes = tf.cast(tf.argmax(logits, axis=1), tf.int32,
+                name="predicted_classes")
+        predictions = {
+                'predicted_class': predicted_classes,
+                'classifier_values': tf.nn.softmax(logits)
+                }
+        
+        # For predict mode, we're done
+        if mode == tf.estimator.ModeKeys.PREDICT:
+            return tf.estimator.EstimatorSpec(
+                    mode=mode,
+                    predictions=predictions)
 
         training_params = params['training']
 
-        # Collect true labels and predictions
+        # Compute class-weighted softmax-cross-entropy
+        
         true_classes = tf.cast(labels['gamma_hadron_label'], tf.int32,
                 name="true_classes")
-        predicted_classes = tf.cast(tf.argmax(logits, axis=1), tf.int32,
-                name="predicted_classes")
-        
-        # Compute class-weighted softmax-cross-entropy
 
-        # get class weights
+        # Get class weights
         if training_params['apply_class_weights']:
             class_weights = tf.constant(training_params['class_weights'],
                     dtype=tf.float32, name="class_weights") 
@@ -291,14 +310,10 @@ def train(config, debug=False, log_to_file=False, predict=False):
         regularization_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
         loss = tf.add_n([loss] + regularization_losses, name="loss")
 
-        # compute accuracy and predictions 
+        # Compute accuracy
         training_accuracy = tf.reduce_mean(tf.cast(tf.equal(true_classes, 
             predicted_classes), tf.float32),name="training_accuracy")
-        predictions = {
-                'classes': predicted_classes
-                }
-
-        tf.summary.scalar("accuracy",training_accuracy)
+        tf.summary.scalar("accuracy", training_accuracy)
 
         # Scale the learning rate so batches with fewer triggered
         # telescopes don't have smaller gradients
@@ -365,23 +380,30 @@ def train(config, debug=False, log_to_file=False, predict=False):
 
         return tf.estimator.EstimatorSpec(
                 mode=mode,
-                predictions=predictions,
                 loss=loss,
                 train_op=train_op,
                 eval_metric_ops=eval_metric_ops)
 
-    # Log information on number of training and validation events
-    num_training_examples = len(list(training_generator()))
-    num_validation_examples = len(list(validation_generator()))
-    
-    logger.info("Training and evaluating...")
-    logger.info("Total number of training events: {}".format(num_training_examples))
-    logger.info("Total number of validation events: {}".format(num_validation_examples))
+    # Log information on number of training and validation events, or test
+    # events, depending on the mode
     logger.info("Batch size: {}".format(data_input_settings['batch_size']))
-
-    logger.info("Number of training steps per epoch: {}".format(int(num_training_examples/data_input_settings['batch_size'])))
-    logger.info("Number of training steps per validation: {}".format(num_training_steps_per_validation))
- 
+    if not predict:
+        num_training_events = len(list(training_generator()))
+        num_validation_events = len(list(validation_generator()))
+        logger.info("Training and evaluating...")
+        logger.info("Total number of training events: {}".format(
+            num_training_events))
+        logger.info("Total number of validation events: {}".format(
+            num_validation_events))
+        logger.info("Number of training steps per epoch: {}".format(int(
+            num_training_events/data_input_settings['batch_size'])))
+        logger.info("Number of training steps per validation: {}".format(
+            num_training_steps_per_validation))
+    else:
+        num_test_events = len(list(test_generator()))
+        logger.info("Predicting...")
+        logger.info("Total number of test events: {}".format(num_test_events))
+    
     estimator = tf.estimator.Estimator(
             model_fn, 
             model_dir=model_dir, 
@@ -393,17 +415,43 @@ def train(config, debug=False, log_to_file=False, predict=False):
         if not isinstance(hooks, list):
             hooks = []
         hooks.append(tf_debug.LocalCLIDebugHook())
-    
-    num_epochs_remaining = num_epochs
-    while train_forever or num_epochs_remaining:
-        estimator.train(
-                lambda: input_fn(training_generator, data_input_settings),
-                steps=num_training_steps_per_validation, hooks=hooks)
-        estimator.evaluate(
-                lambda: input_fn(validation_generator, data_input_settings),
-                hooks=hooks, name='validation')
-        if not train_forever:
-            num_epochs_remaining -= 1
+
+    if not predict: # Train and evaluate the model
+        num_epochs_remaining = num_epochs
+        while train_forever or num_epochs_remaining:
+            estimator.train(
+                    lambda: input_fn(training_generator, data_input_settings),
+                    steps=num_training_steps_per_validation, hooks=hooks)
+            estimator.evaluate(
+                    lambda: input_fn(validation_generator,
+                        data_input_settings), hooks=hooks, name='validation')
+            if not train_forever:
+                num_epochs_remaining -= 1
+    else: # Generate predictions
+        predictions = estimator.predict(
+                lambda: input_fn(test_generator, data_input_settings),
+                hooks=hooks)
+
+        # Get true classes
+        true_classes = []
+        features, labels = input_fn(test_generator, data_input_settings)
+        with tf.Session() as sess:
+            while True:
+                try:
+                    batch_labels = sess.run(labels['gamma_hadron_label'])
+                    true_classes.extend(batch_labels)
+                except tf.errors.OutOfRangeError:
+                    break
+
+        # Write predictions to a csv file
+        with open('predictions.csv','w') as predict_file:
+            predict_file.write("predicted_class, true_class, classifier_value_0, classifier_value_1\n")
+            for prediction, true_class in zip(predictions, true_classes):
+                predicted_class = prediction['predicted_class']
+                classifier_value_0 = prediction['classifier_values'][0]
+                classifier_value_1 = prediction['classifier_values'][1]
+                predict_file.write("{}, {}, {}, {}\n".format(predicted_class,
+                    true_class, classifier_value_0, classifier_value_1))
 
 if __name__ == "__main__":
 
