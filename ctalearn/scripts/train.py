@@ -39,7 +39,7 @@ def setup_logging(config, log_dir, debug, log_to_file):
     
     return logger
 
-def train(config, debug=False, log_to_file=False):
+def train(config, debug=False, log_to_file=False, predict=False):
     
     # Load options relating to logging and checkpointing
     model_dir = config['Logging']['ModelDirectory']
@@ -132,6 +132,14 @@ def train(config, debug=False, log_to_file=False):
     train_forever = False if num_epochs else True
     num_training_steps_per_validation = config['Training Settings'].getint(
         'NumTrainingStepsPerValidation', 1000)
+
+    # Load options related to prediction if needed
+    if predict:
+        true_label_given = config['Predict'].getboolean('TrueLabelGiven')
+        export_prediction_file = config['Predict'].getboolean('ExportAsFile',
+                False)
+        if export_prediction_file:
+            prediction_filename = config['Predict']['PredictionFilename']
     
     # Load options related to debugging
     run_tfdbg = config['Debug'].getboolean('RunTFDBG', False)
@@ -400,18 +408,22 @@ def train(config, debug=False, log_to_file=False):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
-        description=("Train a ctalearn model."))
+            description=("Train a ctalearn model."))
     parser.add_argument(
-        'config_file',
-        help="path to configparser configuration file with training options")
+            'config_file',
+            help="path to configparser configuration file with training options")
     parser.add_argument(
-        '--debug',
-        action='store_true',
-        help="print debug/logger messages")
+            '--debug',
+            action='store_true',
+            help="print debug/logger messages")
     parser.add_argument(
-        '--log_to_file',
-        action='store_true',
-        help="log to a file in model directory instead of terminal")
+            '--log_to_file',
+            action='store_true',
+            help="log to a file in model directory instead of terminal")
+    parser.add_argument(
+            '--predict',
+            action='store_true',
+            help="run in predict mode")
 
     args = parser.parse_args()
    
@@ -419,4 +431,4 @@ if __name__ == "__main__":
     config = configparser.ConfigParser(allow_no_value=True)
     config.read(os.path.abspath(args.config_file))
     
-    train(config, args.debug, args.log_to_file)
+    train(config, args.debug, args.log_to_file, args.predict)
