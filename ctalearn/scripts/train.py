@@ -139,7 +139,7 @@ def train(config, debug=False, log_to_file=False, predict=False):
         export_prediction_file = config['Predict'].getboolean('ExportAsFile',
                 False)
         if export_prediction_file:
-            prediction_filename = config['Predict']['PredictionFilename']
+            prediction_path = config['Predict']['PredictionFilePath']
         # Don't allow parallelism in predict mode. This can lead to errors
         # when reading from too many open files at once.
         data_input_settings['num_parallel_calls'] = 1
@@ -443,15 +443,21 @@ def train(config, debug=False, log_to_file=False, predict=False):
                 except tf.errors.OutOfRangeError:
                     break
 
-        # Write predictions to a csv file
-        with open('predictions.csv','w') as predict_file:
-            predict_file.write("predicted_class, true_class, classifier_value_0, classifier_value_1\n")
+        def write_predictions(predictions, true_classes, file_handle):
+            file_handle.write("predicted_class, true_class, classifier_value_0, classifier_value_1\n")
             for prediction, true_class in zip(predictions, true_classes):
                 predicted_class = prediction['predicted_class']
                 classifier_value_0 = prediction['classifier_values'][0]
                 classifier_value_1 = prediction['classifier_values'][1]
-                predict_file.write("{}, {}, {}, {}\n".format(predicted_class,
+                file_handle.write("{}, {}, {}, {}\n".format(predicted_class,
                     true_class, classifier_value_0, classifier_value_1))
+
+        # Write predictions to a csv file
+        if export_prediction_file:
+            with open(prediction_path,'w') as predict_file:
+                write_predictions(predictions, true_classes, predict_file)
+        else:
+            write_predictions(predictions, true_classes, sys.stdout)
 
 if __name__ == "__main__":
 
