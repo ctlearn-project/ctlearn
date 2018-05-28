@@ -135,7 +135,7 @@ def train(config, debug=False, log_to_file=False, predict=False):
 
     # Load options related to prediction if needed
     if predict:
-        true_label_given = config['Predict'].getboolean('TrueLabelGiven')
+        true_labels_given = config['Predict'].getboolean('TrueLabelsGiven')
         export_prediction_file = config['Predict'].getboolean('ExportAsFile',
                 False)
         if export_prediction_file:
@@ -416,7 +416,8 @@ def train(config, debug=False, log_to_file=False, predict=False):
             hooks = []
         hooks.append(tf_debug.LocalCLIDebugHook())
 
-    if not predict: # Train and evaluate the model
+    if not predict:
+        # Train and evaluate the model
         num_epochs_remaining = num_epochs
         while train_forever or num_epochs_remaining:
             estimator.train(
@@ -427,37 +428,50 @@ def train(config, debug=False, log_to_file=False, predict=False):
                         data_input_settings), hooks=hooks, name='validation')
             if not train_forever:
                 num_epochs_remaining -= 1
-    else: # Generate predictions
+    else:
+        # Generate predictions
         predictions = estimator.predict(
                 lambda: input_fn(test_generator, data_input_settings),
                 hooks=hooks)
 
-        # Get true classes
-        true_classes = []
-        features, labels = input_fn(test_generator, data_input_settings)
-        with tf.Session() as sess:
-            while True:
-                try:
-                    batch_labels = sess.run(labels['gamma_hadron_label'])
-                    true_classes.extend(batch_labels)
-                except tf.errors.OutOfRangeError:
-                    break
+        # Get true labels if available
+        true_labels = None
+        if true_labels_given:
+            true_labels = []
+            features, labels = input_fn(test_generator, data_input_settings)
+            with tf.Session() as sess:
+                while True:
+                    try:
+                        batch_labels = sess.run(labels['gamma_hadron_label'])
+                        true_labels.extend(batch_labels)
+                    except tf.errors.OutOfRangeError:
+                        break
 
-        def write_predictions(predictions, true_classes, file_handle):
-            file_handle.write("predicted_class, true_class, classifier_value_0, classifier_value_1\n")
-            for prediction, true_class in zip(predictions, true_classes):
-                predicted_class = prediction['predicted_class']
-                classifier_value_0 = prediction['classifier_values'][0]
-                classifier_value_1 = prediction['classifier_values'][1]
-                file_handle.write("{}, {}, {}, {}\n".format(predicted_class,
-                    true_class, classifier_value_0, classifier_value_1))
+        def write_predictions(file_handle, predictions, true_labels):
+            if true_labels is not None:
+                file_handle.write("predicted_class, true_class, classifier_value_0, classifier_value_1\n")
+                for prediction, true_class in zip(predictions, true_labels):
+                    predicted_class = prediction['predicted_class']
+                    classifier_value_0 = prediction['classifier_values'][0]
+                    classifier_value_1 = prediction['classifier_values'][1]
+                    file_handle.write("{}, {}, {}, {}\n".format(
+                        predicted_class, true_class, classifier_value_0,
+                        classifier_value_1))
+            else:
+                file_handle.write("predicted_class, classifier_value_0, classifier_value_1\n")
+                for prediction in predictions:
+                    predicted_class = prediction['predicted_class']
+                    classifier_value_0 = prediction['classifier_values'][0]
+                    classifier_value_1 = prediction['classifier_values'][1]
+                    file_handle.write("{}, {}, {}\n".format(predicted_class,
+                        classifier_value_0, classifier_value_1))
 
         # Write predictions to a csv file
         if export_prediction_file:
-            with open(prediction_path,'w') as predict_file:
-                write_predictions(predictions, true_classes, predict_file)
+            with open(prediction_path, 'w') as predict_file:
+                write_predictions(predict_file, predictions, true_labels)
         else:
-            write_predictions(predictions, true_classes, sys.stdout)
+            write_predictions(sys.stdout, predictions, true_labels)
 
 if __name__ == "__main__":
 
