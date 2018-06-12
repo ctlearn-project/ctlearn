@@ -5,24 +5,31 @@ from ctalearn.image import IMAGE_SHAPES
 
 class DataProcessor():
 
-    def __init__(self, settings):
-        self.crop = settings['crop_images']
-        self.bounding_box_sizes = settings['bounding_box_sizes']
-        self.image_cleaning = settings['image_cleaning_method']
-        self.picture_threshold = settings['picture_threshold']
-        self.boundary_threshold = settings['boundary_threshold']
-        self.return_cleaned_images = settings['return_cleaned_images']
+    def __init__(self, 
+            crop=True,
+            bounding_box_sizes={'MSTS': 48},
+            image_cleaning="twolevel",
+            thresholds={'MSTS': (5.5, 1.0)},
+            return_cleaned_images=False,
+            normalization="log",
+            sort_images_by=None):
+        
+        self.crop = crop
+        self.bounding_box_sizes = bounding_box_sizes
+        self.image_cleaning = image_cleaning
+        self.thresholds = thresholds
+        self.return_cleaned_images = return_cleaned_images
 
-        self.normalization = settings['normalization']
+        self.normalization = normalization
     
-        self.sort_images = settings['sort_images']
+        self.sort_images_by = sort_images_by
 
     # Crop an image about the shower center, optionally applying image cleaning
     # to obtain a better fit. The shower centroid is calculated as the mean of
     # pixel positions weighted by the charge, after cleaning. The cropped image is
     # obtained as a square bounding box centered on the centroid of side length
     # bounding_box_size.
-    def crop_image(self, image, tel_type):
+    def _crop_image(self, image, tel_type):
 
         if self.image_cleaning == "none":
             cleaned_image = image
@@ -103,7 +110,7 @@ class DataProcessor():
 
     # Normalize the first channel of a given image
     # with the selected method
-    def normalize_image(self, image, tel_type):
+    def _normalize_image(self, image, tel_type):
 
         if self.normalization == "log":
             image[:,:,0] = np.log(image[:,:,0] - self.dataset.image_charge_mins[tel_type] + 1.0)
@@ -116,84 +123,86 @@ class DataProcessor():
     # on a given image. Returns the processed image and a
     # list of additional auxiliary parameters produced by
     # the processing.
-    def process_image(self, image, tel_type):
+    def _process_image(self, image, tel_type):
         auxiliary_info = []
         if self.crop:
-            image, *shower_position = self.crop_image(image, tel_type)
+            image, *shower_position = self._crop_image(image, tel_type)
             normalized_shower_position = [float(i)/IMAGE_SHAPES[tel_type][0] for i in shower_position] 
             auxiliary_info.append(normalized_shower_position)
         if self.normalization:
-            image = self.normalize_image(image, tel_type)
+            image = self._normalize_image(image, tel_type)
 
         return image, auxiliary_info
-    
-# Top-level function to load a particular single tel event
-# (image + label) using a given dataset and a data_processor.
-def load_single_tel_event(dataset, 
-        data_processor, 
-        run_id, 
-        event_id, 
-        tel_id):
 
-    image, label = dataset.get_single_tel_example(run_id, event_id, tel_id)
-    tel_type = dataset.tel_id_to_tel_type[tel_id]
-
-    image, _ = data_processor.process_image(image, tel_type)
-
-    return [image, label]
-
-# Top-level function to load a particular array event
-# consisting of a dict {tel_type: [images, triggers, aux_info]} and
-# a label, where images, triggers,and aux_info are numpy arrays.
-def load_array_event(dataset,
-        data_processor,
-        run_id, 
-        event_id):
-
-    data, label = dataset.get_event_example(run_id, event_id)
-
-    for tel_type in data:
-        images = data[tel_type][0]
-        triggers = data[tel_type][1]
-        aux_inputs = data[tel_type][2]
-        if data_processor.crop and tel_type in data_processor.bounding_box_size:
-            image_shape = [self.bounding_box_size[tel_type], 
-                self.bounding_box_size[tel_type], 
-                IMAGE_SHAPES[tel_type][2]]
-        else:
-            image_shape = IMAGE_SHAPES[tel_type]
-        for i in range(len(images):
-            trigger = triggers[i]
-            if trigger == 0:
-                # telescope did not trigger, so provide a
-                # zeroed-out image
-                images[i] = np.zeros(image_shape))
-                if data_processor.crop:
-                    # add dummy centroid position to aux info
-                    aux_info[i].extend([0, 0])
-            else:
-                image, auxiliary_info = self.process_image(images[i], tel_type)
-                images[i] = image
-                aux_inputs.extend(auxiliary_info)
-  
-        if data_processor.sort_images == "trigger":
-            # Sort the images, triggers, and grouped auxiliary inputs by
-            # trigger, listing the triggered telescopes first
-            images, triggers, aux_inputs = map(list,
-                    zip(*sorted(zip(images, triggers, aux_inputs), reverse=True, key=itemgetter(1))))
-        elif data_processor.sort_images == "size":
-            # Sort images by size (sum of charge in all pixels) from largest to smallest
-            images, triggers, aux_inputs = map(list,
-                    zip(*sorted(zip(images, triggers, aux_inputs), reverse=True, key=lambda x: np.sum(x[0]))))
+    def process_example(self, data, label):
         
-        # Convert to numpy arrays with correct types
-        images = np.stack(images).astype(np.float32)
-        triggers = np.array(telescope_triggers, dtype=np.int8)
-        aux_inputs = np.array(aux_inputs, dtype=np.float32)
+        # infer whether example is single tel or array based on
+        # whether the dictionary values in data are numpy arrays
+        # or lists of numpy arrays
+        if isinstance(list(data.values())[0],list):
+            example_type == "array"
+        else:
+            example_type == "single_tel"
 
-        data[tel_type] = [images, triggers, aux_inputs]
+        if example_type == "single_tel":
+            tel_type = data.keys()[0]
+            image = data[tel_type]
 
-    return [data, label]
+            image, _ = self._process_image(image, tel_type)
+            data[tel_type] = image
+            
+            return [data, label]
+        
+        elif example_type == "array":
+            for tel_type in data:
+                images = data[tel_type][0]
+                triggers = data[tel_type][1]
+                aux_inputs = data[tel_type][2]
+                if self.crop and tel_type in self.bounding_box_size:
+                    image_shape = [self.bounding_box_size[tel_type], 
+                        self.bounding_box_size[tel_type], 
+                        IMAGE_SHAPES[tel_type][2]]
+                else:
+                    image_shape = IMAGE_SHAPES[tel_type]
+                for i in range(len(images):
+                    trigger = triggers[i]
+                    if trigger == 0:
+                        # telescope did not trigger, so provide a
+                        # zeroed-out image
+                        images[i] = np.zeros(image_shape))
+                        if self.crop:
+                            # add dummy centroid position to aux info
+                            aux_info[i].extend([0, 0])
+                    else:
+                        image, auxiliary_info = self._process_image(images[i], tel_type)
+                        images[i] = image
+                        aux_inputs.extend(auxiliary_info)
+          
+                if self.sort_images_by == "trigger":
+                    # Sort the images, triggers, and grouped auxiliary inputs by
+                    # trigger, listing the triggered telescopes first
+                    images, triggers, aux_inputs = map(list,
+                            zip(*sorted(zip(images, triggers, aux_inputs), reverse=True, key=itemgetter(1))))
+                elif self.sort_images_by == "size":
+                    # Sort images by size (sum of charge in all pixels) from largest to smallest
+                    images, triggers, aux_inputs = map(list,
+                            zip(*sorted(zip(images, triggers, aux_inputs), reverse=True, key=lambda x: np.sum(x[0]))))
+                
+                # Convert to numpy arrays with correct types
+                images = np.stack(images).astype(np.float32)
+                triggers = np.array(telescope_triggers, dtype=np.int8)
+                aux_inputs = np.array(aux_inputs, dtype=np.float32)
 
+                data[tel_type] = [images, triggers, aux_inputs]
+
+            return [data, label]
+
+    # TODO: implement data augmentation.
+    # Should be done at random each time an example is
+    # processed, as the list of examples is fixed and determined
+    # by DataLoader
+    def _augment_data(self):
+        raise NotImplementedError        
+ 
 
 
