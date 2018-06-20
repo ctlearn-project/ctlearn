@@ -29,8 +29,8 @@ def cnn_rnn_model(features, params, training):
     telescope_triggers = tf.cast(telescope_triggers, tf.float32)
 
     telescope_aux_inputs = features['telescope_aux_inputs']
-    telescope_aux_inputs = tf.reshape(telescope_aux_inputs, [-1, num_telescopes,
-        num_aux_inputs])
+    telescope_aux_inputs = tf.reshape(telescope_aux_inputs,
+            [-1, num_telescopes, num_aux_inputs])
 
     # Transpose telescope_data from [batch_size,num_tel,length,width,channels]
     # to [num_tel,batch_size,length,width,channels].

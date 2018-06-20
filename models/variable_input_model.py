@@ -1,11 +1,7 @@
-import tensorflow as tf
+import importlib
+import sys
 
-from ctalearn.models.basic import basic_conv_block, basic_head_fc, basic_head_conv
-from ctalearn.models.alexnet import (alexnet_block,
-        alexnet_head_feature_vector, alexnet_head_feature_map)
-from ctalearn.models.mobilenet import mobilenet_block, mobilenet_head
-from ctalearn.models.resnet import (resnet_block, resnet_head)
-from ctalearn.models.densenet import densenet_block
+import tensorflow as tf
 
 # Drop out all outputs if the telescope was not triggered
 def apply_trigger_dropout(inputs,triggers):
@@ -73,7 +69,7 @@ def combine_telescopes_as_feature_maps(telescope_outputs, telescope_aux_inputs,
 
     return array_features
 
-def variable_input_model(features, labels, params, is_training):
+def variable_input_model(features, params, training):
    
     # Reshape inputs into proper dimensions
     num_telescope_types = len(params['processed_telescope_types']) 
@@ -97,10 +93,6 @@ def variable_input_model(features, labels, params, is_training):
     telescope_aux_inputs = tf.reshape(telescope_aux_inputs,
             [-1, num_telescopes, num_aux_inputs], name="telescope_aux_inputs")
     
-    # Reshape labels to vector as expected by tf.one_hot
-    gamma_hadron_labels = labels['gamma_hadron_label']
-    gamma_hadron_labels = tf.reshape(gamma_hadron_labels, [-1])
-
     # Split data by telescope by switching the batch and telescope dimensions
     # leaving width, length, and channel depth unchanged
     telescope_data = tf.transpose(telescope_data, perm=[1, 0, 2, 3, 4])
@@ -116,41 +108,18 @@ def variable_input_model(features, labels, params, is_training):
     # The array-level processing is then performed by the network head. The
     # logits are returned and fed into a classifier.
 
-    # Choose the CNN block
-    if params['cnn_block'] == 'alexnet':
-        cnn_block = alexnet_block
-    elif params['cnn_block'] == 'mobilenet':
-        cnn_block = mobilenet_block
-    elif params['cnn_block'] == 'resnet':
-        cnn_block = resnet_block
-    elif params['cnn_block'] == 'densenet':
-        cnn_block = densenet_block
-    elif params['cnn_block'] == 'basic':
-        cnn_block = basic_conv_block
-    else:
-        raise ValueError("Invalid CNN block specified: {}.".format(params['cnn_block']))
-
-    # Choose the network head and telescope combination method
-    if params['network_head'] == 'alexnet_fc':
-        network_head = alexnet_head_feature_vector
+    # Load CNN block and network head models
+    sys.path.append(params['modeldirectory'])
+    cnn_block_module = importlib.import_module(params['cnnblockmodule'])
+    cnn_block = getattr(cnn_block_module, params['cnnblockfunction'])
+    network_head_module = importlib.import_module(params['networkheadmodule'])
+    network_head = getattr(network_head_module, params['networkheadfunction'])
+    if params['telescopecombination'] == "vector":
         combine_telescopes = combine_telescopes_as_vectors
-    elif params['network_head'] == 'alexnet_conv':
-        network_head = alexnet_head_feature_map
-        combine_telescopes = combine_telescopes_as_feature_maps
-    elif params['network_head'] == 'mobilenet':
-        network_head = mobilenet_head
-        combine_telescopes = combine_telescopes_as_feature_maps
-    elif params['network_head'] == 'resnet':
-        network_head = resnet_head
-        combine_telescopes = combine_telescopes_as_feature_maps
-    elif params['network_head'] == 'basic_fc':
-        network_head = basic_head_fc
-        combine_telescopes = combine_telescopes_as_vectors
-    elif params['network_head'] == 'basic_conv':
-        network_head = basic_head_conv
+    elif params['telescopecombination'] == "feature_maps":
         combine_telescopes = combine_telescopes_as_feature_maps
     else:
-        raise ValueError("Invalid network head specified: {}.".format(params['network_head']))
+        raise ValueError("Invalid telescope combination: {}.".format(params['telescopecombination']))
     
     # Process the input for each telescope
     telescope_outputs = []
@@ -164,11 +133,11 @@ def variable_input_model(features, labels, params, is_training):
             telescope_features = cnn_block(
                 tf.gather(telescope_data, telescope_index), 
                 params=params,
-                is_training=is_training,
+                training=training,
                 reuse=reuse)
 
-        if params['pretrained_weights']:
-            tf.contrib.framework.init_from_checkpoint(params['pretrained_weights'],{'CNN_block/':'CNN_block/'})
+        if params['pretrainedweights']:
+            tf.contrib.framework.init_from_checkpoint(params['pretrainedweights'],{'CNN_block/':'CNN_block/'})
 
         telescope_features = apply_trigger_dropout(telescope_features,
                 tf.gather(telescope_triggers, telescope_index, axis=1))
@@ -179,11 +148,11 @@ def variable_input_model(features, labels, params, is_training):
             telescope_outputs, 
             telescope_aux_inputs, 
             telescope_triggers,
-            is_training)
+            training)
    
     with tf.variable_scope("NetworkHead"):
         # Process the combined array features
         logits = network_head(array_features, params=params,
-                is_training=is_training)
+                training=training)
 
     return logits

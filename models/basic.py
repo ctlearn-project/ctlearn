@@ -53,7 +53,7 @@ def basic_conv_block(inputs, training, params=None, reuse=None):
 
     return x
 
-def basic_head_fc(inputs, params=None, is_training=True):
+def basic_head_fc(inputs, params=None, training=True):
 
     # Get hyperparameters
     if params is None: params = {}
@@ -63,13 +63,13 @@ def basic_head_fc(inputs, params=None, is_training=True):
 
     for i, num_units in enumerate(BASIC_FC_HEAD_LAYERS):
         x = tf.layers.dense(x, units=num_units, activation=tf.nn.relu, name="fc_{}".format(i+1))
-        x = tf.layers.batch_normalization(x, training=is_training)
+        x = tf.layers.batch_normalization(x, training=training)
 
     logits = tf.layers.dense(x, units=num_classes, name="logits")
 
     return logits
 
-def basic_head_conv(inputs, params=None, is_training=True):
+def basic_head_conv(inputs, params=None, training=True):
 
     # Get hyperparameters
     if params is None: params = {}
@@ -79,7 +79,7 @@ def basic_head_conv(inputs, params=None, is_training=True):
 
     for i, (filters, kernel_size) in enumerate(BASIC_CONV_HEAD_LAYERS):
         x = tf.layers.conv2d(x,filters=filters,kernel_size=kernel_size,activation=tf.nn.relu,padding="same",name="conv_{}".format(i+1))
-        x = tf.layers.batch_normalization(x, training=is_training)
+        x = tf.layers.batch_normalization(x, training=training)
 
     pool = tf.layers.average_pooling2d(x, pool_size=x.get_shape().as_list()[1], strides=1, name="global_avg_pool")
     flatten = tf.layers.flatten(pool)
