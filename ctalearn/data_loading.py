@@ -252,6 +252,7 @@ class HDF5DataLoader(DataLoader):
     def get_metadata(self):
 
         metadata = {
+                'num_classes': len(list(self.particle_ids)),
                 'particle_ids': self.particle_ids,
                 'telescopes': self.telescopes,
                 'num_events_by_particle_id': self.num_events_by_particle_id,
