@@ -1,11 +1,12 @@
 import numpy as np
 import cv2
 
-from ctalearn.image import IMAGE_SHAPES
+from ctalearn.image_mapping import image_mapper
 
 class DataProcessor():
 
-    def __init__(self, 
+    def __init__(self,
+            image_mapper=image_mapper(None),
             crop=True,
             bounding_box_sizes={'MSTS': 48},
             image_cleaning="twolevel",
@@ -14,6 +15,8 @@ class DataProcessor():
             normalization="log",
             sort_images_by=None):
         
+        self._image_mapper = image_mapper
+
         self.crop = crop
         self.bounding_box_sizes = bounding_box_sizes
         self.image_cleaning = image_cleaning
@@ -127,7 +130,7 @@ class DataProcessor():
         auxiliary_info = []
         if self.crop:
             image, *shower_position = self._crop_image(image, tel_type)
-            normalized_shower_position = [float(i)/IMAGE_SHAPES[tel_type][0] for i in shower_position] 
+            normalized_shower_position = [float(i)/self._image_mapper.IMAGE_SHAPES[tel_type][0] for i in shower_position] 
             auxiliary_info.append(normalized_shower_position)
         if self.normalization:
             image = self._normalize_image(image, tel_type)
@@ -160,10 +163,10 @@ class DataProcessor():
                 aux_inputs = data[tel_type][2]
                 if self.crop and tel_type in self.bounding_box_size:
                     image_shape = [self.bounding_box_size[tel_type], 
-                        self.bounding_box_size[tel_type], 
-                        IMAGE_SHAPES[tel_type][2]]
+                        self._bounding_box_size[tel_type], 
+                        self._image_mapper.IMAGE_SHAPES[tel_type][2]]
                 else:
-                    image_shape = IMAGE_SHAPES[tel_type]
+                    image_shape = self._image_mapper.IMAGE_SHAPES[tel_type]
                 for i in range(len(images):
                     trigger = triggers[i]
                     if trigger == 0:
