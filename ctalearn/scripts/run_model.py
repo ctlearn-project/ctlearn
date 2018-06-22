@@ -1,5 +1,6 @@
 import argparse
-import configparser
+from configobj import ConfigObj
+from configobj.validate import Validator
 import importlib
 import logging
 import os
@@ -9,7 +10,9 @@ import time
 import tensorflow as tf
 from tensorflow.python import debug as tf_debug
 
-import ctalearn.data
+from ctalearn.image_mapping import image_mapper
+from ctalearn.data_loading import DataLoader
+from ctalearn.data_processing import DataProcessor
 
 # Disable Tensorflow info and warning messages (not error messages)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -17,7 +20,7 @@ tf.logging.set_verbosity(tf.logging.WARN)
 
 def setup_logging(config, log_dir, debug, log_to_file):
 
-    # Log configuration
+    # Log configuration to a text file in the log dir
     time_str = time.strftime('%Y%m%d_%H%M%S')
     config_filename = os.path.join(log_dir, time_str + '_config.ini')
     with open(config_filename, 'w') as config_file:
@@ -39,10 +42,10 @@ def setup_logging(config, log_dir, debug, log_to_file):
     
     return logger
 
-def train(config, debug=False, log_to_file=False, predict=False):
-    
+def run_model(config, mode="train", debug=False, log_to_file=False):
+
     # Load options relating to logging and checkpointing
-    model_dir = config['Logging']['ModelDirectory']
+    model_dir = config['Logging']['model_directory']
     # Create model directory if it doesn't exist already
     if not os.path.exists(model_dir): os.makedirs(model_dir)
 
@@ -50,171 +53,104 @@ def train(config, debug=False, log_to_file=False, predict=False):
     logger = setup_logging(config, model_dir, debug, log_to_file)
     
     # Load options to specify the model
-    sys.path.append(config['Model']['ModelDirectory'])
-    model_module = importlib.import_module(config['Model']['ModelModule'])
-    model = getattr(model_module, config['Model']['ModelFunction'])
-    model_type = config['Model']['ModelType']
-    if model_type not in ['singletel', 'multipletel']:
-        raise ValueError("model_type must be 'singletel' or 'multipletel', value provided: {}".format(model_type))
-
-    model_hyperparameters = dict(config['Model'])
+    sys.path.append(config['Model']['model_directory'])
+    model_module = importlib.import_module(config['Model']['model_module'])
+    model = getattr(model_module, config['Model']['model_function'])
+    model_type = config['Model']['model_type']
+    
+    model_hyperparameters = config['Model']['Model Parameters']
     
     # Load options related to the data format and location
-    data_format = config['Data Format']['Format'].lower()
+    data_format = config['Data']['format']
     data_files = []
-    with open(config['Data Format']['DataFilesList']) as f:
+    with open(config['Data']['file_list']) as f:
         for line in f:
             line = line.strip()
             if line and line[0] != "#":
                 data_files.append(line)
 
-    # Load options related to data input
-    data_input_settings = {
-            'batch_size': config['Data Input'].getint('BatchSize'),
-            'prefetch': config['Data Input'].getboolean('Prefetch', True),
-            'prefetch_buffer_size': config['Data Input'].getint(
-                'PrefetchBufferSize', 10),
-            'map': False, # default - will be set by data format
-            'num_parallel_calls': config['Data Input'].getint(
-                'NumParallelCalls', 1),
-            'shuffle': config['Data Input'].getboolean('Shuffle', True),
-            'shuffle_buffer_size': config['Data Input'].getint(
-                'ShuffleBufferSize',10000)
-            }
-    
+    # Load options related to image mapping
+    image_mapping_settings = config['Image Mapping']
+
+    # Load options related to data loading
+    if mode == "train":
+        data_loader_mode = "train"
+    elif mode == "predict":
+        data_loader_mode = "test"
+
+    data_loading_settings = config['Data']['Loading']
+    data_loading_settings['mode'] = data_loader_mode
+    data_loading_settings['example_type'] = model_type
+
     # Load options related to data processing
-    data_processing_settings = {
-            'validation_split': config['Data Processing'].getfloat(
-                'ValidationSplit',0.1),
-            'min_num_tels': config['Data Processing'].getint('MinNumTels', 1),
-            'cut_condition': config['Data Processing']['CutCondition'],
-            'sort_telescopes_by_trigger': config['Data Processing'].getboolean(
-                'SortTelescopesByTrigger', False),
-            'use_telescope_positions': config['Data Processing'].getboolean(
-                'UseTelescopePositions', True),
-            'crop_images': config['Data Processing'].getboolean('CropImages',
-                False),
-            'log_normalize_charge': config['Data Processing'].getboolean(
-                'LogNormalizeCharge', False),
-            'image_cleaning_method': config['Data Processing'].get(
-                'ImageCleaningMethod', 'None').lower(),
-            'return_cleaned_images': config['Data Processing'].getboolean(
-                'ReturnCleanedImages', False),
-            'picture_threshold': config['Data Processing'].getfloat(
-                'PictureThreshold', 5.5),
-            'boundary_threshold': config['Data Processing'].getfloat(
-                'BoundaryThreshold', 1.0),
-            'bounding_box_size': config['Data Processing'].getint(
-                'BoundingBoxSize', 48),
-            'num_shower_coordinates': 2, # position on camera needs 2 coords
-            'model_type': model_type, # for applying cuts
-            'chosen_telescope_types': ['MSTS'] # hardcode using SCT images only
-            }
+    apply_processing = config['Data']['apply_processing']
+    data_processing_settings = config['Data']['Processing']
+    data_processing_settings['num_shower_coordinates'] = 2, # position on camera needs 2 coords
+
+    # Load options related to data input
+    data_input_settings = config['Data']['Input']
+    if data_format == 'HDF5':
+        data_input_settings['map'] = True
 
     # Load options related to training hyperparameters
-    training_hyperparameters = {
-            'optimizer': config['Training Hyperparameters']['Optimizer'].lower(),
-            'base_learning_rate': config['Training Hyperparameters'].getfloat(
-                'BaseLearningRate'),
-            'scale_learning_rate': config['Training Hyperparameters'].getboolean('ScaleLearningRate', False),
-            'apply_class_weights': config['Training Hyperparameters'].getboolean('ApplyClassWeights', False),
-            'variables_to_train': config['Training Hyperparameters'].getboolean(
-                'VariablesToTrain', False),
-            'adam_epsilon': config['Training Hyperparameters'].getfloat(
-                'AdamEpsilon', 1e-8),
-            'model_type': model_type
-            }
-
-    # Load options related to training settings
-    num_epochs = config['Training Settings'].getint('NumEpochs', 0)
-    if num_epochs < 0:
-        raise ValueError("NumEpochs must be positive or 0: invalid value {}".format(num_epochs))
-    train_forever = False if num_epochs else True
-    num_training_steps_per_validation = config['Training Settings'].getint(
-        'NumTrainingStepsPerValidation', 1000)
+    training_hyperparameters = config['Training']['Hyperparameters']
+    training_hyperparameters['model_type'] = model_type
+    training_hyperparameters['variables_to_train'] = config['Model']['variables_to_train'] 
+    
+    # Load other options related to training 
+    num_epochs = config['Training']['num_epochs']
+    train_forever = False if num_epochs == 0 else True
+    num_training_steps_per_validation = config['Training']['num_training_steps_per_validation']
 
     # Load options related to prediction if needed
-    if predict:
-        true_labels_given = config['Predict'].getboolean('TrueLabelsGiven')
-        export_prediction_file = config['Predict'].getboolean('ExportAsFile',
-                False)
+    if mode == 'predict':
+        true_labels_given = config['Prediction']['true_labels_given']
+        export_prediction_file = config['Prediction']['export_as_file']
         if export_prediction_file:
-            prediction_path = config['Predict']['PredictionFilePath']
+            prediction_path = config['Prediction']['prediction_file_path']
         # Don't allow parallelism in predict mode. This can lead to errors
         # when reading from too many open files at once.
         data_input_settings['num_parallel_calls'] = 1
     
     # Load options related to debugging
-    run_tfdbg = config['Debug'].getboolean('RunTFDBG', False)
+    run_tfdbg = config['Debug']['run_TFDBG']
+
+    # Instantiate data processor
+    if apply_processing:
+        data_processor = DataProcessor(
+                image_mapper=image_mapper(**image_mapping_settings),
+                **data_processing_settings)
+    else:
+        data_processor = None
 
     # Define data loading functions
-    if data_format == 'hdf5':
+    if data_format == 'HDF5':
 
-        # Load metadata from HDF5 files
-        metadata = ctalearn.data.load_metadata_HDF5(data_files)
-
-        # Calculate the post-processing image and telescope parameters that
-        # depend on both the data processing and metadata, adding them to both
-        # dictionaries
-        ctalearn.data.add_processed_parameters(data_processing_settings,
-                metadata)
- 
-        if model_type == 'singletel':
-            def load_data(filename, index):
-                return ctalearn.data.load_data_single_tel_HDF5(
-                        filename,
-                        index,
-                        metadata,
-                        data_processing_settings)
-
-            # Output datatypes of load_data (required by tf.py_func)
-            data_types = [tf.float32, tf.int64]
-            output_names = ['telescope_data', 'gamma_hadron_label']
-            outputs_are_label = [False, True]
-
-        else:
-            # For array-level methods, get a dict of auxiliary data (telescope
-            # positions and any other data)
-            auxiliary_data = ctalearn.data.load_auxiliary_data_HDF5(data_files)
-
-            def load_data(filename,index):
-                return ctalearn.data.load_data_eventwise_HDF5(
-                        filename,
-                        index,
-                        auxiliary_data,
-                        metadata,
-                        data_processing_settings)
-
-            # Output datatypes of load_data (required by tf.py_func)
-            data_types = [tf.float32, tf.int8, tf.float32, tf.int64]
-            output_names = ['telescope_data', 'telescope_triggers',
-                    'telescope_aux_inputs', 'gamma_hadron_label']
-            outputs_are_label = [False, False, False, True]
+        data_loader = HDF5DataLoader(
+                data_files,
+                mode=data_loader_mode,
+                data_processor=data_processor,
+                **data_loading_settings)
 
         # Define format for Tensorflow dataset
         # Build dataset from generator returning (HDF5_filename, index) pairs
         # and a load_data function which maps (HDF5_filename, index) pairs
         # to full training examples (images and labels)
-        generator_output_types = (tf.string, tf.int64)
-        map_func = lambda filename, index: tuple(tf.py_func(load_data,
-            [filename, index], data_types))
-
-        data_input_settings['generator_output_types'] = generator_output_types
+        data_input_settings['generator_output_types'] = data_loader.generator_output_types
         data_input_settings['map'] = True
-        data_input_settings['map_func'] = map_func
-        data_input_settings['output_names'] = output_names
+        data_input_settings['map_func'] = lambda *x: tuple(tf.py_func(data_loader.get_example,
+            x, data_loader.data_types))
+        data_input_settings['output_names'] = data_loader.output_names
         data_input_settings['outputs_are_label'] = outputs_are_label
-        
+    
         # Get data generators returning (filename,index) pairs from data files 
         # by applying cuts and splitting into training and validation
-        if not predict:
-            training_generator, validation_generator = (
-                    ctalearn.data.get_data_generators_HDF5(data_files,
-                        metadata, data_processing_settings))
-        else:
-            test_generator = ctalearn.data.get_data_generators_HDF5(
-                    data_files, metadata, data_processing_settings,
-                    mode='test')
+        if mode == 'train':
+            training_generator, validation_generator, class_weights = data_loader.get_example_generators()
+        elif mode == 'predict':
+            test_generator, class_weights = data_loader.get_example_generators()
+
+        training_hyperparameters['class_weights'] = class_weights
 
     else:
         raise ValueError("Invalid data format: {}".format(data_format))
@@ -256,6 +192,8 @@ def train(config, debug=False, log_to_file=False, predict=False):
         return features, labels
 
     # Merge dictionaries for passing to the model function
+    metadata = data_loader.get_metadata()
+
     params = {
             'model': {**model_hyperparameters, **metadata},
             'training': {**training_hyperparameters, **metadata}
@@ -319,7 +257,7 @@ def train(config, debug=False, log_to_file=False, predict=False):
         # telescopes don't have smaller gradients
         # Only apply learning rate scaling for array-level models
         if (training_params['scale_learning_rate'] and
-                model_type == 'multipletel'):
+                model_type == 'array'):
             trigger_rate = tf.reduce_mean(tf.cast(
                 features['telescope_triggers'], tf.float32),
                 name="trigger_rate")
@@ -334,20 +272,16 @@ def train(config, debug=False, log_to_file=False, predict=False):
 
         # Dict of optimizer_name: (optimizer_fn, optimizer_args)
         optimizers = {
-                'adadelta': (tf.train.AdadeltaOptimizer,
+                'Adadelta': (tf.train.AdadeltaOptimizer,
                     dict(learning_rate=learning_rate)),
-                'adam': (tf.train.AdamOptimizer,
+                'Adam': (tf.train.AdamOptimizer,
                     dict(learning_rate=learning_rate,
                         epsilon=training_params['adam_epsilon'])),
-                'rmsprop': (tf.train.RMSPropOptimizer,
+                'RMSProp': (tf.train.RMSPropOptimizer,
                     dict(learning_rate=learning_rate)),
-                'sgd': (tf.train.GradientDescentOptimizer,
+                'SGD': (tf.train.GradientDescentOptimizer,
                     dict(learning_rate=learning_rate))
                 }
-
-        if training_params['optimizer'] not in optimizers:
-            raise ValueError("Optimizer {} not supported".format(
-                training_params['optimizer']))
 
         optimizer_fn, optimizer_args = optimizers[training_params['optimizer']]
         optimizer = optimizer_fn(**optimizer_args)
@@ -387,7 +321,7 @@ def train(config, debug=False, log_to_file=False, predict=False):
     # Log information on number of training and validation events, or test
     # events, depending on the mode
     logger.info("Batch size: {}".format(data_input_settings['batch_size']))
-    if not predict:
+    if mode == 'train':
         num_training_events = len(list(training_generator()))
         num_validation_events = len(list(validation_generator()))
         logger.info("Training and evaluating...")
@@ -399,7 +333,7 @@ def train(config, debug=False, log_to_file=False, predict=False):
             num_training_events/data_input_settings['batch_size'])))
         logger.info("Number of training steps per validation: {}".format(
             num_training_steps_per_validation))
-    else:
+    elif mode == 'predict':
         num_test_events = len(list(test_generator()))
         logger.info("Predicting...")
         logger.info("Total number of test events: {}".format(num_test_events))
@@ -416,7 +350,7 @@ def train(config, debug=False, log_to_file=False, predict=False):
             hooks = []
         hooks.append(tf_debug.LocalCLIDebugHook())
 
-    if not predict:
+    if mode == 'train':
         # Train and evaluate the model
         num_epochs_remaining = num_epochs
         while train_forever or num_epochs_remaining:
@@ -428,7 +362,7 @@ def train(config, debug=False, log_to_file=False, predict=False):
                         data_input_settings), hooks=hooks, name='validation')
             if not train_forever:
                 num_epochs_remaining -= 1
-    else:
+    elif mode == 'predict':
         # Generate predictions
         predictions = estimator.predict(
                 lambda: input_fn(test_generator, data_input_settings),
@@ -476,10 +410,17 @@ def train(config, debug=False, log_to_file=False, predict=False):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
-            description=("Train a ctalearn model."))
+            description=("Train/Predict with a ctalearn model."))
+    parser.add_argument(
+            '--mode',
+            help="Mode to run in (train/predict)")
     parser.add_argument(
             'config_file',
-            help="path to configparser configuration file with training options")
+            help="path to configobj configuration file with training options")
+    parser.add_argument(
+            '--config_spec_file',
+            default='../config/configspec.ini',
+            help="path to configobj configspec file to validate configuration options")
     parser.add_argument(
             '--debug',
             action='store_true',
@@ -488,15 +429,30 @@ if __name__ == "__main__":
             '--log_to_file',
             action='store_true',
             help="log to a file in model directory instead of terminal")
-    parser.add_argument(
-            '--predict',
-            action='store_true',
-            help="run in predict mode")
 
     args = parser.parse_args()
    
     # Load configuration file
-    config = configparser.ConfigParser(allow_no_value=True)
-    config.read(os.path.abspath(args.config_file))
-    
-    train(config, args.debug, args.log_to_file, args.predict)
+    validator = Validator()
+    configspec = ConfigObj(args.config_spec_file, encoding='UTF8', list_values=False, _inspec=True)
+    config = ConfigObj(args.config_file, configspec=configspec)
+   
+    # Validate config and print errors if any occurred
+    # Error printing code based from example at
+    # https://configobj.readthedocs.io/en/latest/configobj.html#validation
+    result = config.validate(validator, preserve_errors=True)
+    if result is True:
+        run_model(config, mode=args.mode, debug=args.debug, log_to_file=args.log_to_file)
+    else:
+        for entry in flatten_errors(config, result):
+            # each entry is a tuple
+            section_list, key, error = entry
+            if key is not None:
+                section_list.append(key)
+            else:
+                section_list.append('[missing section]')
+            section_string = ', '.join(section_list)
+            if error == False:
+                error = 'Missing value or section.'
+            print(section_string, ' = ', error)
+
