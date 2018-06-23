@@ -15,26 +15,53 @@ logger = logging.getLogger(__name__)
 lock = threading.Lock()
 
 class image_mapper():
-    def __init__(self, image_mapping_settings):
+    def __init__(self, image_mapping_settings=None):
         """   
         :param image_mapping_settings: (Hex converter algorithm, output image shape IMAGE_SHAPES, ...)
         """
+        if image_mapping_settings is None: 
+            image_mapping_settings = {}
+            
+        if 'IMAGE_SHAPES' not in image_mapping_settings:
+            self.IMAGE_SHAPES = {
+                'MSTS': (120, 120, 1),
+                'VTS': (54, 54, 1),
+                'MSTF': (120, 120, 1),
+                'MSTN': (120, 120, 1),
+                'LST': (120, 120, 1),
+                'SST1': (100, 100, 1),
+                'SSTC': (48, 48, 1),
+                'SSTA': (56, 56, 1)
+                #'VTS': (499, 1)
+            }
+        else:
+            self.IMAGE_SHAPES = image_mapping_settings['IMAGE_SHAPES']
 
-        self.IMAGE_SHAPES = {
-            'MSTS': (120, 120, 1),
-            'VTS': (54, 54, 1),
-            'MSTF': (120, 120, 1),
-            'MSTN': (120, 120, 1),
-            'LST': (120, 120, 1),
-            'SST1': (100, 100, 1)
-            #'VTS': (499, 1)
-        }
+        if 'PIXEL_LENGTH_DICT' not in image_mapping_settings:
+            self.PIXEL_LENGTH_DICT = {'LST': 0.05,
+                                  'MSTF': 0.05, 'MSTN': 0.05, 'MSTS': 0.00669,
+                                  'SST1': 0.0236, 'SSTC':0.0064, 'SSTA':0.0071638,
+                                  'VTS': 1.0 / np.sqrt(2)}
+        else:
+            self.PIXEL_LENGTH_DICT = image_mapping_settings['PIXEL_LENGTH_DICT']
 
-        self.pixel_length_dict = {'LST': 0.05, 'MSTF': 0.05, 'MSTN': 0.05, 'SST1': 0.0236}
-        self.output_dim_dict = {'MSTF': 120, 'MSTN': 120, 'SST1': 100, 'LST': 120}
-
-        self.pixel_num_dict = {}
-        self.pos_dict = {}
+        if 'PIXEL_NUM_DICT' not in image_mapping_settings:
+        #self.PIXEL_NUM_DICT = {}
+        #########################
+        # Have to check!!!
+        # Have to check!!!
+        # Have to check!!!
+            self.PIXEL_NUM_DICT = {'MSTF': 1764, 'MSTN': 1854, 'SST1': 1296,
+                                   'LST': 1854, 'MSTS': 11328, 'SSTC': 2048, 'SSTA': 2368,
+                                   'VTS': 499}
+        #########################
+        else:
+            self.PIXEL_NUM_DICT = image_mapping_settings['PIXEL_NUM_DICT']
+            
+        if 'POS_DICT' not in image_mapping_settings:
+            self.POS_DICT = {}
+        else:
+            self.POS_DICT = image_mapping_settings['POS_DICT']
 
         self.MAPPING_TABLES = {
             'MSTS': self.generate_table_MSTS(),
@@ -42,7 +69,9 @@ class image_mapper():
             'MSTF': self.generate_table_MSTF(),
             'MSTN': self.generate_table_MSTN(),
             'LST': self.generate_table_LST(),
-            'SST1': self.generate_table_SST1()
+            'SST1': self.generate_table_SST1(),
+            'SSTC': self.generate_table_SSTC(),
+            'SSTA': self.generate_table_SSTA()
         }
 
 
@@ -66,14 +95,8 @@ class image_mapper():
             # dimension to given shape (length,width,1)
             telescope_image = np.expand_dims(pixels[self.MAPPING_TABLES[telescope_type]], 2)
 
-        elif telescope_type == "VTS":
-            telescope_image = np.zeros(self.IMAGE_SHAPES['VTS'], dtype=int)
-            #for i in range(self.IMAGE_SHAPES[telescope_type][0]):
-            #    for j in range(self.IMAGE_SHAPES[telescope_type][1]):
-            #        telescope_image[i, j, 0] = pixels[self.MAPPING_TABLES[telescope_type][i, j]]
-            telescope_image = (pixels.T @ self.MAPPING_TABLES[telescope_type]).reshape(self.IMAGE_SHAPES['VTS'][0],
-                                                                                       self.IMAGE_SHAPES['VTS'][1], 1)
-        elif telescope_type in ['LST', 'MSTF', 'MSTN', 'SST1']:
+
+        elif telescope_type in ['LST', 'MSTF', 'MSTN', 'SST1', 'SSTC', 'SSTA', 'VTS']:
             #print("pixels dimension {}".format(pixels.shape))
             #print("MAPPING_TABLES dimension {}".format(self.MAPPING_TABLES[telescope_type].shape))
             telescope_image = (pixels.T @ self.MAPPING_TABLES[telescope_type]).reshape(self.IMAGE_SHAPES[telescope_type][0],
@@ -245,7 +268,164 @@ class image_mapper():
         return table
 
 
-    def get_mat_from_pos(self, pos, numpix, dim2d=120, pixel_length=0.05, pixel_weight=1. / 4):
+    def generate_table_SSTC(self):
+        """
+        Function returning SSTC mapping table (used to index into the trace when converting from trace to image).
+        """
+        this_tel = "SSTC"
+        MODULES_PER_ROW_DICT = { 0: 32,
+                                 1: 32,
+                                 2: 32,
+                                 3: 32,
+                                 4: 32,
+                                 5: 32,
+                                 6: 32,
+                                 7: 32,
+                                 8: 48,
+                                 9: 48,
+                                 10: 48,
+                                 11: 48,
+                                 12: 48,
+                                 13: 48,
+                                 14: 48,
+                                 15: 48,
+                                 16: 48,
+                                 17: 48,
+                                 18: 48,
+                                 19: 48,
+                                 20: 48,
+                                 21: 48,
+                                 22: 48,
+                                 23: 48,
+                                 24: 48,
+                                 25: 48,
+                                 26: 48,
+                                 27: 48,
+                                 28: 48,
+                                 29: 48,
+                                 30: 48,
+                                 31: 48,
+                                 32: 48,
+                                 33: 48,
+                                 34: 48,
+                                 35: 48,
+                                 36: 48,
+                                 37: 48,
+                                 38: 48,
+                                 39: 48,
+                                 40: 32,
+                                 41: 32,
+                                 42: 32,
+                                 43: 32,
+                                 44: 32,
+                                 45: 32,
+                                 46: 32,
+                                 47: 32 }
+
+        # This is set to int because no oversampling is done
+        mapping_matrix3d = np.zeros((self.PIXEL_NUM_DICT[this_tel] + 1,
+                                     self.IMAGE_SHAPES[this_tel][0],
+                                     self.IMAGE_SHAPES[this_tel][1]), dtype=int)
+
+        i = 0  # Pixel count
+        for row_, n_per_row_ in MODULES_PER_ROW_DICT.items():
+            row_start_ = (self.IMAGE_SHAPES[this_tel][1] - n_per_row_) / 2
+            for j in range(n_per_row_):
+                x, y = (row_, j + row_start_)
+                # print(x,y)
+                mapping_matrix3d[i + 1, x, y] = 1
+                i = i + 1
+
+        sparse_map_mat = csr_matrix(mapping_matrix3d.reshape(self.PIXEL_NUM_DICT[this_tel] + 1,
+                                                             self.IMAGE_SHAPES[this_tel][0]*
+                                                             self.IMAGE_SHAPES[this_tel][1]))
+
+        return sparse_map_mat
+
+
+    def generate_table_SSTA(self):
+        """
+        Function returning SSTC mapping table (used to index into the trace when converting from trace to image).
+        """
+        this_tel = "SSTA"
+        MODULES_PER_ROW_DICT = { 0: 24,
+                                 1: 24,
+                                 2: 24,
+                                 3: 24,
+                                 4: 24,
+                                 5: 24,
+                                 6: 24,
+                                 7: 24,
+                                 8: 40,
+                                 9: 40,
+                                 10: 40,
+                                 11: 40,
+                                 12: 40,
+                                 13: 40,
+                                 14: 40,
+                                 15: 40,
+                                 16: 56,
+                                 17: 56,
+                                 18: 56,
+                                 19: 56,
+                                 20: 56,
+                                 21: 56,
+                                 22: 56,
+                                 23: 56,
+                                 24: 56,
+                                 25: 56,
+                                 26: 56,
+                                 27: 56,
+                                 28: 56,
+                                 29: 56,
+                                 30: 56,
+                                 31: 56,
+                                 32: 56,
+                                 33: 56,
+                                 34: 56,
+                                 35: 56,
+                                 36: 56,
+                                 37: 56,
+                                 38: 56,
+                                 39: 56,
+                                 40: 40,
+                                 41: 40,
+                                 42: 40,
+                                 43: 40,
+                                 44: 40,
+                                 45: 40,
+                                 46: 40,
+                                 47: 40,
+                                 48: 24,
+                                 49: 24,
+                                 50: 24,
+                                 51: 24,
+                                 52: 24,
+                                 53: 24,
+                                 54: 24,
+                                 55: 24}
+        # This is set to int because no oversampling is done
+        mapping_matrix3d = np.zeros((self.PIXEL_NUM_DICT[this_tel] + 1,
+                                     self.IMAGE_SHAPES[this_tel][0],
+                                     self.IMAGE_SHAPES[this_tel][1]), dtype=int)
+
+        i = 0  # Pixel count
+        for row_, n_per_row_ in MODULES_PER_ROW_DICT.items():
+            row_start_ = (self.IMAGE_SHAPES[this_tel][1] - n_per_row_) / 2
+            for j in range(n_per_row_):
+                x, y = (row_, j + row_start_)
+                # print(x,y)
+                mapping_matrix3d[i + 1, x, y] = 1
+                i = i + 1
+
+        sparse_map_mat = csr_matrix(mapping_matrix3d.reshape(self.PIXEL_NUM_DICT[this_tel] + 1,
+                                                             self.IMAGE_SHAPES[this_tel][0]*
+                                                             self.IMAGE_SHAPES[this_tel][1]))
+
+        return sparse_map_mat
+
+
+    def get_mat_from_pos(self, pos, numpix, dim1=120, dim2=120, pixel_length=0.05, pixel_weight=1. / 4):
         """
         :param pos: (2,numpix)
         :param numpix: 
@@ -259,7 +439,7 @@ class image_mapper():
         pos_int[0, :] -= np.min(pos_int[0, :])
         pos_int[1, :] -= np.min(pos_int[1, :])
 
-        mapping_matrix3d = np.zeros((numpix + 1, dim2d, dim2d), dtype=float)
+        mapping_matrix3d = np.zeros((numpix + 1, dim1, dim2), dtype=float)
 
         for i in range(numpix):
             x, y = pos_int[:, i]
@@ -270,41 +450,51 @@ class image_mapper():
             # leave 0 for padding, mapping matrix from 1 to 499
             #if i < 10:
             #    print(x_S, x_L + 1, y_S, y_L + 1)
-            mapping_matrix3d[i + 1, x_S:x_L + 1, y_S:y_L + 1] = pixel_weight
+            #mapping_matrix3d[i + 1, x_S:x_L + 1, y_S:y_L + 1] = pixel_weight
+            #########################
+            # Have to check!!!
+            # Have to check!!!
+            # Have to check!!!
+            # Not sure why x and y are flipped, maybe because of numpy storage row/col first rule?
+            mapping_matrix3d[i + 1, y_S:y_L + 1, x_S:x_L + 1] = pixel_weight
 
-        sparse_map_mat = csr_matrix(mapping_matrix3d.reshape(numpix + 1, dim2d * dim2d))
+        sparse_map_mat = csr_matrix(mapping_matrix3d.reshape(numpix + 1, dim1 * dim2))
 
         return sparse_map_mat
 
 
     def generate_table_generic(self, this_tel, pixel_weight=1./4):
+        # only for hex cameras
         # some internal variables:
-        if this_tel not in self.pos_dict:
+        if this_tel not in self.POS_DICT:
             pos = read_pix_pos_files(this_tel)
         else:
-            pos = self.pos_dict[this_tel]
+            pos = self.POS_DICT[this_tel]
 
         if this_tel in ["LST", "MSTN"]:
             pos = self.rot_lst(pos)
 
-        if this_tel not in self.output_dim_dict:
-            dim2d = 120 #guess 120
+        if this_tel not in self.IMAGE_SHAPES:
+            dim1 = 120 #guess 120
+            dim2 = 120
         else:
-            dim2d = self.output_dim_dict[this_tel]
+            dim1 = self.IMAGE_SHAPES[this_tel][0]
+            dim2 = self.IMAGE_SHAPES[this_tel][1]
 
-        if this_tel not in self.pixel_num_dict:
+        if this_tel not in self.PIXEL_NUM_DICT:
             pos_sq_ = pos[0, :] ** 2 + pos[1, :] ** 2
             numpix = pos_sq_[np.where(pos_sq_>0)].shape[0]
         else:
-            numpix = self.pixel_num_dict[this_tel]
+            numpix = self.PIXEL_NUM_DICT[this_tel]
 
-        if this_tel not in self.pixel_length_dict:
+        if this_tel not in self.PIXEL_LENGTH_DICT:
             #better not happen...
             pixel_length_ = 0.05 # guess
         else:
-            pixel_length_ = self.pixel_length_dict[this_tel]
+            pixel_length_ = self.PIXEL_LENGTH_DICT[this_tel]
 
-        return self.get_mat_from_pos(pos, numpix, dim2d = dim2d, pixel_length=pixel_length_, pixel_weight=pixel_weight)
+        return self.get_mat_from_pos(pos, numpix, dim1 = dim1, dim2=dim2,
+                                     pixel_length=pixel_length_, pixel_weight=pixel_weight)
 
 
 
@@ -333,10 +523,10 @@ class image_mapper():
 
     def rot_lst(self, pos):
         # rotating LST/MSTN camera!!!
-        # c, s = np.cos(-np.arctan((pos_dict['LST'][0,0] - pos_dict['LST'][0,1]) /
-        #                            (pos_dict['LST'][1,0] - pos_dict['LST'][1,1]) ) ), \
-        #       np.sin(-np.arctan((pos_dict['LST'][0,0] - pos_dict['LST'][0,1]) /
-        #                            (pos_dict['LST'][1,0] - pos_dict['LST'][1,1]) ) )
+        # c, s = np.cos(-np.arctan((POS_DICT['LST'][0,0] - POS_DICT['LST'][0,1]) /
+        #                            (POS_DICT['LST'][1,0] - POS_DICT['LST'][1,1]) ) ), \
+        #       np.sin(-np.arctan((POS_DICT['LST'][0,0] - POS_DICT['LST'][0,1]) /
+        #                            (POS_DICT['LST'][1,0] - POS_DICT['LST'][1,1]) ) )
         # rot_mat = np.matrix([[c, s], [-s, c]])
         rot_mat = np.matrix([[0.98198181, 0.18897548],
                              [-0.18897548, 0.98198181]], dtype=float)
