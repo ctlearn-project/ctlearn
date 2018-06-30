@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 
-from ctalearn.image_mapping import image_mapper
+from ctalearn.image_mapping import ImageMapper
 
 class DataProcessor():
 
@@ -130,7 +130,7 @@ class DataProcessor():
         auxiliary_info = []
         if self.crop:
             image, *shower_position = self._crop_image(image, tel_type)
-            normalized_shower_position = [float(i)/self._image_mapper.IMAGE_SHAPES[tel_type][0] for i in shower_position] 
+            normalized_shower_position = [float(i)/self._image_mapper.image_shapes[tel_type][0] for i in shower_position] 
             auxiliary_info.append(normalized_shower_position)
         if self.normalization:
             image = self._normalize_image(image, tel_type)
@@ -164,9 +164,9 @@ class DataProcessor():
                 if self.crop and tel_type in self.bounding_box_size:
                     image_shape = [self.bounding_box_size[tel_type], 
                         self._bounding_box_size[tel_type], 
-                        self._image_mapper.IMAGE_SHAPES[tel_type][2]]
+                        self._image_mapper.image_shapes[tel_type][2]]
                 else:
-                    image_shape = self._image_mapper.IMAGE_SHAPES[tel_type]
+                    image_shape = self._image_mapper.image_shapes[tel_type]
                 for i in range(len(images):
                     trigger = triggers[i]
                     if trigger == 0:

@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 import tables
 import numpy as np
 
-from ctalearn.image_mapping import image_mapper
+from ctalearn.image_mapping import ImageMapper
 
 # Maps CORSIKA particle id codes
 # to particle class names
@@ -74,6 +74,7 @@ class HDF5DataLoader(DataLoader):
             cut_condition="",
             validation_split=0.1,
             data_processor=None,
+            image_mapper=ImageMapper(None),
             seed=None
             ):
 
@@ -89,9 +90,10 @@ class HDF5DataLoader(DataLoader):
         self.data_processor = data_processor
         self.seed = seed
 
-        if self.data_processor is None:
-            self._image_mapper = image_mapper(None)
-        else:
+        # Overwrite self._image_mapper with the ImageMapper of the DataProcessor
+        # if one is provided.
+        self._image_mapper = image_mapper
+        if self.data_processor is not None:
             self._image_mapper = self.data_processor._image_mapper
 
         # Compute and save metadata describing dataset
@@ -246,7 +248,7 @@ class HDF5DataLoader(DataLoader):
             # By default, all telescopes with mapping tables will be selected
             self.selected_telescopes = {tel_type:self.telescopes[tel_type] 
                     for tel_type in self.telescopes 
-                    if tel_type in self._image_mapper.MAPPING_TABLES}
+                    if tel_type in self._image_mapper.mapping_tables}
 
     # Method returning a dict of selected metadata parameters
     def get_metadata(self):
@@ -289,7 +291,7 @@ class HDF5DataLoader(DataLoader):
             for tel_type in tel_types:
                 if tel_type not in self.telescopes:
                     raise ValueError("Selected tel type {} not found in dataset.".format(tel_type))
-                elif tel_type not in self._image_mapper.MAPPING_TABLES:
+                elif tel_type not in self._image_mapper.mapping_tables:
                     raise NotImplementedError("Mapping table for selected tel type {} not implemented.".format(tel_type))
                 else:
                     allowed_tel_types.append(tel_type)
@@ -308,7 +310,7 @@ class HDF5DataLoader(DataLoader):
             for tel_id in tel_ids:
                 if tel_id not in all_tel_ids:
                     raise ValueError("Selected tel id {} not found in dataset.".format(tel_id))
-                elif all_tel_ids[tel_id] not in self._image_mapper.MAPPING_TABLES:
+                elif all_tel_ids[tel_id] not in self._image_mapper.mapping_tables:
                     raise NotImplementedError(
                             "Mapping table for tel type {} of selected tel id {} not implemented.".format(
                                 all_tel_ids[tel_id],tel_id))
@@ -324,7 +326,7 @@ class HDF5DataLoader(DataLoader):
     def get_image(self, run_id, event_id, tel_id):
         
         tel_type, _ = self.__tel_id_to_type_index[tel_id]
-        if tel_type not in self._image_mapper.MAPPING_TABLES:
+        if tel_type not in self._image_mapper.mapping_tables:
             raise ValueError("Requested image from tel_type {} without valid mapping table.".format(tel_type))
 
         # get filename, image table name (telescope type), and index
@@ -343,7 +345,7 @@ class HDF5DataLoader(DataLoader):
         
         # Create image by indexing into the trace using the mapping table, then adding a
         # dimension to given shape (length,width,1)
-        image = trace[self._image_mapper.MAPPING_TABLES[tel_type]]
+        image = trace[self._image_mapper.mapping_tables[tel_type]]
         image = np.expand_dims(image, 2)
 
         return image
@@ -383,7 +385,7 @@ class HDF5DataLoader(DataLoader):
             for tel_type in self.selected_telescopes:
                 images = []
                 triggers = []
-                image_shape = IMAGE_SHAPES[tel_type] 
+                image_shape = self._image_mapper.image_shapes[tel_type] 
                 for tel_id in self.selected_telescopes[tel_type]:
                     _, index = self.__tel_id_to_type_index[tel_id]
                     i = record[tel_type + "_indices"][index]
