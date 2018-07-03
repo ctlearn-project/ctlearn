@@ -12,29 +12,48 @@ lock = threading.Lock()
 
 
 class ImageMapper():
-    def __init__(self, image_mapping_settings):
+    def __init__(self,
+            image_shapes=None):
         """   
         :param image_mapping_settings: (Hex converter algorithm, output image shape image_shapes, ...)
         """
+        if image_shapes is not None:
+            self.image_shapes = image_mapping_settings['image_shapes']
+        else:
+            self.image_shapes = {
+                    'MSTS': (120, 120, 1),
+                    'VTS': (54, 54, 1),
+                    'MSTF': (120, 120, 1),
+                    'MSTN': (120, 120, 1),
+                    'LST': (120, 120, 1),
+                    'SST1': (100, 100, 1),
+                    'SSTC': (48, 48, 1),
+                    'SSTA': (56, 56, 1)
+                    }
 
-        self.image_shapes = {
-            'MSTS': (120, 120, 1),
-            'VTS': (54, 54, 1),
-            'MSTF': (120, 120, 1),
-            'MSTN': (120, 120, 1),
-            'LST': (120, 120, 1),
-            'SST1': (100, 100, 1)
-        }
+        self.pixel_lengths = {
+                'LST': 0.05,
+                'MSTF': 0.05,
+                'MSTN': 0.05,
+                'MSTS': 0.00669,
+                'SST1': 0.0236,
+                'SSTC':0.0064,
+                'SSTA':0.0071638,
+                'VTS': 1.0 / np.sqrt(2)
+                }
 
-        self.pixel_lengths = {'LST': 0.05, 'MSTF': 0.05, 'MSTN': 0.05, 'SST1': 0.0236}
-        
-        self.pixel_positions = {self.__read_pix_pos_files(tel_type) 
-                for tel_type in self.pixel_lengths}
+        self.pixel_positions = {tel_type:self.__read_pix_pos_files(tel_type) for tel_type in self.pixel_lengths if tel_type != 'VTS'}
 
-        self.num_pixels = {}
-        for tel_type in self.pixel_lengths:
-            pos_sq_ = pos[0, :] ** 2 + pos[1, :] ** 2
-            self.num_pixels[tel_type] = pos_sq_[np.where(pos_sq_>0)].shape[0]
+        self.num_pixels = {
+                'MSTF': 1764,
+                'MSTN': 1854,
+                'SST1': 1296,
+                'LST': 1854,
+                'MSTS': 11328,
+                'SSTC': 2048,
+                'SSTA': 2368,
+                'VTS': 499
+                }
 
         self.mapping_tables = {
             'MSTS': self.generate_table_MSTS(),
@@ -42,8 +61,10 @@ class ImageMapper():
             'MSTF': self.generate_table_generic('MSTF'),
             'MSTN': self.generate_table_generic('MSTN'),
             'LST': self.generate_table_generic('LST'),
-            'SST1': self.generate_table_generic('SST1')
-        }
+            'SST1': self.generate_table_generic('SST1'),
+            'SSTC': self.generate_table_SSTC(),
+            'SSTA': self.generate_table_SSTA()
+            }
 
     def map_image(self, pixels, telescope_type):
         """
@@ -60,14 +81,11 @@ class ImageMapper():
             raise ValueError('Sorry! Telescope type {} isn\'t supported.'.format(telescope_type))
 
         if telescope_type == "MSTS":
-            # Create image by indexing into the trace using the mapping table, then adding a
-            # dimension to given shape (length,width,1)
             telescope_image = np.expand_dims(pixels[self.mapping_tables[telescope_type]], 2)
-        elif telescope_type == "VTS":
-            telescope_image = (pixels.T @ self.mapping_tables[telescope_type]).reshape(self.image_shapes['VTS'][0],
-                                                                                       self.image_shapes['VTS'][1], 1)
-        elif telescope_type in ['LST', 'MSTF', 'MSTN', 'SST1']:
-            telescope_image = (pixels.T @ self.mapping_tables[telescope_type]).reshape(self.image_shapes[telescope_type][0],
+        elif telescope_type in ['LST', 'MSTF', 'MSTN', 'SST1', 'SSTC', 'SSTA', 'VTS']:
+            #print("pixels dimension {}".format(pixels.shape))
+            #print("MAPPING_TABLES dimension {}".format(self.MAPPING_TABLES[telescope_type].shape))
+            telescope_image = (pixels.T @ self.MAPPING_TABLES[telescope_type]).reshape(self.image_shapes[telescope_type][0],
                                                                                        self.image_shapes[telescope_type][1], 1)
         
         return telescope_image
@@ -84,7 +102,7 @@ class ImageMapper():
         """
         # telescope hardcoded values
         num_pixels = 499
-        pixel_side_len = 1.0 * np.sqrt(2)
+        pixel_side_len = self.pixel_lengths['VTS']
         num_spirals = 13
 
         pixel_weight = 1.0/4 #divide each pixel intensity into 4 sub pixels
@@ -215,6 +233,159 @@ class ImageMapper():
 
         return table
 
+    def generate_table_SSTC(self):
+        """
+        Function returning SSTC mapping table (used to index into the trace when converting from trace to image).
+        """
+
+        MODULES_PER_ROW_DICT = { 0: 32,
+                                 1: 32,
+                                 2: 32,
+                                 3: 32,
+                                 4: 32,
+                                 5: 32,
+                                 6: 32,
+                                 7: 32,
+                                 8: 48,
+                                 9: 48,
+                                 10: 48,
+                                 11: 48,
+                                 12: 48,
+                                 13: 48,
+                                 14: 48,
+                                 15: 48,
+                                 16: 48,
+                                 17: 48,
+                                 18: 48,
+                                 19: 48,
+                                 20: 48,
+                                 21: 48,
+                                 22: 48,
+                                 23: 48,
+                                 24: 48,
+                                 25: 48,
+                                 26: 48,
+                                 27: 48,
+                                 28: 48,
+                                 29: 48,
+                                 30: 48,
+                                 31: 48,
+                                 32: 48,
+                                 33: 48,
+                                 34: 48,
+                                 35: 48,
+                                 36: 48,
+                                 37: 48,
+                                 38: 48,
+                                 39: 48,
+                                 40: 32,
+                                 41: 32,
+                                 42: 32,
+                                 43: 32,
+                                 44: 32,
+                                 45: 32,
+                                 46: 32,
+                                 47: 32 }
+
+        # This is set to int because no oversampling is done
+        mapping_matrix3d = np.zeros((self.num_pixels['SSTC'] + 1,
+                                     self.image_shapes['SSTC'][0],
+                                     self.image_shapes['SSTC'][1]), dtype=int)
+
+        i = 0  # Pixel count
+        for row_, n_per_row_ in MODULES_PER_ROW_DICT.items():
+            row_start_ = int((self.image_shapes['SSTC'][1] - n_per_row_) / 2)
+            for j in range(n_per_row_):
+                x, y = (row_, j + row_start_)
+                mapping_matrix3d[i + 1, x, y] = 1
+                i += 1
+
+        sparse_map_mat = csr_matrix(mapping_matrix3d.reshape(self.num_pixels['SSTC'] + 1,
+                                                             self.image_shapes['SSTC'][0]*
+                                                             self.image_shapes['SSTC'][1]))
+
+        return sparse_map_mat
+
+
+    def generate_table_SSTA(self):
+        """
+        Function returning SSTA mapping table (used to index into the trace when converting from trace to image).
+        """
+        MODULES_PER_ROW_DICT = { 0: 24,
+                                 1: 24,
+                                 2: 24,
+                                 3: 24,
+                                 4: 24,
+                                 5: 24,
+                                 6: 24,
+                                 7: 24,
+                                 8: 40,
+                                 9: 40,
+                                 10: 40,
+                                 11: 40,
+                                 12: 40,
+                                 13: 40,
+                                 14: 40,
+                                 15: 40,
+                                 16: 56,
+                                 17: 56,
+                                 18: 56,
+                                 19: 56,
+                                 20: 56,
+                                 21: 56,
+                                 22: 56,
+                                 23: 56,
+                                 24: 56,
+                                 25: 56,
+                                 26: 56,
+                                 27: 56,
+                                 28: 56,
+                                 29: 56,
+                                 30: 56,
+                                 31: 56,
+                                 32: 56,
+                                 33: 56,
+                                 34: 56,
+                                 35: 56,
+                                 36: 56,
+                                 37: 56,
+                                 38: 56,
+                                 39: 56,
+                                 40: 40,
+                                 41: 40,
+                                 42: 40,
+                                 43: 40,
+                                 44: 40,
+                                 45: 40,
+                                 46: 40,
+                                 47: 40,
+                                 48: 24,
+                                 49: 24,
+                                 50: 24,
+                                 51: 24,
+                                 52: 24,
+                                 53: 24,
+                                 54: 24,
+                                 55: 24}
+        # This is set to int because no oversampling is done
+        mapping_matrix3d = np.zeros((self.num_pixels['SSTA'] + 1,
+                                     self.image_shapes['SSTA'][0],
+                                     self.image_shapes['SSTA'][1]), dtype=int)
+
+        i = 0  # Pixel count
+        for row_, n_per_row_ in MODULES_PER_ROW_DICT.items():
+            row_start_ = int((self.image_shapes['SSTA'][1] - n_per_row_) / 2)
+            for j in range(n_per_row_):
+                x, y = (row_, j + row_start_)
+                mapping_matrix3d[i + 1, x, y] = 1
+                i = i + 1
+
+        sparse_map_mat = csr_matrix(mapping_matrix3d.reshape(self.num_pixels['SSTA'] + 1,
+                                                             self.image_shapes['SSTA'][0]*
+                                                             self.image_shapes['SSTA'][1]))
+
+        return sparse_map_mat
+
     def generate_table_generic(self, tel_type, pixel_weight=1.0/4):
         # Get telescope pixel positions for the given tel type
         pos = self.pixel_positions[tel_type]
@@ -236,7 +407,7 @@ class ImageMapper():
         pos_int[1, :] -= np.min(pos_int[1, :])
 
         mapping_matrix = np.zeros((num_pixels + 1, output_dim, output_dim), dtype=float)
-
+        
         for i in range(num_pixels):
             x, y = pos_int[:, i]
             x_S = int(round(x))
@@ -263,16 +434,16 @@ class ImageMapper():
         raise NotImplementedError
 
     # internal methods to create pixel pos numpy files 
-    def __get_pos_from_h5(tel_table, tel_type="MSTF", write=False, outfile=None):
+    def __get_pos_from_h5(self, tel_table, tel_type="MSTF", write=False, outfile=None):
         selected_tel_rows = np.array([row.nrow for row in tel_table.where('tel_type=={}'.format(tel_type))])[0]
         pixel_pos = tel_table.cols.pixel_pos[selected_tel_rows]
         if write:
             if outfile is None:
-                outfile = "{}_pos.npy".format(tel_type)
+                outfile = "pixel_pos_files/{}_pos.npy".format(tel_type)
             np.save(outfile, pixel_pos)
         return pixel_pos
     
-    def __create_pix_pos_files(data_file):
+    def __create_pix_pos_files(self, data_file):
         import tables # expect this to be run very rarely...
 
         with tables.open_file(data_file, "r") as f:
@@ -280,9 +451,9 @@ class ImageMapper():
             for row in tel_table.iterrows():
                 self.__get_pos_from_h5(tel_table, tel=row[1].decode("utf-8"), write=True)
 
-    def __read_pix_pos_files(tel_type):
+    def __read_pix_pos_files(self, tel_type):
         if tel_type in self.pixel_lengths: 
-            infile = "{}_pos.npy".format(tel)
+            infile = "pixel_pos_files/{}_pos.npy".format(tel_type)
             return np.load(infile)
         else:
             logger.error("Telescope type {} isn't supported.".format(tel_type))
