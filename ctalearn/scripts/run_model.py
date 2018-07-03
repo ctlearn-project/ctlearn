@@ -1,6 +1,6 @@
 import argparse
-from configobj import ConfigObj
-from configobj.validate import Validator
+from configobj import ConfigObj, flatten_errors
+from validate import Validator
 import importlib
 import logging
 import os
@@ -10,8 +10,8 @@ import time
 import tensorflow as tf
 from tensorflow.python import debug as tf_debug
 
-from ctalearn.image_mapping import image_mapper
-from ctalearn.data_loading import DataLoader
+from ctalearn.image_mapping import ImageMapper
+from ctalearn.data_loading import DataLoader, HDF5DataLoader
 from ctalearn.data_processing import DataProcessor
 
 # Disable Tensorflow info and warning messages (not error messages)
@@ -23,13 +23,16 @@ def setup_logging(config, log_dir, debug, log_to_file):
     # Log configuration to a text file in the log dir
     time_str = time.strftime('%Y%m%d_%H%M%S')
     config_filename = os.path.join(log_dir, time_str + '_config.ini')
-    with open(config_filename, 'w') as config_file:
+    with open(config_filename, 'wb') as config_file:
         config.write(config_file)
 
     # Set up logger
     logger = logging.getLogger()
     
-    if debug: logger.setLevel(logging.DEBUG)
+    if debug: 
+        logger.setLevel(logging.DEBUG)
+    else:
+        logger.setLevel(logging.INFO)
     
     logger.handlers = [] # remove existing handlers from any previous runs
     if not log_to_file:
@@ -56,10 +59,11 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     sys.path.append(config['Model']['model_directory'])
     model_module = importlib.import_module(config['Model']['model_module'])
     model = getattr(model_module, config['Model']['model_function'])
-    model_type = config['Model']['model_type']
+    model_type = config['Data']['Data Loading']['example_type']
     
     model_hyperparameters = config['Model']['Model Parameters']
-    
+    model_hyperparameters['model_directory'] = config['Model']['model_directory']
+
     # Load options related to the data format and location
     data_format = config['Data']['format']
     data_files = []
@@ -78,31 +82,28 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     elif mode == "predict":
         data_loader_mode = "test"
 
-    data_loading_settings = config['Data']['Loading']
-    data_loading_settings['mode'] = data_loader_mode
-    data_loading_settings['example_type'] = model_type
+    data_loading_settings = config['Data']['Data Loading']
 
     # Load options related to data processing
     apply_processing = config['Data']['apply_processing']
-    data_processing_settings = config['Data']['Processing']
-    data_processing_settings['num_shower_coordinates'] = 2, # position on camera needs 2 coords
+    data_processing_settings = config['Data']['Data Processing']
+    data_processing_settings['num_shower_coordinates'] = 2 # position on camera needs 2 coords
 
     # Load options related to data input
-    data_input_settings = config['Data']['Input']
+    data_input_settings = config['Data']['Data Input']
     if data_format == 'HDF5':
         data_input_settings['map'] = True
 
     # Load options related to training hyperparameters
     training_hyperparameters = config['Training']['Hyperparameters']
     training_hyperparameters['model_type'] = model_type
-    training_hyperparameters['variables_to_train'] = config['Model']['variables_to_train'] 
-    
+   
     # Load other options related to training 
     num_epochs = config['Training']['num_epochs']
-    train_forever = False if num_epochs == 0 else True
+    train_forever = False if num_epochs != 0 else True
     num_training_steps_per_validation = config['Training']['num_training_steps_per_validation']
 
-    # Load options related to prediction if needed
+    # Load options related to prediction only if needed
     if mode == 'predict':
         true_labels_given = config['Prediction']['true_labels_given']
         export_prediction_file = config['Prediction']['export_as_file']
@@ -115,13 +116,15 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     # Load options related to debugging
     run_tfdbg = config['Debug']['run_TFDBG']
 
-    # Instantiate data processor
+    # Instantiate data processor and image mapper
     if apply_processing:
         data_processor = DataProcessor(
-                image_mapper=image_mapper(**image_mapping_settings),
+                image_mapper=ImageMapper(**image_mapping_settings),
                 **data_processing_settings)
+        image_mapper = None
     else:
         data_processor = None
+        image_mapper = ImageMapper(**image_mapping_settings)
 
     # Define data loading functions
     if data_format == 'HDF5':
@@ -130,19 +133,21 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                 data_files,
                 mode=data_loader_mode,
                 data_processor=data_processor,
+                image_mapper=image_mapper,
                 **data_loading_settings)
 
         # Define format for Tensorflow dataset
         # Build dataset from generator returning (HDF5_filename, index) pairs
         # and a load_data function which maps (HDF5_filename, index) pairs
         # to full training examples (images and labels)
-        data_input_settings['generator_output_types'] = data_loader.generator_output_types
+        data_input_settings['generator_output_types'] = tuple([tf.as_dtype(dtype) for dtype in data_loader.generator_output_dtypes])
         data_input_settings['map'] = True
+        map_fn_output_dtypes = [tf.as_dtype(dtype) for dtype in data_loader.map_fn_output_dtypes]
         data_input_settings['map_func'] = lambda *x: tuple(tf.py_func(data_loader.get_example,
-            x, data_loader.data_types))
+            x, data_loader.map_fn_output_dtypes))
         data_input_settings['output_names'] = data_loader.output_names
-        data_input_settings['outputs_are_label'] = outputs_are_label
-    
+        data_input_settings['output_is_label'] = data_loader.output_is_label
+
         # Get data generators returning (filename,index) pairs from data files 
         # by applying cuts and splitting into training and validation
         if mode == 'train':
@@ -160,7 +165,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         # NOTE: Dataset.from_generator takes a callable (i.e. a generator
         # function / function returning a generator) not a python generator
         # object. To get the generator object from the function (i.e. to
-        # measure its length), the function must be called (i.e. generator())
+        # measure its length), the function must be called (i.e. generator())       
         dataset = tf.data.Dataset.from_generator(generator,
                 settings['generator_output_types'])
         if settings['shuffle']:
@@ -177,17 +182,14 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         # Return a batch of features and labels. For example, for an
         # array-level network the features are images, triggers, and telescope
         # positions, and the labels are the gamma-hadron labels
-        iterator_outputs = iterator.get_next()
-        features = {}
-        labels = {}
-        for output, output_name, is_label in zip(
-                iterator_outputs,
-                settings['output_names'],
-                settings['outputs_are_label']):
+        example = iterator.get_next()
+
+        features, labels = {}, {}        
+        for tensor, name, is_label in zip(example, settings['output_names'], settings['output_is_label']):
             if is_label:
-                labels[output_name] = output
+                labels[name] = tensor
             else:
-                features[output_name] = output
+                features[name] = tensor
 
         return features, labels
 
@@ -224,8 +226,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
         training_params = params['training']
 
-        # Compute class-weighted softmax-cross-entropy
-        
+        # Compute class-weighted softmax-cross-entropy        
         true_classes = tf.cast(labels['gamma_hadron_label'], tf.int32,
                 name="true_classes")
 
@@ -287,10 +288,10 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         optimizer = optimizer_fn(**optimizer_args)
     
         var_list = None
-        if training_params['variables_to_train']:
+        if training_params['variables_to_train'] is not None:
             var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
                     training_params['variables_to_train'])
-       
+        
         # Define train op with update ops dependency for batch norm
         update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(update_ops):
@@ -337,7 +338,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         num_test_events = len(list(test_generator()))
         logger.info("Predicting...")
         logger.info("Total number of test events: {}".format(num_test_events))
-    
+
     estimator = tf.estimator.Estimator(
             model_fn, 
             model_dir=model_dir, 
@@ -413,13 +414,13 @@ if __name__ == "__main__":
             description=("Train/Predict with a ctalearn model."))
     parser.add_argument(
             '--mode',
+            default="train",
             help="Mode to run in (train/predict)")
     parser.add_argument(
             'config_file',
             help="path to configobj configuration file with training options")
     parser.add_argument(
-            '--config_spec_file',
-            default='../config/configspec.ini',
+            'config_spec_file',
             help="path to configobj configspec file to validate configuration options")
     parser.add_argument(
             '--debug',
@@ -432,11 +433,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
    
-    # Load configuration file
+    # Load configuration file and configspec for validation
     validator = Validator()
-    configspec = ConfigObj(args.config_spec_file, encoding='UTF8', list_values=False, _inspec=True)
+    configspec = ConfigObj(args.config_spec_file, encoding='UTF8', list_values=False, _inspec=True, stringify=True)
     config = ConfigObj(args.config_file, configspec=configspec)
-   
+  
     # Validate config and print errors if any occurred
     # Error printing code based from example at
     # https://configobj.readthedocs.io/en/latest/configobj.html#validation
