@@ -46,9 +46,9 @@ class ImageMapper():
 
         self.num_pixels = {
                 'MSTF': 1764,
-                'MSTN': 1854,
+                'MSTN': 1855,
                 'SST1': 1296,
-                'LST': 1854,
+                'LST': 1855,
                 'MSTS': 11328,
                 'SSTC': 2048,
                 'SSTA': 2368,
@@ -81,11 +81,9 @@ class ImageMapper():
             raise ValueError('Sorry! Telescope type {} isn\'t supported.'.format(telescope_type))
 
         if telescope_type == "MSTS":
-            telescope_image = np.expand_dims(pixels[self.mapping_tables[telescope_type]], 2)
+            telescope_image = pixels[self.mapping_tables[telescope_type]]
         elif telescope_type in ['LST', 'MSTF', 'MSTN', 'SST1', 'SSTC', 'SSTA', 'VTS']:
-            #print("pixels dimension {}".format(pixels.shape))
-            #print("MAPPING_TABLES dimension {}".format(self.MAPPING_TABLES[telescope_type].shape))
-            telescope_image = (pixels.T @ self.MAPPING_TABLES[telescope_type]).reshape(self.image_shapes[telescope_type][0],
+            telescope_image = (pixels.T @ self.mapping_tables[telescope_type]).reshape(self.image_shapes[telescope_type][0],
                                                                                        self.image_shapes[telescope_type][1], 1)
         
         return telescope_image
