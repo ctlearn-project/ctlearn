@@ -1,5 +1,6 @@
 import numpy as np
 import cv2
+from operator import itemgetter
 
 from ctalearn.image_mapping import ImageMapper
 
@@ -14,7 +15,8 @@ class DataProcessor():
             return_cleaned_images=False,
             normalization="log",
             sort_images_by=None,
-            num_shower_coordinates=2
+            num_shower_coordinates=2,
+            image_charge_mins=None
             ):
         
         self._image_mapper = image_mapper
@@ -26,7 +28,8 @@ class DataProcessor():
         self.return_cleaned_images = return_cleaned_images
 
         self.normalization = normalization
-    
+        self.image_charge_mins= image_charge_mins
+
         self.sort_images_by = sort_images_by
 
         self.image_shapes = {}
@@ -61,12 +64,12 @@ class DataProcessor():
             image_charge = image[:,:,0]
 
             # Apply picture threshold to charge image to get mask
-            m = (image_charge > self.picture_threshold).astype(np.uint8)
+            m = (image_charge > self.thresholds[tel_type][0]).astype(np.uint8)
             # Dilate the mask once to add all adjacent pixels (i.e. kernel is 3x3)
             kernel = np.ones((3,3), np.uint8) 
             m = cv2.dilate(m, kernel)
             # Apply boundary threshold to keep weaker but adjacent pixels
-            m = (m * image_charge > self.boundary_threshold).astype(np.uint8)
+            m = (m * image_charge > self.thresholds[tel_type][1]).astype(np.uint8)
             m = np.expand_dims(m, 2)
 
             # Multiply by the mask to get the cleaned image
@@ -91,7 +94,7 @@ class DataProcessor():
         # NOTE: rounding (and subtracting one from the max values) ensures that for all
         # float values of x_0, y_0, the values of indices x_min, x_max, y_min, y_max mark 
         # a bounding box of exactly shape (BOUNDING_BOX_SIZE, BOUNDING_BOX_SIZE)
-        bounding_box_size = self.bounding_box_size[tel_type]
+        bounding_box_size = self.bounding_box_sizes[tel_type]
         x_min = int(round(x_0 - bounding_box_size/2))
         x_max = int(round(x_0 + bounding_box_size/2)) - 1
         y_min = int(round(y_0 - bounding_box_size/2))
@@ -130,7 +133,7 @@ class DataProcessor():
     def _normalize_image(self, image, tel_type):
 
         if self.normalization == "log":
-            image[:,:,0] = np.log(image[:,:,0] - self.dataset.image_charge_mins[tel_type] + 1.0)
+            image[:,:,0] = np.log(image[:,:,0] - self.image_charge_mins[tel_type] + 1.0)
         else:
             raise ValueError("Unrecognized normalization method {} selected.".format(self.normalization))
 
@@ -145,7 +148,7 @@ class DataProcessor():
         if self.crop:
             image, *shower_position = self._crop_image(image, tel_type)
             normalized_shower_position = [float(i)/self._image_mapper.image_shapes[tel_type][0] for i in shower_position] 
-            auxiliary_info.append(normalized_shower_position)
+            auxiliary_info.extend(normalized_shower_position)
         if self.normalization:
             image = self._normalize_image(image, tel_type)
 
@@ -182,11 +185,11 @@ class DataProcessor():
                     images[i] = np.zeros(image_shape)
                     if self.crop:
                         # add dummy centroid position to aux info
-                        aux_inputs[i].extend([0, 0])
+                        aux_inputs[i].extend([0.0, 0.0])
                 else:
                     image, auxiliary_info = self._process_image(images[i], tel_type)
                     images[i] = image
-                    aux_inputs.extend(auxiliary_info)
+                    aux_inputs[i].extend(auxiliary_info)
       
             if self.sort_images_by == "trigger":
                 # Sort the images, triggers, and grouped auxiliary inputs by
@@ -198,11 +201,6 @@ class DataProcessor():
                 images, triggers, aux_inputs = map(list,
                         zip(*sorted(zip(images, triggers, aux_inputs), reverse=True, key=lambda x: np.sum(x[0]))))
             
-            # Convert to numpy arrays with correct types
-            images = np.stack(images).astype(np.float32)
-            triggers = np.array(telescope_triggers, dtype=np.int8)
-            aux_inputs = np.array(aux_inputs, dtype=np.float32)
-
             data = [images, triggers, aux_inputs]
 
             return [data, label]
