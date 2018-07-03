@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 import tables
 import numpy as np
 
+from ctalearn.data_processing import DataProcessor
 from ctalearn.image_mapping import ImageMapper
 
 # Maps CORSIKA particle id codes
@@ -122,7 +123,7 @@ class HDF5DataLoader(DataLoader):
             self.generator_output_dtypes = [np.dtype(np.int64), np.dtype(np.int64)] 
            
             data_dtypes = [np.dtype(np.float32), 
-                   np.dtype(np.float32),
+                   np.dtype(np.int8),
                    np.dtype(np.float32)
                    ]
 
@@ -131,6 +132,13 @@ class HDF5DataLoader(DataLoader):
             self.output_names = ['telescope_data', 'telescope_triggers', 'telescope_aux_inputs', 'gamma_hadron_label']
             self.output_is_label = [False, False, False, True]
             self.map_fn_output_dtypes = data_dtypes + label_dtypes
+
+    def add_data_processor(self, data_processor):
+        if isinstance(data_processor, DataProcessor):
+            self.data_processor = data_processor
+        else:
+            raise ValueError("Must provide a DataProcessor object.")
+        self._image_mapper = self.data_processor._image_mapper
 
     # Compute and save a collection of metadata parameters
     # which describe the dataset
@@ -243,9 +251,9 @@ class HDF5DataLoader(DataLoader):
                     if not tel_type in self.num_images_by_particle_id:
                         self.num_images_by_particle_id[tel_type] = {}
                     for tel_id, image_index in zip(tel_ids, indices):
+                        self.__single_tel_examples_to_indices[(row['run_number'], row['event_number'], tel_id)] = (filename, tel_type, image_index)
                         if image_index != 0:
                             self.images[tel_type].append((row['run_number'], row['event_number'], tel_id))
-                            self.__single_tel_examples_to_indices[(row['run_number'], row['event_number'], tel_id)] = (filename, tel_type, image_index)
                             self.num_images[tel_type] += 1
                             if particle_id not in self.num_images_by_particle_id[tel_type]:
                                 self.num_images_by_particle_id[tel_type][particle_id] = 0
@@ -356,7 +364,7 @@ class HDF5DataLoader(DataLoader):
         # corresponding to the desired image
         filename, tel_type, index = self.__single_tel_examples_to_indices[(run_number, event_number, tel_id)]
         
-        f = self.get_file_handle(filename)
+        f = self.files[filename]
         record = f.root._f_get_child(tel_type)[index]
         
         # Allocate empty numpy array of shape (len_trace + 1,) to hold trace plus
@@ -365,11 +373,11 @@ class HDF5DataLoader(DataLoader):
         # Read in the trace from the record 
         trace[0] = 0.0
         trace[1:] = record['image_charge']
-        
+        trace = np.expand_dims(trace, axis=1)
+
         # Create image by indexing into the trace using the mapping table, then adding a
         # dimension to given shape (length,width,1)
-        image = trace[self._image_mapper.mapping_tables[tel_type]]
-        image = np.expand_dims(image, 2)
+        image = self._image_mapper.map_image(trace, tel_type)
 
         return image
 
@@ -389,7 +397,9 @@ class HDF5DataLoader(DataLoader):
 
             # Get classification label by converting CORSIKA particle code
             label = self.ids_to_labels[event_record['particle_id']] 
+            
             data = [image]
+            labels = [label]
 
         elif self.example_type == "array":
 
@@ -432,11 +442,19 @@ class HDF5DataLoader(DataLoader):
                     aux_inputs.append(telescope_position)
             
             data = [images, triggers, aux_inputs]
-        
-        if self.data_processor:
-            data, label = self.data_processor.process_example(data, label, self.selected_telescope_type)
+            labels = [label]
 
-        return data + label
+        if self.data_processor:
+            data, labels = self.data_processor.process_example(data, labels, self.selected_telescope_type)
+
+        if self.example_type == 'single_tel':
+            data[0] = np.stack(data[0]).astype(np.float32)
+        elif self.example_type == 'array':
+            data[0] = np.stack(data[0]).astype(np.float32)
+            data[1] = np.array(data[1], dtype=np.int8)
+            data[2] = np.array(data[2], dtype=np.float32)
+
+        return data + labels
 
     # Function to get all indices in each HDF5 file which pass a provided cut condition
     # For single tel mode, returns all MSTS image table indices from events passing the cuts
