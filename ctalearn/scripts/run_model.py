@@ -116,24 +116,13 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     # Load options related to debugging
     run_tfdbg = config['Debug']['run_TFDBG']
 
-    # Instantiate data processor and image mapper
-    if apply_processing:
-        data_processor = DataProcessor(
-                image_mapper=ImageMapper(**image_mapping_settings),
-                **data_processing_settings)
-        image_mapper = None
-    else:
-        data_processor = None
-        image_mapper = ImageMapper(**image_mapping_settings)
-
     # Define data loading functions
     if data_format == 'HDF5':
 
         data_loader = HDF5DataLoader(
                 data_files,
                 mode=data_loader_mode,
-                data_processor=data_processor,
-                image_mapper=image_mapper,
+                image_mapper=ImageMapper(**image_mapping_settings),
                 **data_loading_settings)
 
         # Define format for Tensorflow dataset
@@ -159,6 +148,13 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     else:
         raise ValueError("Invalid data format: {}".format(data_format))
+
+    if apply_processing:
+        data_processor = DataProcessor(
+                image_charge_mins=data_loader.image_charge_mins,
+                image_mapper=ImageMapper(**image_mapping_settings),
+                **data_processing_settings)
+        data_loader.add_data_processor(data_processor)
 
     # Define input function for TF Estimator
     def input_fn(generator, settings): 
