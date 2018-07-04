@@ -11,13 +11,13 @@ def cnn_rnn_model(features, params, training):
     dropout_rate = float(params.get('dropoutrate', 0.5))
 
     # Reshape inputs into proper dimensions
-    num_telescope_types = len(params['processed_telescope_types']) 
+    num_telescope_types = len(params['selected_telescope_types']) 
     if not num_telescope_types == 1:
         raise ValueError('Must use a single telescope type for CNN-RNN. Number used: {}'.format(num_telescope_types))
-    telescope_type = params['processed_telescope_types'][0]
+    telescope_type = params['selected_telescope_types'][0]
     image_width, image_length, image_depth = params['processed_image_shapes'][telescope_type]
-    num_telescopes = params['processed_num_telescopes'][telescope_type]
-    num_aux_inputs = sum(params['processed_aux_input_nums'].values())
+    num_telescopes = params['num_telescopes'][telescope_type]
+    num_aux_inputs = params['total_aux_params']
     num_gamma_hadron_classes = params['num_classes']
     
     telescope_data = features['telescope_data']
@@ -48,9 +48,9 @@ def cnn_rnn_model(features, params, training):
     # logits are returned and fed into a classifier.
 
     # Load CNN block model
-    sys.path.append(params['modeldirectory'])
-    cnn_block_module = importlib.import_module(params['cnnblockmodule'])
-    cnn_block = getattr(cnn_block_module, params['cnnblockfunction'])
+    sys.path.append(params['model_directory'])
+    cnn_block_module = importlib.import_module(params['CNNBlockModule'])
+    cnn_block = getattr(cnn_block_module, params['CNNBlockFunction'])
 
     #calculate number of valid images per event
     num_tels_triggered = tf.to_int32(tf.reduce_sum(telescope_triggers,1))
@@ -64,8 +64,8 @@ def cnn_rnn_model(features, params, training):
             output = cnn_block(tf.gather(telescope_data, telescope_index),
                 params=params, reuse=reuse, training=training)
 
-        if params['pretrainedweights']:
-            tf.contrib.framework.init_from_checkpoint(params['pretrainedweights'],{'CNN_block/':'CNN_block/'})
+        if params['PretrainedWeights']:
+            tf.contrib.framework.init_from_checkpoint(params['PretrainedWeights'],{'CNN_block/':'CNN_block/'})
 
         #flatten output of embedding CNN to (batch_size, _)
         image_embedding = tf.layers.flatten(output, name='image_embedding')

@@ -6,21 +6,21 @@ def basic_conv_block(inputs, training, params=None, reuse=None):
 
         if params is None: params = {}
         # Get standard hyperparameters
-        bn_momentum = float(params.get('batchnormdecay', 0.99))
+        bn_momentum = float(params.get('BatchNormDecay', 0.99))
         # Get custom hyperparameters
         filters_list = [int(f) for f in
-                params.get('basicconvblockfilters').split('|')]
+                params.get('BasicConvBlockFilters').split('|')]
         kernels = [int(k) for k in
-                params.get('basicconvblockkernels').split('|')]
-        max_pool = bool(params.get('basicconvblockmaxpool', True))
+                params.get('BasicConvBlockKernels').split('|')]
+        max_pool = bool(params.get('BasicConvBlockMaxpool', True))
         if max_pool:
-            max_pool_size = int(params.get('basicconvblockmaxpoolsize'))
-            max_pool_strides = int(params.get('basicconvblockmaxpoolstrides'))
-        bottleneck = bool(params.get('basicconvblockbottleneck', False))
+            max_pool_size = int(params.get('BasicConvBlockMaxPoolSize'))
+            max_pool_strides = int(params.get('BasicConvBlockMaxPoolStrides'))
+        bottleneck = bool(params.get('BasicConvBlockBottleneck', False))
         if bottleneck:
             bottleneck_filters = int(
-                    params.get('basicconvblockbottleneckfilters'))
-        batchnorm = bool(params.get('basicconvblockbatchnorm', False))
+                    params.get('BasicConvBlockBottleneckFilters'))
+        batchnorm = bool(params.get('BasicConvBlockBatchNorm', False))
         
         x = inputs
         if batchnorm:
@@ -54,11 +54,11 @@ def basic_fc_head(inputs, training, params=None):
     # Get standard hyperparameters
     if params is None: params = {}
     num_classes = params.get('num_classes', 2)
-    bn_momentum = float(params.get('batchnormdecay', 0.99))
+    bn_momentum = float(params.get('BatchNormDecay', 0.99))
     
     # Get custom hyperparameters
-    layers = [int(l) for l in params.get('basicfcheadlayers').split('|')]
-    batchnorm = bool(params.get('basicfcheadbatchnorm', False))
+    layers = [int(l) for l in params.get('BasicFCHeadLayers').split('|')]
+    batchnorm = bool(params.get('BasicFCHeadBatchNorm', False))
 
     x = tf.layers.flatten(inputs)
 
@@ -78,15 +78,15 @@ def basic_conv_head(inputs, training, params=None):
     # Get standard hyperparameters
     if params is None: params = {}
     num_classes = params.get('num_classes', 2)
-    bn_momentum = float(params.get('batchnormdecay', 0.99))
+    bn_momentum = float(params.get('BatchNormDecay', 0.99))
     
     # Get custom hyperparameters
     filters_list = [int(f) for f in
-            params.get('basicconvheadfilters').split('|')]
+            params.get('BasicConvHeadFilters').split('|')]
     kernels = [int(k) for k in
-            params.get('basicconvheadkernels').split('|')]
-    avg_pool = bool(params.get('basicconvheadavgpool', True))
-    batchnorm = bool(params.get('basicconvheadbatchnorm', False))
+            params.get('BasicConvHeadKernels').split('|')]
+    avg_pool = bool(params.get('BasicConvHeadAvgPool', True))
+    batchnorm = bool(params.get('BasicConvHeadBatchNorm', False))
 
     x = inputs
 
