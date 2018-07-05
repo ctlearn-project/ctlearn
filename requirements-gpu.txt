@@ -1,0 +1,9 @@
+# This file may be used to create an environment using:
+# $ conda create --name <env> --file <this file>
+# platform: linux-64 and osx-64
+python=3.6
+numpy
+opencv
+pytables
+tensorflow-gpu=1.8
+pil
