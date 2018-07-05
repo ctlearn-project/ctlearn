@@ -105,15 +105,15 @@ The model's progress can be viewed in real time using Tensorboard: `tensorboard 
 
 If the package was installed into a virtual environment follow the instructions below to remove the virtual environment and all the packages for the dependencies:
 
-'''bash
+```bash
 conda remove --name [ENV_NAME] --all
-'''
+```
 
 To completely remove CTALearn from your system do:
 
-'''bash
+```bash
 rm -f /path/to/ctalearn
-'''
+```
 
 Where /path/to/ctalearn is the directory CTALearn was downloaded into in the first place.
 
