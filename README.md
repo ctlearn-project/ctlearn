@@ -17,59 +17,50 @@ The following plots were produced with ctalearn v0.1 using the "Basic" single-te
 
 ## Installation
 
-### Package Install w/ Anaconda (Recommended)
+### Package cloning w/ Git  (Recommended)
+
+Clone CTALearn repository with:
+
+```bash
+mkdir /path/to/ctalearn; cd /path/to/ctalearn
+git clone https://github.com/bryankim96/ctalearn.git
+```
+
+### Package Install w/ Anaconda
 
 Setup Anaconda environment with:
 
 ```bash
 conda config --add channels conda-forge
-conda create -n [ENV_NAME] --file requirements.txt python=3.6
+conda create -n [ENV_NAME] --file requirements-[mode].txt
 source activate [ENV_NAME]
 ```
+
+Where [mode] can be either 'cpu' or 'gpu', denoting the TensorFlow version to be installed. Prior to installing the GPU version of TensorFlow please verify that your system fulfills all the necessary requirements [here](https://www.tensorflow.org/install/install_linux#NVIDIARequirements).
 
 Install package into the conda environment with pip:
 
 ```bash
 /path/to/anaconda/install/envs/[ENV_NAME]/bin/pip install .
 ```
-where /path/to/anaconda/install is the path to your anaconda installation directory and ENV\_NAME is the name of your environment.
+
+where /path/to/anaconda/install is the path to your anaconda installation directory and ENV\_NAME is the name of your environment. The path can be omitted if pip is called from the environment created above.
+
+NOTE for developers: If you wish to fork/clone the respository and make changes to any of the ctalearn modules, the package should be reinstalled for the changes to take effect.
 
 The path to the environment directory for the environment you wish to install into can be found quickly by running
 
 ```bash
 conda env list
 ```
-Finally, install the CPU or GPU version of Tensorflow using the instructions [here](https://www.tensorflow.org/install/install_linux#installing_with_native_pip). 
-Tensorflow with GPU support must be installed to train models on GPU.
-
-NOTE for developers: If you wish to fork/clone the respository and make changes to any of the ctalearn modules, the package should be reinstalled for the changes to take effect.
-
-### Package Install w/ Pip
-
-Install other dependencies (besides Tensorflow) with:
-
-```bash
-pip install -r requirements.txt
-```
-
-Install with pip:
-
-```bash
-pip install .
-```
-
-Finally, install the CPU or GPU version of Tensorflow using the instructions [here](https://www.tensorflow.org/install/install_linux#installing_with_native_pip). 
-Tensorflow with GPU support must be installed to train models on GPU.
 
 ## Dependencies
 
 - Python 3.6
-- Tensorflow 1.7
-- Pytables 3.4.2
-- Numpy 1.14.2
-- OpenCV 3.3.1
-
-and others specified in requirements.txt
+- Tensorflow 1.8
+- Pytables
+- Numpy
+- OpenCV
 
 ## Configuration
 
@@ -108,7 +99,26 @@ To train a model, run `python train.py myconfig.ini`.
 The following flags may be set: `--debug` to set DEBUG logging level, `--log_to_file` to save logger messages to a file in the model directory.
 The model's progress can be viewed in real time using Tensorboard: `tensorboard --logdir=/path/to/my/model_dir`.
 
+## Package Removal
+
+### Package Removal w/ Anaconda
+
+If the package was installed into a virtual environment follow the instructions below to remove the virtual environment and all the packages for the dependencies:
+
+'''bash
+conda remove --name [ENV_NAME] --all
+'''
+
+To completely remove CTALearn from your system do:
+
+'''bash
+rm -f /path/to/ctalearn
+'''
+
+Where /path/to/ctalearn is the directory CTALearn was downloaded into in the first place.
+
+
 ## Links
 
 - [Cherenkov Telescope Array (CTA)](https://www.cta-observatory.org/)
-- [ImageExtractor](https://github.com/bryankim96/image-extractor) 
+- [ImageExtractor](https://github.com/cta-observatory/image-extractor) 
