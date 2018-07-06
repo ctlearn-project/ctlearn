@@ -39,7 +39,7 @@ class ImageMapper():
                 'SST1': 0.0236,
                 'SSTC':0.0064,
                 'SSTA':0.0071638,
-                'VTS': 1.0 / np.sqrt(2)
+                'VTS': 1.0 * np.sqrt(2)
                 }
 
         self.pixel_positions = {tel_type:self.__read_pix_pos_files(tel_type) for tel_type in self.pixel_lengths if tel_type != 'VTS'}
@@ -81,7 +81,7 @@ class ImageMapper():
             raise ValueError('Sorry! Telescope type {} isn\'t supported.'.format(telescope_type))
 
         if telescope_type == "MSTS":
-            telescope_image = pixels[self.mapping_tables[telescope_type]]
+            telescope_image = pixels[self.mapping_tables[telescope_type]].T[:,:,np.newaxis]
         elif telescope_type in ['LST', 'MSTF', 'MSTN', 'SST1', 'SSTC', 'SSTA', 'VTS']:
             telescope_image = (pixels.T @ self.mapping_tables[telescope_type]).reshape(self.image_shapes[telescope_type][0],
                                                                                        self.image_shapes[telescope_type][1], 1)
@@ -178,7 +178,8 @@ class ImageMapper():
             y_S = int(round(y - pixel_side_len / 2.0))
             
             # leave 0 for padding, mapping matrix from 1 to 499
-            mapping_matrix[i + 1, x_S:x_L + 1, y_S:y_L + 1] = pixel_weight
+            #mapping_matrix[i + 1, x_S:x_L + 1, y_S:y_L + 1] = pixel_weight
+            mapping_matrix[i + 1, y_S:y_L + 1, x_S:x_L + 1] = pixel_weight
 
         mapping_matrix = csr_matrix(mapping_matrix.reshape(num_pixels + 1, self.image_shapes['VTS'][0] * self.image_shapes['VTS'][1]))        
         
@@ -401,8 +402,12 @@ class ImageMapper():
         # Compute mapping matrix
         pos_int = pos / pixel_length * 2 + 1
         pos_int[0, :] = pos_int[0, :] / np.sqrt(3) * 2
-        pos_int[0, :] -= np.min(pos_int[0, :])
-        pos_int[1, :] -= np.min(pos_int[1, :])
+        # below put the image in the corner
+        #pos_int[0, :] -= np.min(pos_int[0, :])
+        #pos_int[1, :] -= np.min(pos_int[1, :])
+        # below put the image in the center
+        pos_int[0, :] += output_dim / 2.
+        pos_int[1, :] += output_dim / 2.
 
         mapping_matrix = np.zeros((num_pixels + 1, output_dim, output_dim), dtype=float)
         
@@ -413,7 +418,8 @@ class ImageMapper():
             y_S = int(round(y))
             y_L = y_S + 1
             # leave 0 for padding, mapping matrix from 1 to 499
-            mapping_matrix[i + 1, x_S:x_L + 1, y_S:y_L + 1] = pixel_weight
+            #mapping_matrix[i + 1, x_S:x_L + 1, y_S:y_L + 1] = pixel_weight
+            mapping_matrix[i + 1, y_S:y_L + 1, x_S:x_L + 1] = pixel_weight
 
         # make sparse matrix of shape (num_pixels + 1, output_dim * output_dim)
         mapping_matrix = csr_matrix(mapping_matrix.reshape(num_pixels + 1, output_dim * output_dim))
