@@ -141,4 +141,5 @@ for run_num, (config, combination) in enumerate(yield_config(
         for param in combination:
             runs_file.write(','.join(map(str, param))+'\n')
         runs_file.write("\n")
-    train(config, debug=args.debug, log_to_file=args.log_to_file)
+    run_model(config, mode='train', debug=args.debug,
+            log_to_file=args.log_to_file)
