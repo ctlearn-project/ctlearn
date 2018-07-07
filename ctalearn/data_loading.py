@@ -362,7 +362,7 @@ class HDF5DataLoader(DataLoader):
         
         tel_type, _ = self.__tel_id_to_type_index[tel_id]
         if tel_type not in self._image_mapper.mapping_tables:
-            raise ValueError("Requested image from tel_type {} without valid mapping table.".format(tel_type))
+            raise NotImplementedError("Requested image from tel_type {} without valid mapping table.".format(tel_type))
 
         # get filename, image table name (telescope type), and index
         # corresponding to the desired image
