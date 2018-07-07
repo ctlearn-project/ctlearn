@@ -1,11 +1,12 @@
 import argparse
-from configobj import ConfigObj, flatten_errors
-from validate import Validator
 import importlib
 import logging
 import os
 import sys
 import time
+
+from configobj import ConfigObj, flatten_errors
+from validate import Validator
 
 import tensorflow as tf
 from tensorflow.python import debug as tf_debug
