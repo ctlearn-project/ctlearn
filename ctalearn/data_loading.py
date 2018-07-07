@@ -41,6 +41,10 @@ class DataLoader(ABC):
     @abstractmethod
     def get_auxiliary_data(self):
         pass
+    
+    @abstractmethod
+    def add_data_processor(self, data_processor):
+        pass
 
     @abstractmethod
     def get_example_generators(self):
