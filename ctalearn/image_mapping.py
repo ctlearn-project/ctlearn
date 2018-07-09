@@ -1,6 +1,7 @@
 import numpy as np
 import logging
 import threading
+import os 
 
 from scipy.sparse import csr_matrix
 
@@ -443,7 +444,8 @@ class ImageMapper():
         pixel_pos = tel_table.cols.pixel_pos[selected_tel_rows]
         if write:
             if outfile is None:
-                outfile = "pixel_pos_files/{}_pos.npy".format(tel_type)
+                #outfile = "pixel_pos_files/{}_pos.npy".format(tel_type)
+                outfile = os.path.join(os.path.dirname(__file__), "pixel_pos_files/{}_pos.npy".format(tel_type))
             np.save(outfile, pixel_pos)
         return pixel_pos
     
@@ -457,7 +459,8 @@ class ImageMapper():
 
     def __read_pix_pos_files(self, tel_type):
         if tel_type in self.pixel_lengths: 
-            infile = "pixel_pos_files/{}_pos.npy".format(tel_type)
+            #infile = "pixel_pos_files/{}_pos.npy".format(tel_type)
+            infile = os.path.join(os.path.dirname(__file__), "pixel_pos_files/{}_pos.npy".format(tel_type))
             return np.load(infile)
         else:
             logger.error("Telescope type {} isn't supported.".format(tel_type))
