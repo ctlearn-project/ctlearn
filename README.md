@@ -61,6 +61,8 @@ conda env list
 - Pytables
 - Numpy
 - OpenCV
+- ConfigObj
+- SciPy
 
 ## Configuration
 
