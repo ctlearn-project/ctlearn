@@ -1,4 +1,5 @@
 import argparse
+from collections import OrderedDict
 import importlib
 import logging
 import os
@@ -210,10 +211,12 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         # Collect predictions
         predicted_classes = tf.cast(tf.argmax(logits, axis=1), tf.int32,
                 name="predicted_classes")
-        predictions = {
-                'predicted_class': predicted_classes,
-                'classifier_values': tf.nn.softmax(logits)
-                }
+        predictions = {}
+        predictions['predicted_class'] = predicted_classes
+        classifier_values = tf.nn.softmax(logits)
+        for i in range(params['model']['num_classes']):
+            class_name = params['model']['class_to_name'][i]
+            predictions[class_name] = classifier_values[i]
         
         # For predict mode, we're done
         if mode == tf.estimator.ModeKeys.PREDICT:
@@ -349,6 +352,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         hooks.append(tf_debug.LocalCLIDebugHook())
 
     if mode == 'train':
+
         # Train and evaluate the model
         num_epochs_remaining = num_epochs
         while train_forever or num_epochs_remaining:
@@ -360,50 +364,67 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                         data_input_settings), hooks=hooks, name='validation')
             if not train_forever:
                 num_epochs_remaining -= 1
+
     elif mode == 'predict':
+
         # Generate predictions
         predictions = estimator.predict(
                 lambda: input_fn(test_generator, data_input_settings),
                 hooks=hooks)
+        
+        # Get event ids of each example
+        if data_format == 'HDF5':
+            event_ids = []
+            for example in data_loader.examples:
+                event_id = {
+                        'run_number': example[0],
+                        'event_number': example[1]
+                        }
+                if data_loader.example_type == "single_tel":
+                    event_id['tel_id'] = example[2]
+                event_ids.append(event_id)
+        else:
+            raise ValueError("Invalid data format: {}".format(data_format))
 
         # Get true labels if available
-        true_labels = None
+        true_labels = []
         if true_labels_given:
-            true_labels = []
             features, labels = input_fn(test_generator, data_input_settings)
             with tf.Session() as sess:
                 while True:
                     try:
-                        batch_labels = sess.run(labels['gamma_hadron_label'])
-                        true_labels.extend(batch_labels)
+                        batch_labels = sess.run(labels)
+                        true_labels.append(batch_labels)
                     except tf.errors.OutOfRangeError:
                         break
-
-        def write_predictions(file_handle, predictions, true_labels):
-            if true_labels is not None:
-                file_handle.write("predicted_class, true_class, classifier_value_0, classifier_value_1\n")
-                for prediction, true_class in zip(predictions, true_labels):
-                    predicted_class = prediction['predicted_class']
-                    classifier_value_0 = prediction['classifier_values'][0]
-                    classifier_value_1 = prediction['classifier_values'][1]
-                    file_handle.write("{}, {}, {}, {}\n".format(
-                        predicted_class, true_class, classifier_value_0,
-                        classifier_value_1))
-            else:
-                file_handle.write("predicted_class, classifier_value_0, classifier_value_1\n")
-                for prediction in predictions:
-                    predicted_class = prediction['predicted_class']
-                    classifier_value_0 = prediction['classifier_values'][0]
-                    classifier_value_1 = prediction['classifier_values'][1]
-                    file_handle.write("{}, {}, {}\n".format(predicted_class,
-                        classifier_value_0, classifier_value_1))
+        
+        # Convert the lists of dicts to a single dict of lists
+        predict_output = OrderedDict()
+        for predict_output_list in [predictions, event_ids, true_labels]:
+            for event_dict in predict_output_list:
+                for key, value in event_dict.items():
+                    if key in predict_output:
+                        predict_output[key].append(value)
+                    else:
+                        predict_output[key] = [value]
+    
+        # Write predictions and other info given a dictionary of input, with
+        # the key:value pairs of header name: list of the values for each event
+        def write_predictions(file_handle, predict_output):
+            header = ",".join([key for key in predict_output]) + '\n'
+            file_handle.write(header)
+            output_lists = [value for key, value in predict_output.items()]
+            for output_values in zip(*output_lists):
+                row = ",".join('{}'.format(value) for value in output_values)
+                row += '\n'
+                file_handle.write(row)
 
         # Write predictions to a csv file
         if export_prediction_file:
             with open(prediction_path, 'w') as predict_file:
-                write_predictions(predict_file, predictions, true_labels)
+                write_predictions(predict_file, predict_output)
         else:
-            write_predictions(sys.stdout, predictions, true_labels)
+            write_predictions(sys.stdout, predict_output)
 
 if __name__ == "__main__":
 
