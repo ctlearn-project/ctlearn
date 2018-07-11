@@ -377,7 +377,6 @@ class HDF5DataLoader(DataLoader):
         # Read in the trace from the record 
         trace[0] = 0.0
         trace[1:] = record['image_charge']
-        trace = np.expand_dims(trace, axis=1)
 
         # Create image by indexing into the trace using the mapping table, then adding a
         # dimension to given shape (length,width,1)
@@ -436,7 +435,7 @@ class HDF5DataLoader(DataLoader):
                     images.append(np.empty(image_shape))
                     triggers.append(0)  
                 else:
-                    image = self.get_image(run_number, event_number, tel_id) 
+                    image = self.get_image(run_number, event_number, tel_id)
                     images.append(image)
                     triggers.append(1)
                 if self.use_telescope_positions:
