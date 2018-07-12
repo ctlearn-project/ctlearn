@@ -14,23 +14,46 @@ lock = threading.Lock()
 
 class ImageMapper():
     def __init__(self,
-            image_shapes=None):
+                 image_mapping_settings=None,
+                 padding=None):
         """   
         :param image_mapping_settings: (Hex converter algorithm, output image shape image_shapes, ...)
         """
-        if image_shapes is not None:
-            self.image_shapes = image_mapping_settings['image_shapes']
+        #self.padding = image_mapping_settings['padding']
+        if padding is None:
+            self.padding = {
+                    'MSTS': 0,
+                    'VTS': 0,
+                    'MSTF': 0,
+                    'MSTN': 0,
+                    'LST': 0,
+                    'SST1': 0,
+                    'SSTC': 0,
+                    'SSTA': 0
+                    }
         else:
-            self.image_shapes = {
+            self.padding = padding
+
+        self.image_shapes = {
                     'MSTS': (120, 120, 1),
                     'VTS': (54, 54, 1),
-                    'MSTF': (120, 120, 1),
-                    'MSTN': (120, 120, 1),
-                    'LST': (120, 120, 1),
-                    'SST1': (100, 100, 1),
+                    'MSTF': (110, 110, 1),
+                    'MSTN': (108, 108, 1),
+                    'LST': (108, 108, 1),
+                    'SST1': (94, 94, 1),
                     'SSTC': (48, 48, 1),
                     'SSTA': (56, 56, 1)
                     }
+
+
+        for tel_, pad_ in self.padding.items():
+            if pad_ > 0:
+                self.image_shapes[tel_] = (
+                    self.image_shapes[tel_][0] + pad_ * 2,
+                    self.image_shapes[tel_][1] + pad_ * 2,
+                    self.image_shapes[tel_][2]
+                )
+
 
         self.pixel_lengths = {
                 'LST': 0.05,
@@ -70,7 +93,8 @@ class ImageMapper():
     def map_image(self, pixels, telescope_type):
         """
         :param pixels: a numpy array of values for each pixel, in order of pixel index.
-                       The array has dimensions [N_pixels, N_channels] where N_channels is e.g., 
+                       For future reference: 
+                       The array should have dimensions [N_pixels, N_channels] where N_channels is e.g., 
                        1 when just using charges and 2 when using charges and peak arrival times. 
         :param telescope_type: a string specifying the telescope type as defined in the HDF5 format, 
                         e.g., 'MSTS' for SCT data, which is the only currently implemented telescope type.
@@ -171,18 +195,21 @@ class ImageMapper():
                     pos[pixel_index - 1, 1] = y
 
         pos_shifted = pos + 26 + pixel_side_len / 2.0
+        delta_x = (self.image_shapes['VTS'][0] - 54) / 2
+        delta_y = (self.image_shapes['VTS'][1] - 54) / 2
+
         for i in range(num_pixels):
             x, y = pos_shifted[i, :]
-            x_L = int(round(x + pixel_side_len / 2.0))
-            x_S = int(round(x - pixel_side_len / 2.0))
-            y_L = int(round(y + pixel_side_len / 2.0))
-            y_S = int(round(y - pixel_side_len / 2.0))
-            
+            x_L = int(round(x + pixel_side_len / 2.0)) + delta_x
+            x_S = int(round(x - pixel_side_len / 2.0)) + delta_x
+            y_L = int(round(y + pixel_side_len / 2.0)) + delta_y
+            y_S = int(round(y - pixel_side_len / 2.0)) + delta_y
+
             # leave 0 for padding, mapping matrix from 1 to 499
             #mapping_matrix[i + 1, x_S:x_L + 1, y_S:y_L + 1] = pixel_weight
             mapping_matrix[i + 1, y_S:y_L + 1, x_S:x_L + 1] = pixel_weight
 
-        mapping_matrix = csr_matrix(mapping_matrix.reshape(num_pixels + 1, self.image_shapes['VTS'][0] * self.image_shapes['VTS'][1]))        
+        mapping_matrix = csr_matrix(mapping_matrix.reshape(num_pixels + 1, self.image_shapes['VTS'][0] * self.image_shapes['VTS'][1]))
         
         return mapping_matrix
 
@@ -214,7 +241,10 @@ class ImageMapper():
         # counting from the bottom row, left to right
         MODULE_START_POSITIONS = [(((self.image_shapes['MSTS'][0] - MODULES_PER_ROW[j] *
                                      MODULE_DIM) / 2) +
-                                   (MODULE_DIM * i), j * MODULE_DIM)
+                                   (MODULE_DIM * i),
+                                   ((self.image_shapes['MSTS'][1] - MODULES_PER_ROW[ROWS//2] *
+                                     MODULE_DIM) / 2) +
+                                   (j * MODULE_DIM))
                                   for j in range(ROWS)
                                   for i in range(MODULES_PER_ROW[j])]
 
@@ -293,10 +323,12 @@ class ImageMapper():
                                      self.image_shapes['SSTC'][1]), dtype=int)
 
         i = 0  # Pixel count
+        # offset vertically:
+        delta_x = int((self.image_shapes['SSTC'][1] - MODULES_PER_ROW_DICT[23]) / 2)
         for row_, n_per_row_ in MODULES_PER_ROW_DICT.items():
-            row_start_ = int((self.image_shapes['SSTC'][1] - n_per_row_) / 2)
+            row_start_ = int((self.image_shapes['SSTC'][0] - n_per_row_) / 2)
             for j in range(n_per_row_):
-                x, y = (row_, j + row_start_)
+                x, y = (row_ + delta_x, j + row_start_)
                 mapping_matrix3d[i + 1, x, y] = 1
                 i += 1
 
@@ -373,10 +405,13 @@ class ImageMapper():
                                      self.image_shapes['SSTA'][1]), dtype=int)
 
         i = 0  # Pixel count
+        # offset vertically:
+        delta_x = int((self.image_shapes['SSTA'][1] - MODULES_PER_ROW_DICT[27]) / 2)
+
         for row_, n_per_row_ in MODULES_PER_ROW_DICT.items():
             row_start_ = int((self.image_shapes['SSTA'][1] - n_per_row_) / 2)
             for j in range(n_per_row_):
-                x, y = (row_, j + row_start_)
+                x, y = (row_ + delta_x, j + row_start_)
                 mapping_matrix3d[i + 1, x, y] = 1
                 i = i + 1
 
@@ -387,6 +422,7 @@ class ImageMapper():
         return sparse_map_mat
 
     def generate_table_generic(self, tel_type, pixel_weight=1.0/4):
+        # Note that this only works for Hex cams
         # Get telescope pixel positions for the given tel type
         pos = self.pixel_positions[tel_type]
 
@@ -401,14 +437,19 @@ class ImageMapper():
             pos = self.rotate_cam(pos)
 
         # Compute mapping matrix
-        pos_int = pos / pixel_length * 2 + 1
+        pos_int = pos / pixel_length * 2
         pos_int[0, :] = pos_int[0, :] / np.sqrt(3) * 2
         # below put the image in the corner
-        #pos_int[0, :] -= np.min(pos_int[0, :])
-        #pos_int[1, :] -= np.min(pos_int[1, :])
+        pos_int[0, :] -= np.min(pos_int[0, :])
+        pos_int[1, :] -= np.min(pos_int[1, :])
+        p0_lim = np.max(pos_int[0, :]) - np.min(pos_int[0, :])
+        p1_lim = np.max(pos_int[1, :]) - np.min(pos_int[1, :])
+        if output_dim < p0_lim or output_dim < p1_lim:
+            print("Danger! output image shape too small, will be cropped!")
         # below put the image in the center
-        pos_int[0, :] += output_dim / 2.
-        pos_int[1, :] += output_dim / 2.
+        pos_int[0, :] += (output_dim - p0_lim) / 2.
+        pos_int[1, :] += (output_dim - p1_lim - 0.8) / 2.
+
 
         mapping_matrix = np.zeros((num_pixels + 1, output_dim, output_dim), dtype=float)
         
