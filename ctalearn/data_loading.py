@@ -395,7 +395,7 @@ class HDF5DataLoader(DataLoader):
 
             # locate corresponding event record to get particle type
             filename, index = self.__events_to_indices[(run_number, event_number)]
-            f = self.get_file_handle(filename)
+            f = self.files[filename]
             event_record = f.root.Event_Info[index]
 
             # Get classification label by converting CORSIKA particle code
@@ -489,7 +489,7 @@ class HDF5DataLoader(DataLoader):
                 # If example_type is single_tel, there will 
                 # be only a single selected telescope type
                 if self.example_type == "single_tel":
-                    image_indices = row[self.selected_tel_type + "_indices"]
+                    image_indices = row[self.selected_telescope_type + "_indices"]
                     for tel_id in self.selected_telescopes:
                         _, index = self.__tel_id_to_type_index[tel_id]
                         if image_indices[index] != 0:
