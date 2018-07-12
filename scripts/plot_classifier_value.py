@@ -1,7 +1,7 @@
+import argparse
+
 from matplotlib import pyplot as plt
 import numpy as np
-
-import argparse
 
 parser = argparse.ArgumentParser(
     description=("Plot histogram of classifier values."))
@@ -14,23 +14,20 @@ parser.add_argument(
     default="classifier_histogram.png")
 args = parser.parse_args()
 
-predictions = np.genfromtxt ('file.csv', delimiter=",")
-true_labels = csv[:,1]
-classifier_values = csv[:,4]
+predictions = np.genfromtxt(args.predictions_file, delimiter=',', names=True)
+gamma_classifier_values = predictions['gamma']
+proton_classifier_values = predictions['proton']
 
-signal_classifier_values = classifier_values[true_labels==1]
-background_classifier_values = classifier_values[true_labels==0]
+bins = np.linspace(0, 1, 100)
 
-bins = numpy.linspace(0, 1, 100)
-
-plt.hist(signal_classifier_values, bins, alpha=0.5, label='Signal')
-plt.hist(background_classifier_values, bins, alpha=0.5, label='Background')
+plt.hist(gamma_classifier_values, bins, alpha=0.5, label='Gamma')
+plt.hist(proton_classifier_values, bins, alpha=0.5, label='Proton')
 
 plt.xlabel('Classifier value')
 plt.ylabel('Counts')
 plt.title('Histogram of classifier values')
 
-plt.legend(loc='upper middle')
+plt.legend(loc='upper center')
 
 plt.savefig(args.output_filename, bbox_inches='tight')
 
