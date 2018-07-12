@@ -216,7 +216,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         classifier_values = tf.nn.softmax(logits)
         for i in range(params['model']['num_classes']):
             class_name = params['model']['class_to_name'][i]
-            predictions[class_name] = classifier_values[i]
+            predictions[class_name] = classifier_values[:,i]
         
         # For predict mode, we're done
         if mode == tf.estimator.ModeKeys.PREDICT:
@@ -367,53 +367,53 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     elif mode == 'predict':
 
-        # Generate predictions
+        prediction_output = OrderedDict()
+
+        # Generate predictions and add to output
         predictions = estimator.predict(
                 lambda: input_fn(test_generator, data_input_settings),
                 hooks=hooks)
+        for event in predictions:
+            for key, value in event.items():
+                if key in prediction_output:
+                    prediction_output[key].append(value)
+                else:
+                    prediction_output[key] = [value]
         
-        # Get event ids of each example
-        if data_format == 'HDF5':
-            event_ids = []
-            for example in data_loader.examples:
-                event_id = {
-                        'run_number': example[0],
-                        'event_number': example[1]
-                        }
-                if data_loader.example_type == "single_tel":
-                    event_id['tel_id'] = example[2]
-                event_ids.append(event_id)
-        else:
-            raise ValueError("Invalid data format: {}".format(data_format))
-
-        # Get true labels if available
-        true_labels = []
+        # Get true labels and add to prediction output if available
         if true_labels_given:
             features, labels = input_fn(test_generator, data_input_settings)
             with tf.Session() as sess:
                 while True:
                     try:
                         batch_labels = sess.run(labels)
-                        true_labels.append(batch_labels)
+                        for label, batch_vals in batch_labels.items():
+                            if label in prediction_output:
+                                prediction_output[label].extend(batch_vals)
+                            else:
+                                prediction_output[label] = []
                     except tf.errors.OutOfRangeError:
                         break
         
-        # Convert the lists of dicts to a single dict of lists
-        predict_output = OrderedDict()
-        for predict_output_list in [predictions, event_ids, true_labels]:
-            for event_dict in predict_output_list:
-                for key, value in event_dict.items():
-                    if key in predict_output:
-                        predict_output[key].append(value)
-                    else:
-                        predict_output[key] = [value]
-    
+        # Get event ids of each example and add to prediction output
+        if data_format == 'HDF5':
+            event_ids = ['run_number', 'event_number']
+            if data_loader.example_type == 'single_tel':
+                event_ids.append('tel_id')
+            for event_id in event_ids:
+                prediction_output[event_id] = []
+            for example in data_loader.examples:
+                for i, event_id in enumerate(event_ids):
+                    prediction_output[event_id].append(example[i])
+        else:
+            raise ValueError("Invalid data format: {}".format(data_format))
+
         # Write predictions and other info given a dictionary of input, with
         # the key:value pairs of header name: list of the values for each event
-        def write_predictions(file_handle, predict_output):
-            header = ",".join([key for key in predict_output]) + '\n'
+        def write_predictions(file_handle, prediction_output):
+            header = ",".join([key for key in prediction_output]) + '\n'
             file_handle.write(header)
-            output_lists = [value for key, value in predict_output.items()]
+            output_lists = [value for key, value in prediction_output.items()]
             for output_values in zip(*output_lists):
                 row = ",".join('{}'.format(value) for value in output_values)
                 row += '\n'
@@ -422,9 +422,9 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         # Write predictions to a csv file
         if export_prediction_file:
             with open(prediction_path, 'w') as predict_file:
-                write_predictions(predict_file, predict_output)
+                write_predictions(predict_file, prediction_output)
         else:
-            write_predictions(sys.stdout, predict_output)
+            write_predictions(sys.stdout, prediction_output)
 
 if __name__ == "__main__":
 
