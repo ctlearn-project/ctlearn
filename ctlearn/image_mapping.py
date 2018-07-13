@@ -36,7 +36,7 @@ class ImageMapper():
         'VTS': 1.0 * np.sqrt(2)
         }
 
-    self.num_pixels = {
+    num_pixels = {
         'MSTF': 1764,
         'MSTN': 1855,
         'SST1': 1296,
