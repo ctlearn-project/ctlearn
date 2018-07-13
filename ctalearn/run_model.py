@@ -417,9 +417,6 @@ if __name__ == "__main__":
             'config_file',
             help="path to configobj configuration file with training options")
     parser.add_argument(
-            'config_spec_file',
-            help="path to configobj configspec file to validate configuration options")
-    parser.add_argument(
             '--debug',
             action='store_true',
             help="print debug/logger messages")
@@ -430,9 +427,11 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
    
+    config_spec_filepath = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config/config_spec.ini")
+
     # Load configuration file and configspec for validation
     validator = Validator()
-    configspec = ConfigObj(args.config_spec_file, encoding='UTF8', list_values=False, _inspec=True, stringify=True)
+    configspec = ConfigObj(config_spec_filepath, encoding='UTF8', list_values=False, _inspec=True, stringify=True)
     config = ConfigObj(args.config_file, configspec=configspec)
   
     # Validate config and print errors if any occurred
