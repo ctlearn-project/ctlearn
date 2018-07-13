@@ -13,15 +13,43 @@ lock = threading.Lock()
 
 
 class ImageMapper():
+
+    image_shapes = {
+        'MSTS': (120, 120, 1),
+        'VTS': (54, 54, 1),
+        'MSTF': (110, 110, 1),
+        'MSTN': (108, 108, 1),
+        'LST': (108, 108, 1),
+        'SST1': (94, 94, 1),
+        'SSTC': (48, 48, 1),
+        'SSTA': (56, 56, 1)
+        }
+
+    pixel_lengths = {
+        'LST': 0.05,
+        'MSTF': 0.05,
+        'MSTN': 0.05,
+        'MSTS': 0.00669,
+        'SST1': 0.0236,
+        'SSTC':0.0064,
+        'SSTA':0.0071638,
+        'VTS': 1.0 * np.sqrt(2)
+        }
+
+    self.num_pixels = {
+        'MSTF': 1764,
+        'MSTN': 1855,
+        'SST1': 1296,
+        'LST': 1855,
+        'MSTS': 11328,
+        'SSTC': 2048,
+        'SSTA': 2368,
+        'VTS': 499
+        }
+
     def __init__(self,
-                 image_mapping_settings=None,
-                 padding=None):
-        """   
-        :param image_mapping_settings: (Hex converter algorithm, output image shape image_shapes, ...)
-        """
-        #self.padding = image_mapping_settings['padding']
-        if padding is None:
-            self.padding = {
+                 hex_conversion_algorithm='oversampling',
+                 padding={
                     'MSTS': 0,
                     'VTS': 0,
                     'MSTF': 0,
@@ -29,22 +57,19 @@ class ImageMapper():
                     'LST': 0,
                     'SST1': 0,
                     'SSTC': 0,
-                    'SSTA': 0
-                    }
+                    'SSTA': 0}
+                 ):
+        """   
+        :param hex_conversion_algorithm: algorithm to be used when converting
+                                         hexagonal pixel camera data to square images
+        :param padding: number of pixels of padding to be added symmetrically to the sides
+                        of the square image
+        """
+
+        if hex_conversion_algorithm in ['oversampling']:
+            self.hex_conversion_algorithm = hex_conversion_algorithm
         else:
-            self.padding = padding
-
-        self.image_shapes = {
-                    'MSTS': (120, 120, 1),
-                    'VTS': (54, 54, 1),
-                    'MSTF': (110, 110, 1),
-                    'MSTN': (108, 108, 1),
-                    'LST': (108, 108, 1),
-                    'SST1': (94, 94, 1),
-                    'SSTC': (48, 48, 1),
-                    'SSTA': (56, 56, 1)
-                    }
-
+            raise NotImplementedError("Hex conversion algorithm {} is not implemented.".format(hex_conversion_algorithm))
 
         for tel_, pad_ in self.padding.items():
             if pad_ > 0:
@@ -54,30 +79,7 @@ class ImageMapper():
                     self.image_shapes[tel_][2]
                 )
 
-
-        self.pixel_lengths = {
-                'LST': 0.05,
-                'MSTF': 0.05,
-                'MSTN': 0.05,
-                'MSTS': 0.00669,
-                'SST1': 0.0236,
-                'SSTC':0.0064,
-                'SSTA':0.0071638,
-                'VTS': 1.0 * np.sqrt(2)
-                }
-
         self.pixel_positions = {tel_type:self.__read_pix_pos_files(tel_type) for tel_type in self.pixel_lengths if tel_type != 'VTS'}
-
-        self.num_pixels = {
-                'MSTF': 1764,
-                'MSTN': 1855,
-                'SST1': 1296,
-                'LST': 1855,
-                'MSTS': 11328,
-                'SSTC': 2048,
-                'SSTA': 2368,
-                'VTS': 499
-                }
 
         self.mapping_tables = {
             'MSTS': self.generate_table_MSTS(),
@@ -422,49 +424,53 @@ class ImageMapper():
         return sparse_map_mat
 
     def generate_table_generic(self, tel_type, pixel_weight=1.0/4):
-        # Note that this only works for Hex cams
-        # Get telescope pixel positions for the given tel type
-        pos = self.pixel_positions[tel_type]
+        if self.hex_conversion_algorithm == 'oversampling':
+            # Note that this only works for Hex cams
+            # Get telescope pixel positions for the given tel type
+            pos = self.pixel_positions[tel_type]
 
-        # Get relevant parameters
-        output_dim = self.image_shapes[tel_type][0]
-        num_pixels = self.num_pixels[tel_type]
-        pixel_length = self.pixel_lengths[tel_type]
+            # Get relevant parameters
+            output_dim = self.image_shapes[tel_type][0]
+            num_pixels = self.num_pixels[tel_type]
+            pixel_length = self.pixel_lengths[tel_type]
 
-        # For LST and MSTN cameras, rotate by a fixed amount to
-        # align for oversampling
-        if tel_type in ["LST", "MSTN"]:
-            pos = self.rotate_cam(pos)
+            # For LST and MSTN cameras, rotate by a fixed amount to
+            # align for oversampling
+            if tel_type in ["LST", "MSTN"]:
+                pos = self.rotate_cam(pos)
 
-        # Compute mapping matrix
-        pos_int = pos / pixel_length * 2
-        pos_int[0, :] = pos_int[0, :] / np.sqrt(3) * 2
-        # below put the image in the corner
-        pos_int[0, :] -= np.min(pos_int[0, :])
-        pos_int[1, :] -= np.min(pos_int[1, :])
-        p0_lim = np.max(pos_int[0, :]) - np.min(pos_int[0, :])
-        p1_lim = np.max(pos_int[1, :]) - np.min(pos_int[1, :])
-        if output_dim < p0_lim or output_dim < p1_lim:
-            print("Danger! output image shape too small, will be cropped!")
-        # below put the image in the center
-        pos_int[0, :] += (output_dim - p0_lim) / 2.
-        pos_int[1, :] += (output_dim - p1_lim - 0.8) / 2.
+            # Compute mapping matrix
+            pos_int = pos / pixel_length * 2
+            pos_int[0, :] = pos_int[0, :] / np.sqrt(3) * 2
+            # below put the image in the corner
+            pos_int[0, :] -= np.min(pos_int[0, :])
+            pos_int[1, :] -= np.min(pos_int[1, :])
+            p0_lim = np.max(pos_int[0, :]) - np.min(pos_int[0, :])
+            p1_lim = np.max(pos_int[1, :]) - np.min(pos_int[1, :])
+            if output_dim < p0_lim or output_dim < p1_lim:
+                print("Danger! output image shape too small, will be cropped!")
+            # below put the image in the center
+            pos_int[0, :] += (output_dim - p0_lim) / 2.
+            pos_int[1, :] += (output_dim - p1_lim - 0.8) / 2.
 
 
-        mapping_matrix = np.zeros((num_pixels + 1, output_dim, output_dim), dtype=float)
-        
-        for i in range(num_pixels):
-            x, y = pos_int[:, i]
-            x_S = int(round(x))
-            x_L = x_S + 1
-            y_S = int(round(y))
-            y_L = y_S + 1
-            # leave 0 for padding, mapping matrix from 1 to 499
-            #mapping_matrix[i + 1, x_S:x_L + 1, y_S:y_L + 1] = pixel_weight
-            mapping_matrix[i + 1, y_S:y_L + 1, x_S:x_L + 1] = pixel_weight
+            mapping_matrix = np.zeros((num_pixels + 1, output_dim, output_dim), dtype=float)
+            
+            for i in range(num_pixels):
+                x, y = pos_int[:, i]
+                x_S = int(round(x))
+                x_L = x_S + 1
+                y_S = int(round(y))
+                y_L = y_S + 1
+                # leave 0 for padding, mapping matrix from 1 to 499
+                #mapping_matrix[i + 1, x_S:x_L + 1, y_S:y_L + 1] = pixel_weight
+                mapping_matrix[i + 1, y_S:y_L + 1, x_S:x_L + 1] = pixel_weight
 
-        # make sparse matrix of shape (num_pixels + 1, output_dim * output_dim)
-        mapping_matrix = csr_matrix(mapping_matrix.reshape(num_pixels + 1, output_dim * output_dim))
+            # make sparse matrix of shape (num_pixels + 1, output_dim * output_dim)
+            mapping_matrix = csr_matrix(mapping_matrix.reshape(num_pixels + 1, output_dim * output_dim))
+
+        else:
+            raise NotImplementedError("Cannot convert hexagonal camera image without valid conversion algorithm.")
 
         return mapping_matrix
 
