@@ -8,7 +8,7 @@ import sklearn.metrics
 parser = argparse.ArgumentParser(
     description=("Plot ROC curves."))
 parser.add_argument('predictions_list_file',
-        help='list of paths to prediction files with names')
+        help='list of paths to predictions files with names')
 parser.add_argument(
     "--output_filename",
     help="name for output plot file",
@@ -30,11 +30,14 @@ colors = cycle(['darkorange', 'aqua', 'cornflowerblue', 'deeppink'])
 for classifier, color in zip(classifiers, colors):
     classifier_name = classifier[0]
     predictions_path = classifier[1]
-    predictions = np.genfromtxt(predictions_path, delimiter=',', skip_header=1)
-    true_labels = predictions[:,1]
-    classifier_values = predictions[:,3]
+    predictions = np.genfromtxt(predictions_path, delimiter=',', names=True)
+    labels = predictions['gamma_hadron_label']
+    # 0 == gamma, 1 == proton by default, need to switch them
+    gamma_labels = 1 - labels
+    gamma_classifier_values = predictions['gamma']
 
-    fpr, tpr, _ = sklearn.metrics.roc_curve(true_labels, classifier_values)
+    fpr, tpr, _ = sklearn.metrics.roc_curve(gamma_labels,
+            gamma_classifier_values)
     auc = sklearn.metrics.auc(fpr, tpr)
 
     plt.plot(fpr, tpr, color=color, lw=2,
