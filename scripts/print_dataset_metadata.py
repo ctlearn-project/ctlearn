@@ -4,8 +4,8 @@ import sys
 import tables
 import numpy as np
 
-from ctalearn.image import MAPPING_TABLES, IMAGE_SHAPES
-from ctalearn.data import load_metadata_HDF5
+from ctalearn.data_loading import HDF5DataLoader
+from ctalearn.data_processing import DataProcessor
 
 if __name__ == "__main__":
 
@@ -31,7 +31,15 @@ if __name__ == "__main__":
             if line and line[0] != "#":
                 file_list.append(line)
 
-    metadata = load_metadata_HDF5(file_list)
+    data_loader = HDF5DataLoader(file_list, 
+            example_type="array")
+
+    data_processing_settings = {}
+
+    data_processor = DataProcessor(**data_processing_settings) 
+    data_loader.add_data_processor(data_processor)
+
+    metadata = data_loader.get_metadata()
 
     out = open(args.out_file,"w") if args.out_file else sys.stdout
 
