@@ -1,4 +1,4 @@
-# Deep Learning for IACT Analysis
+# CTLearn: Deep Learning for IACT Analysis
 
 [![Build Status](https://travis-ci.org/ctlearn-project/ctlearn.svg?branch=master)](https://travis-ci.org/ctlearn-project/ctlearn) [![Coverage Status](https://coveralls.io/repos/github/ctlearn-project/ctlearn/badge.svg?branch=master)](https://coveralls.io/github/ctlearn-project/ctlearn?branch=master) [![Code Health](https://landscape.io/github/ctlearn-project/ctlearn/master/landscape.svg?style=flat)](https://landscape.io/github/ctlearn-project/ctlearn/master)
 
