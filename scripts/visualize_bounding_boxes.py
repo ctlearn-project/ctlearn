@@ -6,7 +6,9 @@ import numpy as np
 import cv2
 from PIL import Image, ImageDraw
 
-from ctalearn.data import crop_image, load_image_HDF5, load_metadata_HDF5, return_file_handle
+from ctalearn.data_loading import HDF5DataLoader
+from ctalearn.data_processing import DataProcessor
+from ctalearn.image_mapping import ImageMapper
 
 if __name__ == "__main__":
 
@@ -16,8 +18,8 @@ if __name__ == "__main__":
         'file_list',
         help='List of HDF5 (pytables) files to examine images from')
     parser.add_argument(
-        "--images_per_file",
-        help="number of randomly sampled images to examine per file",
+        "--num_images",
+        help="number of randomly sampled images to examine",
         default=10)
     parser.add_argument(
         "--tel_type",
@@ -63,27 +65,32 @@ if __name__ == "__main__":
             if line and line[0] != "#":
                 file_list.append(line)
 
-    metadata = load_metadata_HDF5(file_list)
+    data_loader = HDF5DataLoader(file_list, 
+            example_type="singletel", 
+            selected_tel_type=args.tel_type,
+            mode="test")
 
-    settings = {'image_cleaning_method': 'twolevel',
+    data_processing_settings = {'crop': True,
+                'bounding_box_sizes': {args.tel_type: args.bounding_box_size},
+                'image_cleaning': 'twolevel',
+                'thresholds': {args.tel_type: (args.picture_threshold, args.boundary_threshold)},
                 'return_cleaned_images': False,
-              'bounding_box_size': args.bounding_box_size, 
-              'picture_threshold': args.picture_threshold, 
-              'boundary_threshold': args.boundary_threshold}
+                'normalization': args.normalization,
+                'image_charge_mins': data_loader.image_charge_mins 
+                }
 
-    index_lists = [random.sample(range(1, num_images_total), args.images_per_file) for num_images_total in metadata['num_images_by_file'][args.tel_type]]
+    data_processor = DataProcessor(**data_processing_settings) 
 
-    for filename, indices in zip(file_list, index_lists):
-        for i in indices:
+    image_mapper = ImageMapper()
 
-            f_data = return_file_handle(filename.encode('utf-8'))
-            image = load_image_HDF5(f_data, args.tel_type ,i)
+    count = 0
+    while count < args.num_images:
+        for run_number, event_number, tel_id in data_loader.examples:
+        
+            example = data_loader.get_example(run_number, event_number, tel_id)
 
             # get only the first channel (charge) of an image of arbitrary depth
-            image_charge = image[:,:,0]
-
-            base_filename = os.path.basename(filename)
-            base_filename , _ = os.path.splitext(base_filename)
+            image_charge = example[0][:,:,0]
 
             if args.save_original:
                 im = Image.fromarray(((image_charge - np.min(image_charge)) * 255 / np.max(image_charge)).astype('uint8'))
@@ -91,24 +98,20 @@ if __name__ == "__main__":
 
             if args.save_cleaned:
                 # get only the first channel (charge) of an image of arbitrary depth
-                image_charge = image[:,:,0]
+                image_charge = example[0][:,:,0]
 
-                # apply picture threshold to charge image to get mask, then dilate the mask once 
-                # to add all adjacent pixels (i.e. kernel is 3x3)
-                m = (image_charge > args.picture_threshold).astype(np.uint8)
-                kernel = np.ones((3,3), np.uint8) 
-                m = cv2.dilate(m,kernel)
+                data_processor.return_cleaned_images = True
+                data_processor.bounding_box_sizes[args.tel_type] = image_mapper.image_shapes[args.tel_type][0]
 
-                # multiply the charge image by the dilated mask
-                # then mask out all surviving pixels which are smaller than
-                # the boundary threshold
-                image_cleaned = m * image_charge 
-                image_cleaned = image_cleaned * (image_cleaned > args.boundary_threshold).astype(np.uint8)
+                cleaned_image, _, _ = data_processor._crop_image(image_charge, args.tel_type) 
 
-                im_cleaned = Image.fromarray(((image_cleaned - np.min(image_cleaned)) * 255 / np.max(image_cleaned)).astype('uint8'))
-                im_cleaned.save(os.path.join(save_dir,base_filename + '_{}_cleaned.jpg'.format(i)))
+                cleaned_image = Image.fromarray(((cleaned_image - np.min(cleaned_image)) * 255 / np.max(cleaned_image)).astype('uint8'))
+                cleaned_image.save(os.path.join(save_dir,base_filename + '_{}_cleaned.jpg'.format(i)))
 
-            image_cropped, x_0, y_0 = crop_image(image, settings)
+                data_processor.return_cleaned_images = False
+                data_processor.bounding_box_sizes[args.tel_type] = args.bounding_box_size
+
+            image_cropped, x_0, y_0 = data_processor._crop_image(image_charge, args.tel_type)
 
             if args.save_cropped:
                 image_cropped = image_cropped[:,:,0]
