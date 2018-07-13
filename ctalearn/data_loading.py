@@ -305,6 +305,8 @@ class HDF5DataLoader(DataLoader):
 
         if self.data_processor is not None:
             metadata = {**metadata, **self.data_processor.get_metadata()}
+        else:
+            metadata['num_additional_aux_params'] = 0
 
         metadata['total_aux_params'] = 0
         if self.use_telescope_positions:
