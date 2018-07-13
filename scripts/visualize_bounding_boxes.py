@@ -81,8 +81,6 @@ if __name__ == "__main__":
 
     data_processor = DataProcessor(**data_processing_settings) 
 
-    image_mapper = ImageMapper()
-
     count = 0
     while count < args.num_images:
         for run_number, event_number, tel_id in data_loader.examples:
@@ -101,7 +99,7 @@ if __name__ == "__main__":
                 image_charge = example[0][:,:,0]
 
                 data_processor.return_cleaned_images = True
-                data_processor.bounding_box_sizes[args.tel_type] = image_mapper.image_shapes[args.tel_type][0]
+                data_processor.bounding_box_sizes[args.tel_type] = ImageMapper.image_shapes[args.tel_type][0]
 
                 cleaned_image, _, _ = data_processor._crop_image(image_charge, args.tel_type) 
 
