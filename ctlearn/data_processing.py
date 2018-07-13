@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 from operator import itemgetter
 
-from ctalearn.image_mapping import ImageMapper
+from ctlearn.image_mapping import ImageMapper
 
 class DataProcessor():
 

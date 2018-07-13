@@ -8,8 +8,8 @@ from abc import ABC, abstractmethod
 import tables
 import numpy as np
 
-from ctalearn.data_processing import DataProcessor
-from ctalearn.image_mapping import ImageMapper
+from ctlearn.data_processing import DataProcessor
+from ctlearn.image_mapping import ImageMapper
 
 # Maps CORSIKA particle id codes
 # to particle class names

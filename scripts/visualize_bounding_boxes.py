@@ -6,9 +6,9 @@ import numpy as np
 import cv2
 from PIL import Image, ImageDraw
 
-from ctalearn.data_loading import HDF5DataLoader
-from ctalearn.data_processing import DataProcessor
-from ctalearn.image_mapping import ImageMapper
+from ctlearn.data_loading import HDF5DataLoader
+from ctlearn.data_processing import DataProcessor
+from ctlearn.image_mapping import ImageMapper
 
 if __name__ == "__main__":
 

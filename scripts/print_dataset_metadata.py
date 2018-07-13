@@ -4,8 +4,8 @@ import sys
 import tables
 import numpy as np
 
-from ctalearn.data_loading import HDF5DataLoader
-from ctalearn.data_processing import DataProcessor
+from ctlearn.data_loading import HDF5DataLoader
+from ctlearn.data_processing import DataProcessor
 
 if __name__ == "__main__":
 

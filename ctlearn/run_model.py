@@ -12,9 +12,9 @@ from validate import Validator
 import tensorflow as tf
 from tensorflow.python import debug as tf_debug
 
-from ctalearn.image_mapping import ImageMapper
-from ctalearn.data_loading import DataLoader, HDF5DataLoader
-from ctalearn.data_processing import DataProcessor
+from ctlearn.image_mapping import ImageMapper
+from ctlearn.data_loading import DataLoader, HDF5DataLoader
+from ctlearn.data_processing import DataProcessor
 
 # Disable Tensorflow info and warning messages (not error messages)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
