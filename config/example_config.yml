@@ -9,7 +9,7 @@ Data:
     # Valid options:
     #   - 'HDF5': ImageExtractor v0.5.1 HDF5 format
     # Data file format. Used to choose the right DataLoader subclass.
-    format: HDF5
+    format: 'HDF5'
 
     # Required string.
     # Path to a file listing data file paths, one per line.
@@ -91,10 +91,10 @@ Data:
         # Optional dictionary with string keys and integer values.
         # See Data:Loading:selected_tel_type for valid keys.
         # Default:
-        #   MSTS: 48
+        #   'MSTS': 48
         # When cropping, side length of the square cropped image.
         bounding_box_sizes:
-            MSTS: 48
+            'MSTS': 48
              
         # Optional dictionary with string keys and list of two integers values.
         # See Data:Loading:selected_tel_type for valid keys.
@@ -106,7 +106,7 @@ Data:
         # second is the boundary threshold, which adds all pixels greater
         # than it and adjacent to previously selected pixels.
         thresholds:
-            MSTS: 
+            'MSTS': 
                 - 5.5
                 - 1.0
 
@@ -173,21 +173,21 @@ Image Mapping:
     # Number of pixels of padding to add around the edge of the mapped image.
     # A value of 1 will increase both the image height and width by 2, etc.
     padding:
-        - 'LST': 2
-        - 'MSTF': 1
-        - 'MSTN': 2
-        - 'MSTS': 4
-        - 'SST1': 1
-        - 'SSTA': 0
-        - 'SSTC': 0
-        - 'VTS': 1
+        'LST': 2
+        'MSTF': 1
+        'MSTN': 2
+        'MSTS': 4
+        'SST1': 1
+        'SSTA': 0
+        'SSTC': 0
+        'VTS': 1
 
-# Settings related to the model (mostly user-defined)
+# Settings for the TensorFlow model.
 Model:
 
     # Required string.
     # Path to directory containing model module.
-    model_directory: '/home/models/'
+    model_directory: '/path/to/ctlearn/models/'
 
     # Required string.
     # Module in ModelDirectory containing function implementing model.
