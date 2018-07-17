@@ -1,117 +1,217 @@
-Data:
-    # String identifying the format of the data files being loaded from. 
-    # Determines the subclass of DataLoader which should be used when reading.
-    format: HDF5
-    # String path to a text file containing a list of data files (1 per line).
-    file_list: /home/datasets/file_list/txt
-    #file_list: /home/shevek/datasets/prototype/prototype_files_class_balanced.txt 
-    # Boolean indicating whether or not to apply processing to loaded data.
-    # Determines whether a DataProcessor is instantiated. If false,
-    # settings under the Data Processing are not used.
-    apply_processing: True
-    
-    # These options are used directly when instantiating a
-    # DataLoader.
-    Loading:
-        # Required string. Whether the examples to be loaded should be single telescope
-        # (images from a single event on a single telescope). Note: this should agree with
-        # the model type and other settings.
-        example_type: array
-        # List of strings identifying which telescope types to load.
-        selected_tel_type: MSTS
-        # Optional ist of telescope ids (integers) identifying which telescopes to load.
-        # Telescope ids must be from the selected tel type. 
-        # selected_tel_ids: 
-        # An integer indicating the minimum
-        # number of triggered images which must be 
-        # present in each event for it to be used.
-        min_num_tels: 1 
-        # A PyTables cut condition used when selecting events. 
-        # See https://www.pytables.org/usersguide/condition_syntax.html
-        # for explanation of syntax. The names of valid event attributes
-        # should be found in the HDF5 data files.
-        cut_condition: ""
-        # Fraction of the data to set aside for periodic validation. 
-        validation_split: 0.1
-        # Random seed used when splitting the data into training and
-        # validation sets.
-        #seed: 
-    
-    # These options are used when instantiating a DataProcessor.
-    Processing:
-        # Whether or not to crop telescope images.
-        crop: True
-        # Type of image cleaning to apply when calculating the weighted
-        # centroid position of each telescope image for cropping.
-        image_cleaning: twolevel
-        # Whether to return the cleaned images after cropping, or only use the
-        # cleaning for determining the bounding box location and return the
-        # original images.
-        return_cleaned_images: False
-        # Normalization method to be applied pixel-wise to each image. Log normalization
-        # shifts the pixel values to [1,infinity) by subtracting the minimum pixel value
-        # across all images, then takes the natural log.
-        normalization:
-        # Whether to order the images within each telescope type before stacking them.
-        # Trigger orders them so all triggered images are at the front with blank images/padding
-        # behind. Size sorts images by the sum of pixel values, from largest to smallest.
-        sort_images_by: trigger
+Logging:
+    # Required string.
+    # Path to directory to store TensorFlow model checkpoints and summaries.
+    # A timestamped copy of the configuration file will also be put here.
+    model_directory: '/tmp/logs/example/'
 
-        # The side length of the square region to crop telescope images
-        # to. Set separately for each telescope type.
+Data:
+    # Required string. 
+    # Valid options:
+    #   - 'HDF5': ImageExtractor v0.5.1 HDF5 format
+    # Data file format. Used to choose the right DataLoader subclass.
+    format: HDF5
+
+    # Required string.
+    # Path to a file listing data file paths, one per line.
+    file_list: '/tmp/dataset/file_list.txt'
+
+    # Optional Boolean. Default: true
+    # Whether to apply processing to loaded data. If False, no DataProcessor
+    # is instantiated and Data:Processing settings are not used.
+    apply_processing: true
+    
+    # Settings for instantiating the DataLoader.
+    Loading:
+        # Optional string. Default: 'array'
+        # Valid options:
+        #   - 'array': Examples are all images of a telescope type per event
+        #   - 'single_tel': Examples are single telescope images
+        # How to construct examples from the data.
+        example_type: 'array'
+
+        # Optional string. Default: 'LST'
+        # Valid options:
+        #   - 'LST': LST Telescope and Camera
+        #   - 'MSTF': MST Telescope with FlashCAM Camera
+        #   - 'MSTN': MST Telescope with NectarCAM Camera
+        #   - 'MSTS': SCT Telescope and Camera
+        #   - 'SST1': SST-1M Telescope with DigiCam Camera
+        #   - 'SSTA': SST-2M ASTRI Telescope and Camera
+        #   - 'SSTC': SST-2M GCT Telescope with CHEC Camera
+        #   - 'VTS': VERITAS Telescope and Camera
+        # Telescope type to load.
+        selected_tel_type: 'LST'
+        
+        # Optional list of integers. Default: load all telescopes of the
+        # selected tel type.
+        # ID numbers of telescopes to load of the selected tel type.
+        selected_tel_ids: [1, 2, 3, 4]
+
+        # Optional integer. Default: 1
+        # Minimum number of triggered telescopes of the selected type which
+        # must be present for an event to be loaded.
+        min_num_tels: 1
+
+        # Optional string. Default: don't apply any cuts.
+        # PyTables cut condition to apply selection cuts to events.
+        # See https://www.pytables.org/usersguide/condition_syntax.html
+        # for explanation of syntax. Use ViTables http://vitables.org/ to
+        # examine HDF5 files to see valid attribute names.
+        cut_condition: ""
+
+        # Optional float. Default: 0.1
+        # Randomly chosen fraction of data to set aside for validation. 
+        validation_split: 0.1
+
+        # Optional integer. Default: use default random initialization.
+        # Seed for randomly splitting data into training and validation sets.
+        seed: 1234
+    
+    # Settings for instantiating the DataProcessor.
+    Processing:
+        # Optional Boolean. Default: false
+        # Whether to crop each telescope image by cleaning the image,
+        # calculating a bounding box about the cleaned image centroid, and
+        # returning the original or cleaned image cropped about the box.
+        crop: false
+
+        # Optional string or null. Default: 'twolevel'
+        # Valid options:
+        #   - 'twolevel': Use two-level cleaning algorithm
+        #   - null: Don't apply any cleaning
+        # When cropping, type of image cleaning to apply when calculating
+        # the weighted centroid position of each telescope image.
+        image_cleaning: 'twolevel'
+
+        # Optional Boolean. Default: false
+        # When cropping, whether to return the cleaned instead of original
+        # cropped images.
+        return_cleaned_images: false
+       
+        # Optional dictionary with string keys and integer values.
+        # See Data:Loading:selected_tel_type for valid keys.
+        # Default:
+        #   MSTS: 48
+        # When cropping, side length of the square cropped image.
         bounding_box_sizes:
             MSTS: 48
              
-        # Cleaning thresholds used for image cleaning. For two-level
-        # cleaning, the thresholds are a 2-tuple. 
-        # The first value is the picture threshold, which passes all pixels
-        # in the image greater than it, and the second is the boundary threshold,
-        # which adds all pixels greater than it and adjacent to previously selected pixels.
+        # Optional dictionary with string keys and list of two integers values.
+        # See Data:Loading:selected_tel_type for valid keys.
+        # Default:
+        #   MSTS: [5.5, 1.0]
+        # When cropping and using two level cleaning method, cleaning
+        # thresholds to use. The first value is the picture threshold,
+        # which passes all pixels in the image greater than it, and the
+        # second is the boundary threshold, which adds all pixels greater
+        # than it and adjacent to previously selected pixels.
         thresholds:
             MSTS: 
                 - 5.5
                 - 1.0
-            
+
+        # Optional string or null. Default: null
+        # Valid options:
+        #   - 'log': Log-normalize by subtracting from each pixel the minimum
+        #       value from all selected images, then taking the natural log
+        #   - null: Don't apply any normalization
+        # Normalization method to be applied pixel-wise to each image.
+        normalization: null
+
+        # Optional string or null. Default: null
+        # Valid options:
+        #   - 'trigger': Order by all triggered followed by all blank images
+        #   - 'size': Order by largest to smallest total sum of pixel values
+        #   - null: Keep DataLoader ordering (by telescope ID)
+        # How to sort telescope images when loading data in array mode.
+        sort_images_by: null
    
-    # Settings used by the TF Dataset when providing data.
+    # Settings for the TensorFlow Estimator input function.
     Input:
+        # Required integer.
         # Number of examples per batch for training/prediction.
         batch_size: 64
-        # Whether to prefetch examples in the TF Dataset.
-        prefetch: True
-        # Max number of examples to prefetch and store in buffer when
-        # loading data.
+
+        # Required Boolean.
+        # Whether to prefetch examples in the TensorFlow Dataset.
+        prefetch: true
+    
+        # Required integer.
+        # If prefetching, maximum number of examples to prefetch and store
+        # in buffer.
         prefetch_buffer_size: 10
-        # Whether to apply Dataset.map on examples (must be true for HDF5 data).
-        map: False
-        # Number of parallel threads to use when loading examples with
-        # Dataset.map
+
+        # Required Boolean.
+        # Whether to apply Dataset.map(). Must be true for HDF5 data.
+        map: true
+
+        # Required integer.
+        # Number of parallel threads to use when loading examples.
         num_parallel_calls: 1
-        # Whether to shuffle examples.
-        shuffle: True
+
+        # Required Boolean.
+        # Whether to shuffle examples when creating the TensorFlow Dataset.
+        shuffle: true
+        
+        # Required integer.
         # Number of examples to shuffle at once. Larger buffer sizes
         # give a more uniform shuffle at the cost of a longer time to shuffle.
         shuffle_buffer_size: 10000
 
-# Settings applied when mapping from trace to 2D images.
+# Settings for mapping 1D pixel vectors to 2D images.
 Image Mapping:
-    # Algorithm used for converting hexagonal pixel camera images
-    # to square arrays
-    hex_conversion_algorithm: oversampling
+    # Optional string. Default: 'oversampling'
+    # Valid options:
+    #   - 'oversampling': Convert each each hexagonal pixel to four square
+    #       pixels and reweight the charge to realign to a square grid
+    # Algorithm to convert images with hexagonal pixel grids to square grids
+    hex_conversion_algorithm: 'oversampling'
+
+    # Optional dictionary with string keys and integer values.
+    # See Data:Loading:selected_tel_type for valid keys.
+    # Default: 0 for every valid key.
+    # Number of pixels of padding to add around the edge of the mapped image.
+    # A value of 1 will increase both the image height and width by 2, etc.
+    padding:
+        - 'LST': 2
+        - 'MSTF': 1
+        - 'MSTN': 2
+        - 'MSTS': 4
+        - 'SST1': 1
+        - 'SSTA': 0
+        - 'SSTC': 0
+        - 'VTS': 1
 
 # Settings related to the model (mostly user-defined)
 Model:
-    # String filepath to directory containing models.
-    model_directory: /home/models
-    # Module in ModelDirectory containing function implementing
-    # model. Included, verified modules are "single_tel", "cnn_rnn".
-    model_module: cnn_rnn
-    # Function in ModelModule implementing model. Included,
-    # verified models are "single_tel_model" within the "single_tel" module and
-    # "cnn_rnn_model" within the "cnn_rnn" module.
-    model_function: cnn_rnn_model
+
+    # Required string.
+    # Path to directory containing model module.
+    model_directory: '/home/models/'
+
+    # Required string.
+    # Module in ModelDirectory containing function implementing model.
+    # Modules included with CTLearn:
+    #   - 'single_tel': single tel model using a basic convolutional neural
+    #       network (CNN)
+    #   - 'cnn_rnn': array model feeding output of a basic CNN for each 
+    #       telescope into a recurrent neural network (RNN)
+    #   - 'variable_input_model': array model feeding combined outputs of a
+    #       CNN for each telescope into a CNN network head
+    model_module: 'cnn_rnn'
+
+    # Required string.
+    # Function in model_module implementing model.
+    # Models included with CTLearn:
+    #   - 'single_tel':
+    #       - 'single_tel_model'
+    #   - 'cnn_rnn':
+    #       - 'cnn_rnn_model'
+    #   - 'variable_input_model':
+    #       - 'variable_input_model'
+    model_function: 'cnn_rnn_model'
     
-    # Additional user-determined custom  model parameters
+    # Additional user-determined custom model parameters
     Model Parameters:
         # Single Tel must specify Network.
         # Network to be used for image classification. The only supported verified 
@@ -193,50 +293,60 @@ Model:
         BatchNormDecay: 0.99
 
 Training:
-    # Number of epochs to run training and validation. If 0, run
-    # forever.
+
+    # Required integer.
+    # Number of epochs to run training and validation. If 0, run forever.
     num_epochs: 0
-    # Number of training steps to run before evaluating on the 
-    # training and validation sets.
+
+    # Required integer.
+    # Number of training steps to run before evaluating on the validation set.
     num_training_steps_per_validation: 1000
 
     Hyperparameters:
-        # Choice of optimizer function for training.
-        optimizer: Adam
+        # Required string.
+        # Valid options: ['Adadelta', 'Adam', 'RMSProp', 'SGD']
+        # Optimizer function for training.
+        optimizer: 'Adam'
+        
+        # Optional float. Required if optimizer is 'Adam', ignored otherwise.
+        # Epsilon parameter for the Adam optimizer.
+        adam_epsilon: 0.00000001
+        
+        # Required integer.
         # Base learning rate before scaling or annealing.
         base_learning_rate: 0.001
-        # Whether to scale the learning rate by number of triggered telescopes (for trigger dropout).
-        # Not used for single telescope models.
-        scale_learning_rate: False
-        # Whether to weight the loss to compensate for the class
-        # balance.
-        apply_class_weights: False
-        # Epsilon parameter for the Adam optimizer. Ignored for other
-        # optimizers. Default: 1e-8
-        adam_epsilon: 0.00000001
-        # Optional string. If specified, train on only variables within the scope
-        # matching this name, freezing all others (useful when loading pretrained
-        # weights). If not specified, train on all trainable variables.
-        # Ex: with CNN-RNN, will freeze CNNBlock weights, training on NetworkHead only:
-        # variables_to_train: NetworkHead
-        variables_to_train:
+
+        # Required Boolean.
+        # Whether to scale the learning rate inversely proportional to the
+        # number of triggered telescopes. Not used for single tel models.
+        scale_learning_rate: false
+
+        # Required Boolean.
+        # Whether to weight the loss to rebalance unequal classes.
+        apply_class_weights: false
+
+        # Required string or null. If provided, train on only variables
+        # within the scope matching this name, freezing all others. This is 
+        # useful when loading pretrained weights. If null, train on all
+        # trainable variables.
+        variables_to_train: null
 
 Prediction:
+    # Required Boolean if running in predict mode, ignored otherwise.
     # Whether the data files contain the true classification
-    # values. Generally True for simulations and False for actual data.
-    # Optional when not running in predict mode.
-    true_labels_given: True
-    # Whether to export predictions as a file when running in predict mode. Optional when not running in predict mode.
-    export_as_file: False
-    # String filepath to file to save predictions (required when running in predict mode when ExportAsFile is
-    # True). Optional when not running in predict mode.
-    prediction_file_path:
+    # values. Generally true for simulations and false for actual data.
+    true_labels_given: true
 
-Logging:
-    # String filepath to directory to store TensorFlow model checkpoints and
-    # summaries. A timestamped copy of the configuration file will be made here.
-    model_directory: /home/logs/example
+    # Required Boolean if running in predict mode, ignored otherwise.
+    # Whether to export predictions as a CSV file.
+    export_as_file: true
+
+    # Required Boolean if running in predict mode and export_as_file is true,
+    # ignored otherwise.
+    # Path to file to save predictions.
+    prediction_file_path: '/tmp/mypredictions.csv'
 
 Debug:
-    # Whether to run TF debugger.
-    run_TFDBG: False
+    # Optional Boolean. Default: false
+    # Whether to run TensorFlow debugger.
+    run_TFDBG: false
