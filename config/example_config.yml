@@ -57,7 +57,7 @@ Data:
         # See https://www.pytables.org/usersguide/condition_syntax.html
         # for explanation of syntax. Use ViTables http://vitables.org/ to
         # examine HDF5 files to see valid attribute names.
-        cut_condition: ""
+        cut_condition: '(mc_energy > 1.0) & (h_first_int < 20000)'
 
         # Optional float. Default: 0.1
         # Randomly chosen fraction of data to set aside for validation. 
@@ -337,7 +337,7 @@ Prediction:
     # values. Generally true for simulations and false for actual data.
     true_labels_given: true
 
-    # Required Boolean if running in predict mode, ignored otherwise.
+    # Optional Boolean. Default: false
     # Whether to export predictions as a CSV file.
     export_as_file: true
 

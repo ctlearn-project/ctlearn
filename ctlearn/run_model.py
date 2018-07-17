@@ -90,9 +90,8 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     data_loading_settings = config['Data']['Loading']
 
     # Load options related to data processing
-    apply_processing = config['Data']['apply_processing']
+    apply_processing = config['Data'].get('apply_processing', True)
     data_processing_settings = config['Data']['Processing']
-    data_processing_settings['num_shower_coordinates'] = 2 # position on camera needs 2 coords
 
     # Load options related to data input
     data_input_settings = config['Data']['Input']
@@ -111,7 +110,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     # Load options related to prediction only if needed
     if mode == 'predict':
         true_labels_given = config['Prediction']['true_labels_given']
-        export_prediction_file = config['Prediction']['export_as_file']
+        export_prediction_file = config['Prediction'].get('export_as_file', False)
         if export_prediction_file:
             prediction_path = config['Prediction']['prediction_file_path']
         # Don't allow parallelism in predict mode. This can lead to errors
@@ -119,7 +118,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         data_input_settings['num_parallel_calls'] = 1
     
     # Load options related to debugging
-    run_tfdbg = config['Debug']['run_TFDBG']
+    run_tfdbg = config['Debug'].get('run_TFDBG', False)
 
     # Define data loading functions
     if data_format == 'HDF5':
