@@ -71,6 +71,8 @@ class ImageMapper():
         else:
             raise NotImplementedError("Hex conversion algorithm {} is not implemented.".format(hex_conversion_algorithm))
 
+        self.padding = padding
+
         for tel_, pad_ in self.padding.items():
             if pad_ > 0:
                 self.image_shapes[tel_] = (
@@ -197,8 +199,8 @@ class ImageMapper():
                     pos[pixel_index - 1, 1] = y
 
         pos_shifted = pos + 26 + pixel_side_len / 2.0
-        delta_x = (self.image_shapes['VTS'][0] - 54) / 2
-        delta_y = (self.image_shapes['VTS'][1] - 54) / 2
+        delta_x = int((self.image_shapes['VTS'][0] - 54) / 2)
+        delta_y = int((self.image_shapes['VTS'][1] - 54) / 2)
 
         for i in range(num_pixels):
             x, y = pos_shifted[i, :]
@@ -259,7 +261,7 @@ class ImageMapper():
         for (x_0, y_0) in MODULE_START_POSITIONS:
             for i in range(MODULE_DIM * MODULE_DIM):
                 x = int(x_0 + i // MODULE_DIM)
-                y = y_0 + i % MODULE_DIM
+                y = int(y_0 + i % MODULE_DIM)
                 table[x][y] = j
                 j += 1
 

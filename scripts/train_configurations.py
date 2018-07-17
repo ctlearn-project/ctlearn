@@ -4,16 +4,16 @@ options.
 
 train_configurations.py <constant_config_path> <changing_configs_path> <run_combinations_path> <model_dir> <combinations_multiplier>
 
-<constant_config_path>: path to configuration file containing all options meant
-to be the same for every run
+<constant_config_path>: path to YAML configuration file containing all options meant
+to be the same for every run. Omit all options which are meant to be changed between runs
+(those should only be present in the changing_configs YAML file.
 
-<changing_configs_path>: path to file specifying options to change on each run
-Each line of the file has one of the formats:
-<section>, <key>, discrete: <value1>, <value2>,..., <valueN>
-<section>, <key>, grid_range: <lower_bound>, <upper_bound>, <spacing>, <num>
-<section>, <key>, random_range: <lower_bound>, <upper_bound>, <spacing>
-where <spacing> is one of "linear" or "log". Lines starting with '#' are
-skipped as comments.
+<changing_configs_path>: path to YAML file specifying options to change on each run
+The value of each setting (key) in the config dict (which can be nested) should have one of the following forms:
+['discrete', [<value1>, <value2>,..., <valueN>]]
+['grid_range', [<lower_bound>, <upper_bound>, <spacing>, <num>]]
+['random_range', [<lower_bound>, <upper_bound>, <spacing>]]
+where <spacing> is one of "linear" or "log".
 
 <run_combinations_path>: path to file in which to save the combinations of 
 options corresponding to each run number
@@ -30,14 +30,15 @@ of runs.
 """
 
 import argparse
-import configparser
 import itertools
 import os
 import sys
 
 import numpy as np
 
-from ctalearn.scripts.train import train
+import yaml
+
+from ctlearn.run_model import run_model
 
 # Get command line arguments
 parser = argparse.ArgumentParser(
@@ -74,72 +75,102 @@ def yield_config(constant_config_path, changing_configs, model_dir,
         combinations_multiplier):
     # List tuples of the config coordinates and value for each value of each
     # discrete config
-    discrete_configs = [[(c['section'], c['key'], v) for v in c['values']]
+    discrete_configs = [[(c['keys'], v) for v in c['values']]
             for c in changing_configs if not c['random']]
     # Get all the combinations
     discrete_combinations = (list(itertools.product(*discrete_configs)) *
             combinations_multiplier)
-    combinations = [d + tuple([(c['section'], c['key'], c['value_fn']()) for
+    combinations = [d + tuple([(c['keys'], c['value_fn']()) for
         c in changing_configs if c['random']]) for d in discrete_combinations]
+    
     for run_num, combination in enumerate(combinations):
-        config = configparser.ConfigParser()
-        config.read(constant_config_path)
+        with open(args.constant_config_path, 'r') as constant_config_file:
+            config = yaml.load(constant_config_file)
+        combination_dict = {}
         # Add the changing config options to the constant config
-        for config_option in combination:
-            section, key, value = config_option
-            config[section][key] = str(value)
+        for (keys, value) in combination:
+            section = config
+            combination_dict_section = combination_dict
+            for i in range(len(keys) - 1):
+                if keys[i] not in section:
+                    section[keys[i]] = {}
+                section = section[keys[i]]
+
+                if keys[i] not in combination_dict_section:
+                    combination_dict_section[keys[i]] = {}
+                combination_dict_section = combination_dict_section[keys[i]]
+
+            section[keys[-1]] = value
+            combination_dict_section[keys[-1]] = value
         # Set the model directory to that corresponding to this run
         run_model_directory = os.path.join(model_dir, 'run'+str(run_num))
-        config['Logging']['ModelDirectory'] = run_model_directory
-        yield config, combination
+        config['Logging']['model_directory'] = run_model_directory
+        yield config, combination_dict
+
+def get_changing_configs(section, keys, changing_configs):
+    for k, v in section.items(): 
+        if isinstance(v, dict):
+            keys.append(k)
+            get_changing_configs(v, keys, changing_configs)
+        else:
+            config = {}
+            config['keys'] = keys + [k]
+            iteration_type, settings = v 
+            if iteration_type == 'discrete':  
+                config['random'] = False
+                config['values'] = settings
+            elif iteration_type == 'grid_range':
+                config['random'] = False
+                lower_bound, upper_bound, spacing, num = settings
+                lower_bound = float(lower_bound)
+                upper_bound = float(upper_bound)
+                num = int(num)
+                if spacing == 'linear':
+                    config['values'] = np.linspace(lower_bound, upper_bound, num)
+                elif spacing == 'log':
+                    config['values'] = np.logspace(np.log10(lower_bound),
+                            np.log10(upper_bound), num)
+            elif iteration_type == 'random_range':
+                config['random'] = True
+                lower_bound, upper_bound, spacing = settings
+                lower_bound = float(lower_bound)
+                upper_bound = float(upper_bound)
+                if spacing == 'linear':
+                    config['value_fn'] = lambda: np.random.uniform(lower_bound,
+                            upper_bound)
+                elif spacing == 'log':
+                    config['value_fn'] = lambda: np.power(10.0,
+                            np.random.uniform(
+                                np.log10(lower_bound), np.log10(upper_bound)))
+
+            changing_configs.append(config)
+
+# Load constant config
+with open(args.constant_config_path, 'r') as constant_config_file:
+    constant_config = yaml.load(constant_config_file)
 
 # Load a file specifying config options to run over
 changing_configs = []
-with open(args.changing_configs_path) as f:
-    for line in f:
-        if not line or line[0] == '#': continue
-        config = {}
-        config_def, settings = line.strip().split(':')
-        config['section'], config['key'], iteration_type = [x.strip() for x in
-                config_def.split(',')]
-        settings = [s.strip() for s in settings.split(',')]
-        if iteration_type == 'discrete':
-            config['random'] = False
-            config['values'] = settings
-        elif iteration_type == 'grid_range':
-            config['random'] = False
-            lower_bound, upper_bound, spacing, num = settings
-            lower_bound = float(lower_bound)
-            upper_bound = float(upper_bound)
-            num = int(num)
-            if spacing == 'linear':
-                config['values'] = np.linspace(lower_bound, upper_bound, num)
-            elif spacing == 'log':
-                config['values'] = np.logspace(np.log10(lower_bound),
-                        np.log10(upper_bound), num)
-        elif iteration_type == 'random_range':
-            config['random'] = True
-            lower_bound, upper_bound, spacing = settings
-            lower_bound = float(lower_bound)
-            upper_bound = float(upper_bound)
-            if spacing == 'linear':
-                config['value_fn'] = lambda: np.random.uniform(lower_bound,
-                        upper_bound)
-            elif spacing == 'log':
-                config['value_fn'] = lambda: np.power(10.0,
-                        np.random.uniform(
-                            np.log10(lower_bound), np.log10(upper_bound)))
-        changing_configs.append(config)
+keys = []
+with open(args.changing_configs_path, 'r') as changing_config_file:
+    changing_options_config = yaml.load(changing_config_file)
+    get_changing_configs(changing_options_config, keys, changing_configs)
+    print(changing_configs)
 
-for run_num, (config, combination) in enumerate(yield_config(
+# write constant part of config
+with open(args.run_combinations_path, 'a') as runs_file:
+    runs_file.write("Constant settings \n")        
+    yaml.dump(constant_config, runs_file, default_flow_style=False)
+    runs_file.write("\n")
+
+for run_num, (config, combination_dict) in enumerate(yield_config(
     args.constant_config_path, changing_configs, args.model_dir,
     args.combinations_multiplier)):
-    print(f"Training run {run_num}...")
+    print("Training run {}...".format(run_num))
     # Save the hyperparameter combination for each run to a file
     with open(args.run_combinations_path, 'a') as runs_file:
-        runs_file.write(f"Run {run_num}\n")
-        for param in combination:
-            runs_file.write(','.join(map(str, param))+'\n')
+        runs_file.write("Run {}\n".format(run_num))        
+        yaml.dump(combination_dict, runs_file, default_flow_style=False)
         runs_file.write("\n")
     run_model(config, mode='train', debug=args.debug,
             log_to_file=args.log_to_file)

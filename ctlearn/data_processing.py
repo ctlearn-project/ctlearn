@@ -7,7 +7,7 @@ from ctlearn.image_mapping import ImageMapper
 class DataProcessor():
 
     def __init__(self,
-            image_mapper=ImageMapper(None),
+            image_mapper=ImageMapper(),
             crop=True,
             bounding_box_sizes={'MSTS': 48},
             image_cleaning="twolevel",
@@ -23,14 +23,26 @@ class DataProcessor():
 
         self.crop = crop
         self.bounding_box_sizes = bounding_box_sizes
-        self.image_cleaning = image_cleaning
+        
+        if image_cleaning in ['twolevel', None]:
+            self.image_cleaning = image_cleaning
+        else:
+            raise ValueError("Invalid image cleaning method: {}. Select 'twolevel' or None.".format(image_cleaning))
+        
         self.thresholds = thresholds
         self.return_cleaned_images = return_cleaned_images
 
-        self.normalization = normalization
-        self.image_charge_mins= image_charge_mins
+        if normalization in ['log', None]:
+            self.normalization = normalization
+        else:
+            raise ValueError("Invalid normalization method: {}. Select 'log' or None.".format(normalization))
+        
+        self.image_charge_mins = image_charge_mins
 
-        self.sort_images_by = sort_images_by
+        if sort_images_by in ['trigger', 'size', None]:
+            self.sort_images_by = sort_images_by
+        else:
+            raise ValueError("Invalid image sorting method: {}. Select 'trigger', 'size', or None.".format(sort_images_by))
 
         self.image_shapes = {}
         for tel_type in self._image_mapper.image_shapes:
@@ -51,7 +63,7 @@ class DataProcessor():
     # bounding_box_size.
     def _crop_image(self, image, tel_type):
 
-        if self.image_cleaning == "none":
+        if self.image_cleaning is None:
             cleaned_image = image
         elif self.image_cleaning  == "twolevel":
             # Apply two-level cleaning to isolate the shower. First, filter for
