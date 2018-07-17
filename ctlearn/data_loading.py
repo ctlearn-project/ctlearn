@@ -76,7 +76,7 @@ class HDF5DataLoader(DataLoader):
             validation_split=0.1,
             use_telescope_positions=True,
             data_processor=None,
-            image_mapper=ImageMapper(None),
+            image_mapper=ImageMapper(),
             seed=None
             ):
 
@@ -85,13 +85,31 @@ class HDF5DataLoader(DataLoader):
                     for filename in file_list}
 
         # Data loading settings
-        self.mode = mode 
-        self.example_type = example_type
+        if mode in ['train', 'test']:
+            self.mode = mode
+        else:
+            raise ValueError("Invalid mode selection: {}. Select 'train' or 'test'.".format(mode))
+        
+        if example_type in ['single_tel', 'array']:
+            self.example_type = example_type
+        else:
+            raise ValueError("Invalid example type selection: {}. Select 'single_tel' or 'array'.".format(example_type))
+
         self.cut_condition = cut_condition
         self.min_num_tels = min_num_tels
-        self.validation_split = validation_split
+
+        if validation_split < 1.0 and validation_split > 0.0:
+            self.validation_split = validation_split
+        else:
+            raise ValueError("Invalid validation split: {}. Must be between 0.0 and 1.0".format(validation_split))
+        
         self.use_telescope_positions = use_telescope_positions
-        self.data_processor = data_processor
+
+        if isinstance(data_processor, DataProcessor) or data_processor is None:
+            self.data_processor = data_processor
+        else:
+            raise ValueError("data_processor must be an object of type DataProcessor or None.")
+        
         self.seed = seed
 
         # Overwrite self._image_mapper with the ImageMapper of the DataProcessor

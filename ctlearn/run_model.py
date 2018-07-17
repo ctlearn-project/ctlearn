@@ -5,9 +5,9 @@ import logging
 import os
 import sys
 import time
+import pprint
 
-from configobj import ConfigObj, flatten_errors
-from validate import Validator
+import yaml
 
 import tensorflow as tf
 from tensorflow.python import debug as tf_debug
@@ -24,9 +24,9 @@ def setup_logging(config, log_dir, debug, log_to_file):
 
     # Log configuration to a text file in the log dir
     time_str = time.strftime('%Y%m%d_%H%M%S')
-    config_filename = os.path.join(log_dir, time_str + '_config.ini')
-    with open(config_filename, 'wb') as config_file:
-        config.write(config_file)
+    config_filename = os.path.join(log_dir, time_str + '_config.yml')
+    with open(config_filename, 'w') as outfile:
+        yaml.dump(config, outfile, default_flow_style=False)
 
     # Set up logger
     logger = logging.getLogger()
@@ -49,6 +49,9 @@ def setup_logging(config, log_dir, debug, log_to_file):
 
 def run_model(config, mode="train", debug=False, log_to_file=False):
 
+    if debug:
+        pprint.pprint(config)
+
     # Load options relating to logging and checkpointing
     model_dir = config['Logging']['model_directory']
     # Create model directory if it doesn't exist already
@@ -61,7 +64,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     sys.path.append(config['Model']['model_directory'])
     model_module = importlib.import_module(config['Model']['model_module'])
     model = getattr(model_module, config['Model']['model_function'])
-    model_type = config['Data']['Data Loading']['example_type']
+    model_type = config['Data']['Loading']['example_type']
     
     model_hyperparameters = config['Model']['Model Parameters']
     model_hyperparameters['model_directory'] = config['Model']['model_directory']
@@ -84,15 +87,15 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     elif mode == "predict":
         data_loader_mode = "test"
 
-    data_loading_settings = config['Data']['Data Loading']
+    data_loading_settings = config['Data']['Loading']
 
     # Load options related to data processing
     apply_processing = config['Data']['apply_processing']
-    data_processing_settings = config['Data']['Data Processing']
+    data_processing_settings = config['Data']['Processing']
     data_processing_settings['num_shower_coordinates'] = 2 # position on camera needs 2 coords
 
     # Load options related to data input
-    data_input_settings = config['Data']['Data Input']
+    data_input_settings = config['Data']['Input']
     if data_format == 'HDF5':
         data_input_settings['map'] = True
 
@@ -436,7 +439,7 @@ if __name__ == "__main__":
             help="Mode to run in (train/predict)")
     parser.add_argument(
             'config_file',
-            help="path to configobj configuration file with training options")
+            help="path to YAML configuration file with training options")
     parser.add_argument(
             '--debug',
             action='store_true',
@@ -448,29 +451,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
    
-    config_spec_filepath = os.path.join(os.path.dirname(os.path.dirname(__file__)), "config/config_spec.ini")
+    with open(args.config_file, 'r') as config_file:
+        config = yaml.load(config_file)
 
-    # Load configuration file and configspec for validation
-    validator = Validator()
-    configspec = ConfigObj(config_spec_filepath, encoding='UTF8', list_values=False, _inspec=True, stringify=True)
-    config = ConfigObj(args.config_file, configspec=configspec)
-  
-    # Validate config and print errors if any occurred
-    # Error printing code based from example at
-    # https://configobj.readthedocs.io/en/latest/configobj.html#validation
-    result = config.validate(validator, preserve_errors=True)
-    if result is True:
-        run_model(config, mode=args.mode, debug=args.debug, log_to_file=args.log_to_file)
-    else:
-        for entry in flatten_errors(config, result):
-            # each entry is a tuple
-            section_list, key, error = entry
-            if key is not None:
-                section_list.append(key)
-            else:
-                section_list.append('[missing section]')
-            section_string = ', '.join(section_list)
-            if error == False:
-                error = 'Missing value or section.'
-            print(section_string, ' = ', error)
+    run_model(config, mode=args.mode, debug=args.debug, log_to_file=args.log_to_file)
 
