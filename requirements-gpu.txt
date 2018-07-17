@@ -3,9 +3,9 @@
 # platform: linux-64 and osx-64
 python=3.6.5
 numpy
-opencv
+opencv3
 pytables
 tensorflow-gpu=1.8.0
 pillow
 scipy
-yaml
+pyyaml
