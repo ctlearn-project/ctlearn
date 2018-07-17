@@ -7,5 +7,5 @@ opencv
 pytables
 tensorflow=1.8
 pillow
-configobj
 scipy
+yaml
