@@ -49,9 +49,6 @@ def setup_logging(config, log_dir, debug, log_to_file):
 
 def run_model(config, mode="train", debug=False, log_to_file=False):
 
-    if debug:
-        pprint.pprint(config)
-
     # Load options relating to logging and checkpointing
     model_dir = config['Logging']['model_directory']
     # Create model directory if it doesn't exist already
