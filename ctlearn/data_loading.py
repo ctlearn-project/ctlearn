@@ -223,8 +223,8 @@ class HDF5DataLoader(DataLoader):
             # Sort the telescopes by tel type and id
             telescopes = OrderedDict(sorted(telescopes.items(),
                 key=lambda i: i[0]))
-            for tel_ids in telescopes:
-                tel_ids.sort()
+            for tel_type in telescopes:
+                telescopes[tel_type].sort()
 
             if not self.telescopes:
                 self.telescopes = telescopes
@@ -301,6 +301,7 @@ class HDF5DataLoader(DataLoader):
                 'telescopes': self.telescopes,
                 'num_telescopes': {self.selected_telescope_type: len(self.selected_telescopes)},
                 'selected_telescope_types': [self.selected_telescope_type],
+                'selected_telescopes': self.selected_telescopes,
                 'num_events_by_particle_id': self.num_events_by_particle_id,
                 'num_images_by_particle_id': self.num_images_by_particle_id,
                 'num_position_coordinates': self.num_position_coordinates,
@@ -331,34 +332,21 @@ class HDF5DataLoader(DataLoader):
     # by a telescope type and an optional list of telescope ids.
     def _select_telescopes(self, tel_type, tel_ids=None):
        
-        if not tel_ids:
-            if tel_type not in self.telescopes:
-                raise ValueError("Selected tel type {} not found in dataset.".format(tel_type))
-            elif tel_type not in self._image_mapper.mapping_tables:
-                raise NotImplementedError("Mapping table for selected tel type {} not implemented.".format(tel_type))
-            else:
-                self.selected_telescope_type = tel_type
-                self.selected_telescopes = self.telescopes[tel_type]
-        else:
-            self.selected_telescopes = []
-            all_tel_ids = {}
-            for tel_type in self.telescopes:
-                for tel_id in self.telescopes[tel_type]:
-                    all_tel_ids[tel_id] = tel_type
-            if len(set([all_tel_ids[tel_id] for tel_id in tel_ids])) > 1:
-                raise ValueError("Cannot select telescopes of multiple types.")
-            for tel_id in tel_ids:
-                if all_tel_ids[tel_id] != tel_type:
-                    raise ValueError("Selected tel id {} is of wrong tel type {}.".format(tel_id, all_tel_ids[tel_id]))
-                elif tel_id not in all_tel_ids:
-                    raise ValueError("Selected tel id {} not found in dataset.".format(tel_id))
-                elif all_tel_ids[tel_id] not in self._image_mapper.mapping_tables:
-                    raise NotImplementedError(
-                            "Mapping table for tel type {} of selected tel id {} not implemented.".format(
-                                all_tel_ids[tel_id],tel_id))
-                else:
-                    self.selected_telescopes.append(tel_id)
-            self.selected_telescope_type = tel_type
+        if tel_type not in self.telescopes:
+            raise ValueError("Selected tel type {} not found in dataset.".format(tel_type))
+        if tel_type not in self._image_mapper.mapping_tables:
+            raise NotImplementedError("Mapping table for selected tel type {} not implemented.".format(tel_type))
+        self.selected_telescope_type = tel_type
+        self.selected_telescopes = [(tel_type, tel_id) for tel_id in
+                self.telescopes[tel_type]]
+        if tel_ids:
+            requested_telescopes = [(tel_type, tel_id) for tel_id in tel_ids]
+            # Confirm requested telescopes are a subset of selected telescopes
+            invalid_telescopes = list(set(requested_telescopes).difference(
+                self.selected_telescopes))
+            if invalid_telescopes:
+                raise ValueError("Selected tel type {} does not have selected tel ids {}.".format(self.selected_telescope_type, [tel_id for (tel_type, tel_id) in invalid_telescopes]))
+            self.selected_telescopes = requested_telescopes
   
     # Get a single telescope image from a particular event, 
     # uniquely identified by a tuple (run_number, event_number, tel_id).
