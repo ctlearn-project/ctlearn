@@ -312,6 +312,7 @@ class HDF5DataLoader(DataLoader):
             metadata = {**metadata, **self.data_processor.get_metadata()}
         else:
             metadata['num_additional_aux_params'] = 0
+            metadata['image_shapes'] = self._image_mapper.image_shapes
 
         metadata['total_aux_params'] = 0
         if self.use_telescope_positions:

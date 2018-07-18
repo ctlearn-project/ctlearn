@@ -221,7 +221,7 @@ class DataProcessor():
     def get_metadata(self):
         
         metadata = {
-                'processed_image_shapes': self.image_shapes,
+                'image_shapes': self.image_shapes,
                 'num_additional_aux_params': self.num_additional_aux_params
                 }
 
