@@ -192,14 +192,15 @@ Model:
     # Required list of two strings.
     # Module in model directory and function in module implementing the model.
     # Module and function pairs included with CTLearn:
-    #   - ['single_tel', 'single_tel_model']: single tel model using a
-    #       basic convolutional neural network (CNN)
-    #   - ['cnn_rnn', 'cnn_rnn_model']: array model feeding output of a basic
-    #       CNN for each  telescope into a recurrent neural network (RNN)
-    #   - ['variable_input_model', 'variable_input_model']: array model
-    #       feeding combined outputs of a CNN for each telescope into a
-    #       CNN network head
-    model: ['cnn_rnn', 'cnn_rnn_model']
+    #   - {module: 'single_tel', function: 'single_tel_model'}: single
+    #       tel model using a basic convolutional neural network (CNN)
+    #   - {module: 'cnn_rnn', function: 'cnn_rnn_model'}: array model
+    #       feeding output of a basic CNN for each  telescope into a
+    #       recurrent neural network (RNN)
+    #   - {module: 'variable_input_model', function: 'variable_input_model'}:
+    #       array model feeding combined outputs of a CNN for each
+    #       telescope into a CNN network head
+    model: {module: 'cnn_rnn', function: 'cnn_rnn_model'}
     
     # The options in this section are combined with the dataset metadata
     # and passed as a dictionary called "params" to the model function.
@@ -210,11 +211,11 @@ Model:
     # models, which are only accessed if using those models.
     Model Parameters:
         single_tel:
-            # Required list of two strings.
+            # Required dict with keys 'module' and 'function' & string values.
             # Module and function for image classification network.
             # Valid options:
-            #   - ['basic', 'conv_block']
-            network: ['basic', 'conv_block']
+            #   - {module: 'basic', function: 'conv_block'}
+            network: {module: 'basic', function: 'conv_block'}
 
             # Required string or null.
             # Path to a checkpoint file or model directory from which to load
@@ -222,11 +223,11 @@ Model:
             pretrained_weights: null
 
         cnn_rnn:
-            # Required list of two strings.
+            # Required dict with keys 'module' and 'function' & string values.
             # Module and function for single telescope CNN.
             # Valid options:
-            #   - ['basic', 'conv_block']
-            cnn_block: ['basic', 'conv_block']
+            #   - {module: 'basic', function: 'conv_block'}
+            cnn_block: {module: 'basic', function: 'conv_block'}
             
             # Required string or null.
             # Path to a checkpoint file or model directory from which to load
@@ -238,11 +239,11 @@ Model:
             dropout_rate: 0.5
 
         variable_input_model:
-            # Required list of two strings.
+            # Required dict with keys 'module' and 'function' & string values.
             # Module and function for single telescope CNN.
             # Valid options:
-            #   - ['basic', 'conv_block']
-            cnn_block: ['basic', 'conv_block']
+            #   - {module: 'basic', function: 'conv_block'}
+            cnn_block: {module: 'basic', function: 'conv_block'}
             
             # Required string.
             # Valid options:
@@ -251,12 +252,12 @@ Model:
             #       a stack of feature maps as used for convolutional layers
             telescope_combination: 'feature_maps'
 
-            # Required list of two strings.
-            # Module and function for single telescope CNN.
+            # Required dict with keys 'module' and 'function' & string values.
+            # Module and function for network head.
             # Valid options:
-            #   - ['basic', 'fc_head']
-            #   - ['basic', 'conv_head']
-            network_head: ['basic', 'conv_head']
+            #   - {module: 'basic', function: 'fc_head'}
+            #   - {module: 'basic', function: 'conv_head'}
+            network_head: {module: 'basic', function: 'conv_head'}
             
             # Required string or null.
             # Path to a checkpoint file or model directory from which to load
@@ -265,17 +266,19 @@ Model:
 
         basic:
             conv_block:
-                # Required list of lists of two integers.
+                # Required list of dicts with keys 'filters' and 'kernel_size'
+                # with integer values.
                 # Filter dimension and kernel size for the CNN block
                 # convolutional layers.
                 layers:
-                    - [32, 3]
-                    - [64, 3]
-                    - [128, 3]
+                    - {filters: 32, kernel_size: 3}
+                    - {filters: 64, kernel_size: 3}
+                    - {filters: 128, kernel_size: 3}
                 
-                # Required list of two integers or null.
+                # Required dictionary with keys 'size' and 'strides' and
+                # integer values, or null.
                 # Max pool size and strides. If null, don't perform any pooling.
-                max_pool: [2, 2]
+                max_pool: {size: 2, strides: 2}
                 
                 # Required integer or null.
                 # Number of output filters of a final 1x1 convolutional layer.
@@ -299,13 +302,14 @@ Model:
                 batchnorm: false
 
             conv_head:
-                # Required list of lists of two integers.
+                # Required list of dicts with keys 'filters' and 'kernel_size'
+                # with integer values.
                 # Filter dimension and kernel size for the convolutional
                 # network head layers.
                 layers:
-                    - [64, 3]
-                    - [128, 3]
-                    - [256, 3]
+                    - {filters: 64, kernel_size: 3}
+                    - {filters: 128, kernel_size: 3}
+                    - {filters: 256, kernel_size: 3}
                 
                 # Optional Boolean. Default: true
                 # Whether to perform average pooling over spatial dimensions
