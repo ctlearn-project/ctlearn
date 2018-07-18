@@ -22,6 +22,7 @@ Clone CTLearn repository with:
 ```bash
 mkdir /path/to/ctlearn; cd /path/to/ctlearn
 git clone https://github.com/ctlearn-project/ctlearn.git
+cd ctlearn
 ```
 
 ### Package Install w/ Anaconda
@@ -29,8 +30,7 @@ git clone https://github.com/ctlearn-project/ctlearn.git
 Setup Anaconda environment with:
 
 ```bash
-conda config --add channels conda-forge
-conda create -n [ENV_NAME] --file requirements-[mode].txt
+conda create -c conda-forge -c menpo -n [ENV_NAME] --file requirements-[mode].txt
 source activate [ENV_NAME]
 ```
 

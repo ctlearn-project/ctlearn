@@ -1,11 +1,11 @@
 # This file may be used to create an environment using:
 # $ conda create --name <env> --file <this file>
 # platform: linux-64 and osx-64
-python=3.6
+python=3.6.5
 numpy
-opencv
+opencv3
 pytables
-tensorflow-gpu=1.8
+tensorflow-gpu=1.8.0
 pillow
 scipy
-yaml
+pyyaml

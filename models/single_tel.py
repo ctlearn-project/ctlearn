@@ -10,7 +10,7 @@ def single_tel_model(features, params, training):
     if num_telescope_types != 1:
         raise ValueError('Must use a single telescope type for single telescope model. Number used: {}'.format(num_telescope_types))
     telescope_type = params['selected_telescope_types'][0]
-    image_width, image_length, image_depth = params['processed_image_shapes'][telescope_type]
+    image_width, image_length, image_depth = params['image_shapes'][telescope_type]
     num_gamma_hadron_classes = params['num_classes']
     
     telescope_data = features['telescope_data']
@@ -18,14 +18,14 @@ def single_tel_model(features, params, training):
 
     # Load neural network model
     sys.path.append(params['model_directory'])
-    network_module = importlib.import_module(params['NetworkModule'])
-    network = getattr(network_module, params['NetworkFunction'])
+    network_module = importlib.import_module(params['single_tel']['network']['module'])
+    network = getattr(network_module, params['single_tel']['network']['function'])
 
     with tf.variable_scope("Network"):
         output = network(telescope_data, params=params, training=training)
 
-    if params['PretrainedWeights']:
-        tf.contrib.framework.init_from_checkpoint(params['PretrainedWeights'],{'Network/':'Network/'})
+    if params['single_tel']['pretrained_weights']:
+        tf.contrib.framework.init_from_checkpoint(params['single_tel']['pretrained_weights'],{'Network/':'Network/'})
 
     output_flattened = tf.layers.flatten(output)
 

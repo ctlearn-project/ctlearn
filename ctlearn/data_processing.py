@@ -8,14 +8,13 @@ class DataProcessor():
 
     def __init__(self,
             image_mapper=ImageMapper(),
-            crop=True,
+            crop=False,
             bounding_box_sizes={'MSTS': 48},
             image_cleaning="twolevel",
             thresholds={'MSTS': (5.5, 1.0)},
             return_cleaned_images=False,
-            normalization="log",
+            normalization=None,
             sort_images_by=None,
-            num_shower_coordinates=2,
             image_charge_mins=None
             ):
         
@@ -53,8 +52,10 @@ class DataProcessor():
             else:
                 self.image_shapes[tel_type] = self._image_mapper.image_shapes[tel_type]
 
-        self.num_additional_aux_params = 0 
-        self.num_additional_aux_params += num_shower_coordinates 
+        self.num_additional_aux_params = 0
+        if self.crop:
+            # Add 2 coordinates for the shower position on the camera
+            self.num_additional_aux_params += 2
 
     # Crop an image about the shower center, optionally applying image cleaning
     # to obtain a better fit. The shower centroid is calculated as the mean of
@@ -220,7 +221,7 @@ class DataProcessor():
     def get_metadata(self):
         
         metadata = {
-                'processed_image_shapes': self.image_shapes,
+                'image_shapes': self.image_shapes,
                 'num_additional_aux_params': self.num_additional_aux_params
                 }
 
