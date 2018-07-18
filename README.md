@@ -1,6 +1,6 @@
 # CTLearn: Deep Learning for IACT Analysis
 
-[![Build Status](https://travis-ci.org/ctlearn-project/ctlearn.svg?branch=master)](https://travis-ci.org/ctlearn-project/ctlearn) [![Coverage Status](https://coveralls.io/repos/github/ctlearn-project/ctlearn/badge.svg?branch=master)](https://coveralls.io/github/ctlearn-project/ctlearn?branch=master) [![Code Health](https://landscape.io/github/ctlearn-project/ctlearn/master/landscape.svg?style=flat)](https://landscape.io/github/ctlearn-project/ctlearn/master)
+[![Build Status](https://travis-ci.com/ctlearn-project/ctlearn.svg?branch=master)](https://travis-ci.com/ctlearn-project/ctlearn) [![Coverage Status](https://coveralls.io/repos/github/ctlearn-project/ctlearn/badge.svg?branch=master)](https://coveralls.io/github/ctlearn-project/ctlearn?branch=master) [![Code Health](https://landscape.io/github/ctlearn-project/ctlearn/master/landscape.svg?style=flat)](https://landscape.io/github/ctlearn-project/ctlearn/master)
 
 
 Deep learning models for IACT event analysis and classification. Designed to work with [CTA](https://www.cta-observatory.org/) (the Cherenkov Telescope Array) and [VERITAS](https://veritas.sao.arizona.edu/) data.
