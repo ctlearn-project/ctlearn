@@ -192,8 +192,6 @@ class HDF5DataLoader(DataLoader):
         self.__events_to_indices = {}
         self.__single_tel_examples_to_indices = {}
 
-        self.__tel_id_to_type_index = {}
-
         for filename in self.files:
             # get file handle
             f = self.files[filename]
@@ -202,12 +200,16 @@ class HDF5DataLoader(DataLoader):
             particle_id = f.root._v_attrs.particle_type
             self.particle_ids.add(particle_id)
 
-            tel_ids_types = []
+            telescopes = {}
             for row in f.root.Array_Info.iterrows():
                 # note: tel type strings stored in Pytables as byte strings, must be decoded
                 tel_type = row['tel_type'].decode('utf-8')
                 tel_id = row['tel_id']
-                tel_ids_types.append((tel_id,tel_type))
+                # Store the telescope for indexing
+                if tel_type not in telescopes:
+                    telescopes[tel_type] = []
+                telescopes[tel_type].append(tel_id)
+                # Store the telescope position
                 if tel_type not in self.telescope_positions:
                     self.telescope_positions[tel_type] = {}
                 if tel_id not in self.telescope_positions[tel_type]:
@@ -218,27 +220,11 @@ class HDF5DataLoader(DataLoader):
                             row["tel_y"], row["tel_z"]]:
                         raise ValueError("Telescope positions do not match for telescope {} in file {}.".format(tel_id,filename))
 
-            # sort all (telescope id, telescope type) pairs by tel_id
-            tel_ids_types.sort(key=lambda i: i[0])
-
-            # For every telescope in the file
-            for row in f.root.Array_Info.iterrows():
-                tel_type = row['tel_type'].decode('utf-8')
-                tel_id = row['tel_id']
-                
-            telescopes = OrderedDict()
-            index = 0
-            prev_tel_type = tel_ids_types[0][1]
-            for tel_id, tel_type in tel_ids_types:
-                if tel_type not in telescopes:
-                    telescopes[tel_type] = []
-                telescopes[tel_type].append(tel_id)
-                self.__tel_id_to_type_index[tel_id] = (tel_type,index)
-                if tel_type != prev_tel_type:
-                    index = 0
-                else:
-                    index += 1
-                prev_tel_type = tel_type
+            # Sort the telescopes by tel type and id
+            telescopes = OrderedDict(sorted(telescopes.items(),
+                key=lambda i: i[0]))
+            for tel_ids in telescopes:
+                tel_ids.sort()
 
             if not self.telescopes:
                 self.telescopes = telescopes
@@ -273,7 +259,7 @@ class HDF5DataLoader(DataLoader):
                     if not tel_type in self.num_images_by_particle_id:
                         self.num_images_by_particle_id[tel_type] = {}
                     for tel_id, image_index in zip(tel_ids, indices):
-                        self.__single_tel_examples_to_indices[(row['run_number'], row['event_number'], tel_id)] = (filename, tel_type, image_index)
+                        self.__single_tel_examples_to_indices[(row['run_number'], row['event_number'], tel_type, tel_id)] = (filename, tel_type, image_index)
                         if image_index != 0:
                             self.images[tel_type].append((row['run_number'], row['event_number'], tel_id))
                             self.num_images[tel_type] += 1
@@ -378,15 +364,14 @@ class HDF5DataLoader(DataLoader):
     # uniquely identified by a tuple (run_number, event_number, tel_id).
     # The raw 1D trace is transformed into a 1-channel 2D image using a
     # mapping table but no other processing is done.
-    def get_image(self, run_number, event_number, tel_id):
+    def get_image(self, run_number, event_number, tel_type, tel_id):
         
-        tel_type, _ = self.__tel_id_to_type_index[tel_id]
         if tel_type not in self._image_mapper.mapping_tables:
             raise NotImplementedError("Requested image from tel_type {} without valid mapping table.".format(tel_type))
 
         # get filename, image table name (telescope type), and index
         # corresponding to the desired image
-        filename, tel_type, index = self.__single_tel_examples_to_indices[(run_number, event_number, tel_id)]
+        filename, tel_type, index = self.__single_tel_examples_to_indices[(run_number, event_number, tel_type, tel_id)]
         
         f = self.files[filename]
         record = f.root._f_get_child(tel_type)[index]
@@ -408,10 +393,10 @@ class HDF5DataLoader(DataLoader):
 
         if self.example_type == "single_tel":
 
-            run_number, event_number, tel_id = identifiers
+            run_number, event_number, tel_type, tel_id = identifiers
 
             # get image from image table
-            image = self.get_image(run_number, event_number, tel_id) 
+            image = self.get_image(run_number, event_number, tel_type, tel_id) 
 
             # locate corresponding event record to get particle type
             filename, index = self.__events_to_indices[(run_number, event_number)]
@@ -445,8 +430,8 @@ class HDF5DataLoader(DataLoader):
             triggers = []
             aux_inputs = []
             image_shape = self._image_mapper.image_shapes[tel_type] 
-            for tel_id in self.selected_telescopes:
-                _, index = self.__tel_id_to_type_index[tel_id]
+            for tel_type, tel_id in self.selected_telescopes:
+                index = self.telescopes[tel_type].index(tel_id)
                 i = record[tel_type + "_indices"][index]
                 if i == 0:
                     # Telescope did not trigger. Its outputs will be dropped
@@ -455,7 +440,7 @@ class HDF5DataLoader(DataLoader):
                     images.append(np.empty(image_shape))
                     triggers.append(0)  
                 else:
-                    image = self.get_image(run_number, event_number, tel_id)
+                    image = self.get_image(run_number, event_number, tel_type, tel_id)
                     images.append(image)
                     triggers.append(1)
                 if self.use_telescope_positions:
@@ -510,8 +495,8 @@ class HDF5DataLoader(DataLoader):
                 # be only a single selected telescope type
                 if self.example_type == "single_tel":
                     image_indices = row[self.selected_telescope_type + "_indices"]
-                    for tel_id in self.selected_telescopes:
-                        _, index = self.__tel_id_to_type_index[tel_id]
+                    for tel_type, tel_id in self.selected_telescopes:
+                        index = self.telescopes[tel_type].index(tel_id)
                         if image_indices[index] != 0:
                             passing_examples.append((row["run_number"], row["event_number"], tel_id))
                             self.passing_num_examples_by_particle_id[particle_id] += 1
