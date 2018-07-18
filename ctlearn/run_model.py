@@ -5,7 +5,6 @@ import logging
 import os
 import sys
 import time
-import pprint
 
 import yaml
 
@@ -59,8 +58,8 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     
     # Load options to specify the model
     sys.path.append(config['Model']['model_directory'])
-    model_module = importlib.import_module(config['Model']['model_module'])
-    model = getattr(model_module, config['Model']['model_function'])
+    model_module = importlib.import_module(config['Model']['model']['module'])
+    model = getattr(model_module, config['Model']['model']['function'])
     model_type = config['Data']['Loading']['example_type']
     
     model_hyperparameters = config['Model']['Model Parameters']

@@ -8,7 +8,7 @@ LSTM_SIZE = 2048
 def cnn_rnn_model(features, params, training):
 
     # Get hyperparameters
-    dropout_rate = float(params.get('dropoutrate', 0.5))
+    dropout_rate = params['cnn_rnn'].get('dropout_rate', 0.5)
 
     # Reshape inputs into proper dimensions
     num_telescope_types = len(params['selected_telescope_types']) 
@@ -49,8 +49,8 @@ def cnn_rnn_model(features, params, training):
 
     # Load CNN block model
     sys.path.append(params['model_directory'])
-    cnn_block_module = importlib.import_module(params['CNNBlockModule'])
-    cnn_block = getattr(cnn_block_module, params['CNNBlockFunction'])
+    cnn_block_module = importlib.import_module(params['cnn_rnn']['cnn_block']['module'])
+    cnn_block = getattr(cnn_block_module, params['cnn_rnn']['cnn_block']['function'])
 
     #calculate number of valid images per event
     num_tels_triggered = tf.to_int32(tf.reduce_sum(telescope_triggers,1))
@@ -64,8 +64,8 @@ def cnn_rnn_model(features, params, training):
             output = cnn_block(tf.gather(telescope_data, telescope_index),
                 params=params, reuse=reuse, training=training)
 
-        if params['PretrainedWeights']:
-            tf.contrib.framework.init_from_checkpoint(params['PretrainedWeights'],{'CNN_block/':'CNN_block/'})
+        if params['cnn_rnn']['pretrained_weights']:
+            tf.contrib.framework.init_from_checkpoint(params['cnn_rnn']['pretrained_weights'],{'CNN_block/':'CNN_block/'})
 
         #flatten output of embedding CNN to (batch_size, _)
         image_embedding = tf.layers.flatten(output, name='image_embedding')

@@ -204,6 +204,7 @@ Model:
     
     # The options in this section are combined with the dataset metadata
     # and passed as a dictionary called "params" to the model function.
+    # The config option 'model_directory' above is included in params as well.
     # None of these options are accessed anywhere outside the model, so
     # arbitrary options may be added here. This permits custom configuration
     # of user-provided models.
@@ -323,7 +324,7 @@ Model:
             
             # Optional float. Default: 0.99
             # Decay parameter for batch normalization layers.
-            batch_norm_decay: 0.99
+            batchnorm_decay: 0.99
 
 Training:
 
@@ -343,7 +344,7 @@ Training:
         
         # Optional float. Required if optimizer is 'Adam', ignored otherwise.
         # Epsilon parameter for the Adam optimizer.
-        adam_epsilon: 0.00000001
+        adam_epsilon: 1.0e-8
         
         # Required integer.
         # Base learning rate before scaling or annealing.

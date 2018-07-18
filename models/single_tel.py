@@ -18,14 +18,14 @@ def single_tel_model(features, params, training):
 
     # Load neural network model
     sys.path.append(params['model_directory'])
-    network_module = importlib.import_module(params['NetworkModule'])
-    network = getattr(network_module, params['NetworkFunction'])
+    network_module = importlib.import_module(params['single_tel']['network']['module'])
+    network = getattr(network_module, params['single_tel']['network']['function'])
 
     with tf.variable_scope("Network"):
         output = network(telescope_data, params=params, training=training)
 
-    if params['PretrainedWeights']:
-        tf.contrib.framework.init_from_checkpoint(params['PretrainedWeights'],{'Network/':'Network/'})
+    if params['single_tel']['pretrained_weights']:
+        tf.contrib.framework.init_from_checkpoint(params['single_tel']['pretrained_weights'],{'Network/':'Network/'})
 
     output_flattened = tf.layers.flatten(output)
 

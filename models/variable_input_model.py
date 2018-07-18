@@ -78,7 +78,7 @@ def variable_input_model(features, params, training):
     telescope_type = params['selected_telescope_types'][0]
     image_width, image_length, image_depth = params['processed_image_shapes'][telescope_type]
     num_telescopes = params['num_telescopes'][telescope_type]
-    num_aux_inputs = sum(params['total_aux_params'].values())
+    num_aux_inputs = params['total_aux_params']
     num_gamma_hadron_classes = params['num_classes']
     
     telescope_data = features['telescope_data']
@@ -110,16 +110,21 @@ def variable_input_model(features, params, training):
 
     # Load CNN block and network head models
     sys.path.append(params['model_directory'])
-    cnn_block_module = importlib.import_module(params['CNNBlockModule'])
-    cnn_block = getattr(cnn_block_module, params['CNNBlockFunction'])
-    network_head_module = importlib.import_module(params['NetworkHeadModule'])
-    network_head = getattr(network_head_module, params['NetworkHeadFunction'])
-    if params['TelescopeCombination'] == "vector":
+    cnn_block_module = importlib.import_module(
+            params['variable_input_model']['cnn_block']['module'])
+    cnn_block = getattr(cnn_block_module,
+            params['variable_input_model']['cnn_block']['function'])
+    network_head_module = importlib.import_module(
+            params['variable_input_model']['network_head']['module'])
+    network_head = getattr(network_head_module,
+            params['variable_input_model']['network_head']['function'])
+    if params['variable_input_model']['telescope_combination'] == "vector":
         combine_telescopes = combine_telescopes_as_vectors
-    elif params['TelescopeCombination'] == "feature_maps":
+    elif (params['variable_input_model']['telescope_combination'] ==
+            "feature_maps"):
         combine_telescopes = combine_telescopes_as_feature_maps
     else:
-        raise ValueError("Invalid telescope combination: {}.".format(params['TelescopeCombination']))
+        raise ValueError("Invalid telescope combination: {}.".format(params['telescope_combination']))
     
     # Process the input for each telescope
     telescope_outputs = []
@@ -136,8 +141,8 @@ def variable_input_model(features, params, training):
                 training=training,
                 reuse=reuse)
 
-        if params['PretrainedWeights']:
-            tf.contrib.framework.init_from_checkpoint(params['PretrainedWeights'],{'CNN_block/':'CNN_block/'})
+        if params['variable_input_model']['pretrained_weights']:
+            tf.contrib.framework.init_from_checkpoint(params['variable_input_model']['pretrained_weights'],{'CNN_block/':'CNN_block/'})
 
         telescope_features = apply_trigger_dropout(telescope_features,
                 tf.gather(telescope_triggers, telescope_index, axis=1))
