@@ -211,86 +211,125 @@ Model:
     #       - 'variable_input_model'
     model_function: 'cnn_rnn_model'
     
-    # Additional user-determined custom model parameters
+    # The options in this section are combined with the dataset metadata
+    # and passed as a dictionary called "params" to the model function.
+    # None of these options are accessed anywhere outside the model, so
+    # arbitrary options may be added here. This permits custom configuration
+    # of user-provided models.
+    # Below are listed the configuration options for the CTLearn included 
+    # models, which are only accessed if using those models.
     Model Parameters:
-        # Single Tel must specify Network.
-        # Network to be used for image classification. The only supported verified 
-        # function is "basic_conv_block" within the "basic" module.
-        NetworkModule: basic
-        NetworkFunction: basic_conv_block
+        single_tel:
+            # Required list of two strings.
+            # Module and function for image classification network.
+            # Valid options:
+            #   - ['basic', 'conv_block']
+            network: ['basic', 'conv_block']
 
-        # CNN-RNN and Variable Input Model must specify CNNBlock.
-        # Network to be used for single telescope blocks. The only supported, verified
-        # function is "basic_conv_block" within the "basic" module.
-        CNNBlockModule: basic
-        CNNBlockFunction: basic_conv_block
+            # Required string or null.
+            # Path to a checkpoint file or model directory from which to load
+            # pretrained network weights. If null, don't load any weights.
+            pretrained_weights: null
 
-        # Variable Input Model must specify TelescopeCombination. Supported options are
-        # "vector" and "feature_maps". Use "vector" for network heads expected input as
-        # a single feature vector and "feature_maps" for those expecting input as a 
-        # stack of feature maps as used for convolutional layers.
-        TelescopeCombination: feature_maps
+        cnn_rnn:
+            # Required list of two strings.
+            # Module and function for single telescope CNN.
+            # Valid options:
+            #   - ['basic', 'conv_block']
+            cnn_block: ['basic', 'conv_block']
+            
+            # Required string or null.
+            # Path to a checkpoint file or model directory from which to load
+            # pretrained CNN block weights. If null, don't load any weights.
+            pretrained_weights: null
+            
+            # Optional float. Default: 0.5
+            # Dropout rate of dropout layers. 
+            dropout_rate: 0.5
 
-        # Variable Input Model must specify NetworkHead.
-        # Network to be for array-level processing on the combined telescope outputs.
-        # The supported functions are "basic_conv_head" and "basic_fc_head" within
-        # the "basic" module.
-        NetworkHeadModule: basic
-        NetworkHeadFunction: basic_conv_head
+        variable_input_model:
+            # Required list of two strings.
+            # Module and function for single telescope CNN.
+            # Valid options:
+            #   - ['basic', 'conv_block']
+            cnn_block: ['basic', 'conv_block']
+            
+            # Required string.
+            # Valid options:
+            #   - 'vector': Use for network heads expecting an input vector 
+            #   - 'feature_maps': Use for networks heads expecting input as
+            #       a stack of feature maps as used for convolutional layers
+            telescope_combination: 'feature_maps'
 
-        # Model configuration for Basic Conv Block model.
-        # Pipe-separated string. Filters for each CNN Block convolutional layer.
-        BasicConvBlockFilters: 32|64|128
-        # Pipe-separated string. Kernels for each CNN Block convolutional layer.
-        BasicConvBlockKernels: 3|3|3
-        # Boolean. Whether to perform max pooling after each standard convolution.
-        # Default: True
-        BasicConvBlockMaxPool: True
-        # Int. Max pool size. Required only if ...MaxPool is True.
-        BasicConvBlockMaxPoolSize: 2
-        # Int. Max pool strides. Required only if ...MaxPool is True.
-        BasicConvBlockMaxPoolStrides: 2
-        # Boolean. Whether to perform a final 1x1 convolution. Default: False
-        BasicConvBlockBottleneck: False
-        # Int. Number of output filters of final 1x1 convolution.
-        # Required only if ...Bottleneck is True.
-        BasicConvBlockBottleneckFilters: 8
-        # Boolean. Whether to include a batch normalization layer after each
-        # convolutional layer (including bottleneck). May lead to issues in
-        # array-level models. Default: False
-        BasicConvBlockBatchNorm: False
+            # Required list of two strings.
+            # Module and function for single telescope CNN.
+            # Valid options:
+            #   - ['basic', 'fc_head']
+            #   - ['basic', 'conv_head']
+            network_head: ['basic', 'conv_head']
+            
+            # Required string or null.
+            # Path to a checkpoint file or model directory from which to load
+            # pretrained CNN block weights. If null, don't load any weights.
+            pretrained_weights: null
 
-        # Model configuration for Basic Fully Connected Head model.
-        # Pipe-separated string. Number of units for each FC Head dense layer.
-        BasicFCHeadLayers: 1024|512|256|128|64
-        # Boolean. Whether to include a batch normalization layer after each
-        # dense layer. Default: False
-        BasicFCHeadBatchNorm: False
+        basic:
+            conv_block:
+                # Required list of lists of two integers.
+                # Filter dimension and kernel size for the CNN block
+                # convolutional layers.
+                layers:
+                    - [32, 3]
+                    - [64, 3]
+                    - [128, 3]
+                
+                # Required list of two integers or null.
+                # Max pool size and strides. If null, don't perform any pooling.
+                max_pool: [2, 2]
+                
+                # Required integer or null.
+                # Number of output filters of a final 1x1 convolutional layer.
+                # If null, don't include this bottleneck layer.
+                bottleneck: null
+                
+                # Optional Boolean. Default: false
+                # Whether to include a batch normalization layer after each
+                # convolutional layer. Exercise caution when using with
+                # array-level models.
+                batchnorm: false
 
-        # Model configuration for Basic Convolutional Head model.
-        # Pipe-separated string. Filters for each Conv Head convolutional layer.
-        BasicConvHeadFilters: 64|128|256
-        # Pipe-separated string. Kernels for each Conv Head convolutional layer.
-        BasicConvHeadKernels: 3|3|3
-        # Boolean. Whether to perform average pooling over spatial dimensions of 
-        # convolutional output before calculating final output. Default: True
-        BasicConvHeadAvgPool: True
-        # Boolean. Whether to include a batch normalization layer after each
-        # convolutional layer. # Default: False
-        BasicConvHeadBatchNorm: False
+            fc_head:
+                # Required list of integers.
+                # Number of units for each fully-connected head dense layer.
+                layers: [1024, 512, 256, 128, 64]
+                
+                # Optional Boolean. Default: false
+                # Whether to include a batch normalization layer after each
+                # dense layer.
+                batchnorm: false
 
-        # The following options (all optional) are used by the provided models.
-
-        # Path to a checkpoint file or model directory from which to
-        # load pretrained CNNBlock weights. Default: "" (no weights loaded).
-        # Used by: Single Tel, CNN-RNN
-        PretrainedWeights: 
-        # Float. Used in dropout layers. Default: 0.5
-        # Used by: CNN-RNN
-        DropoutRate: 0.5
-        # Float. Decay parameter for Batch Norm layers. Default: 0.99
-        # Used by: Basic (Single Tel)
-        BatchNormDecay: 0.99
+            conv_head:
+                # Required list of lists of two integers.
+                # Filter dimension and kernel size for the convolutional
+                # network head layers.
+                layers:
+                    - [64, 3]
+                    - [128, 3]
+                    - [256, 3]
+                
+                # Optional Boolean. Default: true
+                # Whether to perform average pooling over spatial dimensions
+                # of the convolutional output before calculating final output.
+                final_avg_pool: true
+                
+                # Optional Boolean. Default: false
+                # Whether to include a batch normalization layer after each
+                # convolutional layer.
+                batchnorm: false
+            
+            # Optional float. Default: 0.99
+            # Decay parameter for batch normalization layers.
+            batch_norm_decay: 0.99
 
 Training:
 
