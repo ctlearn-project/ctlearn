@@ -189,27 +189,17 @@ Model:
     # Path to directory containing model module.
     model_directory: '/path/to/ctlearn/models/'
 
-    # Required string.
-    # Module in ModelDirectory containing function implementing model.
-    # Modules included with CTLearn:
-    #   - 'single_tel': single tel model using a basic convolutional neural
-    #       network (CNN)
-    #   - 'cnn_rnn': array model feeding output of a basic CNN for each 
-    #       telescope into a recurrent neural network (RNN)
-    #   - 'variable_input_model': array model feeding combined outputs of a
-    #       CNN for each telescope into a CNN network head
-    model_module: 'cnn_rnn'
-
-    # Required string.
-    # Function in model_module implementing model.
-    # Models included with CTLearn:
-    #   - 'single_tel':
-    #       - 'single_tel_model'
-    #   - 'cnn_rnn':
-    #       - 'cnn_rnn_model'
-    #   - 'variable_input_model':
-    #       - 'variable_input_model'
-    model_function: 'cnn_rnn_model'
+    # Required list of two strings.
+    # Module in model directory and function in module implementing the model.
+    # Module and function pairs included with CTLearn:
+    #   - ['single_tel', 'single_tel_model']: single tel model using a
+    #       basic convolutional neural network (CNN)
+    #   - ['cnn_rnn', 'cnn_rnn_model']: array model feeding output of a basic
+    #       CNN for each  telescope into a recurrent neural network (RNN)
+    #   - ['variable_input_model', 'variable_input_model']: array model
+    #       feeding combined outputs of a CNN for each telescope into a
+    #       CNN network head
+    model: ['cnn_rnn', 'cnn_rnn_model']
     
     # The options in this section are combined with the dataset metadata
     # and passed as a dictionary called "params" to the model function.
