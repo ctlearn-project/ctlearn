@@ -132,7 +132,7 @@ class HDF5DataLoader(DataLoader):
         # NOTE: these dtypes will ultimately be converted to TF datatypes using
         # tf.as_dtype()
         if self.example_type == 'single_tel':
-            self.generator_output_dtypes = [np.dtype(np.int64), np.dtype(np.int64), np.dtype(np.int64)] 
+            self.generator_output_dtypes = [np.dtype(np.int64), np.dtype(np.int64), np.dtype(np.unicode_), np.dtype(np.int64)] 
             
             data_dtypes = [np.dtype(np.float32)]
             label_dtypes = [np.dtype(np.int64)]
@@ -382,6 +382,7 @@ class HDF5DataLoader(DataLoader):
         if self.example_type == "single_tel":
 
             run_number, event_number, tel_type, tel_id = identifiers
+            tel_type = tel_type.decode('utf-8')
 
             # get image from image table
             image = self.get_image(run_number, event_number, tel_type, tel_id) 
@@ -486,7 +487,7 @@ class HDF5DataLoader(DataLoader):
                     for tel_type, tel_id in self.selected_telescopes:
                         index = self.telescopes[tel_type].index(tel_id)
                         if image_indices[index] != 0:
-                            passing_examples.append((row["run_number"], row["event_number"], tel_id))
+                            passing_examples.append((row["run_number"], row["event_number"], tel_type, tel_id))
                             self.passing_num_examples_by_particle_id[particle_id] += 1
                 # if example type is 
                 elif self.example_type == "array":                               
