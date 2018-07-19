@@ -29,6 +29,6 @@ install:
       - conda install -q --yes --file requirements-cpu.txt
       - python setup.py install
 script: 
-      - pytest --cov=ctalearn tests/
+      - pytest --cov=ctlearn tests/
 after_success:
       - coveralls
