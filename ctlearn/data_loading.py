@@ -307,9 +307,10 @@ class HDF5DataLoader(DataLoader):
                 'num_classes': len(list(self.particle_ids)),
                 'particle_ids': self.particle_ids,
                 'telescopes': self.telescopes,
-                'num_telescopes': {self.selected_telescope_type: len(self.selected_telescopes)},
                 'selected_telescope_types': [self.selected_telescope_type],
                 'selected_telescopes': self.selected_telescopes,
+                'num_telescopes': {tel_type: len(tel_ids) for
+                    tel_type, tel_ids in self.selected_telescopes.items()},
                 'num_events_by_particle_id': self.num_events_by_particle_id,
                 'num_images_by_particle_id': self.num_images_by_particle_id,
                 'num_position_coordinates': self.num_position_coordinates,
