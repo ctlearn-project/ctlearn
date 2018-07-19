@@ -3,6 +3,7 @@ from collections import OrderedDict
 import importlib
 import logging
 import os
+from pprint import pformat
 import sys
 import time
 
@@ -55,6 +56,9 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     # Set up logging, saving the config and optionally logging to a file
     logger = setup_logging(config, model_dir, debug, log_to_file)
+
+    # Log the loaded configuration
+    logger.debug(pformat(config))
     
     # Load options to specify the model
     sys.path.append(config['Model']['model_directory'])
