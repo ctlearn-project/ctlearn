@@ -22,10 +22,9 @@ install:
       - conda update -q conda
         # Useful for debugging any issues with conda
       - conda info -a
-      - conda config --add channels conda-forge
-      - conda create -q --name test
+      - conda create -q -c conda-forge -c menpo --name test
       - source activate test
-      - conda install --q --yes --file requirements-cpu.txt
+      - conda install -q --yes --file requirements-cpu.txt
       - python setup.py install
 script: 
       - pytest --cov=ctalearn tests/
