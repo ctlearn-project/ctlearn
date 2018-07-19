@@ -18,6 +18,7 @@ Data:
     # Optional Boolean. Default: true
     # Whether to apply processing to loaded data. If False, no DataProcessor
     # is instantiated and Data:Processing settings are not used.
+    # Useful for quickly turning off all data processing, e.g., when debugging.
     apply_processing: true
     
     # Settings for instantiating the DataLoader.
