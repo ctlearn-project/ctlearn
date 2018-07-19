@@ -22,7 +22,9 @@ install:
       - conda update -q conda
         # Useful for debugging any issues with conda
       - conda info -a
-      - conda create -q -c conda-forge -c menpo --name test
+      - conda config --add channels conda-forge
+      - conda config --add channels menpo  
+      - conda create -q --name test
       - source activate test
       - conda install -q --yes --file requirements-cpu.txt
       - python setup.py install
