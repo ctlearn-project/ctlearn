@@ -122,25 +122,15 @@ def add_values_to_combinations(config_name, values, value_type, combinations):
                 new_combinations.append(new_combination)
     return new_combinations
 
-def make_config_from_combination(combination, config_name_to_keys):
-    changed_config = {}
+def merge_config_from_combination(config, combination, config_name_to_keys):
     for config_name, value in combination['config_values'].items():
         config_keys = config_name_to_keys[config_name]
-        section = changed_config
+        section = config
         for key in config_keys[:-1]:
             if key not in section:
                 section[key] = {}
             section = section[key]
         section[config_keys[-1]] = value
-    return changed_config
-
-def deep_merge_dicts(base_dict, merge_dict):
-    for k, v in merge_dict.items():
-        if (k in base_dict and isinstance(base_dict[k], dict) and
-                isinstance(merge_dict[k], collections.abc.Mapping)):
-            deep_merge_dicts(base_dict[k], merge_dict[k])
-        else:
-            base_dict[k] = merge_dict[k]
 
 def make_configurations(base_config, changing_configurations, settings):
     
@@ -174,15 +164,15 @@ def make_configurations(base_config, changing_configurations, settings):
     base_model_dir = base_config['Logging']['model_directory']
     for run_num, combination in enumerate(changing_config_combinations):
         run_name = 'run' + str(run_num).zfill(2)
+        # Store the combination
         combinations[run_name] = combination['config_values']
-        changed_config = make_config_from_combination(combination,
-                config_name_to_keys)
-        # Set the model directory to that corresponding to this run
-        run_model_dir = os.path.join(base_model_dir, run_name)
-        changed_config['Logging'] = {}
-        changed_config['Logging']['model_directory'] = run_model_dir
+        # Now construct the total config from the base and changing configs
         config = copy.deepcopy(base_config)
-        deep_merge_dicts(config, changed_config)
+        merge_config_from_combination(config, combination, config_name_to_keys)
+        # Set the model directory to the subdirectory for this run
+        run_model_dir = os.path.join(base_model_dir, run_name)
+        if 'Logging' not in config: config['Logging'] = {}
+        config['Logging']['model_directory'] = run_model_dir
         configurations.append((run_name, config))
         
     return combinations, configurations
