@@ -389,7 +389,7 @@ Debug:
 Multiple Configurations Settings:
     # path to file in which to save combinations for each run
     run_combinations_path: '/tmp/run_combinations.yml'
-    num_grouped_range_values: 10
+    num_grouped_range_values: 5
 
 Multiple Configurations Values:
     learning_rate:

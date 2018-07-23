@@ -30,6 +30,7 @@ of runs.
 """
 
 import argparse
+import copy
 import os
 import sys
 
@@ -83,14 +84,15 @@ def parse_range_values(range_values, num_grouped_range_values):
                 range_values['lower_bound'],
                 range_values['upper_bound'],
                 num_grouped_range_values)
-        values = {'__range_group_'+str(i): val for i, val in enumerate(values)}
+        values = {'__range_group_'+str(i): float(val) for i, val in
+                enumerate(values)}
         value_type = 'range_grouped'
     else:
         values = value_fn(
                 range_values['lower_bound'],
                 range_values['upper_bound'],
                 range_values['num_values'])
-        values = list(values)
+        values = [float(v) for v in values]
         value_type = 'range_ungrouped'
     return values, value_type
 
@@ -99,15 +101,15 @@ def parse_range_values(range_values, num_grouped_range_values):
 # incompatible groups
 def add_values_to_combinations(config_name, values, value_type, combinations):
     if value_type in ['list', 'range_ungrouped']:
-        groups_by_value = {val: (None, set()) for val in values}
+        groups_by_value = [(val, None, set()) for val in values]
     elif value_type in ['grouped', 'range_grouped']:
-        groups_by_value = {val: (group, set([g for g in values.keys() if not
-            group == g])) for group, val in values.items()}
+        groups_by_value = [(val, group, set([g for g in values.keys() if not
+            group == g])) for group, val in values.items()]
     new_combinations = []
-    for value, (group, excluded_groups) in groups_by_value.items():
+    for value, group, excluded_groups in groups_by_value:
         for combination in combinations:
             if not group or group not in combination['excluded_groups']:
-                new_combination = {k: v for k, v in combination.items()}
+                new_combination = copy.deepcopy(combination)
                 new_combination['excluded_groups'] |= excluded_groups
                 new_combination['config_values'][config_name] = value
                 new_combinations.append(new_combination)
@@ -116,12 +118,12 @@ def add_values_to_combinations(config_name, values, value_type, combinations):
 def make_config_from_combination(combination, config_name_to_keys):
     changed_config = {}
     for config_name, value in combination['config_values'].items():
-        config_keys = config_name_to_keys['config_name']
+        config_keys = config_name_to_keys[config_name]
         section = changed_config
-        for key in keys[:-1]:
+        for key in config_keys[:-1]:
             section[key] = {}
             section = section[key]
-        section[keys[-1]] = value
+        section[config_keys[-1]] = value
     return changed_config
 
 def make_configurations(base_config, changing_configurations, settings):
@@ -130,13 +132,13 @@ def make_configurations(base_config, changing_configurations, settings):
     # Start with the trivial combination of no options included
     changing_config_combinations = [{
         'excluded_groups': set(),
-        'config_values' = {} # items are config_name: value
+        'config_values': {} # items are config_name: value
         }]
     # Also store the list of config keys corresponding to each config name
     config_name_to_keys = {}
 
     # List the combinations
-    for config_name, config_settings in changing_configurations:
+    for config_name, config_settings in changing_configurations.items():
         if config_settings['value_type'] == 'range':
             values, value_type = parse_range_values(config_settings['values'],
                     settings['num_grouped_range_values'])
@@ -152,12 +154,13 @@ def make_configurations(base_config, changing_configurations, settings):
     configurations = []
     base_model_dir = base_config['Logging']['model_directory']
     for run_num, combination in enumerate(changing_config_combinations):
-        run_name = 'run' + str(run_num)
+        run_name = 'run' + str(run_num).zfill(2)
         combinations[run_name] = combination['config_values']
         changed_config = make_config_from_combination(combination,
-                config_name_to_path)
+                config_name_to_keys)
         # Set the model directory to that corresponding to this run
         run_model_dir = os.path.join(base_model_dir, run_name)
+        changed_config['Logging'] = {}
         changed_config['Logging']['model_directory'] = run_model_dir
         configurations.append((run_name, {**base_config, **changed_config}))
         
