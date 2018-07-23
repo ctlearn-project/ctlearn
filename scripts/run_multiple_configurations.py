@@ -85,10 +85,7 @@ def parse_range_values(range_values, num_grouped_range_values):
 
     value_fn = settings_to_value_fn[(range_values['spacing'],
         range_values['selection'])]
-    # By default, group all (and only) the random range configurations,
-    # overriding this if grouped is set by the user
-    grouped = range_values.get('grouped', range_values['selection']=='random')
-    if grouped:
+    if num_values is None: # Grouped mode
         values = value_fn(
                 range_values['lower_bound'],
                 range_values['upper_bound'],
@@ -117,7 +114,7 @@ def add_values_to_combinations(config_name, values, value_type, combinations):
     new_combinations = []
     for value, group, excluded_groups in groups_by_value:
         for combination in combinations:
-            if not group or group not in combination['excluded_groups']:
+            if group is None or group not in combination['excluded_groups']:
                 new_combination = copy.deepcopy(combination)
                 new_combination['excluded_groups'] |= excluded_groups
                 new_combination['config_values'][config_name] = value
@@ -146,11 +143,14 @@ def make_configurations(base_config, changing_configurations, settings):
     # Also store the list of config keys corresponding to each config name
     config_name_to_keys = {}
 
+    # Parse the settings
+    num_grouped_range_values = settings.get('num_grouped_range_values', 1)
+
     # List the combinations
     for config_name, config_settings in changing_configurations.items():
         if config_settings['value_type'] == 'range':
             values, value_type = parse_range_values(config_settings['values'],
-                    settings['num_grouped_range_values'])
+                    num_grouped_range_values)
         elif config_settings['value_type'] in ['list', 'grouped']:
             values = config_settings['values']
             value_type = config_settings['value_type']
