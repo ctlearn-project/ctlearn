@@ -36,6 +36,7 @@ run directory.
 """
 
 import argparse
+import collections
 import copy
 import os
 import sys
@@ -85,7 +86,7 @@ def parse_range_values(range_values, num_grouped_range_values):
 
     value_fn = settings_to_value_fn[(range_values['spacing'],
         range_values['selection'])]
-    if num_values is None: # Grouped mode
+    if range_values['num_values'] is None: # Grouped mode
         values = value_fn(
                 range_values['lower_bound'],
                 range_values['upper_bound'],
@@ -127,10 +128,19 @@ def make_config_from_combination(combination, config_name_to_keys):
         config_keys = config_name_to_keys[config_name]
         section = changed_config
         for key in config_keys[:-1]:
-            section[key] = {}
+            if key not in section:
+                section[key] = {}
             section = section[key]
         section[config_keys[-1]] = value
     return changed_config
+
+def deep_merge_dicts(base_dict, merge_dict):
+    for k, v in merge_dict.items():
+        if (k in base_dict and isinstance(base_dict[k], dict) and
+                isinstance(merge_dict[k], collections.abc.Mapping)):
+            deep_merge_dicts(base_dict[k], merge_dict[k])
+        else:
+            base_dict[k] = merge_dict[k]
 
 def make_configurations(base_config, changing_configurations, settings):
     
@@ -171,7 +181,9 @@ def make_configurations(base_config, changing_configurations, settings):
         run_model_dir = os.path.join(base_model_dir, run_name)
         changed_config['Logging'] = {}
         changed_config['Logging']['model_directory'] = run_model_dir
-        configurations.append((run_name, {**base_config, **changed_config}))
+        config = copy.deepcopy(base_config)
+        deep_merge_dicts(config, changed_config)
+        configurations.append((run_name, config))
         
     return combinations, configurations
 
