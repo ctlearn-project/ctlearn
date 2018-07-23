@@ -79,7 +79,10 @@ def parse_range_values(range_values, num_grouped_range_values):
 
     value_fn = settings_to_value_fn[(range_values['spacing'],
         range_values['selection'])]
-    if range_values['grouped']:
+    # By default, group all (and only) the random range configurations,
+    # overriding this if grouped is set by the user
+    grouped = range_values.get('grouped', range_values['selection']=='random')
+    if grouped:
         values = value_fn(
                 range_values['lower_bound'],
                 range_values['upper_bound'],
@@ -187,5 +190,5 @@ with open(settings['run_combinations_path'], 'w') as combinations_file:
 # Run a model for each configuration combination
 for run_name, config in configurations:
     print("Running", run_name+"...")
-    run_model(config, mode=args.mode, debug=args.debug,
-            log_to_file=args.log_to_file)
+    #run_model(config, mode=args.mode, debug=args.debug,
+    #        log_to_file=args.log_to_file)

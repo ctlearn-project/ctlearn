@@ -393,7 +393,7 @@ Multiple Configurations Settings:
 
 Multiple Configurations Values:
     learning_rate:
-        config: ['Training', 'base_learning_rate']
+        config: ['Training', 'Hyperparameters', 'base_learning_rate']
         value_type: 'range'
         values:
             lower_bound: 1.0e-6
