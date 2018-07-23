@@ -1,32 +1,38 @@
 """
-Conduct an automated hyperparameter search using the specified configuration
-options.
+Generate a list of configuration combinations and run a model for each, for
+example, to conduct a hyperparameter search or simply to automate training or
+prediction for a set of models.
 
-train_configurations.py <constant_config_path> <changing_configs_path> <run_combinations_path> <model_dir> <combinations_multiplier>
+The first argument to this script is the path to a CTLearn configuration file
+containing two additional sections, Multiple Configurations Settings and 
+Multiple Configurations Values. The Values section contains a dictionary of the
+config parameters to be changed during the multiple runs and their possible
+values, which may be explictly listed or automatically generated; all
+combinations of the provided config parameters are generated except for
+grouped parameters that are only combined as specified. The Settings section
+contains other parameters for this script not specific to a particular config
+parameter. See the example configuration file for a full explanation of the
+structure and allowed values of these sections.
 
-<constant_config_path>: path to YAML configuration file containing all options meant
-to be the same for every run. Omit all options which are meant to be changed between runs
-(those should only be present in the changing_configs YAML file.
+Grouped config options associate specific values of a config option with
+values of other options. Groups must stay associated among config options,
+that is, if a group is included for one config option it must be included for
+any other config option that includes any of the groups of the first. If not,
+the behavior is undefined! However, having distinct sets of groups is fine.
 
-<changing_configs_path>: path to YAML file specifying options to change on each run
-The value of each setting (key) in the config dict (which can be nested) should have one of the following forms:
-['discrete', [<value1>, <value2>,..., <valueN>]]
-['grid_range', [<lower_bound>, <upper_bound>, <spacing>, <num>]]
-['random_range', [<lower_bound>, <upper_bound>, <spacing>]]
-where <spacing> is one of "linear" or "log".
+The config options not in the Multiple Configurations sections form the base
+configuration when running the model and are the same for all runs. Any config
+options also set in Multiple Configurations Values will overwrite those in the
+base configuration. The outputs for each run are saved in subdirectories
+<Logging:model_directory>/run00, <Logging:model_directory>/run01, etc.
 
-<run_combinations_path>: path to file in which to save the combinations of 
-options corresponding to each run number
+The remaining arguments are the flags for run_model.py, passed in for each run.
 
-<model_dir>: model directory path for storing checkpoints and log files. Each
-run will be put in a subdirectory 'run0/', 'run1/', etc. Any
-Logging/ModelDirectory specified in specified in <constant_config_path> or
-<changing_configs_path> will be overwritten by <model_dir>.
-
-<combinations_multiplier>: number of times to run over each combination. Useful
-when some or all parameters have a random iteration type. If all changing
-parameters are chosen randomly, <combinations_multiplier> will the total number
-of runs.
+In addition to the model outputs, a YAML file is also saved that, for each 
+run, records the value of each config option listed under Multiple
+Configurations Values. This file can be conveniently read by humans and
+machines without having to separately examine the separate config files in each
+run directory.
 """
 
 import argparse
@@ -190,5 +196,5 @@ with open(settings['run_combinations_path'], 'w') as combinations_file:
 # Run a model for each configuration combination
 for run_name, config in configurations:
     print("Running", run_name+"...")
-    #run_model(config, mode=args.mode, debug=args.debug,
-    #        log_to_file=args.log_to_file)
+    run_model(config, mode=args.mode, debug=args.debug,
+            log_to_file=args.log_to_file)

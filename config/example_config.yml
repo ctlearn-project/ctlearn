@@ -386,11 +386,44 @@ Debug:
     # Whether to run TensorFlow debugger.
     run_TFDBG: false
 
+# Optional: used in run_multiple_configurations.py only
 Multiple Configurations Settings:
-    # path to file in which to save combinations for each run
+    # Required string.
+    # Path to file to save configuration combination for each run for reference.
     run_combinations_path: '/tmp/run_combinations.yml'
+
+    # Optional integer. Default: 1
+    # Number of grouped range values to generate. All range values with null
+    # num_values are grouped so that random values are generated for each
+    # combination of parameters, not for each parameter separately. Ignored for
+    # ungrouped range values, that is, where num_values is specified.
     num_grouped_range_values: 5
 
+# Optional: used in run_multiple_configurations.py only
+# Each item in this section has the form 
+# <config_nickname>:
+#   config: list of the keys to access the config parameter in config file
+#   value_type: one of
+#       - 'list': values is a list of possible values
+#       - 'range': values is a dictionary as described below
+#       - 'grouped': values is a dictionary of <group_name>: value
+#   values: list or dictionary as specified by the value_type
+#
+# The values section for a config option with value_type 'range' has the form:
+# values:
+#   lower_bound: Required integer. Lower bound of the range.
+#   upper_bound: Required integer. Upper bound of the range.
+#   spacing: Required string. Valid options:
+#       - 'log': generate values uniformly using logarithmic spacing
+#       - 'linear': generate values uniformly using linear spacing
+#   selection: Required string. Valid options:
+#       - 'random': Select values at random from a uniform distribution
+#       - 'grid': Select values from an evenly-spaced grid
+#   num_values: Required integer or null. Number of values to generate. All 
+#       range configs with num_values null are grouped together with
+#       num_grouped_range_values the total number of values generated. The
+#       recommended usage in most cases is to specify num_values for grid
+#       selection and set to null for random selection.
 Multiple Configurations Values:
     learning_rate:
         config: ['Training', 'Hyperparameters', 'base_learning_rate']
@@ -398,14 +431,9 @@ Multiple Configurations Values:
         values:
             lower_bound: 1.0e-6
             upper_bound: 1.0e-3
-            # 'log' or 'linear'
             spacing: 'log'
-            # 'random' or 'grid'
             selection: 'random'
-            num_values: 5
-            # Optional Boolean. Default: False if selection=='grid',
-            # True if selection=='random'
-            grouped: True
+            num_values: null
     multiplicity_cut:
         config: ['Data', 'Loading', 'min_num_tels']
         value_type: 'list'
