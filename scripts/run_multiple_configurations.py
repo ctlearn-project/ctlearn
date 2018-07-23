@@ -36,7 +36,6 @@ run directory.
 """
 
 import argparse
-import collections
 import copy
 import os
 import sys
