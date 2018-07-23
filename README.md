@@ -1,17 +1,10 @@
 # CTLearn: Deep Learning for IACT Analysis
 
-[![Build Status](https://travis-ci.com/ctlearn-project/ctlearn.svg?branch=master)](https://travis-ci.com/ctlearn-project/ctlearn) [![Coverage Status](https://coveralls.io/repos/github/ctlearn-project/ctlearn/badge.svg?branch=master)](https://coveralls.io/github/ctlearn-project/ctlearn?branch=master) [![Code Health](https://landscape.io/github/ctlearn-project/ctlearn/master/landscape.svg?style=flat)](https://landscape.io/github/ctlearn-project/ctlearn/master)
+[![Build Status](https://travis-ci.com/ctlearn-project/ctlearn.svg?branch=master)](https://travis-ci.com/ctlearn-project/ctlearn)
+[![Coverage Status](https://coveralls.io/repos/github/ctlearn-project/ctlearn/badge.svg?branch=master)](https://coveralls.io/github/ctlearn-project/ctlearn?branch=master)
+[![Code Health](https://landscape.io/github/ctlearn-project/ctlearn/master/landscape.svg?style=flat)](https://landscape.io/github/ctlearn-project/ctlearn/master)
 
-
-Deep learning models for IACT event analysis and classification. Designed to work with [CTA](https://www.cta-observatory.org/) (the Cherenkov Telescope Array) and [VERITAS](https://veritas.sao.arizona.edu/) data.
-
-## Example
-
-The following plots were produced with ctlearn v0.1 using the "Basic" single-telescope classification model to classify gamma-ray and proton showers using CTA prod3b simulated data after training for ~4.5 hours.
-
-![Loss](https://github.com/ctlearn-project/ctlearn/blob/master/misc/images/v0_1_benchmark_loss.png)
-![Accuracy](https://github.com/ctlearn-project/ctlearn/blob/master/misc/images/v0_1_benchmark_accuracy.png)
-![AUC](https://github.com/ctlearn-project/ctlearn/blob/master/misc/images/v0_1_benchmark_auc.png)
+CTLearn is a package for running deep learning models to perform data analysis for Imaging Atmospheric Cherenkov Telescopes. CTLearn can be used with data from [CTA](https://www.cta-observatory.org/) (the Cherenkov Telescope Array) and [VERITAS](https://veritas.sao.arizona.edu/).
 
 ## Installation
 
