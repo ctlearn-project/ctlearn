@@ -385,3 +385,60 @@ Debug:
     # Optional Boolean. Default: false
     # Whether to run TensorFlow debugger.
     run_TFDBG: false
+
+Multiple Configurations Settings:
+    # path to file in which to save combinations for each run
+    run_combinations_path: '/tmp/run_combinations.yml'
+    num_grouped_range_values: 10
+
+Multiple Configurations Values:
+    learning_rate:
+        config: ['Training', 'base_learning_rate']
+        value_type: 'range'
+        values:
+            lower_bound: 1.0e-6
+            upper_bound: 1.0e-3
+            # 'log' or 'linear'
+            spacing: 'log'
+            # 'random' or 'grid'
+            selection: 'random'
+            num_values: 5
+            # Optional Boolean. Default: False if selection=='grid',
+            # True if selection=='random'
+            grouped: True
+    multiplicity_cut:
+        config: ['Data', 'Loading', 'min_num_tels']
+        value_type: 'list'
+        values:
+            - 1
+            - 2
+            - 3
+            - 4
+    telescope_type:
+        config: ['Data', 'Loading', 'selected_tel_type']
+        value_type: 'grouped'
+        values:
+            LST: 'LST'
+            MSTN: 'MSTN'
+    selected_telescopes:
+        config: ['Data', 'Loading', 'selected_tel_ids']
+        value_type: 'grouped'
+        values:
+            LST: [1, 2, 3, 4]
+            MSTN: [30, 31, 32, 33]
+    network_type:
+        config: ['Model', 'model']
+        value_type: 'grouped'
+        values:
+            CNN_RNN:
+                module: 'cnn_rnn'
+                function: 'cnn_rnn_model'
+            variable_input:
+                module: 'variable_input_model'
+                function: 'variable_input_model'
+    telescope_sorting:
+        config: ['Data', 'Processing', 'sort_images_by']
+        value_type: 'grouped'
+        values:
+            CNN_RNN: 'size'
+            variable_input: null
