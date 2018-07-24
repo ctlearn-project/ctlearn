@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.com/ctlearn-project/ctlearn.svg?branch=master)](https://travis-ci.com/ctlearn-project/ctlearn)
 [![Code Health](https://landscape.io/github/ctlearn-project/ctlearn/master/landscape.svg?style=flat)](https://landscape.io/github/ctlearn-project/ctlearn/master)
 
-CTLearn is a package for running deep learning models to perform data analysis for Imaging Atmospheric Cherenkov Telescopes. CTLearn can be used with data from [CTA](https://www.cta-observatory.org/) (the Cherenkov Telescope Array) and [VERITAS](https://veritas.sao.arizona.edu/).
+CTLearn is a package for running deep learning models to perform data analysis for Imaging Atmospheric Cherenkov Telescopes. CTLearn can load data from the [CTA](https://www.cta-observatory.org/) (Cherenkov Telescope Array) and [VERITAS](https://veritas.sao.arizona.edu/) telescopes processed using [ImageExtractor](https://github.com/cta-observatory/image-extractor).
 
 ## Installation
 
@@ -103,8 +103,3 @@ Completely remove CTLearn from your system:
 ```bash
 rm -rf </the/installation/path>/ctlearn
 ```
-
-## Links
-
-- [Cherenkov Telescope Array (CTA)](https://www.cta-observatory.org/)
-- [ImageExtractor](https://github.com/cta-observatory/image-extractor) 
