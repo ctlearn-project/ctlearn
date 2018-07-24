@@ -17,8 +17,8 @@ from ctlearn.data_loading import DataLoader, HDF5DataLoader
 from ctlearn.data_processing import DataProcessor
 
 # Disable Tensorflow info and warning messages (not error messages)
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-tf.logging.set_verbosity(tf.logging.WARN)
+#os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+#tf.logging.set_verbosity(tf.logging.WARN)
 
 def setup_logging(config, log_dir, debug, log_to_file):
 
