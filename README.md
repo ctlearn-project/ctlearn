@@ -8,52 +8,52 @@ CTLearn is a package for running deep learning models to perform data analysis f
 
 ## Installation
 
-### Package cloning w/ Git  (Recommended)
+### Clone Repository with Git (recommended)
 
-Clone CTLearn repository with:
+Clone the CTLearn repository:
 
 ```bash
-mkdir /path/to/ctlearn; cd /path/to/ctlearn
+cd </the/installation/path>
 git clone https://github.com/ctlearn-project/ctlearn.git
 cd ctlearn
 ```
 
-### Package Install w/ Anaconda
+### Install Package with Anaconda
 
-Setup Anaconda environment with:
+Next, download and install Anaconda following the instructions [here](https://www.anaconda.com/download/). Create a new conda environment for CTLearn:
 
 ```bash
-conda create -c conda-forge -c menpo -n [ENV_NAME] --file requirements-[mode].txt
-source activate [ENV_NAME]
+conda create -c conda-forge -c menpo -n <ENV_NAME> --file requirements-<MODE>.txt
 ```
 
-Where [mode] can be either 'cpu' or 'gpu', denoting the TensorFlow version to be installed. Prior to installing the GPU version of TensorFlow please verify that your system fulfills all the necessary requirements [here](https://www.tensorflow.org/install/install_linux#NVIDIARequirements).
+where <MODE> is either 'cpu' or 'gpu', denoting the TensorFlow version to be installed, and <ENV_NAME> is the name of the conda environment to create. If installing the GPU version of TensorFlow, verify that your system fulfills all the requirements [here](https://www.tensorflow.org/install/install_linux#NVIDIARequirements).
 
-Install package into the conda environment with pip:
+Finally, install CTLearn into the new conda environment with pip:
 
 ```bash
-/path/to/anaconda/install/envs/[ENV_NAME]/bin/pip install .
+source activate <ENV_NAME>
+pip install .
 ```
-
-where /path/to/anaconda/install is the path to your anaconda installation directory and ENV\_NAME is the name of your environment. The path can be omitted if pip is called from the environment created above.
-
-NOTE for developers: If you wish to fork/clone the respository and make changes to any of the ctlearn modules, the package should be reinstalled for the changes to take effect.
-
-The path to the environment directory for the environment you wish to install into can be found quickly by running
+NOTE for developers: If you wish to fork/clone the respository and make changes to any of the ctlearn modules, the package must be reinstalled for the changes to take effect:
 
 ```bash
-conda env list
+source activate <ENV_NAME>
+pip install --upgrade .
 ```
 
 ## Dependencies
 
-- Python 3.6
-- Tensorflow 1.8
-- Pytables
-- Numpy
+- Python 3.6.5
+- TensorFlow 1.8.0
+- NumPy
 - OpenCV
-- ConfigObj
+- PyTables
+- PyYAML
 - SciPy
+- Libraries used only in plotting scripts (optional)
+  - Matplotlib
+  - Pillow
+  - Scikit-learn
 
 ## Configuration
 
@@ -94,22 +94,21 @@ The model's progress can be viewed in real time using Tensorboard: `tensorboard 
 
 ## Package Removal
 
-### Package Removal w/ Anaconda
+### Remove Anaconda Environment
 
-If the package was installed into a virtual environment follow the instructions below to remove the virtual environment and all the packages for the dependencies:
-
-```bash
-conda remove --name [ENV_NAME] --all
-```
-
-To completely remove CTLearn from your system do:
+Remove the conda environment in which CTLearn is installed and all its dependencies:
 
 ```bash
-rm -f /path/to/ctlearn
+conda remove --name <ENV_NAME> --all
 ```
 
-Where /path/to/ctlearn is the directory CTLearn was downloaded into in the first place.
+### Remove CTLearn
 
+Completely remove CTLearn from your system:
+
+```bash
+rm -rf </the/installation/path>/ctlearn
+```
 
 ## Links
 
