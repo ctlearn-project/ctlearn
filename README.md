@@ -15,7 +15,6 @@ Clone the CTLearn repository:
 ```bash
 cd </the/installation/path>
 git clone https://github.com/ctlearn-project/ctlearn.git
-cd ctlearn
 ```
 
 ### Install Package with Anaconda
@@ -23,28 +22,24 @@ cd ctlearn
 Next, download and install Anaconda following the instructions [here](https://www.anaconda.com/download/). Create a new conda environment for CTLearn:
 
 ```bash
-conda create -c conda-forge -c menpo -n <ENV_NAME> --file requirements-<MODE>.txt
+conda env create -f environment-<MODE>.yml
 ```
 
-where <MODE> is either 'cpu' or 'gpu', denoting the TensorFlow version to be installed, and <ENV_NAME> is the name of the conda environment to create. If installing the GPU version of TensorFlow, verify that your system fulfills all the requirements [here](https://www.tensorflow.org/install/install_linux#NVIDIARequirements).
+where <MODE> is either 'cpu' or 'gpu', denoting the TensorFlow version to be installed. If installing the GPU version of TensorFlow, verify that your system fulfills all the requirements [here](https://www.tensorflow.org/install/install_linux#NVIDIARequirements).
 
 Finally, install CTLearn into the new conda environment with pip:
 
 ```bash
-source activate <ENV_NAME>
-pip install .
-```
-NOTE for developers: If you wish to fork/clone the respository and make changes to any of the ctlearn modules, the package must be reinstalled for the changes to take effect:
-
-```bash
-source activate <ENV_NAME>
+source activate ctlearn
+cd </the/installation/path>/ctlearn
 pip install --upgrade .
 ```
+NOTE for developers: If you wish to fork/clone the respository and make changes to any of the ctlearn modules, the package must be reinstalled for the changes to take effect.
 
 ## Dependencies
 
 - Python 3.6.5
-- TensorFlow 1.8.0
+- TensorFlow 1.9.0
 - NumPy
 - OpenCV
 - PyTables
@@ -99,7 +94,7 @@ The model's progress can be viewed in real time using Tensorboard: `tensorboard 
 Remove the conda environment in which CTLearn is installed and all its dependencies:
 
 ```bash
-conda remove --name <ENV_NAME> --all
+conda remove --name ctlearn --all
 ```
 
 ### Remove CTLearn
