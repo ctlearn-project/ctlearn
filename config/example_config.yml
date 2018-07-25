@@ -381,7 +381,7 @@ Prediction:
     # Path to file to save predictions.
     prediction_file_path: '/tmp/mypredictions.csv'
 
-Debug:
+TensorFlow:
     # Optional Boolean. Default: false
     # Whether to run TensorFlow debugger.
     run_TFDBG: false

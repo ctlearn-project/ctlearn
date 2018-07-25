@@ -117,8 +117,8 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         # when reading from too many open files at once.
         data_input_settings['num_parallel_calls'] = 1
     
-    # Load options related to debugging
-    run_tfdbg = config['Debug'].get('run_TFDBG', False)
+    # Load options for TensorFlow
+    run_tfdbg = config['TensorFlow'].get('run_TFDBG', False)
 
     # Define data loading functions
     if data_format == 'HDF5':
