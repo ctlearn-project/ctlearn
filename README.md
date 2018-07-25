@@ -64,7 +64,7 @@ Specify model directory to store TensorFlow checkpoints and summaries, a timesta
 
 Describe the data to use, including the format, list of file paths, and whether to apply preprocessing. Includes subsections for **Loading** for parameters for selecting data such as the telescope type and pre-selection cuts to apply, **Processing** for data preprocessing settings such as cropping or normalization, and **Input** for parameters of the TensorFlow Estimator input function that converts the loaded, processed data into tensors. 
 
-As of CTLearn v0.2.0, only data of a single telescope type may be loaded at a time, even if the underlying dataset includes telescopes of multiple types. Data may be loaded in two ways, either event-wise in `array` mode with data from all telescopes in an array with auxiliary information including each telescope's position, or one image at a time in `single_tel` mode. 
+As of CTLearn v0.2.0, only data of a single telescope type may be loaded at a time, even if the underlying dataset includes telescopes of multiple types. Data may be loaded in two ways, either event-wise in `array` mode yielding data from all telescopes in a specified array as well as auxiliary information including each telescope's position, or one image at a time in `single_tel` mode. 
 
 ### Image Mapping
 
@@ -74,9 +74,9 @@ Set parameters for mapping the 1D pixel vectors in the raw data into 2D images, 
 
 CTLearn works with any TensorFlow model obeying the signature `logits = model(features, params, training)` where `logits` is a vector of raw (non-normalized, pre-Softmax) predictions, `features` is a dictionary of tensors, `params` is a dictionary of training parameters and dataset metadata, and `training` is a Boolean that's True in training mode and False in testing mode. Since models in CTLearn v0.2.0 return only a single logits vector, they can perform only one classification task (e.g. gamma/hadron classification).
 
-Provide in this section the directory containing a Python file that implements the model and the module name (that is, the file name minus the .py extension) and name of the model function within the module. Everything in the **Model Parameters** section is directly included in the `params` passed to the model, so arbitrary configuration parameters may be passed to the provided model.
+Provide in this section the directory containing a Python file that implements the model and the module name (that is, the file name minus the .py extension) and name of the model function within the module. Everything in the **Model Parameters** section is directly included in the model `params`, so arbitrary configuration parameters may be passed to the provided model.
 
-In addition, CTLearn includes three models for gamma/hadron classification. CNN-RNN and Variable Input Network perform array-level classification by feeding the output of a CNN for each telescope into either a recurrent network, or a convolutional or full-connected network head, respectively. Single Tel classifies single telescope images using a convolutional network. All three models are built on a simple, configurable convolutional network called Basic.
+In addition, CTLearn includes three [models](models) for gamma/hadron classification. CNN-RNN and Variable Input Network perform array-level classification by feeding the output of a CNN for each telescope into either a recurrent network, or a convolutional or full-connected network head, respectively. Single Tel classifies single telescope images using a convolutional network. All three models are built on a simple, configurable convolutional network called Basic.
 
 ### Training
 
@@ -103,6 +103,16 @@ python $CTLEARN_DIR/run_model.py myconfig.yml [--mode <MODE>] [--debug] [--log_t
 `--debug`: Set logging level to DEBUG.
 
 `--log_to_file`: Save CTLearn logging messages to a file in the model directory instead of printing to stdout.
+
+Alternatively, import CTLearn as a module in a Python script:
+
+```python
+import yaml
+from ctlearn.run_model import run_model
+
+config = yaml.load('myconfig.yml')
+run_model(config, mode='train', debug=True, log_to_file=True)
+```
 
 View training progress in real time with Tensorboard: 
 
