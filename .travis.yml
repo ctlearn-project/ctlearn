@@ -30,4 +30,4 @@ script:
 after_script:
       - source deactivate
 after_success:
-      - coveralls
+      - codecov
