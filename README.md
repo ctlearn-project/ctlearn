@@ -4,7 +4,7 @@
 
 CTLearn is a package for running deep learning models to perform data analysis for Imaging Atmospheric Cherenkov Telescopes. CTLearn can load data from the [CTA](https://www.cta-observatory.org/) (Cherenkov Telescope Array) and [VERITAS](https://veritas.sao.arizona.edu/) telescopes processed using [ImageExtractor](https://github.com/cta-observatory/image-extractor).
 
-## Installation
+## Install CTLearn
 
 ### Clone Repository with Git
 
@@ -34,7 +34,7 @@ pip install --upgrade .
 ```
 NOTE for developers: If you wish to fork/clone the respository and make changes to any of the ctlearn modules, the package must be reinstalled for the changes to take effect.
 
-## Dependencies
+### Dependencies
 
 - Python 3.6.5
 - TensorFlow 1.9.0
@@ -120,9 +120,9 @@ View training progress in real time with TensorBoard:
 tensorboard --logdir=/path/to/my/model_dir
 ```
 
-## CTLearn Classes
+## Classes
 
-**DataLoader and HDF5DataLoader**
+**DataLoader and HDF5DataLoader** Load a dataset.
 
 **DataProcessor**
 Because the size of the full dataset may be very large, only a set of event indices is held in memory.
@@ -135,13 +135,13 @@ After each training epoch, the model is evaluated on the validation set.
 
 ## Supplementary Scripts
 
-- plot_classifier_values.py
-- plot_roc_curves.py
-- print_dataset_metadata.py
-- run_multiple_configurations.py
-- visualize_bounding_boxes.py
+- **plot_classifier_values.py** Plot a histogram of gamma/hadron classification values from a CTLearn predictions file.
+- **plot_roc_curves.py** Plot gamma/hadron classification ROC curves from a list of CTLearn predictions files.
+- **print_dataset_metadata.py** Print metadata for a list of ImageExtractor HDF5 files using HDF5DataLoader.
+- **run_multiple_configurations.py** Generate a list of configuration combinations and run a model for each, for example, to conduct a hyperparameter search or to automate training or prediction for a set of models. Parses a standard CTLearn configuration file with two additional sections for Multiple Configurations added.
+- **visualize_bounding_boxes.py** Plot IACT images with overlaid bounding boxes using DataProcessor's crop method. Useful for manually tuning cropping and cleaning parameters.
 
-## Package Removal
+## Uninstall CTLearn
 
 ### Remove Anaconda Environment
 
