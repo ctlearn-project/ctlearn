@@ -1,7 +1,6 @@
 # CTLearn: Deep Learning for IACT Analysis
 
 [![Build Status](https://travis-ci.com/ctlearn-project/ctlearn.svg?branch=master)](https://travis-ci.com/ctlearn-project/ctlearn)
-[![codecov](https://codecov.io/gh/ctlearn-project/ctlearn/branch/master/graph/badge.svg)](https://codecov.io/gh/ctlearn-project/ctlearn)
 
 CTLearn is a package for running deep learning models to perform data analysis for Imaging Atmospheric Cherenkov Telescopes. CTLearn can load data from the [CTA](https://www.cta-observatory.org/) (Cherenkov Telescope Array) and [VERITAS](https://veritas.sao.arizona.edu/) telescopes processed using [ImageExtractor](https://github.com/cta-observatory/image-extractor).
 
@@ -55,17 +54,41 @@ CTLearn can load and process data in the HDF5 PyTables format produced from simt
 
 ## Configure a Run
 
-CTLearn encourages reproducible training and prediction by keeping all run settings in a single configuration file. The [example configuration file](config/example_config.yml) describes every available setting and its possible values in detail.
+CTLearn encourages reproducible training and prediction by keeping all run settings in a single YAML configuration file, organized into the sections listed below. The [example config file](config/example_config.yml) describes every available setting and its possible values in detail.
 
-**Training**
-Training hyperparameters including the learning rate and optimizer can be set in the configuration file.
+### Logging
 
-**Model**
-Several higher-level model types are provided to train networks for single-telescope classification (single_tel_model) and array (multiple image) classification (variable_input_model, cnn_rnn_model)
+Specify model directory to store TensorFlow checkpoints and summaries, a timestamped copy of the run configuration, and optionally a timestamped file with logging output.
 
-Available CNN Blocks: Basic, AlexNet, MobileNet, ResNet, DenseNet
+### Data
 
-Available Network Heads: AlexNet (fully connected telescope combination), AlexNet (convolutional telescope combination), MobileNet, ResNet, Basic (fully connected telescope combination), Basic (convolutional telescope combination)
+Describe the data to use, including the format, list of file paths, and whether to apply preprocessing. Includes subsections for **Loading** for parameters for selecting data such as the telescope type and pre-selection cuts to apply, **Processing** for data preprocessing settings such as cropping or normalization, and **Input** for parameters of the TensorFlow Estimator input function that converts the loaded, processed data into tensors. 
+
+As of CTLearn v0.2.0, only data of a single telescope type may be loaded at a time, even if the underlying dataset includes telescopes of multiple types. Data may be loaded in two ways, either event-wise in `array` mode with data from all telescopes in an array with auxiliary information including each telescope's position, or one image at a time in `single_tel` mode. 
+
+### Image Mapping
+
+Set parameters for mapping the 1D pixel vectors in the raw data into 2D images, including the hexagonal grid conversion algorithm to use and how much padding to apply. As of CTLearn v0.2.0, the only implemented hexagaonal conversion algorithm is oversampling.
+
+### Model
+
+CTLearn works with any TensorFlow model obeying the signature `logits = model(features, params, training)` where `logits` is a vector of raw (non-normalized, pre-Softmax) predictions, `features` is a dictionary of tensors, `params` is a dictionary of training parameters and dataset metadata, and `training` is a Boolean that's True in training mode and False in testing mode. Since models in CTLearn v0.2.0 return only a single logits vector, they can perform only one classification task (e.g. gamma/hadron classification).
+
+Provide in this section the directory containing a Python file that implements the model and the module name (that is, the file name minus the .py extension) and name of the model function within the module. Everything in the **Model Parameters** section is directly included in the `params` passed to the model, so arbitrary configuration parameters may be passed to the provided model.
+
+In addition, CTLearn includes three models for gamma/hadron classification. CNN-RNN and Variable Input Network perform array-level classification by feeding the output of a CNN for each telescope into either a recurrent network, or a convolutional or full-connected network head, respectively. Single Tel classifies single telescope images using a convolutional network. All three models are built on a simple, configurable convolutional network called Basic.
+
+### Training
+
+Set training parameters such as the number of epochs to run and how often to evaluate on the validation set, as well as, in the **Hyperparameters** section, hyperparameters including the base learning rate and optimizer.
+
+### Prediction
+
+Specify prediction settings such as the path to write the prediction file.
+
+### TensorFlow
+
+Set whether to run TensorFlow in debug mode.
 
 ## Run a Model
 
@@ -86,9 +109,6 @@ View training progress in real time with Tensorboard:
 ```bash
 tensorboard --logdir=/path/to/my/model_dir
 ```
-
-**Logging**
-Tensorflow checkpoints and summaries are saved to the specified model directory, as is a copy of the configuration file.
 
 ## CTLearn Modules
 
