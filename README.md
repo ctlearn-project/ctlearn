@@ -24,7 +24,7 @@ Next, download and install Anaconda following the instructions [here](https://ww
 conda env create -f </installation/path>/ctlearn/environment-<MODE>.yml
 ```
 
-where <MODE> is either 'cpu' or 'gpu', denoting the TensorFlow version to be installed. If installing the GPU version of TensorFlow, verify that your system fulfills all the requirements [here](https://www.tensorflow.org/install/install_linux#NVIDIARequirements).
+where `<MODE>` is either 'cpu' or 'gpu', denoting the TensorFlow version to be installed. If installing the GPU version of TensorFlow, verify that your system fulfills all the requirements [here](https://www.tensorflow.org/install/install_linux#NVIDIARequirements).
 
 Finally, install CTLearn into the new conda environment with pip:
 
@@ -51,15 +51,11 @@ NOTE for developers: If you wish to fork/clone the respository and make changes 
   
 ## Download Data
 
-The only currently accepted data format is HDF5/Pytables.
-A file list containing the paths to a set of HDF5 files containing the data must be provided. The [ImageExtractor](https://github.com/cta-observatory/image-extractor) package is available to process, calibrate, and write CTA simtel files into the HDF5 format required by the scripts here. HDF5 files should be in the standard format specified by ImageExtractor.
-
-For instructions on how to download the full pre-processed Prod3b dataset in ImageExtractor HDF5 format, see the wiki page [here](https://forge.in2p3.fr/projects/cta_analysis-and-simulations/wiki/Machine_Learning_for_Event_Reconstruction). (NOTE: requires a CTA account).
+CTLearn can load and process data in the HDF5 PyTables format produced from simtel files by [ImageExtractor](https://github.com/cta-observatory/image-extractor). Instructions for how to download CTA Prod3b data processed into this format are available on the [CTA internal wiki](https://forge.in2p3.fr/projects/cta_analysis-and-simulations/wiki/Machine_Learning_for_Event_Reconstruction).
 
 ## Configure a Run
 
-All options for training a model are set by a single configuration file. 
-See example_config.ini for an explanation of all available options.
+CTLearn encourages reproducible training and prediction by keeping all run settings in a single configuration file. The [example configuration file](config/example_config.yml) describes every available setting and its possible values in detail.
 
 **Training**
 Training hyperparameters including the learning rate and optimizer can be set in the configuration file.
@@ -73,9 +69,23 @@ Available Network Heads: AlexNet (fully connected telescope combination), AlexNe
 
 ## Run a Model
 
-To train a model, run `python train.py myconfig.ini`. 
-The following flags may be set: `--debug` to set DEBUG logging level, `--log_to_file` to save logger messages to a file in the model directory.
-The model's progress can be viewed in real time using Tensorboard: `tensorboard --logdir=/path/to/my/model_dir`.
+Run CTLearn from the command line:
+
+```bash
+CTLEARN_DIR=</installation/path>/ctlearn/ctlearn
+python $CTLEARN_DIR/run_model.py myconfig.yml [--mode <MODE>] [--debug] [--log_to_file]
+```
+`--mode <MODE>`: Set run mode with `<MODE>` either `train` or `predict`. If not set, defaults to `train`.
+
+`--debug`: Set logging level to DEBUG.
+
+`--log_to_file`: Save CTLearn logging messages to a file in the model directory instead of printing to stdout.
+
+View training progress in real time with Tensorboard: 
+
+```bash
+tensorboard --logdir=/path/to/my/model_dir
+```
 
 **Logging**
 Tensorflow checkpoints and summaries are saved to the specified model directory, as is a copy of the configuration file.
