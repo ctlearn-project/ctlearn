@@ -37,6 +37,7 @@ run directory.
 
 import argparse
 import copy
+from multiprocessing import Pool
 import os
 import sys
 
@@ -197,5 +198,7 @@ with open(settings['run_combinations_path'], 'w') as combinations_file:
 # Run a model for each configuration combination
 for run_name, config in configurations:
     print("Running", run_name+"...")
-    run_model(config, mode=args.mode, debug=args.debug,
-            log_to_file=args.log_to_file)
+    # Run models as subprocesses to free GPU memory after each run
+    with Pool(1) as p:
+        p.apply(run_model, (config,), dict(mode=args.mode, debug=args.debug,
+                log_to_file=args.log_to_file))
