@@ -114,22 +114,32 @@ config = yaml.load('myconfig.yml')
 run_model(config, mode='train', debug=True, log_to_file=True)
 ```
 
-View training progress in real time with Tensorboard: 
+View training progress in real time with TensorBoard: 
 
 ```bash
 tensorboard --logdir=/path/to/my/model_dir
 ```
 
-## CTLearn Modules
+## CTLearn Classes
 
-**Data Processing**
+**DataLoader and HDF5DataLoader**
+
+**DataProcessor**
 Because the size of the full dataset may be very large, only a set of event indices is held in memory.
 During each epoch of training, a specified number of event examples is randomly drawn from the training dataset.
 Until the total number is reached, batches of a specified size are loaded and used to train the model.
 Batch loading of data may be parallelized using a specified number of threads.
 After each training epoch, the model is evaluated on the validation set.
 
+**ImageMapper**
+
 ## Supplementary Scripts
+
+- plot_classifier_values.py
+- plot_roc_curves.py
+- print_dataset_metadata.py
+- run_multiple_configurations.py
+- visualize_bounding_boxes.py
 
 ## Package Removal
 
