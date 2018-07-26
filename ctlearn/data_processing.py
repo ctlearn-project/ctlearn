@@ -92,9 +92,6 @@ class DataProcessor():
 
             # Multiply by the mask to get the cleaned image
             cleaned_image = image * m
-        else:
-            raise ValueError('Unrecognized image cleaning method: {}'.format(
-                image_cleaning_method))
 
         # compute image moments, then use them to compute the centroid
         # coordinates (x_0, y_0)
