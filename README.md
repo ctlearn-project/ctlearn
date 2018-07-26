@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.com/ctlearn-project/ctlearn.svg?branch=master)](https://travis-ci.com/ctlearn-project/ctlearn)
 
-CTLearn is a package for running deep learning models to perform data analysis for Imaging Atmospheric Cherenkov Telescopes. CTLearn can load data from the [CTA](https://www.cta-observatory.org/) (Cherenkov Telescope Array) and [VERITAS](https://veritas.sao.arizona.edu/) telescopes processed using [ImageExtractor](https://github.com/cta-observatory/image-extractor).
+CTLearn is a package for running deep learning models to analyze data from Imaging Atmospheric Cherenkov Telescopes (IACTs). CTLearn can load data from [CTA](https://www.cta-observatory.org/) (Cherenkov Telescope Array) and [VERITAS](https://veritas.sao.arizona.edu/) telescopes processed using [ImageExtractor](https://github.com/cta-observatory/image-extractor).
 
 ## Install CTLearn
 
@@ -135,7 +135,7 @@ from ctlearn.data_loading import HDF5DataLoader
 
 myfiles = ['myfile1.h5', 'myfile2.h5',...]
 data_loader = HDF5DataLoader(myfiles)
-train_generator, validation_generator = data_loader.get_example_generators()
+train_generator, validation_generator, class_weights = data_loader.get_example_generators()
 # Print a list of NumPy arrays of telescope data, a NumPy array of telescope position
 # coordinates, and a binary label for the first example in the training set
 example_identifiers = list(train_generator)[0]
