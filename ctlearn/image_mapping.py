@@ -506,7 +506,7 @@ class ImageMapper():
         with tables.open_file(data_file, "r") as f:
             tel_table = f.root.Telescope_Info
             for row in tel_table.iterrows():
-                self.__get_pos_from_h5(tel_table, tel=row[1].decode("utf-8"), write=True)
+                self.__get_pos_from_h5(tel_table, tel_type=row[1].decode("utf-8"), write=True)
 
     def __read_pix_pos_files(self, tel_type):
         if tel_type in self.pixel_lengths: 
