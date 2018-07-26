@@ -17,7 +17,7 @@ git clone https://github.com/ctlearn-project/ctlearn.git
 
 ### Install Package with Anaconda
 
-Next, download and install Anaconda following the instructions [here](https://www.anaconda.com/download/). Create a new conda environment for CTLearn:
+Next, download and install Anaconda following the instructions [here](https://www.anaconda.com/download/). Create a new conda environment that includes all the dependencies for CTLearn:
 
 ```bash
 conda env create -f </installation/path>/ctlearn/environment-<MODE>.yml
@@ -64,11 +64,11 @@ Specify model directory to store TensorFlow checkpoints and summaries, a timesta
 
 Describe the data to use, including the format, list of file paths, and whether to apply preprocessing. Includes subsections for **Loading** for parameters for selecting data such as the telescope type and pre-selection cuts to apply, **Processing** for data preprocessing settings such as cropping or normalization, and **Input** for parameters of the TensorFlow Estimator input function that converts the loaded, processed data into tensors. 
 
-As of CTLearn v0.2.0, only data of a single telescope type may be loaded at a time, even if the underlying dataset includes telescopes of multiple types. Data may be loaded in two ways, either event-wise in `array` mode yielding data from all telescopes in a specified array as well as auxiliary information including each telescope's position, or one image at a time in `single_tel` mode. 
+As of CTLearn v0.2.0, only data of a single telescope type may be loaded at a time, even if the underlying dataset includes telescopes of multiple types. Data may be loaded in two ways, either event-wise in `array` mode which yields data from all telescopes in a specified array as well as auxiliary information including each telescope's position, or one image at a time in `single_tel` mode. 
 
 ### Image Mapping
 
-Set parameters for mapping the 1D pixel vectors in the raw data into 2D images, including the hexagonal grid conversion algorithm to use and how much padding to apply. As of CTLearn v0.2.0, the only implemented hexagaonal conversion algorithm is oversampling.
+Set parameters for mapping the 1D pixel vectors in the raw data into 2D images, including the hexagonal grid conversion algorithm to use and how much padding to apply. As of CTLearn v0.2.0, the only implemented hexagonal conversion algorithm is oversampling.
 
 ### Model
 
@@ -102,7 +102,7 @@ python $CTLEARN_DIR/run_model.py myconfig.yml [--mode <MODE>] [--debug] [--log_t
 
 `--debug`: Set logging level to DEBUG.
 
-`--log_to_file`: Save CTLearn logging messages to a file in the model directory instead of printing to stdout.
+`--log_to_file`: Save CTLearn logging messages to a timestamped file in the model directory instead of printing to stdout.
 
 Alternatively, import CTLearn as a module in a Python script:
 
@@ -122,16 +122,25 @@ tensorboard --logdir=/path/to/my/model_dir
 
 ## Classes
 
-**DataLoader and HDF5DataLoader** Load a dataset.
+**DataLoader and HDF5DataLoader** Load a set of IACT data and provide a generator yielding NumPy arrays of examples (data and labels) as well as additional information about the dataset. HDF5DataLoader is the specifc implementation of the abstract base class DataLoader for the ImageExtractor HDF5 format. Because it's prohibitive to store a large dataset in memory, HDF5DataLoader instead provides a method `get_example_generators()` that yields (optionally shuffled) example identifiers (run number, event number, and, in `single_tel` mode, tel id) and methods `get_example()` and `get_image()` to map these identifiers to examples of data and labels and to telescope images. HDF5DataLoader also provides methods `get_metadata()` and `get_auxiliary_data()` that return dictionaries of additional information about the dataset. A DataProcessor provided either at initialization or using the method `add_data_processor()` applies preprocessing to the examples and an ImageMapper provided at initialization maps the images.
 
-**DataProcessor**
-Because the size of the full dataset may be very large, only a set of event indices is held in memory.
-During each epoch of training, a specified number of event examples is randomly drawn from the training dataset.
-Until the total number is reached, batches of a specified size are loaded and used to train the model.
-Batch loading of data may be parallelized using a specified number of threads.
-After each training epoch, the model is evaluated on the validation set.
+**DataProcessor** Preprocess IACT data. DataProcessor has a method `process_example()` that accepts an example of a list of NumPy arrays of data and an integer label along with the telescope type and returns preprocessed data in the same format, and a method `get_metadata()` that returns a dictionary of information about the processed data. A DataProcessor with no options set leaves the example unchanged. Preprocessing methods implemented in CTLearn v0.2.0 include cropping an image about the shower centroid and applying logarithmic normalization. 
 
-**ImageMapper**
+**ImageMapper** Map vectors of pixel values (as stored in the raw data) to square camera images. This is done with the `map_image()` method that accepts a vector of pixel values and telescope type and returns the camera image converted to a square array. This is not a unique transformation for cameras with pixels laid out in a hexagonal grid, so the hexagonal conversion method is configurable. However, as of CTLearn v0.2.0, the only implemented method is oversampling. ImageMapper can convert data from all CTA telescope and camera combinations currently under development, as well as data from VERITAS.
+
+These classes may be used independently of the TensorFlow-based portion of CTLearn, e.g.:
+
+```python
+from ctlearn.data_loading import HDF5DataLoader
+
+myfiles = ['myfile1.h5', 'myfile2.h5',...]
+data_loader = HDF5DataLoader(myfiles)
+train_generator, validation_generator = data_loader.get_example_generators()
+# Print a list of NumPy arrays of telescope data, a NumPy array of telescope position
+# coordinates, and a binary label for the first example in the training set
+example_identifiers = list(train_generator)[0]
+print(data_loader.get_example(*example_identifiers))
+```
 
 ## Supplementary Scripts
 
