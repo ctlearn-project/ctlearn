@@ -138,7 +138,7 @@ data_loader = HDF5DataLoader(myfiles)
 train_generator, validation_generator, class_weights = data_loader.get_example_generators()
 # Print a list of NumPy arrays of telescope data, a NumPy array of telescope position
 # coordinates, and a binary label for the first example in the training set
-example_identifiers = list(train_generator)[0]
+example_identifiers = list(train_generator())[0]
 print(data_loader.get_example(*example_identifiers))
 ```
 
