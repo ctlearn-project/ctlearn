@@ -49,16 +49,7 @@ class ImageMapper():
 
     def __init__(self,
                  hex_conversion_algorithm='oversampling',
-                 padding={
-                    'MSTS': 0,
-                    'VTS': 0,
-                    'MSTF': 0,
-                    'MSTN': 0,
-                    'LST': 0,
-                    'SST1': 0,
-                    'SSTC': 0,
-                    'SSTA': 0}
-                 ):
+                 padding=None):
         """   
         :param hex_conversion_algorithm: algorithm to be used when converting
                                          hexagonal pixel camera data to square images
@@ -71,6 +62,17 @@ class ImageMapper():
         else:
             raise NotImplementedError("Hex conversion algorithm {} is not implemented.".format(hex_conversion_algorithm))
 
+        if padding is None:
+            padding = {
+                    'MSTS': 0,
+                    'VTS': 0,
+                    'MSTF': 0,
+                    'MSTN': 0,
+                    'LST': 0,
+                    'SST1': 0,
+                    'SSTC': 0,
+                    'SSTA': 0
+                    }
         self.padding = padding
 
         for tel_, pad_ in self.padding.items():

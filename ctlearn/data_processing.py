@@ -9,9 +9,9 @@ class DataProcessor():
     def __init__(self,
             image_mapper=ImageMapper(),
             crop=False,
-            bounding_box_sizes={'MSTS': 48},
+            bounding_box_sizes=None,
             image_cleaning="twolevel",
-            thresholds={'MSTS': (5.5, 1.0)},
+            thresholds=None,
             return_cleaned_images=False,
             normalization=None,
             sort_images_by=None,
@@ -21,6 +21,9 @@ class DataProcessor():
         self._image_mapper = image_mapper
 
         self.crop = crop
+
+        if bounding_box_sizes is None:
+            bounding_box_sizes = {'MSTS': 48}
         self.bounding_box_sizes = bounding_box_sizes
         
         if image_cleaning in ['twolevel', None]:
@@ -28,6 +31,8 @@ class DataProcessor():
         else:
             raise ValueError("Invalid image cleaning method: {}. Select 'twolevel' or None.".format(image_cleaning))
         
+        if thresholds is None:
+            thresholds = {'MSTS': (5.5, 1.0)}
         self.thresholds = thresholds
         self.return_cleaned_images = return_cleaned_images
 
