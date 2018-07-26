@@ -1,12 +1,12 @@
-from operator import itemgetter
-import threading
-import math
-from collections import OrderedDict
-import random
 from abc import ABC, abstractmethod
+from collections import OrderedDict
+import logging
+import math
+import random
+import threading
 
-import tables
 import numpy as np
+import tables
 
 from ctlearn.data_processing import DataProcessor
 from ctlearn.image_mapping import ImageMapper
@@ -568,18 +568,23 @@ class HDF5DataLoader(DataLoader):
 
             return test_generator_fn, self.class_weights
 
-# given a dictionary of form {particle_id: num_examples}
-# logs an informative message about the proportions belonging
-# to different particle ids.
-def log_class_breakdown(num_by_particle_id, logger=None):
-
-    if not logger: logger = logging.get_logger()
-
-    total_num = sum(num_by_particle_id.values())
-    logger.info("%d total.", total_num)
-    for particle_id in num_by_particle_id:
-        logger.info("%d: %d (%f%%)",
-                particle_id, 
-                num_by_particle_id[particle_id], 
-                100 * float(num_by_particle_id[particle_id])/total_num)
-
+    # Log the proportions of particles in the dataset
+    def log_class_breakdown(self, logger=None):
+    
+        if not logger: logger = logging.getLogger()
+        
+        if self.example_type == 'single_tel':
+            num_examples_by_particle_id = self.num_images_by_particle_id[self.selected_telescope_type]
+        else:
+            num_examples_by_particle_id = self.num_events_by_particle_id
+    
+        num_total_examples = sum(num_examples_by_particle_id.values())
+        logger.info("Total number of examples: {}".format(num_total_examples))
+        for particle_id in num_examples_by_particle_id:
+            percentage = (100. * num_examples_by_particle_id[particle_id] /
+                    num_total_examples)
+            logger.info("Number of {} (class {}) examples: {} ({:.3f}%)".format(
+                PARTICLE_ID_TO_NAME[particle_id],
+                self.ids_to_labels[particle_id],
+                num_examples_by_particle_id[particle_id],
+                percentage))

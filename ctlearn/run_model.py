@@ -341,6 +341,9 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         logger.info("Predicting...")
         logger.info("Total number of test events: {}".format(num_test_events))
 
+    # Log the breakdown of examples by class
+    data_loader.log_class_breakdown(logger)
+
     estimator = tf.estimator.Estimator(
             model_fn, 
             model_dir=model_dir, 
