@@ -64,9 +64,9 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     sys.path.append(config['Model']['model_directory'])
     model_module = importlib.import_module(config['Model']['model']['module'])
     model = getattr(model_module, config['Model']['model']['function'])
-    model_type = config['Data']['Loading']['example_type']
+    model_type = config['Data'].get('Loading', {}).get('example_type', 'array')
     
-    model_hyperparameters = config['Model']['Model Parameters']
+    model_hyperparameters = config['Model'].get('Model Parameters', {})
     model_hyperparameters['model_directory'] = config['Model']['model_directory']
 
     # Load options related to the data format and location
@@ -79,7 +79,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                 data_files.append(line)
 
     # Load options related to image mapping
-    image_mapping_settings = config['Image Mapping']
+    image_mapping_settings = config.get('Image Mapping', {})
 
     # Load options related to data loading
     if mode == "train":
@@ -87,11 +87,11 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     elif mode == "predict":
         data_loader_mode = "test"
 
-    data_loading_settings = config['Data']['Loading']
+    data_loading_settings = config['Data'].get('Loading', {})
 
     # Load options related to data processing
     apply_processing = config['Data'].get('apply_processing', True)
-    data_processing_settings = config['Data']['Processing']
+    data_processing_settings = config['Data'].get('Processing', {})
 
     # Load options related to data input
     data_input_settings = config['Data']['Input']
@@ -118,7 +118,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         data_input_settings['num_parallel_calls'] = 1
     
     # Load options for TensorFlow
-    run_tfdbg = config['TensorFlow'].get('run_TFDBG', False)
+    run_tfdbg = config.get('TensorFlow', {}).get('run_TFDBG', False)
 
     # Define data loading functions
     if data_format == 'HDF5':
