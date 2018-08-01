@@ -19,6 +19,7 @@ args = parser.parse_args()
 classifiers = []
 with open(args.predictions_list_file) as f:
     for line in f:
+        if not line or line[0] == '#': continue
         name, path = line.split(',')
         classifiers.append([name.strip(), path.strip()])
 
@@ -31,13 +32,11 @@ for classifier, color in zip(classifiers, colors):
     classifier_name = classifier[0]
     predictions_path = classifier[1]
     predictions = np.genfromtxt(predictions_path, delimiter=',', names=True)
-    labels = predictions['gamma_hadron_label']
-    # 0 == gamma, 1 == proton by default, need to switch them
-    gamma_labels = 1 - labels
+    labels = predictions['gamma_hadron_label'].astype(int) # gamma=0, proton=1
     gamma_classifier_values = predictions['gamma']
 
-    fpr, tpr, _ = sklearn.metrics.roc_curve(gamma_labels,
-            gamma_classifier_values)
+    fpr, tpr, thresholds = sklearn.metrics.roc_curve(labels,
+            gamma_classifier_values, pos_label=0)
     auc = sklearn.metrics.auc(fpr, tpr)
 
     plt.plot(fpr, tpr, color=color, lw=2,
@@ -54,6 +53,5 @@ plt.title('Receiver Operating Characteristic')
 
 plt.legend(loc='lower right')
 
-#plt.show()
 plt.savefig(args.output_filename, bbox_inches='tight')
-
+#plt.show()
