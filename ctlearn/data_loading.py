@@ -81,8 +81,10 @@ class HDF5DataLoader(DataLoader):
             ):
 
         # construct dict of filename:file_handle pairs 
-        self.files = {filename:self.__synchronized_open_file(filename, mode='r')
-                    for filename in file_list}
+        self.files = OrderedDict()
+        for filename in file_list:
+            self.files[filename] = self.__synchronized_open_file(filename,
+                    mode='r')
 
         # Data loading settings
         if mode in ['train', 'test']:
@@ -494,7 +496,7 @@ class HDF5DataLoader(DataLoader):
             for row in rows:
                 # First check if min num tels cut is passed
                 if np.count_nonzero(row[tel_type + "_indices"]) < self.min_num_tels:
-                    pass
+                    continue
                
                 # If example_type is single_tel, there will 
                 # be only a single selected telescope type
@@ -527,9 +529,10 @@ class HDF5DataLoader(DataLoader):
         if self.seed is not None:
             random.seed(self.seed)
 
-        random.shuffle(passing_examples)
-
         if self.mode == 'train':
+            
+            random.shuffle(passing_examples)
+
             # Split examples into training and validation sets
             num_validation = math.ceil(self.validation_split * len(passing_examples)) 
            
@@ -558,13 +561,15 @@ class HDF5DataLoader(DataLoader):
         if self.mode == "train":
             # Convert lists of training and validation examples into generators
             training_generator_fn = self._get_generator_function(self.training_examples)
-            validation_generator_fn = self._get_generator_function(self.validation_examples)
+            validation_generator_fn = self._get_generator_function(
+                    self.validation_examples, shuffle=False)
 
             return training_generator_fn, validation_generator_fn, self.class_weights
         
         elif self.mode == "test":
 
-            test_generator_fn = self._get_generator_function(self.examples)
+            test_generator_fn = self._get_generator_function(self.examples,
+                    shuffle=False)
 
             return test_generator_fn, self.class_weights
 

@@ -211,11 +211,11 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         logits = model(features, params['model'], training)
         
         # Collect predictions
-        predicted_classes = tf.cast(tf.argmax(logits, axis=1), tf.int32,
-                name="predicted_classes")
         predictions = {}
-        predictions['predicted_class'] = predicted_classes
         classifier_values = tf.nn.softmax(logits)
+        predicted_classes = tf.cast(tf.argmax(classifier_values, axis=1),
+                tf.int32, name="predicted_classes")
+        predictions['predicted_class'] = predicted_classes
         for i in range(params['model']['num_classes']):
             class_name = params['model']['class_to_name'][i]
             predictions[class_name] = classifier_values[:,i]
@@ -305,7 +305,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         eval_metric_ops = {
                 'accuracy': tf.metrics.accuracy(true_classes, 
                     predicted_classes),
-                'auc': tf.metrics.auc(true_classes, predicted_classes)
+                'auc': tf.metrics.auc(1 - true_classes, predictions['gamma'])
                 }
         
         # add class-wise accuracies
