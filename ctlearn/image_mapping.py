@@ -349,77 +349,68 @@ class ImageMapper():
         """
         Function returning SSTA mapping table (used to index into the trace when converting from trace to image).
         """
-        MODULES_PER_ROW_DICT = { 0: 24,
-                                 1: 24,
-                                 2: 24,
-                                 3: 24,
-                                 4: 24,
-                                 5: 24,
-                                 6: 24,
-                                 7: 24,
-                                 8: 40,
-                                 9: 40,
-                                 10: 40,
-                                 11: 40,
-                                 12: 40,
-                                 13: 40,
-                                 14: 40,
-                                 15: 40,
-                                 16: 56,
-                                 17: 56,
-                                 18: 56,
-                                 19: 56,
-                                 20: 56,
-                                 21: 56,
-                                 22: 56,
-                                 23: 56,
-                                 24: 56,
-                                 25: 56,
-                                 26: 56,
-                                 27: 56,
-                                 28: 56,
-                                 29: 56,
-                                 30: 56,
-                                 31: 56,
-                                 32: 56,
-                                 33: 56,
-                                 34: 56,
-                                 35: 56,
-                                 36: 56,
-                                 37: 56,
-                                 38: 56,
-                                 39: 56,
-                                 40: 40,
-                                 41: 40,
-                                 42: 40,
-                                 43: 40,
-                                 44: 40,
-                                 45: 40,
-                                 46: 40,
-                                 47: 40,
-                                 48: 24,
-                                 49: 24,
-                                 50: 24,
-                                 51: 24,
-                                 52: 24,
-                                 53: 24,
-                                 54: 24,
-                                 55: 24}
+        img_map = np.full([56, 56], -1, dtype=int)
+
+        # Map values
+        img_map[0:8, 16:24] = np.arange(64).reshape([8, 8])[::-1, :] + 34 * 64
+        img_map[0:8, 24:32] = np.arange(64).reshape([8, 8])[::-1, :] + 35 * 64
+        img_map[0:8, 32:40] = np.arange(64).reshape([8, 8])[::-1, :] + 36 * 64
+
+        img_map[8:16, 8:16] = np.arange(64).reshape([8, 8])[::-1, :] + 29 * 64
+        img_map[8:16, 16:24] = np.arange(64).reshape([8, 8])[::-1, :] + 30 * 64
+        img_map[8:16, 24:32] = np.arange(64).reshape([8, 8])[::-1, :] + 31 * 64
+        img_map[8:16, 32:40] = np.arange(64).reshape([8, 8])[::-1, :] + 32 * 64
+        img_map[8:16, 40:48] = np.arange(64).reshape([8, 8])[::-1, :] + 33 * 64
+
+        img_map[16:24, 0:8] = np.arange(64).reshape([8, 8])[::-1, :] + 22 * 64
+        img_map[16:24, 8:16] = np.arange(64).reshape([8, 8])[::-1, :] + 23 * 64
+        img_map[16:24, 16:24] = np.arange(64).reshape([8, 8])[::-1, :] + 24 * 64
+        img_map[16:24, 24:32] = np.arange(64).reshape([8, 8])[::-1, :] + 25 * 64
+        img_map[16:24, 32:40] = np.arange(64).reshape([8, 8])[::-1, :] + 26 * 64
+        img_map[16:24, 40:48] = np.arange(64).reshape([8, 8])[::-1, :] + 27 * 64
+        img_map[16:24, 48:56] = np.arange(64).reshape([8, 8])[::-1, :] + 28 * 64
+
+        img_map[24:32, 0:8] = np.arange(64).reshape([8, 8])[::-1, :] + 15 * 64
+        img_map[24:32, 8:16] = np.arange(64).reshape([8, 8])[::-1, :] + 16 * 64
+        img_map[24:32, 16:24] = np.arange(64).reshape([8, 8])[::-1, :] + 17 * 64
+        img_map[24:32, 24:32] = np.arange(64).reshape([8, 8])[::-1, :] + 18 * 64
+        img_map[24:32, 32:40] = np.arange(64).reshape([8, 8])[::-1, :] + 19 * 64
+        img_map[24:32, 40:48] = np.arange(64).reshape([8, 8])[::-1, :] + 20 * 64
+        img_map[24:32, 48:56] = np.arange(64).reshape([8, 8])[::-1, :] + 21 * 64
+
+        img_map[32:40, 0:8] = np.arange(64).reshape([8, 8])[::-1, :] + 8 * 64
+        img_map[32:40, 8:16] = np.arange(64).reshape([8, 8])[::-1, :] + 9 * 64
+        img_map[32:40, 16:24] = np.arange(64).reshape([8, 8])[::-1, :] + 10 * 64
+        img_map[32:40, 24:32] = np.arange(64).reshape([8, 8])[::-1, :] + 11 * 64
+        img_map[32:40, 32:40] = np.arange(64).reshape([8, 8])[::-1, :] + 12 * 64
+        img_map[32:40, 40:48] = np.arange(64).reshape([8, 8])[::-1, :] + 13 * 64
+        img_map[32:40, 48:56] = np.arange(64).reshape([8, 8])[::-1, :] + 14 * 64
+
+        img_map[40:48, 8:16] = np.arange(64).reshape([8, 8])[::-1, :] + 3 * 64
+        img_map[40:48, 16:24] = np.arange(64).reshape([8, 8])[::-1, :] + 4 * 64
+        img_map[40:48, 24:32] = np.arange(64).reshape([8, 8])[::-1, :] + 5 * 64
+        img_map[40:48, 32:40] = np.arange(64).reshape([8, 8])[::-1, :] + 6 * 64
+        img_map[40:48, 40:48] = np.arange(64).reshape([8, 8])[::-1, :] + 7 * 64
+
+        img_map[48:56, 16:24] = np.arange(64).reshape([8, 8])[::-1, :] + 0 * 64
+        img_map[48:56, 24:32] = np.arange(64).reshape([8, 8])[::-1, :] + 1 * 64
+        img_map[48:56, 32:40] = np.arange(64).reshape([8, 8])[::-1, :] + 2 * 64
+
+        img_map = img_map + 1
+
         # This is set to int because no oversampling is done
         mapping_matrix3d = np.zeros((self.num_pixels['SSTA'] + 1,
                                      self.image_shapes['SSTA'][0],
                                      self.image_shapes['SSTA'][1]), dtype=int)
 
-        i = 0  # Pixel count
-        # offset vertically:
-        delta_x = int((self.image_shapes['SSTA'][1] - MODULES_PER_ROW_DICT[27]) / 2)
+        # offset to the center:
+        delta_x = int((self.image_shapes['SSTA'][1] - 56) / 2)
+        delta_y = int((self.image_shapes['SSTA'][0] - 56) / 2)
 
-        for row_, n_per_row_ in MODULES_PER_ROW_DICT.items():
-            row_start_ = int((self.image_shapes['SSTA'][1] - n_per_row_) / 2)
-            for j in range(n_per_row_):
-                x, y = (row_ + delta_x, j + row_start_)
-                mapping_matrix3d[i + 1, x, y] = 1
-                i = i + 1
+        for x in range(56):
+            for y in range(56):
+                if img_map[x, y] > 0:
+                    mapping_matrix3d[img_map[x, y], x + delta_x, y + delta_y] = 1
 
         sparse_map_mat = csr_matrix(mapping_matrix3d.reshape(self.num_pixels['SSTA'] + 1,
                                                              self.image_shapes['SSTA'][0]*
