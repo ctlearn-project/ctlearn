@@ -17,7 +17,7 @@ git clone https://github.com/ctlearn-project/ctlearn.git
 
 ### Install Package with Anaconda
 
-Next, download and install Anaconda following the instructions [here](https://www.anaconda.com/download/). Create a new conda environment that includes all the dependencies for CTLearn:
+Next, download and install [Anaconda](https://www.anaconda.com/download/), or, for a minimal installation, [Miniconda](https://conda.io/miniconda.html). Create a new conda environment that includes all the dependencies for CTLearn:
 
 ```bash
 conda env create -f </installation/path>/ctlearn/environment-<MODE>.yml
@@ -50,7 +50,7 @@ NOTE for developers: If you wish to fork/clone the respository and make changes 
   
 ## Download Data
 
-CTLearn can load and process data in the HDF5 PyTables format produced from simtel files by [ImageExtractor](https://github.com/cta-observatory/image-extractor). Instructions for how to download CTA Prod3b data processed into this format are available on the [CTA internal wiki](https://forge.in2p3.fr/projects/cta_analysis-and-simulations/wiki/Machine_Learning_for_Event_Reconstruction).
+CTLearn can load and process data in the HDF5 PyTables format produced from simtel files by [ImageExtractor](https://github.com/cta-observatory/image-extractor). Instructions for how to download CTA Prod3b data processed into this format are available on the [CTA internal wiki](https://forge.in2p3.fr/projects/cta_analysis-and-simulations/wiki/Machine_Learning_for_Event_Reconstruction#Common-datasets).
 
 ## Configure a Run
 
@@ -76,7 +76,7 @@ CTLearn works with any TensorFlow model obeying the signature `logits = model(fe
 
 Provide in this section the directory containing a Python file that implements the model and the module name (that is, the file name minus the .py extension) and name of the model function within the module. Everything in the **Model Parameters** section is directly included in the model `params`, so arbitrary configuration parameters may be passed to the provided model.
 
-In addition, CTLearn includes three [models](models) for gamma/hadron classification. CNN-RNN and Variable Input Network perform array-level classification by feeding the output of a CNN for each telescope into either a recurrent network, or a convolutional or full-connected network head, respectively. Single Tel classifies single telescope images using a convolutional network. All three models are built on a simple, configurable convolutional network called Basic.
+In addition, CTLearn includes three [models](models) for gamma/hadron classification. CNN-RNN and Variable Input Network perform array-level classification by feeding the output of a CNN for each telescope into either a recurrent network, or a convolutional or fully-connected network head, respectively. Single Tel classifies single telescope images using a convolutional network. All three models are built on a simple, configurable convolutional network called Basic.
 
 ### Training
 
@@ -122,7 +122,7 @@ tensorboard --logdir=/path/to/my/model_dir
 
 ## Classes
 
-**DataLoader and HDF5DataLoader** Load a set of IACT data and provide a generator yielding NumPy arrays of examples (data and labels) as well as additional information about the dataset. HDF5DataLoader is the specifc implementation of the abstract base class DataLoader for the ImageExtractor HDF5 format. Because it's prohibitive to store a large dataset in memory, HDF5DataLoader instead provides a method `get_example_generators()` that yields (optionally shuffled) example identifiers (run number, event number, and, in `single_tel` mode, tel id) and methods `get_example()` and `get_image()` to map these identifiers to examples of data and labels and to telescope images. HDF5DataLoader also provides methods `get_metadata()` and `get_auxiliary_data()` that return dictionaries of additional information about the dataset. A DataProcessor provided either at initialization or using the method `add_data_processor()` applies preprocessing to the examples and an ImageMapper provided at initialization maps the images.
+**DataLoader and HDF5DataLoader** Load a set of IACT data and provide a generator yielding NumPy arrays of examples (data and labels) as well as additional information about the dataset. HDF5DataLoader is the specifc implementation of the abstract base class DataLoader for the ImageExtractor HDF5 format. Because it's prohibitive to store a large dataset in memory, HDF5DataLoader instead provides a method `get_example_generators()` that returns functions returning generators that yield example identifiers (run number, event number, and, in `single_tel` mode, tel id) as well as the class weights, and methods `get_example()` and `get_image()` to map these identifiers to examples of data and labels and to telescope images. HDF5DataLoader also provides methods `get_metadata()` and `get_auxiliary_data()` that return dictionaries of additional information about the dataset. A DataProcessor provided either at initialization or using the method `add_data_processor()` applies preprocessing to the examples and an ImageMapper provided at initialization maps the images.
 
 **DataProcessor** Preprocess IACT data. DataProcessor has a method `process_example()` that accepts an example of a list of NumPy arrays of data and an integer label along with the telescope type and returns preprocessed data in the same format, and a method `get_metadata()` that returns a dictionary of information about the processed data. A DataProcessor with no options set leaves the example unchanged. Preprocessing methods implemented in CTLearn v0.2.0 include cropping an image about the shower centroid and applying logarithmic normalization. 
 
