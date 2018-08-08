@@ -150,6 +150,10 @@ print(data_loader.get_example(*example_identifiers))
 - **run_multiple_configurations.py** Generate a list of configuration combinations and run a model for each, for example, to conduct a hyperparameter search or to automate training or prediction for a set of models. Parses a standard CTLearn configuration file with two additional sections for Multiple Configurations added.
 - **visualize_bounding_boxes.py** Plot IACT images with overlaid bounding boxes using DataProcessor's crop method. Useful for manually tuning cropping and cleaning parameters.
 
+## CTLearn v0.2.0 Benchmarks
+
+Configuration files and corresponding results showing CTLearn's operation for training both single telescope and array models using simulations from all CTA telescopes are provided in [config/v0_2_0_benchmarks](config/v_0_2_0_benchmarks).
+
 ## Uninstall CTLearn
 
 ### Remove Anaconda Environment
