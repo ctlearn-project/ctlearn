@@ -1,6 +1,6 @@
 # CTLearn v0.2.0 Benchmarks
 
-These configuration files and corresponding results show CTLearn's operation for training both single telescope and array models using data from all CTA telescopes. Since these results come from simple, minimally optimized models trained on a small sample dataset, they are meaningful only for demonstration and validation purposes and may not accurately reflect the performance of the various CTA telescopes. The metrics shown are calculated on a subset of the data withheld during training for validation, not on a separate test set. If retraining these models using the provided configuration files, note that while a seed is specified so the data will always be divided into the same training and validation sets, since batches of data are randomly shuffled during training, your results may slightly differ. The models were trained using a Nvidia Titan X Pascal GPU. 
+These configuration files and corresponding results show CTLearn's operation for training both single telescope and array models using simulations from all CTA telescopes. Since these results come from simple, minimally optimized models trained on a small dataset, they are meaningful only for demonstration and validation purposes and may not accurately reflect the performance of the various CTA telescopes. The metrics shown are calculated on a subset of the data withheld during training for validation, not on a separate test set. If retraining these models using the provided configuration files, note that while a seed is specified so the data will always be divided into the same training and validation sets, since batches of data are randomly shuffled during training, your results may slightly differ. The models were trained using a Nvidia Titan X Pascal GPU. 
 
 ## Single Telescope Results
 
@@ -14,6 +14,9 @@ SST1|213795|207996|77.11%|0.8542|0h 45m 30s
 SSTA|221810|228042|72.59%|0.8105|0h 42m 17s
 SSTC|217940|218312|73.90%|0.8118|0h 42m 4s
 
+![Validation Accuracy](../../images/single_tel_accuracy_legend.png)
+![Validation AUC](../../images/single_tel_auc_legend.png)
+
 ## CNN-RNN Results
 
 Telescope Type | Total Events | Validation Accuracy | Validation AUC | Training Time
@@ -25,3 +28,6 @@ MSTS|223051|81.18%|0.9048|2h 37m 34s
 SST1|197878|81.47%|0.8997|3h 21m 48s
 SSTA|183669|75.27%|0.8556|2h 10m 55s
 SSTC|190638|80.64%|0.9072|1h 51m 5s
+
+![Validation Accuracy](../../images/cnn_rnn_accuracy_legend.png)
+![Validation AUC](../../images/cnn_rnn_auc_legend.png)
