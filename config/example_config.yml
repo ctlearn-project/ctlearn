@@ -78,7 +78,7 @@ Data:
 
         # Optional string or null. Default: 'twolevel'
         # Valid options:
-        #   - 'twolevel': Use two-level cleaning algorithm
+        #   - 'twolevel': Use absolute two-level cleaning algorithm
         #   - null: Don't apply any cleaning
         # When cropping, type of image cleaning to apply when calculating
         # the weighted centroid position of each telescope image.
@@ -101,7 +101,7 @@ Data:
         # See Data:Loading:selected_tel_type for valid keys.
         # Default:
         #   MSTS: [5.5, 1.0]
-        # When cropping and using two level cleaning method, cleaning
+        # When cropping and using two level cleaning method, absolute cleaning
         # thresholds to use. The first value is the picture threshold,
         # which passes all pixels in the image greater than it, and the
         # second is the boundary threshold, which adds all pixels greater
