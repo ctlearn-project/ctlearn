@@ -110,7 +110,8 @@ Alternatively, import CTLearn as a module in a Python script:
 import yaml
 from ctlearn.run_model import run_model
 
-config = yaml.load('myconfig.yml')
+with open('myconfig.yml', 'r') as myconfig:
+  config = yaml.load(myconfig)
 run_model(config, mode='train', debug=True, log_to_file=True)
 ```
 
