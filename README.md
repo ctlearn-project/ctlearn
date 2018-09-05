@@ -2,6 +2,8 @@
 
 [![Build Status](https://travis-ci.com/ctlearn-project/ctlearn.svg?branch=master)](https://travis-ci.com/ctlearn-project/ctlearn)
 
+![Validation Accuracy](images/CTLearnTextCTinBox_WhiteBkgd.png)
+
 CTLearn is a package under active development to run deep learning models to analyze data from Imaging Atmospheric Cherenkov Telescopes (IACTs). CTLearn v0.2.0 can load data from [CTA](https://www.cta-observatory.org/) (Cherenkov Telescope Array) and [VERITAS](https://veritas.sao.arizona.edu/) telescopes processed using [ImageExtractor](https://github.com/cta-observatory/image-extractor), with the ultimate goal of compatibility with data from all IACT observatories.
 
 ## Install CTLearn
