@@ -8,16 +8,16 @@ import os
 
 # MODIFY THESE VARIABLES ########################
 # file_list: .txt file containing in each line a path to a .h5 dataset
-file_list = '/data2/deeplearning/ctlearn/tests/prototype_files_class_balanced.txt'
+file_list = '/home/jsevillamol/Documentos/datasample/sample_files.txt'
 
 # model_directory: path to ctlearn/models
-model_directory = '/home/jsevilla/ctlearn/models'
+model_directory = '/home/jsevillamol/Documentos/ctlearn/models'
 
 # prediction_file_path: path to a folder where to store predictions
-prediction_file_path = '/home/jsevilla/output/predictions'
+prediction_file_path = '/home/jsevillamol/Documentos/output/predictions'
 
 # model_directory_log = specify model directory to store TensorFlow checkpoints and summaries, a timestamped copy of the run configuration, and optionally a timestamped file with logging output.
-model_directory_log = '/home/jsevilla/output/logs'
+model_directory_log = '/home/jsevillamol/Documentos/output/logs'
 
 ##################################################
 
