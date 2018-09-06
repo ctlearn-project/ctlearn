@@ -492,7 +492,7 @@ class HDF5DataLoader(DataLoader):
             event_table = f.root.Event_Info
             tel_type = self.selected_telescope_type
             # Apply the cuts specified in cut condition
-            rows = [row for row in event_table.where(self.cut_condition)] if self.cut_condition else event_table.iterrows()
+            rows = event_table.where(self.cut_condition) if self.cut_condition else event_table.iterrows()
             for row in rows:
                 # First check if min num tels cut is passed
                 if np.count_nonzero(row[tel_type + "_indices"]) < self.min_num_tels:
