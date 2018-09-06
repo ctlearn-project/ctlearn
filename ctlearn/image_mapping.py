@@ -14,17 +14,6 @@ lock = threading.Lock()
 
 class ImageMapper():
 
-    image_shapes = {
-        'MSTS': (120, 120, 1),
-        'VTS': (54, 54, 1),
-        'MSTF': (110, 110, 1),
-        'MSTN': (108, 108, 1),
-        'LST': (108, 108, 1),
-        'SST1': (94, 94, 1),
-        'SSTC': (48, 48, 1),
-        'SSTA': (56, 56, 1)
-        }
-
     pixel_lengths = {
         'LST': 0.05,
         'MSTF': 0.05,
@@ -49,13 +38,29 @@ class ImageMapper():
 
     def __init__(self,
                  hex_conversion_algorithm='oversampling',
-                 padding=None):
+                 padding=None,
+                 use_peak_times=False):
         """   
         :param hex_conversion_algorithm: algorithm to be used when converting
                                          hexagonal pixel camera data to square images
         :param padding: number of pixels of padding to be added symmetrically to the sides
                         of the square image
+        :param use_peak_times: if true, the number of input channels is 2 
+                               (charges and peak arrival times)
         """
+        
+        # image_shapes should be a non static field to prevent problems 
+        # when multiple instances of ImageMapper are created
+        self.image_shapes = {
+            'MSTS': (120, 120, 1),
+            'VTS': (54, 54, 1),
+            'MSTF': (110, 110, 1),
+            'MSTN': (108, 108, 1),
+            'LST': (108, 108, 1),
+            'SST1': (94, 94, 1),
+            'SSTC': (48, 48, 1),
+            'SSTA': (56, 56, 1)
+            }
 
         if hex_conversion_algorithm in ['oversampling']:
             self.hex_conversion_algorithm = hex_conversion_algorithm
@@ -74,13 +79,21 @@ class ImageMapper():
                     'SSTA': 0
                     }
         self.padding = padding
-
+        
         for tel_, pad_ in self.padding.items():
             if pad_ > 0:
                 self.image_shapes[tel_] = (
                     self.image_shapes[tel_][0] + pad_ * 2,
                     self.image_shapes[tel_][1] + pad_ * 2,
                     self.image_shapes[tel_][2]
+                )
+        
+        if use_peak_times:
+            for tel_ in self.image_shapes:
+                self.image_shapes[tel_] = (
+                    self.image_shapes[tel_][0],
+                    self.image_shapes[tel_][1],
+                    2 # number of channels
                 )
 
         self.pixel_positions = {tel_type:self.__read_pix_pos_files(tel_type) for tel_type in self.pixel_lengths if tel_type != 'VTS'}
@@ -104,18 +117,28 @@ class ImageMapper():
                        1 when just using charges and 2 when using charges and peak arrival times. 
         :param telescope_type: a string specifying the telescope type as defined in the HDF5 format, 
                         e.g., 'MSTS' for SCT data, which is the only currently implemented telescope type.
-        :return: 
+        :return: a numpy array of shape [img_width, img_length, N_channels]
         """
         if telescope_type in self.image_shapes.keys():
             self.telescope_type = telescope_type
         else:
             raise ValueError('Sorry! Telescope type {} isn\'t supported.'.format(telescope_type))
-
-        if telescope_type == "MSTS":
-            telescope_image = pixels[self.mapping_tables[telescope_type]].T[:,:,np.newaxis]
-        elif telescope_type in ['LST', 'MSTF', 'MSTN', 'SST1', 'SSTC', 'SSTA', 'VTS']:
-            telescope_image = (pixels.T @ self.mapping_tables[telescope_type]).reshape(self.image_shapes[telescope_type][0],
+        
+        n_channels = pixels.shape[1]
+        
+        # We reshape each channel and then stack the result
+        result = []
+        for channel in range(n_channels):
+            vector = pixels[:,channel]
+        
+            if telescope_type == "MSTS":
+                image_2D = vector[self.mapping_tables[telescope_type]].T[:,:,np.newaxis]
+            elif telescope_type in ['LST', 'MSTF', 'MSTN', 'SST1', 'SSTC', 'SSTA', 'VTS']:
+                image_2D = (vector.T @ self.mapping_tables[telescope_type]).reshape(self.image_shapes[telescope_type][0],
                                                                                        self.image_shapes[telescope_type][1], 1)
+            result.append(image_2D)
+        
+        telescope_image = np.concatenate(result, axis = -1)
         
         return telescope_image
 
@@ -507,5 +530,3 @@ class ImageMapper():
         else:
             logger.error("Telescope type {} isn't supported.".format(tel_type))
             return False
- 
-

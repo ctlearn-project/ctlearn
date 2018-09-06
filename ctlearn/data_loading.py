@@ -68,6 +68,7 @@ class HDF5DataLoader(DataLoader):
     def __init__(self, 
             file_list,
             mode='train',
+            use_peak_times = False,
             example_type='array',
             selected_tel_type='LST',
             selected_tel_ids=None,
@@ -76,21 +77,23 @@ class HDF5DataLoader(DataLoader):
             validation_split=0.1,
             use_telescope_positions=True,
             data_processor=None,
-            image_mapper=ImageMapper(),
+            image_mapper=None,
             seed=None
             ):
 
         # construct dict of filename:file_handle pairs 
         self.files = OrderedDict()
         for filename in file_list:
-            self.files[filename] = self.__synchronized_open_file(filename,
-                    mode='r')
+            self.files[filename] = \
+                self.__synchronized_open_file(filename, mode='r')
 
         # Data loading settings
         if mode in ['train', 'test']:
             self.mode = mode
         else:
             raise ValueError("Invalid mode selection: {}. Select 'train' or 'test'.".format(mode))
+        
+        self.use_peak_times = use_peak_times
         
         if example_type in ['single_tel', 'array']:
             self.example_type = example_type
@@ -116,9 +119,12 @@ class HDF5DataLoader(DataLoader):
 
         # Overwrite self._image_mapper with the ImageMapper of the DataProcessor
         # if one is provided.
-        self._image_mapper = image_mapper
         if self.data_processor is not None:
             self._image_mapper = self.data_processor._image_mapper
+        elif image_mapper is not None:
+            self._image_mapper = image_mapper
+        else:
+            self._image_mapper = ImageMapper(use_peak_times=self.use_peak_times)
 
         # Compute and save metadata describing dataset
         self._load_metadata()
@@ -368,7 +374,7 @@ class HDF5DataLoader(DataLoader):
     # The raw 1D trace is transformed into a 1-channel 2D image using a
     # mapping table but no other processing is done.
     def get_image(self, run_number, event_number, tel_id):
-
+        
         tel_type = self.__tel_id_to_tel_type[tel_id]
         
         if tel_type not in self._image_mapper.mapping_tables:
@@ -383,10 +389,16 @@ class HDF5DataLoader(DataLoader):
         
         # Allocate empty numpy array of shape (len_trace + 1,) to hold trace plus
         # "empty" pixel at index 0 (used to fill blank areas in image)
-        trace = np.empty(shape=(record['image_charge'].shape[0] + 1),dtype=np.float32)
+        if self.use_peak_times:
+            trace = np.empty(shape=(record['image_charge'].shape[0] + 1, 2),dtype=np.float32)
+        else:
+            trace = np.empty(shape=(record['image_charge'].shape[0] + 1, 1),dtype=np.float32)
         # Read in the trace from the record 
-        trace[0] = 0.0
-        trace[1:] = record['image_charge']
+        trace[0, :] = 0.0
+        trace[1:, 0] = record['image_charge']
+        
+        if self.use_peak_times:
+            trace[1:, 1] = record['image_peak_times']
 
         # Create image by indexing into the trace using the mapping table, then adding a
         # dimension to given shape (length,width,1)
@@ -435,6 +447,7 @@ class HDF5DataLoader(DataLoader):
             triggers = []
             aux_inputs = []
             image_shape = self._image_mapper.image_shapes[tel_type] 
+            
             for tel_id in self.selected_telescopes[tel_type]:
                 index = self.telescopes[tel_type].index(tel_id)
                 i = record[tel_type + "_indices"][index]

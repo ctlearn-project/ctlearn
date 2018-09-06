@@ -80,6 +80,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     # Load options related to image mapping
     image_mapping_settings = config.get('Image Mapping', {})
+    image_mapping_settings['use_peak_times'] = config['Data']['Loading']['use_peak_times']
 
     # Load options related to data loading
     if mode == "train":
@@ -122,7 +123,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     # Define data loading functions
     if data_format == 'HDF5':
-
+        
         data_loader = HDF5DataLoader(
                 data_files,
                 mode=data_loader_mode,
