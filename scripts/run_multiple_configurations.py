@@ -64,6 +64,11 @@ parser.add_argument(
         '--log_to_file',
         action='store_true',
         help="log to a file in model directory instead of terminal")
+parser.add_argument(
+        '--start',
+        type=int,
+        default=0,
+        help="start on the nth run instead of the beginning")
 
 args = parser.parse_args()
 
@@ -192,11 +197,13 @@ combinations, configurations = make_configurations(base_config,
 
 # Save a dictionary storing the configuration combination set for each run
 # to a file for convenient lookup
-with open(settings['run_combinations_path'], 'w') as combinations_file:
+print(settings['run_combinations_path'])
+with open(settings['run_combinations_path'], 'w+') as combinations_file:
     yaml.dump(combinations, combinations_file, default_flow_style=False)
 
-# Run a model for each configuration combination
-for run_name, config in configurations:
+# Run a model for each configuration combination from args.start
+for run_name, config in configurations[args.start:]:
+
     print("Running", run_name+"...")
     # Run models as subprocesses to free GPU memory after each run
     with Pool(1) as p:
