@@ -30,6 +30,11 @@ Data:
         # How to construct examples from the data.
         example_type: 'array'
 
+		# Optional Boolean. Default: False
+		# If False, only a channel of integrated energy pulse per pixel is loaded 
+		# If True, an additional channel is loaded indicated peak pulse arrival time per pixel
+		use_peak_times: False
+
         # Optional string. Default: 'LST'
         # Valid options:
         #   - 'LST': LST Telescope and Camera
