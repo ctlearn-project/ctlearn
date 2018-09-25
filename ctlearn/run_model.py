@@ -59,6 +59,8 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     # Log the loaded configuration
     logger.debug(pformat(config))
+
+    logger.info("Logging has been correctly set up")
     
     # Load options to specify the model
     sys.path.append(config['Model']['model_directory'])
@@ -123,7 +125,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     # Define data loading functions
     if data_format == 'HDF5':
-        
+        logger.info("Creating HDF5DataLoader...")
         data_loader = HDF5DataLoader(
                 data_files,
                 mode=data_loader_mode,
@@ -155,6 +157,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         raise ValueError("Invalid data format: {}".format(data_format))
 
     if apply_processing:
+        logger.info("Creating DataProcessor...")
         data_processor = DataProcessor(
                 image_charge_mins=data_loader.image_charge_mins,
                 image_mapper=ImageMapper(**image_mapping_settings),
