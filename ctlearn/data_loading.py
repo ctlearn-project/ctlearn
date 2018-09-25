@@ -179,7 +179,7 @@ class HDF5DataLoader(DataLoader):
         # OrderedDict with telescope types as keys and list of telescope ids
         # of each type (in sorted order) as values
         # NOTE: the telescope types are ordered by increasing telescope id
-        self.telescopes = OrderedDict()
+        self.total_telescopes = OrderedDict()
 
         self.events = [] 
         self.images = {}
@@ -242,10 +242,10 @@ class HDF5DataLoader(DataLoader):
             for tel_type in telescopes:
                 telescopes[tel_type].sort()
 
-            if not self.telescopes:
-                self.telescopes = telescopes
+            if not self.total_telescopes:
+                self.total_telescopes = telescopes
             else:
-                if self.telescopes != telescopes:
+                if self.total_telescopes != telescopes:
                     raise ValueError("Telescope type/id mismatch in file {}".format(filename))
 
             # Compute max x, y, z telescope coordinates for normalization
@@ -265,8 +265,8 @@ class HDF5DataLoader(DataLoader):
                 self.num_events_by_class_name[class_name] += 1
                 self.num_events += 1
 
-                for tel_type in self.telescopes:
-                    tel_ids = self.telescopes[tel_type]
+                for tel_type in self.total_telescopes:
+                    tel_ids = self.total_telescopes[tel_type]
                     indices = row[tel_type + '_indices']
                     if not tel_type in self.num_images:
                         self.num_images[tel_type] = 0
@@ -286,7 +286,7 @@ class HDF5DataLoader(DataLoader):
             # Compute max and min pixel value in each telescope image
             # type for normalization
             # NOTE: This step is time-intensive.
-            for tel_type in self.telescopes.keys():
+            for tel_type in self.total_telescopes.keys():
                 tel_table = f.root._f_get_child(tel_type)
                 records = tel_table.read(1,tel_table.shape[0])
                 images = records['image_charge']
@@ -314,10 +314,12 @@ class HDF5DataLoader(DataLoader):
         metadata = {
                 'num_classes': len(list(self.particle_ids)),
                 'class_names': self.class_names,
-                'telescopes': self.telescopes,
+                'total_telescopes': self.total_telescopes,
+                'num_total_telescopes': {tel_type: len(tel_ids) for
+                    tel_type, tel_ids in self.total_telescopes.items()},
                 'selected_telescope_types': [self.selected_telescope_type],
                 'selected_telescopes': self.selected_telescopes,
-                'num_telescopes': {tel_type: len(tel_ids) for
+                'num_selected_telescopes': {tel_type: len(tel_ids) for
                     tel_type, tel_ids in self.selected_telescopes.items()},
                 'num_events_by_class_name': self.num_events_by_class_name,
                 'num_images_by_class_name': self.num_images_by_class_name,
@@ -350,13 +352,13 @@ class HDF5DataLoader(DataLoader):
     # by a telescope type and an optional list of telescope ids.
     def _select_telescopes(self, tel_type, tel_ids=None):
        
-        if tel_type not in self.telescopes:
+        if tel_type not in self.total_telescopes:
             raise ValueError("Selected tel type {} not found in dataset.".format(tel_type))
         if tel_type not in self._image_mapper.mapping_tables:
             raise NotImplementedError("Mapping table for selected tel type {} not implemented.".format(tel_type))
         self.selected_telescope_type = tel_type
         self.selected_telescopes = {
-                self.selected_telescope_type: self.telescopes[tel_type]}
+                self.selected_telescope_type: self.total_telescopes[tel_type]}
         if tel_ids:
             requested_telescopes = {self.selected_telescope_type: tel_ids}
             invalid_telescopes = {}
@@ -451,7 +453,7 @@ class HDF5DataLoader(DataLoader):
             image_shape = self._image_mapper.image_shapes[tel_type] 
             
             for tel_id in self.selected_telescopes[tel_type]:
-                index = self.telescopes[tel_type].index(tel_id)
+                index = self.total_telescopes[tel_type].index(tel_id)
                 i = record[tel_type + "_indices"][index]
                 if i == 0:
                     # Telescope did not trigger. Its outputs will be dropped
@@ -520,7 +522,7 @@ class HDF5DataLoader(DataLoader):
                 if self.example_type == "single_tel":
                     image_indices = row[tel_type + "_indices"]
                     for tel_id in self.selected_telescopes[tel_type]:
-                        index = self.telescopes[tel_type].index(tel_id)
+                        index = self.total_telescopes[tel_type].index(tel_id)
                         if image_indices[index] != 0:
                             passing_examples.append((row["run_number"], row["event_number"], tel_id))
                             self.passing_num_examples_by_class_name[class_name] += 1
