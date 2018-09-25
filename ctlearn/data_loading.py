@@ -13,7 +13,7 @@ from ctlearn.image_mapping import ImageMapper
 
 # Maps CORSIKA particle id codes
 # to particle class names
-PARTICLE_ID_TO_NAME = {
+PARTICLE_ID_TO_CLASS_NAME = {
         0: 'gamma',
         101:'proton'
         } 
@@ -174,7 +174,7 @@ class HDF5DataLoader(DataLoader):
     # which describe the dataset
     def _load_metadata(self):
 
-        self.particle_ids = set()
+        self.class_names = set()
 
         # OrderedDict with telescope types as keys and list of telescope ids
         # of each type (in sorted order) as values
@@ -187,8 +187,8 @@ class HDF5DataLoader(DataLoader):
         self.num_events = 0
         self.num_images = {}
 
-        self.num_events_by_particle_id = {}
-        self.num_images_by_particle_id = {}
+        self.num_events_by_class_name = {}
+        self.num_images_by_class_name = {}
 
         self.num_position_coordinates = 3
         self.telescope_positions = {}
@@ -206,8 +206,8 @@ class HDF5DataLoader(DataLoader):
             f = self.files[filename]
             # Particle ID is same for all events in a given file and
             # is therefore saved in the root attributes
-            particle_id = f.root._v_attrs.particle_type
-            self.particle_ids.add(particle_id)
+            class_name = PARTICLE_ID_TO_CLASS_NAME[f.root._v_attrs.particle_type]
+            self.class_names.add(class_name)
 
             telescopes = {}
             for row in f.root.Array_Info.iterrows():
@@ -256,13 +256,13 @@ class HDF5DataLoader(DataLoader):
             self.max_telescope_position = [max_tel_x, max_tel_y, max_tel_z]
             
             for row in f.root.Event_Info.iterrows():
-                if particle_id not in self.num_events_by_particle_id:
-                    self.num_events_by_particle_id[particle_id] = 0
+                if class_name not in self.num_events_by_class_name:
+                    self.num_events_by_class_name[class_name] = 0
 
                 self.events.append((row['run_number'],row['event_number']))
                 self.__events_to_indices[(row['run_number'],row['event_number'])] = (filename, row.nrow)
 
-                self.num_events_by_particle_id[particle_id] += 1
+                self.num_events_by_class_name[class_name] += 1
                 self.num_events += 1
 
                 for tel_type in self.telescopes:
@@ -272,16 +272,16 @@ class HDF5DataLoader(DataLoader):
                         self.num_images[tel_type] = 0
                     if not tel_type in self.images:
                         self.images[tel_type] = []
-                    if not tel_type in self.num_images_by_particle_id:
-                        self.num_images_by_particle_id[tel_type] = {}
+                    if not tel_type in self.num_images_by_class_name:
+                        self.num_images_by_class_name[tel_type] = {}
                     for tel_id, image_index in zip(tel_ids, indices):
                         self.__single_tel_examples_to_indices[(row['run_number'], row['event_number'], tel_id)] = (filename, tel_type, image_index)
                         if image_index != 0:
                             self.images[tel_type].append((row['run_number'], row['event_number'], tel_id))
                             self.num_images[tel_type] += 1
-                            if particle_id not in self.num_images_by_particle_id[tel_type]:
-                                self.num_images_by_particle_id[tel_type][particle_id] = 0
-                            self.num_images_by_particle_id[tel_type][particle_id] += 1
+                            if class_name not in self.num_images_by_class_name[tel_type]:
+                                self.num_images_by_class_name[tel_type][class_name] = 0
+                            self.num_images_by_class_name[tel_type][class_name] += 1
 
             # Compute max and min pixel value in each telescope image
             # type for normalization
@@ -303,26 +303,26 @@ class HDF5DataLoader(DataLoader):
         
             # create mapping from particle ids to labels
             # and from labels to names
-            self.ids_to_labels = {particle_id:i 
-                    for i, particle_id in enumerate(sorted(list(self.particle_ids)))}
-            self.labels_to_names = {i:PARTICLE_ID_TO_NAME[particle_id] 
-                    for particle_id, i in self.ids_to_labels.items()}
+            self.class_names_to_labels = {class_name:i 
+                    for i, class_name in enumerate(sorted(list(self.class_names)))}
+            self.labels_to_class_names = {i:class_name 
+                    for i, class_name in enumerate(sorted(list(self.class_names)))}
 
     # Method returning a dict of selected metadata parameters
     def get_metadata(self):
 
         metadata = {
                 'num_classes': len(list(self.particle_ids)),
-                'particle_ids': self.particle_ids,
+                'class_names': self.class_names,
                 'telescopes': self.telescopes,
                 'selected_telescope_types': [self.selected_telescope_type],
                 'selected_telescopes': self.selected_telescopes,
                 'num_telescopes': {tel_type: len(tel_ids) for
                     tel_type, tel_ids in self.selected_telescopes.items()},
-                'num_events_by_particle_id': self.num_events_by_particle_id,
-                'num_images_by_particle_id': self.num_images_by_particle_id,
+                'num_events_by_class_name': self.num_events_by_class_name,
+                'num_images_by_class_name': self.num_images_by_class_name,
                 'num_position_coordinates': self.num_position_coordinates,
-                'class_to_name': self.labels_to_names
+                'labels_to_class_names': self.labels_to_names
            }
 
         if self.data_processor is not None:
@@ -421,7 +421,8 @@ class HDF5DataLoader(DataLoader):
             event_record = f.root.Event_Info[index]
 
             # Get classification label by converting CORSIKA particle code
-            label = self.ids_to_labels[event_record['particle_id']] 
+            class_name = PARTICLE_ID_TO_CLASS_NAME[event_record['particle_id']]
+            label = self.class_names_to_labels[class_name]
             
             data = [image]
             labels = [label]
@@ -439,7 +440,8 @@ class HDF5DataLoader(DataLoader):
             record = f.root.Event_Info[index]
 
             # Get classification label by converting CORSIKA particle code
-            label = self.ids_to_labels[record['particle_id']] 
+            class_name = PARTICLE_ID_TO_CLASS_NAME[record['particle_id']]
+            label = self.class_names_to_labels[class_name]
           
             # Collect images and binary trigger values only for telescopes
             # in selected_telescopes            
@@ -493,14 +495,16 @@ class HDF5DataLoader(DataLoader):
     def _apply_cuts(self):
 
         passing_examples = []
-        self.passing_num_examples_by_particle_id = {}
+        self.passing_num_examples_by_class_name = {}
 
         for filename in self.files:
             f = self.files[filename]
             
             particle_id = f.root._v_attrs.particle_type
-            if particle_id not in self.passing_num_examples_by_particle_id:
-                self.passing_num_examples_by_particle_id[particle_id] = 0
+            class_name = PARTICLE_ID_TO_CLASS_NAME[particle_id]
+            
+            if class_name not in self.passing_num_examples_by_class_name:
+                self.passing_num_examples_by_class_name[class_name] = 0
     
             event_table = f.root.Event_Info
             tel_type = self.selected_telescope_type
@@ -519,21 +523,21 @@ class HDF5DataLoader(DataLoader):
                         index = self.telescopes[tel_type].index(tel_id)
                         if image_indices[index] != 0:
                             passing_examples.append((row["run_number"], row["event_number"], tel_id))
-                            self.passing_num_examples_by_particle_id[particle_id] += 1
+                            self.passing_num_examples_by_class_name[class_name] += 1
                 # if example type is 
                 elif self.example_type == "array":                               
                     passing_examples.append((row["run_number"], row["event_number"]))
-                    self.passing_num_examples_by_particle_id[particle_id] += 1
+                    self.passing_num_examples_by_class_name[class_name] += 1
 
         # get total number of examples
         num_examples = 0
-        for particle_id in self.passing_num_examples_by_particle_id:
-            num_examples += self.passing_num_examples_by_particle_id[particle_id]
+        for class_name in self.passing_num_examples_by_class_name:
+            num_examples += self.passing_num_examples_by_class_name[class_name]
 
         # compute class weights
         self.class_weights = []
-        for particle_id in sorted(self.passing_num_examples_by_particle_id, key=lambda x: self.ids_to_labels[x]):
-            self.class_weights.append(num_examples/float(self.passing_num_examples_by_particle_id[particle_id]))
+        for class_name in sorted(self.passing_num_examples_by_class_name, key=lambda x: self.class_names_to_labels[x]):
+            self.class_weights.append(num_examples/float(self.passing_num_examples_by_class_name[class_name]))
 
         # divide passing events into training and validation sets
 
@@ -586,23 +590,23 @@ class HDF5DataLoader(DataLoader):
 
             return test_generator_fn, self.class_weights
 
-    # Log the proportions of particles in the dataset
+    # Log the proportions of classes in the dataset
     def log_class_breakdown(self, logger=None):
     
         if not logger: logger = logging.getLogger()
         
         if self.example_type == 'single_tel':
-            num_examples_by_particle_id = self.num_images_by_particle_id[self.selected_telescope_type]
+            num_examples_by_class_name = self.num_images_by_class_name[self.selected_telescope_type]
         else:
-            num_examples_by_particle_id = self.num_events_by_particle_id
+            num_examples_by_class_name = self.num_events_by_class_name
     
-        num_total_examples = sum(num_examples_by_particle_id.values())
+        num_total_examples = sum(num_examples_by_class_name.values())
         logger.info("Total number of examples: {}".format(num_total_examples))
-        for particle_id in num_examples_by_particle_id:
-            percentage = (100. * num_examples_by_particle_id[particle_id] /
+        for class_name in num_examples_by_class_name:
+            percentage = (100. * num_examples_by_class_name[class_name] /
                     num_total_examples)
             logger.info("Number of {} (class {}) examples: {} ({:.3f}%)".format(
-                PARTICLE_ID_TO_NAME[particle_id],
-                self.ids_to_labels[particle_id],
-                num_examples_by_particle_id[particle_id],
+                class_name,
+                self.class_names_to_labels[class_name],
+                num_examples_by_class_name[class_name],
                 percentage))
