@@ -104,8 +104,8 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     training_hyperparameters['model_type'] = model_type
    
     # Load other options related to training 
-    num_epochs = config['Training']['num_epochs']
-    train_forever = False if num_epochs != 0 else True
+    num_validations = config['Training']['num_validations']
+    train_forever = False if num_validations != 0 else True
     num_training_steps_per_validation = config['Training']['num_training_steps_per_validation']
 
     # Load options related to prediction only if needed
@@ -335,7 +335,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             num_validation_events))
         logger.info("Number of training steps per epoch: {}".format(int(
             num_training_events/data_input_settings['batch_size'])))
-        logger.info("Number of training steps per validation: {}".format(
+        logger.info("Number of training steps before each validation: {}".format(
             num_training_steps_per_validation))
     elif mode == 'predict':
         num_test_events = len(list(test_generator()))
@@ -360,8 +360,8 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     if mode == 'train':
 
         # Train and evaluate the model
-        num_epochs_remaining = num_epochs
-        while train_forever or num_epochs_remaining:
+        num_validations_remaining = num_validations
+        while train_forever or num_validations_remaining:
             estimator.train(
                     lambda: input_fn(training_generator, data_input_settings),
                     steps=num_training_steps_per_validation, hooks=hooks)
@@ -369,7 +369,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                     lambda: input_fn(validation_generator,
                         data_input_settings), hooks=hooks, name='validation')
             if not train_forever:
-                num_epochs_remaining -= 1
+                num_validations_remaining -= 1
 
     elif mode == 'predict':
 

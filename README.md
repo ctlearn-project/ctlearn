@@ -85,7 +85,7 @@ In addition, CTLearn includes three [models](models) for gamma/hadron classifica
 
 ### Training
 
-Set training parameters such as the number of epochs to run and how often to evaluate on the validation set, as well as, in the **Hyperparameters** section, hyperparameters including the base learning rate and optimizer.
+Set training parameters such as the number of validations to run and how often to evaluate on the validation set, as well as, in the **Hyperparameters** section, hyperparameters including the base learning rate and optimizer.
 
 ### Prediction
 

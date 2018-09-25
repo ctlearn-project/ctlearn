@@ -77,7 +77,7 @@ Model:
                 batchnorm: false
 
 Training:
-    num_epochs: 15
+    num_validations: 15
     num_training_steps_per_validation: 2500
     Hyperparameters:
         optimizer: 'Adam'
