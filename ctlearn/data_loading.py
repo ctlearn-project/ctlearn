@@ -207,17 +207,17 @@ class HDF5DataLoader(DataLoader):
 
         for filename in self.files:
             
-            # Processes telescope array metadata
+            # Process telescope array metadata
             self._process_array_info(filename)
             
-            # Updates max telescope coordinates
-            self._update_max_coordinates(filename)
-            
-            # Processes event info
+            # Process event info
             self._process_events(filename)
             
-            # If needed for normalization, updates extreme charge values
-            self._update_extreme_charge_values(filename)
+            # If needed for normalization, update min max charge values
+            self._update_min_max_charge_values(filename)
+        
+        # Updates max telescope coordinates
+        self._update_max_coordinates()
         
         # create mapping from particle ids to labels
         # and from labels to names
@@ -274,12 +274,15 @@ class HDF5DataLoader(DataLoader):
         if not self.total_telescopes:
             self.total_telescopes = telescopes
         else:
+            # Check if the telescope array is the same across files
             if self.total_telescopes != telescopes:
                 raise ValueError("Telescope type/id mismatch in file {}".format(filename))
     
     # Updates the max telescope coordinates seen so far for normalization
-    def _update_max_coordinates(self, filename):
-        # get file handle
+    def _update_max_coordinates(self):
+        # get a file handle to extract the data
+        # Any file will do since all files should have the same array data
+        filename = next(iter(self.files))
         f = self.files[filename]
         
         # Compute max x, y, z telescope coordinates for normalization
@@ -288,8 +291,6 @@ class HDF5DataLoader(DataLoader):
         max_tel_z = max(row['tel_z'] for row in f.root.Array_Info.iterrows())
 
         self.max_telescope_position = [max_tel_x, max_tel_y, max_tel_z]
-        # TODO: I do not understand how this works.
-        # It only keeps the last value!
         
     # Stores the position of each image in the file, indexed by telescope type
     # Also keeps track of the classes and number of events, total and per class
@@ -311,7 +312,8 @@ class HDF5DataLoader(DataLoader):
         for row in f.root.Event_Info.iterrows():
     
             self.events.append((row['run_number'],row['event_number']))
-            self.__events_to_indices[(row['run_number'],row['event_number'])] = (filename, row.nrow)
+            self.__events_to_indices[(row['run_number'],row['event_number'])] = \
+                    (filename, row.nrow)
     
             self.num_events_by_class_name[class_name] += 1
             self.num_events += 1
@@ -328,8 +330,9 @@ class HDF5DataLoader(DataLoader):
                 
                 # for each image index associated to this event
                 for tel_id, image_index in zip(tel_ids, indices):
-                    self.__single_tel_examples_to_indices[(row['run_number'], row['event_number'], tel_id)] = \
-                                        (filename, tel_type, image_index)
+                    self.__single_tel_examples_to_indices[
+                            (row['run_number'], row['event_number'], tel_id)
+                            ] = (filename, tel_type, image_index)
                     if image_index != 0:
                         self.images[tel_type].append((row['run_number'], row['event_number'], tel_id))
                         self.num_images[tel_type] += 1
@@ -337,7 +340,7 @@ class HDF5DataLoader(DataLoader):
                             self.num_images_by_class_name[tel_type][class_name] = 0
                         self.num_images_by_class_name[tel_type][class_name] += 1
     
-    def _update_extreme_charge_values(self, filename):
+    def _update_min_max_charge_values(self, filename):
         # get file handle
         f = self.files[filename]
         
@@ -363,7 +366,7 @@ class HDF5DataLoader(DataLoader):
     def get_metadata(self):
 
         metadata = {
-                'num_classes': len(list(self.particle_ids)),
+                'num_classes': len(list(self.class_names)),
                 'class_names': self.class_names,
                 'total_telescopes': self.total_telescopes,
                 'num_total_telescopes': {tel_type: len(tel_ids) for
@@ -375,7 +378,7 @@ class HDF5DataLoader(DataLoader):
                 'num_events_by_class_name': self.num_events_by_class_name,
                 'num_images_by_class_name': self.num_images_by_class_name,
                 'num_position_coordinates': self.num_position_coordinates,
-                'labels_to_class_names': self.labels_to_names
+                'labels_to_class_names': self.labels_to_class_names
            }
 
         if self.data_processor is not None:

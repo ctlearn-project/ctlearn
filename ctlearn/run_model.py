@@ -221,7 +221,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                 tf.int32, name="predicted_classes")
         predictions['predicted_class'] = predicted_classes
         for i in range(params['model']['num_classes']):
-            class_name = params['model']['class_to_name'][i]
+            class_name = params['model']['labels_to_class_names'][i]
             predictions[class_name] = classifier_values[:,i]
         
         # For predict mode, we're done
@@ -316,7 +316,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         for i in range(training_params['num_classes']):
             weights = tf.cast(tf.equal(true_classes,tf.constant(i)),tf.int32)
             eval_metric_ops['accuracy_{}'.format(
-                training_params['class_to_name'][i])] = tf.metrics.accuracy(
+                training_params['labels_to_class_names'][i])] = tf.metrics.accuracy(
                         true_classes, predicted_classes, weights=weights)
 
         return tf.estimator.EstimatorSpec(
