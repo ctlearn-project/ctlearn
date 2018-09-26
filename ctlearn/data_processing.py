@@ -14,8 +14,7 @@ class DataProcessor():
             thresholds=None,
             return_cleaned_images=False,
             normalization=None,
-            sort_images_by=None,
-            image_charge_mins=None
+            sort_images_by=None
             ):
         
         self._image_mapper = image_mapper
@@ -40,8 +39,6 @@ class DataProcessor():
             self.normalization = normalization
         else:
             raise ValueError("Invalid normalization method: {}. Select 'log' or None.".format(normalization))
-        
-        self.image_charge_mins = image_charge_mins
 
         if sort_images_by in ['trigger', 'size', None]:
             self.sort_images_by = sort_images_by
@@ -236,5 +233,6 @@ class DataProcessor():
     def _augment_data(self):
         raise NotImplementedError        
  
-
+    def add_image_charge_mins(self, image_charge_mins):
+        self.image_charge_mins = image_charge_mins
 

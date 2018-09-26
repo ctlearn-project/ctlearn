@@ -41,10 +41,6 @@ class DataLoader(ABC):
     @abstractmethod
     def get_auxiliary_data(self):
         pass
-    
-    @abstractmethod
-    def add_data_processor(self, data_processor):
-        pass
 
     @abstractmethod
     def get_example_generators(self):
@@ -129,6 +125,22 @@ class HDF5DataLoader(DataLoader):
         # Compute and save metadata describing dataset
         self._load_metadata()
         
+        # If needed for normalization, update min max charge values
+        # And feed them to the data processor
+        if  self.data_processor is not None and \
+            self.data_processor.normalization is not None:
+            
+            self.image_charge_mins = {}
+            self.image_charge_maxes = {}
+                
+            for filename in self.files:
+                self._update_min_max_charge_values(filename)
+            
+            self.data_processor.add_image_charge_mins(
+                    self.image_charge_mins
+                    )
+            
+        
         # Select desired telescopes
         self._select_telescopes(selected_tel_type, tel_ids=selected_tel_ids)
 
@@ -163,13 +175,6 @@ class HDF5DataLoader(DataLoader):
             self.output_is_label = [False, False, False, True]
             self.map_fn_output_dtypes = data_dtypes + label_dtypes
 
-    def add_data_processor(self, data_processor):
-        if isinstance(data_processor, DataProcessor):
-            self.data_processor = data_processor
-        else:
-            raise ValueError("Must provide a DataProcessor object.")
-        self._image_mapper = self.data_processor._image_mapper
-
     # Compute and save a collection of metadata parameters
     # which describe the dataset
     def _load_metadata(self):
@@ -195,9 +200,6 @@ class HDF5DataLoader(DataLoader):
         self.num_position_coordinates = 3
         self.telescope_positions = {}
         self.max_telescope_positions = {}
- 
-        self.image_charge_mins = {}
-        self.image_charge_maxes = {}
        
         self.__events_to_indices = {}
         self.__single_tel_examples_to_indices = {}
@@ -212,9 +214,6 @@ class HDF5DataLoader(DataLoader):
             
             # Process event info
             self._process_events(filename)
-            
-            # If needed for normalization, update min max charge values
-            self._update_min_max_charge_values(filename)
         
         # Updates max telescope coordinates
         self._update_max_coordinates()
