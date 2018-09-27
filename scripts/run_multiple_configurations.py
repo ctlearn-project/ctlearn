@@ -26,7 +26,9 @@ options also set in Multiple Configurations Values will overwrite those in the
 base configuration. The outputs for each run are saved in subdirectories
 <Logging:model_directory>/run00, <Logging:model_directory>/run01, etc.
 
-The remaining arguments are the flags for run_model.py, passed in for each run.
+In case the run sequence is interrupted, an option is provided to resume from 
+a particular run. The remaining arguments are the flags for run_model.py,
+passed in for each run.
 
 In addition to the model outputs, a YAML file is also saved that, for each 
 run, records the value of each config option listed under Multiple
@@ -65,10 +67,10 @@ parser.add_argument(
         action='store_true',
         help="log to a file in model directory instead of terminal")
 parser.add_argument(
-        '--start',
+        '--resume_from_run',
         type=int,
         default=0,
-        help="start on the nth run instead of the beginning")
+        help="resume from the nth run instead of the beginning")
 
 args = parser.parse_args()
 
@@ -202,7 +204,7 @@ with open(settings['run_combinations_path'], 'w+') as combinations_file:
     yaml.dump(combinations, combinations_file, default_flow_style=False)
 
 # Run a model for each configuration combination from args.start
-for run_name, config in configurations[args.start:]:
+for run_name, config in configurations[args.resume_from_run:]:
 
     print("Running", run_name+"...")
     # Run models as subprocesses to free GPU memory after each run
