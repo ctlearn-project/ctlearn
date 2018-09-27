@@ -192,10 +192,10 @@ class HDF5DataLoader(DataLoader):
         self.images = {}
 
         self.num_events = 0
-        self.num_images = {}
+        self.num_images_before_cuts = {}
 
-        self.num_events_by_class_name = {}
-        self.num_images_by_class_name = {}
+        self.num_events_before_cuts_by_class_name = {}
+        self.num_images_before_cuts_by_class_name = {}
 
         self.num_position_coordinates = 3
         self.telescope_positions = {}
@@ -304,8 +304,8 @@ class HDF5DataLoader(DataLoader):
         
         # If no previous events of this class had been loaded before,
         # we start the counter for them
-        if class_name not in self.num_events_by_class_name:
-            self.num_events_by_class_name[class_name] = 0
+        if class_name not in self.num_events_before_cuts_by_class_name:
+            self.num_events_before_cuts_by_class_name[class_name] = 0
         
         # Each row in the file is an event
         for row in f.root.Event_Info.iterrows():
@@ -314,18 +314,18 @@ class HDF5DataLoader(DataLoader):
             self.__events_to_indices[(row['run_number'],row['event_number'])] = \
                     (filename, row.nrow)
     
-            self.num_events_by_class_name[class_name] += 1
+            self.num_events_before_cuts_by_class_name[class_name] += 1
             self.num_events += 1
     
             for tel_type in self.total_telescopes:
                 tel_ids = self.total_telescopes[tel_type]
                 indices = row[tel_type + '_indices']
-                if not tel_type in self.num_images:
-                    self.num_images[tel_type] = 0
+                if not tel_type in self.num_images_before_cuts:
+                    self.num_images_before_cuts[tel_type] = 0
                 if not tel_type in self.images:
                     self.images[tel_type] = []
-                if not tel_type in self.num_images_by_class_name:
-                    self.num_images_by_class_name[tel_type] = {}
+                if not tel_type in self.num_images_before_cuts_by_class_name:
+                    self.num_images_before_cuts_by_class_name[tel_type] = {}
                 
                 # for each image index associated to this event
                 for tel_id, image_index in zip(tel_ids, indices):
@@ -334,10 +334,10 @@ class HDF5DataLoader(DataLoader):
                             ] = (filename, tel_type, image_index)
                     if image_index != 0:
                         self.images[tel_type].append((row['run_number'], row['event_number'], tel_id))
-                        self.num_images[tel_type] += 1
-                        if class_name not in self.num_images_by_class_name[tel_type]:
-                            self.num_images_by_class_name[tel_type][class_name] = 0
-                        self.num_images_by_class_name[tel_type][class_name] += 1
+                        self.num_images_before_cuts[tel_type] += 1
+                        if class_name not in self.num_images_before_cuts_by_class_name[tel_type]:
+                            self.num_images_before_cuts_by_class_name[tel_type][class_name] = 0
+                        self.num_images_before_cuts_by_class_name[tel_type][class_name] += 1
     
     def _update_min_max_charge_values(self, filename):
         # get file handle
@@ -374,8 +374,10 @@ class HDF5DataLoader(DataLoader):
                 'selected_telescopes': self.selected_telescopes,
                 'num_selected_telescopes': {tel_type: len(tel_ids) for
                     tel_type, tel_ids in self.selected_telescopes.items()},
-                'num_events_by_class_name': self.num_events_by_class_name,
-                'num_images_by_class_name': self.num_images_by_class_name,
+                'num_events_before_cuts_by_class_name': self.num_events_before_cuts_by_class_name,
+                'num_images_before_cuts_by_class_name': self.num_images_before_cuts_by_class_name,
+                'num_events_after_cuts_by_class_name' : self.num_passing_events_by_class_name,
+                'num_images_after_cuts_by_class_name' : self.num_passing_images_by_class_name,
                 'num_position_coordinates': self.num_position_coordinates,
                 'labels_to_class_names': self.labels_to_class_names
            }
@@ -550,7 +552,12 @@ class HDF5DataLoader(DataLoader):
     def _apply_cuts(self):
 
         passing_examples = []
-        self.passing_num_examples_by_class_name = {}
+        self.num_passing_events = 0
+        self.num_passing_events_by_class_name = {}
+        self.num_passing_images = 0
+        self.num_passing_images_by_class_name = {}
+        
+        tel_type = self.selected_telescope_type
 
         for filename in self.files:
             f = self.files[filename]
@@ -558,11 +565,14 @@ class HDF5DataLoader(DataLoader):
             particle_id = f.root._v_attrs.particle_type
             class_name = PARTICLE_ID_TO_CLASS_NAME[particle_id]
             
-            if class_name not in self.passing_num_examples_by_class_name:
-                self.passing_num_examples_by_class_name[class_name] = 0
+            if class_name not in self.num_passing_images_by_class_name:
+                self.num_passing_images_by_class_name[class_name] = 0
+            
+            if class_name not in self.num_passing_events_by_class_name:
+                self.num_passing_events_by_class_name[class_name] = 0
     
             event_table = f.root.Event_Info
-            tel_type = self.selected_telescope_type
+            
             # Apply the cuts specified in cut condition
             rows = event_table.where(self.cut_condition) if self.cut_condition else event_table.iterrows()
             for row in rows:
@@ -570,6 +580,9 @@ class HDF5DataLoader(DataLoader):
                 if np.count_nonzero(row[tel_type + "_indices"]) < self.min_num_tels:
                     continue
                
+                self.num_passing_events += 1
+                self.num_passing_events_by_class_name[class_name] += 1
+                
                 # If example_type is single_tel, there will 
                 # be only a single selected telescope type
                 if self.example_type == "single_tel":
@@ -578,30 +591,31 @@ class HDF5DataLoader(DataLoader):
                         index = self.total_telescopes[tel_type].index(tel_id)
                         if image_indices[index] != 0:
                             passing_examples.append((row["run_number"], row["event_number"], tel_id))
-                            self.passing_num_examples_by_class_name[class_name] += 1
-                # if example type is 
+                            self.num_passing_images += 1
+                            self.num_passing_images_by_class_name[class_name] += 1
+                # if example type is array, ???
                 elif self.example_type == "array":                               
                     passing_examples.append((row["run_number"], row["event_number"]))
-                    self.passing_num_examples_by_class_name[class_name] += 1
+                    
 
         # get total number of examples
-        num_examples = 0
-        for class_name in self.passing_num_examples_by_class_name:
-            num_examples += self.passing_num_examples_by_class_name[class_name]
+        if self.example_type == 'single_tel':
+            self.num_passing_examples = self.num_passing_images
+            self.num_passing_examples_by_class_name = self.num_passing_images_by_class_name
+        elif self.example_type == 'array':
+            self.num_passing_examples = self.num_passing_events
+            self.num_passing_examples_by_class_name = self.num_passing_events_by_class_name
 
         # compute class weights
         self.class_weights = []
-        for class_name in sorted(self.passing_num_examples_by_class_name, key=lambda x: self.class_names_to_labels[x]):
-            self.class_weights.append(num_examples/float(self.passing_num_examples_by_class_name[class_name]))
+        for class_name in sorted(self.num_passing_examples_by_class_name, key=lambda x: self.class_names_to_labels[x]):
+            self.class_weights.append(self.num_passing_examples/float(self.num_passing_examples_by_class_name[class_name]))
 
-        # divide passing events into training and validation sets
-
-        # use random seed to get reproducible training
-        # and validation sets
-        if self.seed is not None:
-            random.seed(self.seed)
-
-        if self.mode == 'train':
+        if self.mode == 'train':            
+            # use random seed to get reproducible training
+            # and validation sets
+            if self.seed is not None:
+                random.seed(self.seed)
             
             random.shuffle(passing_examples)
 
@@ -650,18 +664,12 @@ class HDF5DataLoader(DataLoader):
     
         if not logger: logger = logging.getLogger()
         
-        if self.example_type == 'single_tel':
-            num_examples_by_class_name = self.num_images_by_class_name[self.selected_telescope_type]
-        else:
-            num_examples_by_class_name = self.num_events_by_class_name
-    
-        num_total_examples = sum(num_examples_by_class_name.values())
-        logger.info("Total number of examples: {}".format(num_total_examples))
-        for class_name in num_examples_by_class_name:
-            percentage = (100. * num_examples_by_class_name[class_name] /
-                    num_total_examples)
-            logger.info("Number of {} (class {}) examples: {} ({:.3f}%)".format(
+        logger.info("Number of examples after the cuts: {}".format(self.num_passing_examples))
+        for class_name in self.num_passing_examples_by_class_name:
+            percentage = (100. * self.num_passing_examples_by_class_name[class_name] /
+                    self.num_passing_examples)
+            logger.info("Number of {} (class {}) examples after the cuts: {} ({:.3f}%)".format(
                 class_name,
                 self.class_names_to_labels[class_name],
-                num_examples_by_class_name[class_name],
+                self.num_passing_examples_by_class_name[class_name],
                 percentage))
