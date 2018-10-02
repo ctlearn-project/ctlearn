@@ -2,6 +2,7 @@ import numpy as np
 import logging
 import threading
 import os 
+import cv2
 
 from scipy.sparse import csr_matrix
 
@@ -22,18 +23,20 @@ class ImageMapper():
         'SST1': 0.0236,
         'SSTC':0.0064,
         'SSTA':0.0071638,
-        'VTS': 1.0 * np.sqrt(2)
+        'VTS': 1.0 * np.sqrt(2),
+        'MGC': 1.0 * np.sqrt(2)
         }
 
     num_pixels = {
+        'LST': 1855,
         'MSTF': 1764,
         'MSTN': 1855,
-        'SST1': 1296,
-        'LST': 1855,
         'MSTS': 11328,
+        'SST1': 1296,
         'SSTC': 2048,
         'SSTA': 2368,
-        'VTS': 499
+        'VTS': 499,
+        'MGC': 1039
         }
 
     def __init__(self,
@@ -52,14 +55,15 @@ class ImageMapper():
         # image_shapes should be a non static field to prevent problems 
         # when multiple instances of ImageMapper are created
         self.image_shapes = {
-            'MSTS': (120, 120, 1),
-            'VTS': (54, 54, 1),
+            'LST': (108, 108, 1),
             'MSTF': (110, 110, 1),
             'MSTN': (108, 108, 1),
-            'LST': (108, 108, 1),
+            'MSTS': (120, 120, 1),
             'SST1': (94, 94, 1),
             'SSTC': (48, 48, 1),
-            'SSTA': (56, 56, 1)
+            'SSTA': (56, 56, 1),
+            'VTS': (54, 54, 1),
+            'MGC': (82, 82, 1)
             }
 
         if hex_conversion_algorithm in ['oversampling']:
@@ -69,14 +73,15 @@ class ImageMapper():
 
         if padding is None:
             padding = {
-                    'MSTS': 0,
-                    'VTS': 0,
+                    'LST': 0,
                     'MSTF': 0,
                     'MSTN': 0,
-                    'LST': 0,
+                    'MSTS': 0,
                     'SST1': 0,
                     'SSTC': 0,
-                    'SSTA': 0
+                    'SSTA': 0,
+                    'VTS': 0,
+                    'MGC': 0
                     }
         self.padding = padding
         
@@ -96,17 +101,18 @@ class ImageMapper():
                     2 # number of channels
                 )
 
-        self.pixel_positions = {tel_type:self.__read_pix_pos_files(tel_type) for tel_type in self.pixel_lengths if tel_type != 'VTS'}
+        self.pixel_positions = {tel_type:self.__read_pix_pos_files(tel_type) for tel_type in self.pixel_lengths if (tel_type != 'VTS' and tel_type != 'MGC')}
 
         self.mapping_tables = {
-            'MSTS': self.generate_table_MSTS(),
-            'VTS': self.generate_table_VTS(),
+            'LST': self.generate_table_generic('LST'),
             'MSTF': self.generate_table_generic('MSTF'),
             'MSTN': self.generate_table_generic('MSTN'),
-            'LST': self.generate_table_generic('LST'),
+            'MSTS': self.generate_table_MSTS(),
             'SST1': self.generate_table_generic('SST1'),
             'SSTC': self.generate_table_SSTC(),
-            'SSTA': self.generate_table_SSTA()
+            'SSTA': self.generate_table_SSTA(),
+            'VTS': self.generate_table_VTS(),
+            'MGC': self.generate_table_MGC()
             }
 
     def map_image(self, pixels, telescope_type):
@@ -133,12 +139,24 @@ class ImageMapper():
         
             if telescope_type == "MSTS":
                 image_2D = vector[self.mapping_tables[telescope_type]].T[:,:,np.newaxis]
-            elif telescope_type in ['LST', 'MSTF', 'MSTN', 'SST1', 'SSTC', 'SSTA', 'VTS']:
+            elif telescope_type in ['LST', 'MSTF', 'MSTN', 'SST1', 'SSTC', 'SSTA', 'VTS', 'MGC']:
                 image_2D = (vector.T @ self.mapping_tables[telescope_type]).reshape(self.image_shapes[telescope_type][0],
                                                                                        self.image_shapes[telescope_type][1], 1)
             result.append(image_2D)
         
         telescope_image = np.concatenate(result, axis = -1)
+        
+        if telescope_type == "MGC":
+            pad = self.padding[telescope_type]
+            (h, w) = telescope_image.shape[:2]
+            h+=pad*2
+            w+=pad*2
+            center = (w/2.0, h/2.0)
+            angle=-19.0
+            scale=1.0
+            M = cv2.getRotationMatrix2D(center, angle, scale)
+            telescope_image = cv2.warpAffine(telescope_image, M, (w, h))
+            telescope_image = np.expand_dims(telescope_image, axis=2)
         
         return telescope_image
 
@@ -241,6 +259,117 @@ class ImageMapper():
         mapping_matrix = csr_matrix(mapping_matrix.reshape(num_pixels + 1, self.image_shapes['VTS'][0] * self.image_shapes['VTS'][1]))
         
         return mapping_matrix
+
+    def generate_table_MGC(self):
+        """
+            Function returning MGC mapping matrix (used to convert a 1d trace to a resampled 2d image in square lattice).
+            Note that for a MAGIC telescope, input trace is of shape (1039), while output image is of shape (82, 82, 1)
+            The return matrix is of shape (1039+1, 82*82) = (1040, 6724)
+            # the added 1 is for the 0th channel = 0 for padding
+            To get the image from trace using the return matrix,
+            do: (trace.T @ mapping_matrix3d_sparse).reshape(82,82,1)
+            """
+        # telescope hardcoded values
+        num_pixels = 1039
+        pixel_side_len = self.pixel_lengths['MGC']
+        num_spirals = 19
+        
+        pixel_weight = 1.0/4 #divide each pixel intensity into 4 sub pixels
+        
+        pos = np.zeros((num_pixels, 2), dtype=float)
+        delta_x = pixel_side_len * np.sqrt(2) / 2.
+        delta_y = pixel_side_len * np.sqrt(2)
+        
+        pixel_index = 1
+        
+        # return mapping_matrix (82, 82)
+        # leave 0 for padding, mapping matrix from 1 to 1038
+        mapping_matrix = np.zeros((num_pixels + 1, self.image_shapes['MGC'][0], self.image_shapes['MGC'][1]), dtype=float)
+        
+        for i in range(1, num_spirals + 1):
+            
+            x = 2.0 * i * delta_x
+            y = 0.0
+            
+            # For the three outermost spirals, there is not a pixel in the y=0 row.
+            if i < 17:
+                pixel_index += 1
+                
+                pos[pixel_index - 1, 0] = x
+                pos[pixel_index - 1, 1] = y
+            
+            next_pix_dir = np.zeros((i * 6, 2))
+            skip_pixel = np.zeros((i * 6, 1))
+            for j in range(i * 6 - 1):
+                if (j / i < 1):
+                    next_pix_dir[j, :] = [-1, 1]
+                elif (j / i >= 1 and j / i < 2):
+                    next_pix_dir[j, :] = [-2, 0]
+                elif (j / i >= 2 and j / i < 3):
+                    next_pix_dir[j, :] = [-1, -1]
+                elif (j / i >= 3 and j / i < 4):
+                    next_pix_dir[j, :] = [1, -1]
+                elif (j / i >= 4 and j / i < 5):
+                    next_pix_dir[j, :] = [2, 0]
+                elif (j / i >= 5 and j / i < 6):
+                    next_pix_dir[j, :] = [1, 1]
+            
+            # The three outer spirals are not fully populated with pixels.
+            # The third outermost spiral is missing only six pixels (one was excluded above).
+            if (i == 17):
+                for k in range(1, 6):
+                    skip_pixel[i * k - 1] = 1
+            # The second outermost spiral only has a total of 78 pixels.  We need to skip over the
+            # place holders for the rest.
+            if (i == 18):
+                skip_pixel[0:2] = 1
+                skip_pixel[15:20] = 1
+                skip_pixel[33:38] = 1
+                skip_pixel[51:56] = 1
+                skip_pixel[69:74] = 1
+                skip_pixel[87:92] = 1
+                skip_pixel[105:107] = 1
+            
+            # The outmost spiral only has a total of 48 pixels.  We need to skip over the
+            # place holders for the rest.
+            if (i == 19):
+                skip_pixel[0:5] = 1
+                skip_pixel[13:24] = 1
+                skip_pixel[32:43] = 1
+                skip_pixel[51:62] = 1
+                skip_pixel[70:81] = 1
+                skip_pixel[89:100] = 1
+                skip_pixel[108:113] = 1
+        
+            for j in range(i * 6 - 1):
+                x += next_pix_dir[j, 0] * delta_x
+                y += next_pix_dir[j, 1] * delta_y
+                
+                if skip_pixel[j, 0] == 0:
+                    pixel_index += 1
+                    pos[pixel_index - 1, 0] = x
+                    pos[pixel_index - 1, 1] = y
+            
+        pos_shifted = pos + (self.image_shapes['MGC'][0]-2)/2 + pixel_side_len / 2.0
+                
+        delta_x = int((self.image_shapes['MGC'][0] - 82) / 2)
+        delta_y = int((self.image_shapes['MGC'][1] - 82) / 2)
+
+        for i in range(num_pixels):
+            x, y = pos_shifted[i, :]
+            x_L = int(round(x + pixel_side_len / 2.0)) + delta_x
+            x_S = int(round(x - pixel_side_len / 2.0)) + delta_x
+            y_L = int(round(y + pixel_side_len / 2.0)) + delta_y
+            y_S = int(round(y - pixel_side_len / 2.0)) + delta_y
+    
+            # leave 0 for padding, mapping matrix from 1 to 1038
+            #mapping_matrix[i + 1, x_S:x_L + 1, y_S:y_L + 1] = pixel_weight
+            mapping_matrix[i + 1, y_S:y_L + 1, x_S:x_L + 1] = pixel_weight
+        
+        mapping_matrix = csr_matrix(mapping_matrix.reshape(num_pixels + 1, self.image_shapes['MGC'][0] * self.image_shapes['MGC'][1]))
+        
+        return mapping_matrix
+
 
     def generate_table_MSTS(self):
         """
