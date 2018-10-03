@@ -24,7 +24,8 @@ class ImageMapper():
         'SSTC':0.0064,
         'SSTA':0.0071638,
         'VTS': 1.0 * np.sqrt(2),
-        'MGC': 1.0 * np.sqrt(2)
+        'MGC': 1.0 * np.sqrt(2),
+        'FACT': 0.0095
         }
 
     num_pixels = {
@@ -36,7 +37,8 @@ class ImageMapper():
         'SSTC': 2048,
         'SSTA': 2368,
         'VTS': 499,
-        'MGC': 1039
+        'MGC': 1039,
+        'FACT': 1440
         }
 
     def __init__(self,
@@ -63,7 +65,8 @@ class ImageMapper():
             'SSTC': (48, 48, 1),
             'SSTA': (56, 56, 1),
             'VTS': (54, 54, 1),
-            'MGC': (82, 82, 1)
+            'MGC': (82, 82, 1),
+            'FACT': (90,90,1)
             }
 
         if hex_conversion_algorithm in ['oversampling']:
@@ -81,7 +84,8 @@ class ImageMapper():
                     'SSTC': 0,
                     'SSTA': 0,
                     'VTS': 0,
-                    'MGC': 0
+                    'MGC': 0,
+                    'FACT': 0
                     }
         self.padding = padding
         
@@ -112,7 +116,8 @@ class ImageMapper():
             'SSTC': self.generate_table_SSTC(),
             'SSTA': self.generate_table_SSTA(),
             'VTS': self.generate_table_VTS(),
-            'MGC': self.generate_table_MGC()
+            'MGC': self.generate_table_MGC(),
+            'FACT': self.generate_table_generic('FACT')
             }
 
     def map_image(self, pixels, telescope_type):
@@ -139,7 +144,7 @@ class ImageMapper():
         
             if telescope_type == "MSTS":
                 image_2D = vector[self.mapping_tables[telescope_type]].T[:,:,np.newaxis]
-            elif telescope_type in ['LST', 'MSTF', 'MSTN', 'SST1', 'SSTC', 'SSTA', 'VTS', 'MGC']:
+            elif telescope_type in ['LST', 'MSTF', 'MSTN', 'SST1', 'SSTC', 'SSTA', 'VTS', 'MGC', 'FACT']:
                 image_2D = (vector.T @ self.mapping_tables[telescope_type]).reshape(self.image_shapes[telescope_type][0],
                                                                                        self.image_shapes[telescope_type][1], 1)
             result.append(image_2D)
@@ -597,8 +602,12 @@ class ImageMapper():
             if output_dim < p0_lim or output_dim < p1_lim:
                 print("Danger! output image shape too small, will be cropped!")
             # below put the image in the center
-            pos_int[0, :] += (output_dim - p0_lim) / 2.
-            pos_int[1, :] += (output_dim - p1_lim - 0.8) / 2.
+            if tel_type in ["FACT"]:
+                pos_int[0, :] += (output_dim - p0_lim) / 2. - 1.0
+                pos_int[1, :] += (output_dim - p1_lim - 0.8) / 2. - 1.0
+            else:
+                pos_int[0, :] += (output_dim - p0_lim) / 2.
+                pos_int[1, :] += (output_dim - p1_lim - 0.8) / 2.
 
 
             mapping_matrix = np.zeros((num_pixels + 1, output_dim, output_dim), dtype=float)
