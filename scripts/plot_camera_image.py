@@ -12,22 +12,23 @@ def main():
 
     test_mapper = ImageMapper()
     test_mapper_pad = ImageMapper(padding = {
-                                      'MSTS': 10,
-                                      'VTS': 10,
-                                      'MGC': 10,
+                                      'LST': 10,
                                       'MSTF': 10,
                                       'MSTN': 20,
-                                      'LST': 10,
+                                      'MSTS': 10,
                                       'SST1': 10,
                                       'SSTC': 10,
-                                      'SSTA': 10
+                                      'SSTA': 10,
+                                      'VTS': 10,
+                                      'MGC': 10,
+                                      'FACT': 10
                                       })
     
     test_im_dict = {}
     test_im_dict_pad = {}
     test_pix_vals = {}
     
-    for tel_ in ['LST', 'MSTF', 'MSTN', 'MSTS', 'SST1', 'SSTC', 'SSTA', 'VTS', 'MGC']:
+    for tel_ in ['LST', 'MSTF', 'MSTN', 'MSTS', 'SST1', 'SSTC', 'SSTA', 'VTS', 'MGC', 'FACT']:
 
         test_pix_vals[tel_] = [[i] for i in range(test_mapper.num_pixels[tel_]+1)]
         test_pix_vals[tel_] = np.array(test_pix_vals[tel_])
