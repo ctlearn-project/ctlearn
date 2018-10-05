@@ -25,7 +25,9 @@ class ImageMapper():
         'SSTA':0.0071638,
         'VTS': 1.0 * np.sqrt(2),
         'MGC': 1.0 * np.sqrt(2),
-        'FACT': 0.0095
+        'FACT': 0.0095,
+        'HESS-I': 0.0514,
+        'HESS-II': 0.0514
         }
 
     num_pixels = {
@@ -38,7 +40,9 @@ class ImageMapper():
         'SSTA': 2368,
         'VTS': 499,
         'MGC': 1039,
-        'FACT': 1440
+        'FACT': 1440,
+        'HESS-I': 960,
+        'HESS-II': 2048
         }
 
     def __init__(self,
@@ -66,7 +70,9 @@ class ImageMapper():
             'SSTA': (56, 56, 1),
             'VTS': (54, 54, 1),
             'MGC': (82, 82, 1),
-            'FACT': (90,90,1)
+            'FACT': (90,90,1),
+            'HESS-I': (72,72,1),
+            'HESS-II': (104,104,1)
             }
 
         if hex_conversion_algorithm in ['oversampling']:
@@ -85,7 +91,9 @@ class ImageMapper():
                     'SSTA': 0,
                     'VTS': 0,
                     'MGC': 0,
-                    'FACT': 0
+                    'FACT': 0,
+                    'HESS-I': 0,
+                    'HESS-II': 0
                     }
         self.padding = padding
         
@@ -117,7 +125,9 @@ class ImageMapper():
             'SSTA': self.generate_table_SSTA(),
             'VTS': self.generate_table_VTS(),
             'MGC': self.generate_table_MGC(),
-            'FACT': self.generate_table_generic('FACT')
+            'FACT': self.generate_table_generic('FACT'),
+            'HESS-I': self.generate_table_HESS('HESS-I'),
+            'HESS-II': self.generate_table_HESS('HESS-II')
             }
 
     def map_image(self, pixels, telescope_type):
@@ -144,7 +154,7 @@ class ImageMapper():
         
             if telescope_type == "MSTS":
                 image_2D = vector[self.mapping_tables[telescope_type]].T[:,:,np.newaxis]
-            elif telescope_type in ['LST', 'MSTF', 'MSTN', 'SST1', 'SSTC', 'SSTA', 'VTS', 'MGC', 'FACT']:
+            elif telescope_type in ['LST', 'MSTF', 'MSTN', 'SST1', 'SSTC', 'SSTA', 'VTS', 'MGC', 'FACT','HESS-I','HESS-II']:
                 image_2D = (vector.T @ self.mapping_tables[telescope_type]).reshape(self.image_shapes[telescope_type][0],
                                                                                        self.image_shapes[telescope_type][1], 1)
             result.append(image_2D)
@@ -575,6 +585,68 @@ class ImageMapper():
 
         return sparse_map_mat
 
+    def generate_table_HESS(self, tel_type):
+        """
+            Function returning HESS-I or HESS-II mapping table (used to index into the trace when converting from trace to image).
+        """
+        if (tel_type=='HESS-I'):
+            image_dim=72
+            img_map = np.full([image_dim,image_dim], 0, dtype=int)
+            blocks_num=8
+            start_x=[55,63,71,71,71,71,63,55]
+            start_y=[68,60,52,44,36,28,20,12]
+            column_num_per_block = [20,28,36,36,36,36,28,20]
+        
+        if (tel_type=='HESS-II'):
+            image_dim=104
+            img_map = np.full([image_dim,image_dim], 0, dtype=int)
+            blocks_num=12
+            start_x=[71,87,95,103,103,103,103,103,103,95,87,71]
+            start_y=[100,92,84,76,68,60,52,44,36,28,20,12]
+            column_num_per_block = [20,36,44,52,52,52,52,52,52,44,36,20]
+        
+        pixel_index = 1
+        for block in np.arange(0,blocks_num):
+            x = start_x[block]
+            for i in np.arange(1,column_num_per_block[block]+1):
+                
+                if (i % 2 == 0):
+                    y = start_y[block]-1
+                else:
+                    y = start_y[block]
+                
+                for j in np.arange(0,4):
+                    #Assign the camera pixel index to the four image pixels
+                    img_map[x,y]=pixel_index
+                    img_map[x,y-1]=pixel_index
+                    img_map[x-1,y]=pixel_index
+                    img_map[x-1,y-1]=pixel_index
+                    #Update x position and pixel_index
+                    pixel_index+=1
+                    y-=2
+                #Update y position
+                x-=2
+        
+        # This is set to int because no oversampling is done
+        mapping_matrix3d = np.zeros((self.num_pixels[tel_type] + 1,
+                                     self.image_shapes[tel_type][0],
+                                     self.image_shapes[tel_type][1]), dtype=int)
+            
+        # offset to the center:
+        delta_x = int((self.image_shapes[tel_type][1] - image_dim) / 2)
+        delta_y = int((self.image_shapes[tel_type][0] - image_dim) / 2)
+                                     
+        for x in range(image_dim):
+            for y in range(image_dim):
+                if img_map[x, y] > 0:
+                    mapping_matrix3d[img_map[x, y], x + delta_x, y + delta_y] = 1
+
+        sparse_map_mat = csr_matrix(mapping_matrix3d.reshape(self.num_pixels[tel_type] + 1,
+                                                     self.image_shapes[tel_type][0]*
+                                                     self.image_shapes[tel_type][1]))
+
+        return sparse_map_mat
+    
     def generate_table_generic(self, tel_type, pixel_weight=1.0/4):
         if self.hex_conversion_algorithm == 'oversampling':
             # Note that this only works for Hex cams
