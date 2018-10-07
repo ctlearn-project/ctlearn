@@ -379,7 +379,8 @@ class HDF5DataLoader(DataLoader):
                 'num_events_after_cuts_by_class_name' : self.num_passing_events_by_class_name,
                 'num_images_after_cuts_by_class_name' : self.num_passing_images_by_class_name,
                 'num_position_coordinates': self.num_position_coordinates,
-                'labels_to_class_names': self.labels_to_class_names
+                'labels_to_class_names': self.labels_to_class_names,
+                'class_names_to_labels': self.class_names_to_labels
            }
 
         if self.data_processor is not None:
