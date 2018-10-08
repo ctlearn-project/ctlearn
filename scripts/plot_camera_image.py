@@ -47,7 +47,7 @@ for tel_ in ['LST', 'MSTF', 'MSTN', 'MSTS', 'SST1', 'SSTC', 'SSTA', 'VTS', 'MGC'
     '''
     for i in range(len(test_im_dict[tel_][0])):
         for j in range(len(test_im_dict[tel_][1])):
-            if tel_ in ['SSTC','SSTA','MSTS','HESS-I','HESS-II']:
+            if tel_ in ['SSTC','SSTA','MSTS']:
                 text_anno=int(test_im_dict[tel_][i][j][0])
             else:
                 text_anno=int(test_im_dict[tel_][i][j][0]*4)
@@ -70,7 +70,7 @@ for tel_ in ['LST', 'MSTF', 'MSTN', 'MSTS', 'SST1', 'SSTC', 'SSTA', 'VTS', 'MGC'
     '''
     for i in range(len(test_im_dict_pad[tel_][0])):
         for j in range(len(test_im_dict_pad[tel_][1])):
-            if tel_ in ['SSTC','SSTA','MSTS','HESS-I','HESS-II']:
+            if tel_ in ['SSTC','SSTA','MSTS']:
                 text_anno=int(test_im_dict_pad[tel_][i][j][0])
             else:
                 text_anno=int(test_im_dict_pad[tel_][i][j][0]*4)

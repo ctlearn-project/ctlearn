@@ -605,6 +605,7 @@ class ImageMapper():
             start_y=[100,92,84,76,68,60,52,44,36,28,20,12]
             column_num_per_block = [20,36,44,52,52,52,52,52,52,44,36,20]
         
+        pixel_weight = 1.0/4 #divide each pixel intensity into 4 sub pixels
         pixel_index = 1
         for block in np.arange(0,blocks_num):
             x = start_x[block]
@@ -627,10 +628,9 @@ class ImageMapper():
                 #Update y position
                 x-=2
         
-        # This is set to int because no oversampling is done
         mapping_matrix3d = np.zeros((self.num_pixels[tel_type] + 1,
                                      self.image_shapes[tel_type][0],
-                                     self.image_shapes[tel_type][1]), dtype=int)
+                                     self.image_shapes[tel_type][1]), dtype=float)
             
         # offset to the center:
         delta_x = int((self.image_shapes[tel_type][1] - image_dim) / 2)
@@ -639,7 +639,7 @@ class ImageMapper():
         for x in range(image_dim):
             for y in range(image_dim):
                 if img_map[x, y] > 0:
-                    mapping_matrix3d[img_map[x, y], x + delta_x, y + delta_y] = 1
+                    mapping_matrix3d[img_map[x, y], x + delta_x, y + delta_y] = pixel_weight
 
         sparse_map_mat = csr_matrix(mapping_matrix3d.reshape(self.num_pixels[tel_type] + 1,
                                                      self.image_shapes[tel_type][0]*
