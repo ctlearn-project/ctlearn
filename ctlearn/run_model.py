@@ -122,6 +122,14 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     
     # Load options for TensorFlow
     run_tfdbg = config.get('TensorFlow', {}).get('run_TFDBG', False)
+    
+    # Create data processor
+    if apply_processing:
+        logger.info("Creating DataProcessor...")
+        data_processor = DataProcessor(
+                image_mapper=ImageMapper(**image_mapping_settings),
+                **data_processing_settings)
+    else: data_processor = None
 
     # Define data loading functions
     if data_format == 'HDF5':
@@ -129,6 +137,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         data_loader = HDF5DataLoader(
                 data_files,
                 mode=data_loader_mode,
+                data_processor=data_processor,
                 image_mapper=ImageMapper(**image_mapping_settings),
                 **data_loading_settings)
 
@@ -156,13 +165,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     else:
         raise ValueError("Invalid data format: {}".format(data_format))
 
-    if apply_processing:
-        logger.info("Creating DataProcessor...")
-        data_processor = DataProcessor(
-                image_charge_mins=data_loader.image_charge_mins,
-                image_mapper=ImageMapper(**image_mapping_settings),
-                **data_processing_settings)
-        data_loader.add_data_processor(data_processor)
 
     # Define input function for TF Estimator
     def input_fn(generator, settings): 
@@ -221,7 +223,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                 tf.int32, name="predicted_classes")
         predictions['predicted_class'] = predicted_classes
         for i in range(params['model']['num_classes']):
-            class_name = params['model']['class_to_name'][i]
+            class_name = params['model']['labels_to_class_names'][i]
             predictions[class_name] = classifier_values[:,i]
         
         # For predict mode, we're done
@@ -316,7 +318,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         for i in range(training_params['num_classes']):
             weights = tf.cast(tf.equal(true_classes,tf.constant(i)),tf.int32)
             eval_metric_ops['accuracy_{}'.format(
-                training_params['class_to_name'][i])] = tf.metrics.accuracy(
+                training_params['labels_to_class_names'][i])] = tf.metrics.accuracy(
                         true_classes, predicted_classes, weights=weights)
 
         return tf.estimator.EstimatorSpec(

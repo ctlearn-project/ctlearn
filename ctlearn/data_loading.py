@@ -13,7 +13,7 @@ from ctlearn.image_mapping import ImageMapper
 
 # Maps CORSIKA particle id codes
 # to particle class names
-PARTICLE_ID_TO_NAME = {
+PARTICLE_ID_TO_CLASS_NAME = {
         0: 'gamma',
         101:'proton'
         } 
@@ -40,10 +40,6 @@ class DataLoader(ABC):
     # return a dictionary of auxiliary data
     @abstractmethod
     def get_auxiliary_data(self):
-        pass
-    
-    @abstractmethod
-    def add_data_processor(self, data_processor):
         pass
 
     @abstractmethod
@@ -129,6 +125,22 @@ class HDF5DataLoader(DataLoader):
         # Compute and save metadata describing dataset
         self._load_metadata()
         
+        # If needed for normalization, update min max charge values
+        # And feed them to the data processor
+        if  self.data_processor is not None and \
+            self.data_processor.normalization is not None:
+            
+            self.image_charge_mins = {}
+            self.image_charge_maxes = {}
+                
+            for filename in self.files:
+                self._update_min_max_charge_values(filename)
+            
+            self.data_processor.add_image_charge_mins(
+                    self.image_charge_mins
+                    )
+            
+        
         # Select desired telescopes
         self._select_telescopes(selected_tel_type, tel_ids=selected_tel_ids)
 
@@ -163,166 +175,212 @@ class HDF5DataLoader(DataLoader):
             self.output_is_label = [False, False, False, True]
             self.map_fn_output_dtypes = data_dtypes + label_dtypes
 
-    def add_data_processor(self, data_processor):
-        if isinstance(data_processor, DataProcessor):
-            self.data_processor = data_processor
-        else:
-            raise ValueError("Must provide a DataProcessor object.")
-        self._image_mapper = self.data_processor._image_mapper
-
     # Compute and save a collection of metadata parameters
     # which describe the dataset
     def _load_metadata(self):
-
-        self.particle_ids = set()
+        
+        # INITIALIZE ALL METADATA VARIABLES 
+        
+        self.class_names = set()
 
         # OrderedDict with telescope types as keys and list of telescope ids
         # of each type (in sorted order) as values
         # NOTE: the telescope types are ordered by increasing telescope id
-        self.telescopes = OrderedDict()
+        self.total_telescopes = OrderedDict()
 
         self.events = [] 
         self.images = {}
 
         self.num_events = 0
-        self.num_images = {}
+        self.num_images_before_cuts = {}
 
-        self.num_events_by_particle_id = {}
-        self.num_images_by_particle_id = {}
+        self.num_events_before_cuts_by_class_name = {}
+        self.num_images_before_cuts_by_class_name = {}
 
         self.num_position_coordinates = 3
         self.telescope_positions = {}
         self.max_telescope_positions = {}
- 
-        self.image_charge_mins = {}
-        self.image_charge_maxes = {}
        
         self.__events_to_indices = {}
         self.__single_tel_examples_to_indices = {}
         self.__tel_id_to_tel_type = {}
+        
+        # PROCESS METADATA ACROSS ALL DATA FILES
 
         for filename in self.files:
-            # get file handle
-            f = self.files[filename]
-            # Particle ID is same for all events in a given file and
-            # is therefore saved in the root attributes
-            particle_id = f.root._v_attrs.particle_type
-            self.particle_ids.add(particle_id)
-
-            telescopes = {}
-            for row in f.root.Array_Info.iterrows():
-                # note: tel type strings stored in Pytables as byte strings, must be decoded
-                tel_type = row['tel_type'].decode('utf-8')
-                tel_id = row['tel_id']
-                # Store the telescope for indexing
-                if tel_type not in telescopes:
-                    telescopes[tel_type] = []
-                # There is an overflow issue with the tel_id parameter in
-                # the ImageExtractor v0.5.1 data format. The tel_ids > 255 
-                # have looped back around to 0. SST1 is the only affected 
-                # telescope type. SST1 has tel_id 220-255 followed by "0-33".
-                if tel_type == 'SST1' and tel_id < 220:
-                    tel_id += 256
-                telescopes[tel_type].append(tel_id)
-                self.__tel_id_to_tel_type[tel_id] = tel_type
-                # Store the telescope position
-                if tel_type not in self.telescope_positions:
-                    self.telescope_positions[tel_type] = {}
-                if tel_id not in self.telescope_positions[tel_type]:
-                    self.telescope_positions[tel_type][tel_id] = [row["tel_x"],
-                                row["tel_y"], row["tel_z"]]
-                else:
-                    if self.telescope_positions[tel_type][tel_id] != [row["tel_x"],
-                            row["tel_y"], row["tel_z"]]:
-                        raise ValueError("Telescope positions do not match for telescope {} in file {}.".format(tel_id,filename))
-
-            # Sort the telescopes by tel type and id
-            telescopes = OrderedDict(sorted(telescopes.items(),
-                key=lambda i: i[0]))
-            for tel_type in telescopes:
-                telescopes[tel_type].sort()
-
-            if not self.telescopes:
-                self.telescopes = telescopes
-            else:
-                if self.telescopes != telescopes:
-                    raise ValueError("Telescope type/id mismatch in file {}".format(filename))
-
-            # Compute max x, y, z telescope coordinates for normalization
-            max_tel_x = max(row['tel_x'] for row in f.root.Array_Info.iterrows())
-            max_tel_y = max(row['tel_y'] for row in f.root.Array_Info.iterrows())
-            max_tel_z = max(row['tel_z'] for row in f.root.Array_Info.iterrows())
-
-            self.max_telescope_position = [max_tel_x, max_tel_y, max_tel_z]
             
-            for row in f.root.Event_Info.iterrows():
-                if particle_id not in self.num_events_by_particle_id:
-                    self.num_events_by_particle_id[particle_id] = 0
-
-                self.events.append((row['run_number'],row['event_number']))
-                self.__events_to_indices[(row['run_number'],row['event_number'])] = (filename, row.nrow)
-
-                self.num_events_by_particle_id[particle_id] += 1
-                self.num_events += 1
-
-                for tel_type in self.telescopes:
-                    tel_ids = self.telescopes[tel_type]
-                    indices = row[tel_type + '_indices']
-                    if not tel_type in self.num_images:
-                        self.num_images[tel_type] = 0
-                    if not tel_type in self.images:
-                        self.images[tel_type] = []
-                    if not tel_type in self.num_images_by_particle_id:
-                        self.num_images_by_particle_id[tel_type] = {}
-                    for tel_id, image_index in zip(tel_ids, indices):
-                        self.__single_tel_examples_to_indices[(row['run_number'], row['event_number'], tel_id)] = (filename, tel_type, image_index)
-                        if image_index != 0:
-                            self.images[tel_type].append((row['run_number'], row['event_number'], tel_id))
-                            self.num_images[tel_type] += 1
-                            if particle_id not in self.num_images_by_particle_id[tel_type]:
-                                self.num_images_by_particle_id[tel_type][particle_id] = 0
-                            self.num_images_by_particle_id[tel_type][particle_id] += 1
-
-            # Compute max and min pixel value in each telescope image
-            # type for normalization
-            # NOTE: This step is time-intensive.
-            for tel_type in self.telescopes.keys():
-                tel_table = f.root._f_get_child(tel_type)
-                records = tel_table.read(1,tel_table.shape[0])
-                images = records['image_charge']
-
-                if tel_type not in self.image_charge_mins:
-                    self.image_charge_mins[tel_type] = np.amin(images)
-                if tel_type not in self.image_charge_maxes:
-                    self.image_charge_maxes[tel_type] = np.amax(images)
-
-                if np.amin(images) < self.image_charge_mins[tel_type]:
-                    self.image_charge_mins[tel_type] = np.amin(images)
-                if np.amax(images) > self.image_charge_maxes[tel_type]:
-                    self.image_charge_maxes[tel_type] = np.amax(images)
+            # Process telescope array metadata
+            self._process_array_info(filename)
+            
+            # Process event info
+            self._process_events(filename)
         
-            # create mapping from particle ids to labels
-            # and from labels to names
-            self.ids_to_labels = {particle_id:i 
-                    for i, particle_id in enumerate(sorted(list(self.particle_ids)))}
-            self.labels_to_names = {i:PARTICLE_ID_TO_NAME[particle_id] 
-                    for particle_id, i in self.ids_to_labels.items()}
+        # Updates max telescope coordinates
+        self._update_max_coordinates()
+        
+        # create mapping from particle ids to labels
+        # and from labels to names
+        self.class_names_to_labels = {class_name:i 
+                for i, class_name in enumerate(sorted(list(self.class_names)))}
+        self.labels_to_class_names = {i:class_name 
+                for i, class_name in enumerate(sorted(list(self.class_names)))}
+    
+    # Creates a sorted dict that associates telescope_types with the list
+    # of telescope ids corresponding to that type of telescope
+    # Also updates telescopes position and checks that those are consistent
+    # across files
+    def _process_array_info(self, filename):
+        # get file handle
+        f = self.files[filename]
+        
+        telescopes = {}
+        for row in f.root.Array_Info.iterrows():
+            # note: tel type strings stored in Pytables as byte strings, must be decoded
+            tel_type = row['tel_type'].decode('utf-8')
+            tel_id = row['tel_id']
+            
+            # Store the telescope for indexing
+            if tel_type not in telescopes:
+                telescopes[tel_type] = []
+                
+            # There is an overflow issue with the tel_id parameter in
+            # the ImageExtractor v0.5.1 data format. The tel_ids > 255 
+            # have looped back around to 0. SST1 is the only affected 
+            # telescope type. SST1 has tel_id 220-255 followed by "0-33".
+            if tel_type == 'SST1' and tel_id < 220:
+                tel_id += 256
+                
+            telescopes[tel_type].append(tel_id)
+            self.__tel_id_to_tel_type[tel_id] = tel_type
+            
+            # Store the telescope position
+            if tel_type not in self.telescope_positions:
+                self.telescope_positions[tel_type] = {}
+            if tel_id not in self.telescope_positions[tel_type]:
+                self.telescope_positions[tel_type][tel_id] = \
+                        [row["tel_x"], row["tel_y"], row["tel_z"]]
+            else:
+                if self.telescope_positions[tel_type][tel_id] != \
+                        [row["tel_x"], row["tel_y"], row["tel_z"]]:
+                    raise ValueError("Telescope positions do not match for telescope {} in file {}.".format(tel_id,filename))
 
+        # Sort the telescopes by tel type and id
+        telescopes = OrderedDict(sorted(telescopes.items(),
+            key=lambda i: i[0]))
+        for tel_type in telescopes:
+            telescopes[tel_type].sort()
+
+        if not self.total_telescopes:
+            self.total_telescopes = telescopes
+        else:
+            # Check if the telescope array is the same across files
+            if self.total_telescopes != telescopes:
+                raise ValueError("Telescope type/id mismatch in file {}".format(filename))
+    
+    # Updates the max telescope coordinates seen so far for normalization
+    def _update_max_coordinates(self):
+        # get a file handle to extract the data
+        # Any file will do since all files should have the same array data
+        filename = next(iter(self.files))
+        f = self.files[filename]
+        
+        # Compute max x, y, z telescope coordinates for normalization
+        max_tel_x = max(row['tel_x'] for row in f.root.Array_Info.iterrows())
+        max_tel_y = max(row['tel_y'] for row in f.root.Array_Info.iterrows())
+        max_tel_z = max(row['tel_z'] for row in f.root.Array_Info.iterrows())
+
+        self.max_telescope_position = [max_tel_x, max_tel_y, max_tel_z]
+        
+    # Stores the position of each image in the file, indexed by telescope type
+    # Also keeps track of the classes and number of events, total and per class
+    def _process_events(self, filename):
+        # get file handle
+        f = self.files[filename]
+        
+        # Particle ID is same for all events in a given file and
+        # is therefore saved in the root attributes
+        class_name = PARTICLE_ID_TO_CLASS_NAME[f.root._v_attrs.particle_type]
+        self.class_names.add(class_name)
+        
+        # If no previous events of this class had been loaded before,
+        # we start the counter for them
+        if class_name not in self.num_events_before_cuts_by_class_name:
+            self.num_events_before_cuts_by_class_name[class_name] = 0
+        
+        # Each row in the file is an event
+        for row in f.root.Event_Info.iterrows():
+    
+            self.events.append((row['run_number'],row['event_number']))
+            self.__events_to_indices[(row['run_number'],row['event_number'])] = \
+                    (filename, row.nrow)
+    
+            self.num_events_before_cuts_by_class_name[class_name] += 1
+            self.num_events += 1
+    
+            for tel_type in self.total_telescopes:
+                tel_ids = self.total_telescopes[tel_type]
+                indices = row[tel_type + '_indices']
+                if not tel_type in self.num_images_before_cuts:
+                    self.num_images_before_cuts[tel_type] = 0
+                if not tel_type in self.images:
+                    self.images[tel_type] = []
+                if not tel_type in self.num_images_before_cuts_by_class_name:
+                    self.num_images_before_cuts_by_class_name[tel_type] = {}
+                
+                # for each image index associated to this event
+                for tel_id, image_index in zip(tel_ids, indices):
+                    self.__single_tel_examples_to_indices[
+                            (row['run_number'], row['event_number'], tel_id)
+                            ] = (filename, tel_type, image_index)
+                    if image_index != 0:
+                        self.images[tel_type].append((row['run_number'], row['event_number'], tel_id))
+                        self.num_images_before_cuts[tel_type] += 1
+                        if class_name not in self.num_images_before_cuts_by_class_name[tel_type]:
+                            self.num_images_before_cuts_by_class_name[tel_type][class_name] = 0
+                        self.num_images_before_cuts_by_class_name[tel_type][class_name] += 1
+    
+    def _update_min_max_charge_values(self, filename):
+        # get file handle
+        f = self.files[filename]
+        
+        # Compute max and min pixel value in each telescope image
+        # type for normalization
+        # NOTE: This step is time-intensive.
+        for tel_type in self.total_telescopes.keys():
+            tel_table = f.root._f_get_child(tel_type)
+            records = tel_table.read(1,tel_table.shape[0])
+            images = records['image_charge']
+
+            if tel_type not in self.image_charge_mins:
+                self.image_charge_mins[tel_type] = np.amin(images)
+            if tel_type not in self.image_charge_maxes:
+                self.image_charge_maxes[tel_type] = np.amax(images)
+
+            if np.amin(images) < self.image_charge_mins[tel_type]:
+                self.image_charge_mins[tel_type] = np.amin(images)
+            if np.amax(images) > self.image_charge_maxes[tel_type]:
+                self.image_charge_maxes[tel_type] = np.amax(images)
+    
     # Method returning a dict of selected metadata parameters
     def get_metadata(self):
 
         metadata = {
-                'num_classes': len(list(self.particle_ids)),
-                'particle_ids': self.particle_ids,
-                'telescopes': self.telescopes,
+                'num_classes': len(list(self.class_names)),
+                'class_names': self.class_names,
+                'total_telescopes': self.total_telescopes,
+                'num_total_telescopes': {tel_type: len(tel_ids) for
+                    tel_type, tel_ids in self.total_telescopes.items()},
                 'selected_telescope_types': [self.selected_telescope_type],
                 'selected_telescopes': self.selected_telescopes,
-                'num_telescopes': {tel_type: len(tel_ids) for
+                'num_selected_telescopes': {tel_type: len(tel_ids) for
                     tel_type, tel_ids in self.selected_telescopes.items()},
-                'num_events_by_particle_id': self.num_events_by_particle_id,
-                'num_images_by_particle_id': self.num_images_by_particle_id,
+                'num_events_before_cuts_by_class_name': self.num_events_before_cuts_by_class_name,
+                'num_images_before_cuts_by_class_name': self.num_images_before_cuts_by_class_name,
+                'num_events_after_cuts_by_class_name' : self.num_passing_events_by_class_name,
+                'num_images_after_cuts_by_class_name' : self.num_passing_images_by_class_name,
                 'num_position_coordinates': self.num_position_coordinates,
-                'class_to_name': self.labels_to_names
+                'labels_to_class_names': self.labels_to_class_names,
+                'class_names_to_labels': self.class_names_to_labels
            }
 
         if self.data_processor is not None:
@@ -350,13 +408,13 @@ class HDF5DataLoader(DataLoader):
     # by a telescope type and an optional list of telescope ids.
     def _select_telescopes(self, tel_type, tel_ids=None):
        
-        if tel_type not in self.telescopes:
+        if tel_type not in self.total_telescopes:
             raise ValueError("Selected tel type {} not found in dataset.".format(tel_type))
         if tel_type not in self._image_mapper.mapping_tables:
             raise NotImplementedError("Mapping table for selected tel type {} not implemented.".format(tel_type))
         self.selected_telescope_type = tel_type
         self.selected_telescopes = {
-                self.selected_telescope_type: self.telescopes[tel_type]}
+                self.selected_telescope_type: self.total_telescopes[tel_type]}
         if tel_ids:
             requested_telescopes = {self.selected_telescope_type: tel_ids}
             invalid_telescopes = {}
@@ -421,7 +479,8 @@ class HDF5DataLoader(DataLoader):
             event_record = f.root.Event_Info[index]
 
             # Get classification label by converting CORSIKA particle code
-            label = self.ids_to_labels[event_record['particle_id']] 
+            class_name = PARTICLE_ID_TO_CLASS_NAME[event_record['particle_id']]
+            label = self.class_names_to_labels[class_name]
             
             data = [image]
             labels = [label]
@@ -439,7 +498,8 @@ class HDF5DataLoader(DataLoader):
             record = f.root.Event_Info[index]
 
             # Get classification label by converting CORSIKA particle code
-            label = self.ids_to_labels[record['particle_id']] 
+            class_name = PARTICLE_ID_TO_CLASS_NAME[record['particle_id']]
+            label = self.class_names_to_labels[class_name]
           
             # Collect images and binary trigger values only for telescopes
             # in selected_telescopes            
@@ -449,7 +509,7 @@ class HDF5DataLoader(DataLoader):
             image_shape = self._image_mapper.image_shapes[tel_type] 
             
             for tel_id in self.selected_telescopes[tel_type]:
-                index = self.telescopes[tel_type].index(tel_id)
+                index = self.total_telescopes[tel_type].index(tel_id)
                 i = record[tel_type + "_indices"][index]
                 if i == 0:
                     # Telescope did not trigger. Its outputs will be dropped
@@ -493,17 +553,27 @@ class HDF5DataLoader(DataLoader):
     def _apply_cuts(self):
 
         passing_examples = []
-        self.passing_num_examples_by_particle_id = {}
+        self.num_passing_events = 0
+        self.num_passing_events_by_class_name = {}
+        self.num_passing_images = 0
+        self.num_passing_images_by_class_name = {}
+        
+        tel_type = self.selected_telescope_type
 
         for filename in self.files:
             f = self.files[filename]
             
             particle_id = f.root._v_attrs.particle_type
-            if particle_id not in self.passing_num_examples_by_particle_id:
-                self.passing_num_examples_by_particle_id[particle_id] = 0
+            class_name = PARTICLE_ID_TO_CLASS_NAME[particle_id]
+            
+            if class_name not in self.num_passing_images_by_class_name:
+                self.num_passing_images_by_class_name[class_name] = 0
+            
+            if class_name not in self.num_passing_events_by_class_name:
+                self.num_passing_events_by_class_name[class_name] = 0
     
             event_table = f.root.Event_Info
-            tel_type = self.selected_telescope_type
+            
             # Apply the cuts specified in cut condition
             rows = event_table.where(self.cut_condition) if self.cut_condition else event_table.iterrows()
             for row in rows:
@@ -511,38 +581,42 @@ class HDF5DataLoader(DataLoader):
                 if np.count_nonzero(row[tel_type + "_indices"]) < self.min_num_tels:
                     continue
                
+                self.num_passing_events += 1
+                self.num_passing_events_by_class_name[class_name] += 1
+                
                 # If example_type is single_tel, there will 
                 # be only a single selected telescope type
                 if self.example_type == "single_tel":
                     image_indices = row[tel_type + "_indices"]
                     for tel_id in self.selected_telescopes[tel_type]:
-                        index = self.telescopes[tel_type].index(tel_id)
+                        index = self.total_telescopes[tel_type].index(tel_id)
                         if image_indices[index] != 0:
                             passing_examples.append((row["run_number"], row["event_number"], tel_id))
-                            self.passing_num_examples_by_particle_id[particle_id] += 1
-                # if example type is 
+                            self.num_passing_images += 1
+                            self.num_passing_images_by_class_name[class_name] += 1
+                # if example type is array, ???
                 elif self.example_type == "array":                               
                     passing_examples.append((row["run_number"], row["event_number"]))
-                    self.passing_num_examples_by_particle_id[particle_id] += 1
+                    
 
         # get total number of examples
-        num_examples = 0
-        for particle_id in self.passing_num_examples_by_particle_id:
-            num_examples += self.passing_num_examples_by_particle_id[particle_id]
+        if self.example_type == 'single_tel':
+            self.num_passing_examples = self.num_passing_images
+            self.num_passing_examples_by_class_name = self.num_passing_images_by_class_name
+        elif self.example_type == 'array':
+            self.num_passing_examples = self.num_passing_events
+            self.num_passing_examples_by_class_name = self.num_passing_events_by_class_name
 
         # compute class weights
         self.class_weights = []
-        for particle_id in sorted(self.passing_num_examples_by_particle_id, key=lambda x: self.ids_to_labels[x]):
-            self.class_weights.append(num_examples/float(self.passing_num_examples_by_particle_id[particle_id]))
+        for class_name in sorted(self.num_passing_examples_by_class_name, key=lambda x: self.class_names_to_labels[x]):
+            self.class_weights.append(self.num_passing_examples/float(self.num_passing_examples_by_class_name[class_name]))
 
-        # divide passing events into training and validation sets
-
-        # use random seed to get reproducible training
-        # and validation sets
-        if self.seed is not None:
-            random.seed(self.seed)
-
-        if self.mode == 'train':
+        if self.mode == 'train':            
+            # use random seed to get reproducible training
+            # and validation sets
+            if self.seed is not None:
+                random.seed(self.seed)
             
             random.shuffle(passing_examples)
 
@@ -586,23 +660,17 @@ class HDF5DataLoader(DataLoader):
 
             return test_generator_fn, self.class_weights
 
-    # Log the proportions of particles in the dataset
+    # Log the proportions of classes in the dataset
     def log_class_breakdown(self, logger=None):
     
         if not logger: logger = logging.getLogger()
         
-        if self.example_type == 'single_tel':
-            num_examples_by_particle_id = self.num_images_by_particle_id[self.selected_telescope_type]
-        else:
-            num_examples_by_particle_id = self.num_events_by_particle_id
-    
-        num_total_examples = sum(num_examples_by_particle_id.values())
-        logger.info("Total number of examples: {}".format(num_total_examples))
-        for particle_id in num_examples_by_particle_id:
-            percentage = (100. * num_examples_by_particle_id[particle_id] /
-                    num_total_examples)
-            logger.info("Number of {} (class {}) examples: {} ({:.3f}%)".format(
-                PARTICLE_ID_TO_NAME[particle_id],
-                self.ids_to_labels[particle_id],
-                num_examples_by_particle_id[particle_id],
+        logger.info("Number of examples after the cuts: {}".format(self.num_passing_examples))
+        for class_name in self.num_passing_examples_by_class_name:
+            percentage = (100. * self.num_passing_examples_by_class_name[class_name] /
+                    self.num_passing_examples)
+            logger.info("Number of {} (class {}) examples after the cuts: {} ({:.3f}%)".format(
+                class_name,
+                self.class_names_to_labels[class_name],
+                self.num_passing_examples_by_class_name[class_name],
                 percentage))

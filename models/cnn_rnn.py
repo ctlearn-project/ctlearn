@@ -16,7 +16,7 @@ def cnn_rnn_model(features, params, training):
         raise ValueError('Must use a single telescope type for CNN-RNN. Number used: {}'.format(num_telescope_types))
     telescope_type = params['selected_telescope_types'][0]
     image_width, image_length, image_depth = params['image_shapes'][telescope_type]
-    num_telescopes = params['num_telescopes'][telescope_type]
+    num_telescopes = params['num_total_telescopes'][telescope_type]
     num_aux_inputs = params['total_aux_params']
     num_gamma_hadron_classes = params['num_classes']
     
