@@ -167,7 +167,7 @@ class ImageMapper():
             h+=pad*2
             w+=pad*2
             center = (w/2.0, h/2.0)
-            angle=-19.0
+            angle=-19.1
             scale=1.0
             M = cv2.getRotationMatrix2D(center, angle, scale)
             telescope_image = cv2.warpAffine(telescope_image, M, (w, h))
