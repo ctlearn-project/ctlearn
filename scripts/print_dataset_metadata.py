@@ -30,14 +30,14 @@ if __name__ == "__main__":
             line = line.strip()
             if line and line[0] != "#":
                 file_list.append(line)
-
-    data_loader = HDF5DataLoader(file_list, 
-            example_type="array")
-
+	
     data_processing_settings = {}
 
     data_processor = DataProcessor(**data_processing_settings) 
-    data_loader.add_data_processor(data_processor)
+
+    data_loader = HDF5DataLoader(file_list, 
+            example_type="single_tel",
+            data_processor=data_processor)
 
     metadata = data_loader.get_metadata()
 
@@ -46,29 +46,29 @@ if __name__ == "__main__":
     for i in metadata:
         print("{}: {}\n".format(i,metadata[i]), file=out)
 
-    num_events_by_id = metadata['num_events_by_particle_id']
-    total_num_events = sum(num_events_by_id.values())
+    num_events_before_cuts_by_class_name = metadata['num_events_before_cuts_by_class_name']
+    total_num_events = sum(num_events_before_cuts_by_class_name.values())
     print("{} total events.".format(total_num_events), file=out)
     print("Num events by particle_id:", file=out)
-    for particle_id in num_events_by_id:
+    for class_name in num_events_before_cuts_by_class_name:
         print("{}: {} ({}%)".format( 
-                particle_id, 
-                num_events_by_id[particle_id], 
-                100 * float(num_events_by_id[particle_id])/total_num_events),
+                class_name, 
+                num_events_before_cuts_by_class_name[class_name], 
+                100 * float(num_events_before_cuts_by_class_name[class_name])/total_num_events),
                 file=out
                 )
 
-    for tel_type in metadata['telescopes'].keys():
+    for tel_type in metadata['total_telescopes'].keys():
         print("\n" + tel_type + ":\n", file=out)
-        num_images_by_id = metadata['num_images_by_particle_id'][tel_type]
-        total_num_images = sum(num_images_by_id.values())
+        num_images_before_cuts_by_class_name = metadata['num_images_before_cuts_by_class_name'][tel_type]
+        total_num_images = sum(num_images_before_cuts_by_class_name.values())
         print("{} total images.".format(total_num_images), file=out)
         print("Num images by particle_id:", file=out)
-        for particle_id in num_images_by_id:
+        for class_name in num_images_before_cuts_by_class_name:
             print("{}: {} ({}%)".format( 
-                    particle_id, 
-                    num_images_by_id[particle_id], 
-                    100 * float(num_images_by_id[particle_id])/total_num_images),
+                    class_name, 
+                    num_images_before_cuts_by_class_name[class_name], 
+                    100 * float(num_images_before_cuts_by_class_name[class_name])/total_num_images),
                     file=out
                     )
 
