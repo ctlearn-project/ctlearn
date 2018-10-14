@@ -60,7 +60,7 @@ if __name__ == "__main__":
 
     for tel_type in metadata['total_telescopes'].keys():
         print("\n" + tel_type + ":\n", file=out)
-        num_images_before_cuts_by_class_name = metadata['num_images_before_cuts_by_class_name'][tel_type]
+        num_images_before_cuts_by_class_name = metadata['num_images_before_cuts_by_tel_and_class_name'][tel_type]
         total_num_images = sum(num_images_before_cuts_by_class_name.values())
         print("{} total images.".format(total_num_images), file=out)
         print("Num images by particle_id:", file=out)

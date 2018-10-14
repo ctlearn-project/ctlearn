@@ -195,7 +195,7 @@ class HDF5DataLoader(DataLoader):
         self.num_images_before_cuts = {}
 
         self.num_events_before_cuts_by_class_name = {}
-        self.num_images_before_cuts_by_class_name = {}
+        self.num_images_before_cuts_by_tel_and_class_name = {}
 
         self.num_position_coordinates = 3
         self.telescope_positions = {}
@@ -324,8 +324,8 @@ class HDF5DataLoader(DataLoader):
                     self.num_images_before_cuts[tel_type] = 0
                 if not tel_type in self.images:
                     self.images[tel_type] = []
-                if not tel_type in self.num_images_before_cuts_by_class_name:
-                    self.num_images_before_cuts_by_class_name[tel_type] = {}
+                if not tel_type in self.num_images_before_cuts_by_tel_and_class_name:
+                    self.num_images_before_cuts_by_tel_and_class_name[tel_type] = {}
                 
                 # for each image index associated to this event
                 for tel_id, image_index in zip(tel_ids, indices):
@@ -335,9 +335,9 @@ class HDF5DataLoader(DataLoader):
                     if image_index != 0:
                         self.images[tel_type].append((row['run_number'], row['event_number'], tel_id))
                         self.num_images_before_cuts[tel_type] += 1
-                        if class_name not in self.num_images_before_cuts_by_class_name[tel_type]:
-                            self.num_images_before_cuts_by_class_name[tel_type][class_name] = 0
-                        self.num_images_before_cuts_by_class_name[tel_type][class_name] += 1
+                        if class_name not in self.num_images_before_cuts_by_tel_and_class_name[tel_type]:
+                            self.num_images_before_cuts_by_tel_and_class_name[tel_type][class_name] = 0
+                        self.num_images_before_cuts_by_tel_and_class_name[tel_type][class_name] += 1
     
     def _update_min_max_charge_values(self, filename):
         # get file handle
@@ -375,7 +375,7 @@ class HDF5DataLoader(DataLoader):
                 'num_selected_telescopes': {tel_type: len(tel_ids) for
                     tel_type, tel_ids in self.selected_telescopes.items()},
                 'num_events_before_cuts_by_class_name': self.num_events_before_cuts_by_class_name,
-                'num_images_before_cuts_by_class_name': self.num_images_before_cuts_by_class_name,
+                'num_images_before_cuts_by_tel_and_class_name': self.num_images_before_cuts_by_tel_and_class_name,
                 'num_events_after_cuts_by_class_name' : self.num_passing_events_by_class_name,
                 'num_images_after_cuts_by_class_name' : self.num_passing_images_by_class_name,
                 'num_position_coordinates': self.num_position_coordinates,
