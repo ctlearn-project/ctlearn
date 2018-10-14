@@ -586,16 +586,18 @@ class HDF5DataLoader(DataLoader):
                 
                 # If example_type is single_tel, there will 
                 # be only a single selected telescope type
-                if self.example_type == "single_tel":
-                    image_indices = row[tel_type + "_indices"]
-                    for tel_id in self.selected_telescopes[tel_type]:
-                        index = self.total_telescopes[tel_type].index(tel_id)
-                        if image_indices[index] != 0:
+                
+                image_indices = row[tel_type + "_indices"]
+                for tel_id in self.selected_telescopes[tel_type]:
+                    index = self.total_telescopes[tel_type].index(tel_id)
+                    if image_indices[index] != 0:
+                        if self.example_type == "single_tel":
                             passing_examples.append((row["run_number"], row["event_number"], tel_id))
-                            self.num_passing_images += 1
-                            self.num_passing_images_by_class_name[class_name] += 1
+                        self.num_passing_images += 1
+                        self.num_passing_images_by_class_name[class_name] += 1
+                        
                 # if example type is array, ???
-                elif self.example_type == "array":                               
+                if self.example_type == "array":                               
                     passing_examples.append((row["run_number"], row["event_number"]))
                     
 
