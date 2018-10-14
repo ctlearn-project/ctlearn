@@ -82,7 +82,10 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     # Load options related to image mapping
     image_mapping_settings = config.get('Image Mapping', {})
-    image_mapping_settings['use_peak_times'] = config['Data']['Loading']['use_peak_times']
+    if 'use_peak_times' in config['Data']['Loading']:
+        image_mapping_settings['use_peak_times'] = config['Data']['Loading']['use_peak_times']
+    else:
+        image_mapping_settings['use_peak_times'] = False
 
     # Load options related to data loading
     if mode == "train":
