@@ -5,6 +5,7 @@ import os
 import cv2
 
 from scipy.sparse import csr_matrix
+from scipy.interpolate import griddata
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +78,10 @@ class ImageMapper():
 
         if hex_conversion_algorithm in ['oversampling']:
             self.hex_conversion_algorithm = hex_conversion_algorithm
+        elif hex_conversion_algorithm in ['linear_interpolation']:
+            self.hex_conversion_algorithm = hex_conversion_algorithm
+        elif hex_conversion_algorithm in ['cubic_interpolation']:
+            self.hex_conversion_algorithm = hex_conversion_algorithm
         else:
             raise NotImplementedError("Hex conversion algorithm {} is not implemented.".format(hex_conversion_algorithm))
 
@@ -113,7 +118,7 @@ class ImageMapper():
                     2 # number of channels
                 )
 
-        self.pixel_positions = {tel_type:self.__read_pix_pos_files(tel_type) for tel_type in self.pixel_lengths if (tel_type != 'VTS' and tel_type != 'MGC')}
+        self.pixel_positions = {tel_type:self.__read_pix_pos_files(tel_type) for tel_type in self.pixel_lengths}
 
         self.mapping_tables = {
             'LST': self.generate_table_generic('LST'),
@@ -151,17 +156,61 @@ class ImageMapper():
         result = []
         for channel in range(n_channels):
             vector = pixels[:,channel]
-        
-            if telescope_type == "MSTS":
-                image_2D = vector[self.mapping_tables[telescope_type]].T[:,:,np.newaxis]
-            elif telescope_type in ['LST', 'MSTF', 'MSTN', 'SST1', 'SSTC', 'SSTA', 'VTS', 'MGC', 'FACT','HESS-I','HESS-II']:
-                image_2D = (vector.T @ self.mapping_tables[telescope_type]).reshape(self.image_shapes[telescope_type][0],
+
+            if self.hex_conversion_algorithm == 'oversampling':
+                if telescope_type == "MSTS":
+                    image_2D = vector[self.mapping_tables[telescope_type]].T[:,:,np.newaxis]
+                elif telescope_type in ['LST', 'MSTF', 'MSTN', 'SST1', 'SSTC', 'SSTA', 'VTS', 'MGC', 'FACT','HESS-I','HESS-II']:
+                    image_2D = (vector.T @ self.mapping_tables[telescope_type]).reshape(self.image_shapes[telescope_type][0],
                                                                                        self.image_shapes[telescope_type][1], 1)
-            result.append(image_2D)
+                result.append(image_2D)
+
+            elif (self.hex_conversion_algorithm == 'linear_interpolation' or self.hex_conversion_algorithm == 'cubic_interpolation'):
+                if telescope_type in ['LST','MSTF','MSTN','SST1','VTS','MGC','FACT','HESS-I','HESS-II']:
+        
+                    pos = self.pixel_positions[telescope_type]
+                    pad = self.padding[telescope_type]*2
+                    # Get relevant parameters
+                    output_dim = self.image_shapes[telescope_type][0]+pad*2
+                    num_pixels = self.num_pixels[telescope_type]
+                    pixel_length = self.pixel_lengths[telescope_type]
+            
+                    # For LST and MSTN cameras, rotate by a fixed amount to
+                    # align for oversampling
+                    if telescope_type in ["LST", "MSTN"]:
+                        pos = self.rotate_cam(pos)
+
+                    x=pos[0][0:num_pixels]
+                    y=pos[1][0:num_pixels]
+                    z=vector[1:num_pixels+1]
+                    #shifting and rescaling the pixel positions
+                    x -= np.min(x)
+                    y -= np.min(y)
+                    x *= ((output_dim-pad)/np.max(x))
+                    y *= ((output_dim-pad)/np.max(y))
+                    x += pad/2
+                    y += pad/2
+                    total_intensity = np.sum(z)
+                    #Creating the output grid (output_dim x output_dim)
+                    ti = np.linspace(0, output_dim, output_dim)
+                    XI, YI = np.meshgrid(ti, ti)
+                    if self.hex_conversion_algorithm == 'linear_interpolation':
+                        image_2D = griddata((x.ravel(), y.ravel()), z.ravel(), (XI, YI), method='linear',fill_value=0.0)
+                        interpolated_total_intensity = np.sum(image_2D)
+                        image_2D *= (total_intensity/interpolated_total_intensity)
+                    elif self.hex_conversion_algorithm == 'cubic_interpolation':
+                        image_2D = griddata((x.ravel(), y.ravel()), z.ravel(), (XI, YI), method='cubic',fill_value=0.0)
+                        interpolated_total_intensity = np.sum(image_2D)
+                        image_2D *= (total_intensity/interpolated_total_intensity)
+                    image_2D = np.expand_dims(image_2D, axis=2)
+                else:
+                    raise ValueError('Sorry! Telescope type {} isn\'t supported with the conversion algorithm \'{}\'.'.format(telescope_type,self.hex_conversion_algorithm))
+        
+                result.append(image_2D)
         
         telescope_image = np.concatenate(result, axis = -1)
         
-        if telescope_type == "MGC":
+        if (telescope_type == "MGC" and self.hex_conversion_algorithm=='oversampling'):
             pad = self.padding[telescope_type]
             (h, w) = telescope_image.shape[:2]
             h+=pad*2
@@ -648,57 +697,53 @@ class ImageMapper():
         return sparse_map_mat
     
     def generate_table_generic(self, tel_type, pixel_weight=1.0/4):
-        if self.hex_conversion_algorithm == 'oversampling':
-            # Note that this only works for Hex cams
-            # Get telescope pixel positions for the given tel type
-            pos = self.pixel_positions[tel_type]
+        # Note that this only works for Hex cams
+        # Get telescope pixel positions for the given tel type
+        pos = self.pixel_positions[tel_type]
 
-            # Get relevant parameters
-            output_dim = self.image_shapes[tel_type][0]
-            num_pixels = self.num_pixels[tel_type]
-            pixel_length = self.pixel_lengths[tel_type]
+        # Get relevant parameters
+        output_dim = self.image_shapes[tel_type][0]
+        num_pixels = self.num_pixels[tel_type]
+        pixel_length = self.pixel_lengths[tel_type]
 
-            # For LST and MSTN cameras, rotate by a fixed amount to
-            # align for oversampling
-            if tel_type in ["LST", "MSTN"]:
-                pos = self.rotate_cam(pos)
+        # For LST and MSTN cameras, rotate by a fixed amount to
+        # align for oversampling
+        if tel_type in ["LST", "MSTN"]:
+            pos = self.rotate_cam(pos)
 
-            # Compute mapping matrix
-            pos_int = pos / pixel_length * 2
-            pos_int[0, :] = pos_int[0, :] / np.sqrt(3) * 2
-            # below put the image in the corner
-            pos_int[0, :] -= np.min(pos_int[0, :])
-            pos_int[1, :] -= np.min(pos_int[1, :])
-            p0_lim = np.max(pos_int[0, :]) - np.min(pos_int[0, :])
-            p1_lim = np.max(pos_int[1, :]) - np.min(pos_int[1, :])
-            if output_dim < p0_lim or output_dim < p1_lim:
-                print("Danger! output image shape too small, will be cropped!")
-            # below put the image in the center
-            if tel_type in ["FACT"]:
-                pos_int[0, :] += (output_dim - p0_lim) / 2. - 1.0
-                pos_int[1, :] += (output_dim - p1_lim - 0.8) / 2. - 1.0
-            else:
-                pos_int[0, :] += (output_dim - p0_lim) / 2.
-                pos_int[1, :] += (output_dim - p1_lim - 0.8) / 2.
-
-
-            mapping_matrix = np.zeros((num_pixels + 1, output_dim, output_dim), dtype=float)
-            
-            for i in range(num_pixels):
-                x, y = pos_int[:, i]
-                x_S = int(round(x))
-                x_L = x_S + 1
-                y_S = int(round(y))
-                y_L = y_S + 1
-                # leave 0 for padding, mapping matrix from 1 to 499
-                #mapping_matrix[i + 1, x_S:x_L + 1, y_S:y_L + 1] = pixel_weight
-                mapping_matrix[i + 1, y_S:y_L + 1, x_S:x_L + 1] = pixel_weight
-
-            # make sparse matrix of shape (num_pixels + 1, output_dim * output_dim)
-            mapping_matrix = csr_matrix(mapping_matrix.reshape(num_pixels + 1, output_dim * output_dim))
-
+        # Compute mapping matrix
+        pos_int = pos / pixel_length * 2
+        pos_int[0, :] = pos_int[0, :] / np.sqrt(3) * 2
+        # below put the image in the corner
+        pos_int[0, :] -= np.min(pos_int[0, :])
+        pos_int[1, :] -= np.min(pos_int[1, :])
+        p0_lim = np.max(pos_int[0, :]) - np.min(pos_int[0, :])
+        p1_lim = np.max(pos_int[1, :]) - np.min(pos_int[1, :])
+        if output_dim < p0_lim or output_dim < p1_lim:
+            print("Danger! output image shape too small, will be cropped!")
+        # below put the image in the center
+        if tel_type in ["FACT"]:
+            pos_int[0, :] += (output_dim - p0_lim) / 2. - 1.0
+            pos_int[1, :] += (output_dim - p1_lim - 0.8) / 2. - 1.0
         else:
-            raise NotImplementedError("Cannot convert hexagonal camera image without valid conversion algorithm.")
+            pos_int[0, :] += (output_dim - p0_lim) / 2.
+            pos_int[1, :] += (output_dim - p1_lim - 0.8) / 2.
+
+
+        mapping_matrix = np.zeros((num_pixels + 1, output_dim, output_dim), dtype=float)
+            
+        for i in range(num_pixels):
+            x, y = pos_int[:, i]
+            x_S = int(round(x))
+            x_L = x_S + 1
+            y_S = int(round(y))
+            y_L = y_S + 1
+            # leave 0 for padding, mapping matrix from 1 to 499
+            #mapping_matrix[i + 1, x_S:x_L + 1, y_S:y_L + 1] = pixel_weight
+            mapping_matrix[i + 1, y_S:y_L + 1, x_S:x_L + 1] = pixel_weight
+
+        # make sparse matrix of shape (num_pixels + 1, output_dim * output_dim)
+        mapping_matrix = csr_matrix(mapping_matrix.reshape(num_pixels + 1, output_dim * output_dim))
 
         return mapping_matrix
 
