@@ -148,7 +148,7 @@ class ImageMapper():
         if telescope_type in self.image_shapes.keys():
             self.telescope_type = telescope_type
         else:
-            raise ValueError('Sorry! Telescope type {} isn\'t supported.'.format(telescope_type))
+            raise ValueError("Sorry! Telescope type {} isn\'t supported.".format(telescope_type))
         
         n_channels = pixels.shape[1]
         
@@ -158,7 +158,7 @@ class ImageMapper():
             vector = pixels[:,channel]
 
             if self.hex_conversion_algorithm == 'oversampling':
-                if telescope_type == "MSTS":
+                if telescope_type == 'MSTS':
                     image_2D = vector[self.mapping_tables[telescope_type]].T[:,:,np.newaxis]
                 elif telescope_type in ['LST', 'MSTF', 'MSTN', 'SST1', 'SSTC', 'SSTA', 'VTS', 'MGC', 'FACT','HESS-I','HESS-II']:
                     image_2D = (vector.T @ self.mapping_tables[telescope_type]).reshape(self.image_shapes[telescope_type][0],
@@ -167,33 +167,42 @@ class ImageMapper():
 
             elif (self.hex_conversion_algorithm == 'linear_interpolation' or self.hex_conversion_algorithm == 'cubic_interpolation'):
                 if telescope_type in ['LST','MSTF','MSTN','SST1','VTS','MGC','FACT','HESS-I','HESS-II']:
-        
+                    # Get pixel positions and padding information
                     pos = self.pixel_positions[telescope_type]
-                    pad = self.padding[telescope_type]*2
+                    pad = self.padding[telescope_type]
                     # Get relevant parameters
                     output_dim = self.image_shapes[telescope_type][0]+pad*2
                     num_pixels = self.num_pixels[telescope_type]
                     pixel_length = self.pixel_lengths[telescope_type]
-            
-                    # For LST and MSTN cameras, rotate by a fixed amount to
-                    # align for oversampling
+                    '''
+                    The pixel positions from files are already rotated!
                     if telescope_type in ["LST", "MSTN"]:
                         pos = self.rotate_cam(pos)
-
-                    x=pos[0][0:num_pixels]
-                    y=pos[1][0:num_pixels]
+                    '''
+                    # Adding intensities (0.0) for virtual pixels outside the camera
+                    x=pos[0]
+                    y=pos[1]
                     z=vector[1:num_pixels+1]
-                    #shifting and rescaling the pixel positions
+                    while x.shape!=z.shape:
+                        z=np.concatenate((z,[0.0]))
+                    # Shifting and rescaling the pixel positions
                     x -= np.min(x)
                     y -= np.min(y)
+                    pad*=2
                     x *= ((output_dim-pad)/np.max(x))
                     y *= ((output_dim-pad)/np.max(y))
-                    x += pad/2
-                    y += pad/2
+                    if (telescope_type in ['MGC']):
+                        x += pad
+                        y += pad
+                    else:
+                        x += pad/2
+                        y += pad/2
                     total_intensity = np.sum(z)
-                    #Creating the output grid (output_dim x output_dim)
+                    # Creating the output grid.
+                    # Change thrid argument in np.linespace for different resolution.
                     ti = np.linspace(0, output_dim, output_dim)
                     XI, YI = np.meshgrid(ti, ti)
+                    # Applying the interpolation
                     if self.hex_conversion_algorithm == 'linear_interpolation':
                         image_2D = griddata((x.ravel(), y.ravel()), z.ravel(), (XI, YI), method='linear',fill_value=0.0)
                         interpolated_total_intensity = np.sum(image_2D)
@@ -204,13 +213,14 @@ class ImageMapper():
                         image_2D *= (total_intensity/interpolated_total_intensity)
                     image_2D = np.expand_dims(image_2D, axis=2)
                 else:
-                    raise ValueError('Sorry! Telescope type {} isn\'t supported with the conversion algorithm \'{}\'.'.format(telescope_type,self.hex_conversion_algorithm))
+                    raise ValueError("Sorry! Telescope type {} isn\'t supported with the conversion algorithm \'{}\'.".format(telescope_type,self.hex_conversion_algorithm))
         
                 result.append(image_2D)
         
         telescope_image = np.concatenate(result, axis = -1)
         
-        if (telescope_type == "MGC" and self.hex_conversion_algorithm=='oversampling'):
+        # Rotating the MAGIC camera by -19.1°
+        if (telescope_type == 'MGC'):
             pad = self.padding[telescope_type]
             (h, w) = telescope_image.shape[:2]
             h+=pad*2
@@ -698,19 +708,22 @@ class ImageMapper():
     
     def generate_table_generic(self, tel_type, pixel_weight=1.0/4):
         # Note that this only works for Hex cams
-        # Get telescope pixel positions for the given tel type
-        pos = self.pixel_positions[tel_type]
-
         # Get relevant parameters
         output_dim = self.image_shapes[tel_type][0]
         num_pixels = self.num_pixels[tel_type]
         pixel_length = self.pixel_lengths[tel_type]
-
+        # Get telescope pixel positions for the given tel type
+        pos = self.pixel_positions[tel_type]
+        pos = self.slice_pixelPos(pos,num_pixels)
+        
+        '''
+        The pixel positions from files are already rotated!
         # For LST and MSTN cameras, rotate by a fixed amount to
         # align for oversampling
         if tel_type in ["LST", "MSTN"]:
             pos = self.rotate_cam(pos)
-
+        '''
+        
         # Compute mapping matrix
         pos_int = pos / pixel_length * 2
         pos_int[0, :] = pos_int[0, :] / np.sqrt(3) * 2
@@ -747,13 +760,23 @@ class ImageMapper():
 
         return mapping_matrix
 
+    def slice_pixelPos(self, pos, num_pixels):
+        slice_pos = []
+        slice_pos.append(pos[0][0:num_pixels])
+        slice_pos.append(pos[1][0:num_pixels])
+        slice_pos=np.array(slice_pos)
+        return slice_pos
+        
+    '''
+    The pixel positions from files are already rotated!
     def rotate_cam(self, pos):
         rotation_matrix = np.matrix([[0.98198181, 0.18897548],
                              [-0.18897548, 0.98198181]], dtype=float)
         pos_rotated = np.squeeze(np.asarray(np.dot(rotation_matrix, pos)))
 
         return pos_rotated
-
+    '''
+    
     def rebinning(self):
         # placeholder
         raise NotImplementedError
