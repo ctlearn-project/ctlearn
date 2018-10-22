@@ -78,6 +78,8 @@ class ImageMapper():
 
         if hex_conversion_algorithm in ['oversampling']:
             self.hex_conversion_algorithm = hex_conversion_algorithm
+        elif hex_conversion_algorithm in ['nearest_interpolation']:
+            self.hex_conversion_algorithm = hex_conversion_algorithm
         elif hex_conversion_algorithm in ['linear_interpolation']:
             self.hex_conversion_algorithm = hex_conversion_algorithm
         elif hex_conversion_algorithm in ['cubic_interpolation']:
@@ -165,7 +167,7 @@ class ImageMapper():
                                                                                        self.image_shapes[telescope_type][1], 1)
                 result.append(image_2D)
 
-            elif (self.hex_conversion_algorithm == 'linear_interpolation' or self.hex_conversion_algorithm == 'cubic_interpolation'):
+            elif (self.hex_conversion_algorithm == 'linear_interpolation' or self.hex_conversion_algorithm == 'cubic_interpolation' or self.hex_conversion_algorithm == 'nearest_interpolation') :
                 if telescope_type in ['LST','MSTF','MSTN','SST1','VTS','MGC','FACT','HESS-I','HESS-II']:
                     # Get pixel positions and padding information
                     pos = self.pixel_positions[telescope_type]
@@ -203,7 +205,11 @@ class ImageMapper():
                     ti = np.linspace(0, output_dim, output_dim)
                     XI, YI = np.meshgrid(ti, ti)
                     # Applying the interpolation
-                    if self.hex_conversion_algorithm == 'linear_interpolation':
+                    if self.hex_conversion_algorithm == 'nearest_interpolation':
+                        image_2D = griddata((x.ravel(), y.ravel()), z.ravel(), (XI, YI), method='nearest',fill_value=0.0)
+                        interpolated_total_intensity = np.sum(image_2D)
+                        image_2D *= (total_intensity/interpolated_total_intensity)
+                    elif self.hex_conversion_algorithm == 'linear_interpolation':
                         image_2D = griddata((x.ravel(), y.ravel()), z.ravel(), (XI, YI), method='linear',fill_value=0.0)
                         interpolated_total_intensity = np.sum(image_2D)
                         image_2D *= (total_intensity/interpolated_total_intensity)

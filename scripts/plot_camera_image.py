@@ -23,6 +23,21 @@ test_mapper_overPAD = ImageMapper(hex_conversion_algorithm='oversampling',paddin
                                   'HESS-I': 10,
                                   'HESS-II': 10
                                   })
+test_mapper_nearest = ImageMapper(hex_conversion_algorithm='nearest_interpolation')
+test_mapper_nearestPAD = ImageMapper(hex_conversion_algorithm='nearest_interpolation',padding = {
+                                    'LST': 10,
+                                    'MSTF': 10,
+                                    'MSTN': 20,
+                                    'MSTS': 10,
+                                    'SST1': 10,
+                                    'SSTC': 10,
+                                    'SSTA': 10,
+                                    'VTS': 10,
+                                    'MGC': 5,
+                                    'FACT': 10,
+                                    'HESS-I': 10,
+                                    'HESS-II': 10
+                                    })
 test_mapper_linear = ImageMapper(hex_conversion_algorithm='linear_interpolation')
 test_mapper_linearPAD = ImageMapper(hex_conversion_algorithm='linear_interpolation',padding = {
                                     'LST': 10,
@@ -55,6 +70,8 @@ test_mapper_cubicPAD = ImageMapper(hex_conversion_algorithm='cubic_interpolation
                                    })
 test_im_dict_over = {}
 test_im_dict_overPAD = {}
+test_im_dict_nearest = {}
+test_im_dict_nearestPAD = {}
 test_im_dict_linear = {}
 test_im_dict_linearPAD = {}
 test_im_dict_cubic = {}
@@ -119,6 +136,27 @@ for tel_ in ['LST', 'MSTF', 'MSTN', 'MSTS', 'SST1', 'SSTC', 'SSTA', 'VTS', 'MGC'
     plt.close()
 
     if tel_ in ['LST', 'MSTF', 'MSTN', 'SST1', 'VTS', 'MGC', 'FACT','HESS-I','HESS-II']:
+    
+        # Nearest interpolation
+        test_im_dict_nearest[tel_] = test_mapper_nearest.map_image(test_pix_vals[tel_],tel_)
+        test_im_dict_nearestPAD[tel_] = test_mapper_nearestPAD.map_image(test_pix_vals[tel_],tel_)
+        # Create vectorial grapics for each telescope camera with nearest interpolation.
+        plt.figure(figsize=(20,20))
+        plt.pcolor(test_im_dict_nearest[tel_][:,:,0],cmap='viridis')
+        
+        plt.title('{} Camera - Nearest interpolation'.format(tel_),fontsize=32)
+        plt.axes().set_aspect('equal')
+        plt.savefig('{}_Camera_NearestInterpolation.png'.format(tel_), dpi = 300)
+        plt.close()
+        
+        # Create vectorial grapics for each telescope camera with nearest interpolation and padding.
+        plt.figure(figsize=(20,20))
+        plt.pcolor(test_im_dict_nearestPAD[tel_][:,:,0],cmap='viridis')
+        
+        plt.title('{} Camera - Nearest interpolation (Padding)'.format(tel_),fontsize=32)
+        plt.axes().set_aspect('equal')
+        plt.savefig('{}_Camera_NearestInterpolation_PAD.png'.format(tel_), dpi = 300)
+        plt.close()
     
         # Linear interpolation
         test_im_dict_linear[tel_] = test_mapper_linear.map_image(test_pix_vals[tel_],tel_)
