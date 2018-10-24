@@ -195,7 +195,7 @@ class HDF5DataLoader(DataLoader):
         self.num_images_before_cuts = {}
 
         self.num_events_before_cuts_by_class_name = {}
-        self.num_images_before_cuts_by_class_name = {}
+        self.num_images_before_cuts_by_tel_and_class_name = {}
 
         self.num_position_coordinates = 3
         self.telescope_positions = {}
@@ -324,8 +324,8 @@ class HDF5DataLoader(DataLoader):
                     self.num_images_before_cuts[tel_type] = 0
                 if not tel_type in self.images:
                     self.images[tel_type] = []
-                if not tel_type in self.num_images_before_cuts_by_class_name:
-                    self.num_images_before_cuts_by_class_name[tel_type] = {}
+                if not tel_type in self.num_images_before_cuts_by_tel_and_class_name:
+                    self.num_images_before_cuts_by_tel_and_class_name[tel_type] = {}
                 
                 # for each image index associated to this event
                 for tel_id, image_index in zip(tel_ids, indices):
@@ -335,9 +335,9 @@ class HDF5DataLoader(DataLoader):
                     if image_index != 0:
                         self.images[tel_type].append((row['run_number'], row['event_number'], tel_id))
                         self.num_images_before_cuts[tel_type] += 1
-                        if class_name not in self.num_images_before_cuts_by_class_name[tel_type]:
-                            self.num_images_before_cuts_by_class_name[tel_type][class_name] = 0
-                        self.num_images_before_cuts_by_class_name[tel_type][class_name] += 1
+                        if class_name not in self.num_images_before_cuts_by_tel_and_class_name[tel_type]:
+                            self.num_images_before_cuts_by_tel_and_class_name[tel_type][class_name] = 0
+                        self.num_images_before_cuts_by_tel_and_class_name[tel_type][class_name] += 1
     
     def _update_min_max_charge_values(self, filename):
         # get file handle
@@ -375,9 +375,10 @@ class HDF5DataLoader(DataLoader):
                 'num_selected_telescopes': {tel_type: len(tel_ids) for
                     tel_type, tel_ids in self.selected_telescopes.items()},
                 'num_events_before_cuts_by_class_name': self.num_events_before_cuts_by_class_name,
-                'num_images_before_cuts_by_class_name': self.num_images_before_cuts_by_class_name,
+                'num_images_before_cuts_by_tel_and_class_name': self.num_images_before_cuts_by_tel_and_class_name,
                 'num_events_after_cuts_by_class_name' : self.num_passing_events_by_class_name,
                 'num_images_after_cuts_by_class_name' : self.num_passing_images_by_class_name,
+                'num_val_examples_by_class_name' : self.num_val_examples_by_class_name,
                 'num_position_coordinates': self.num_position_coordinates,
                 'labels_to_class_names': self.labels_to_class_names,
                 'class_names_to_labels': self.class_names_to_labels
@@ -586,16 +587,18 @@ class HDF5DataLoader(DataLoader):
                 
                 # If example_type is single_tel, there will 
                 # be only a single selected telescope type
-                if self.example_type == "single_tel":
-                    image_indices = row[tel_type + "_indices"]
-                    for tel_id in self.selected_telescopes[tel_type]:
-                        index = self.total_telescopes[tel_type].index(tel_id)
-                        if image_indices[index] != 0:
+                
+                image_indices = row[tel_type + "_indices"]
+                for tel_id in self.selected_telescopes[tel_type]:
+                    index = self.total_telescopes[tel_type].index(tel_id)
+                    if image_indices[index] != 0:
+                        if self.example_type == "single_tel":
                             passing_examples.append((row["run_number"], row["event_number"], tel_id))
-                            self.num_passing_images += 1
-                            self.num_passing_images_by_class_name[class_name] += 1
+                        self.num_passing_images += 1
+                        self.num_passing_images_by_class_name[class_name] += 1
+                        
                 # if example type is array, ???
-                elif self.example_type == "array":                               
+                if self.example_type == "array":                               
                     passing_examples.append((row["run_number"], row["event_number"]))
                     
 
@@ -611,7 +614,9 @@ class HDF5DataLoader(DataLoader):
         self.class_weights = []
         for class_name in sorted(self.num_passing_examples_by_class_name, key=lambda x: self.class_names_to_labels[x]):
             self.class_weights.append(self.num_passing_examples/float(self.num_passing_examples_by_class_name[class_name]))
-
+        
+        self.num_val_examples_by_class_name = {}
+        
         if self.mode == 'train':            
             # use random seed to get reproducible training
             # and validation sets
@@ -625,6 +630,26 @@ class HDF5DataLoader(DataLoader):
            
             self.training_examples = passing_examples[num_validation:len(passing_examples)]
             self.validation_examples = passing_examples[0:num_validation]
+            
+            # Count validation examples
+            for example in self.validation_examples:
+                if self.example_type == 'single_tel':
+                    run_number, event_number, _ = example
+                elif self.example_type == 'array':
+                    run_number, event_number = example
+    
+                # locate corresponding event record to get particle type
+                filename, index = self.__events_to_indices[(run_number, event_number)]
+                f = self.files[filename]
+                event_record = f.root.Event_Info[index]
+    
+                # Get classification label by converting CORSIKA particle code
+                class_name = PARTICLE_ID_TO_CLASS_NAME[event_record['particle_id']]
+                
+                if class_name not in self.num_val_examples_by_class_name:
+                    self.num_val_examples_by_class_name[class_name] = 0
+                
+                self.num_val_examples_by_class_name[class_name] += 1
 
         elif self.mode == 'test':
 
