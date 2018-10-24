@@ -119,4 +119,5 @@ if __name__ == "__main__":
                 100 * float(num_val_examples_by_class_name[class_name])/total_num_events),
                 file=out
                 )
-    
+
+
