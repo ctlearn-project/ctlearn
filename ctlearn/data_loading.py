@@ -112,7 +112,7 @@ class HDF5DataLoader(DataLoader):
             selected_tel_ids = {}
         self.selected_tel_ids = selected_tel_ids
         self.merge_tel_types = merge_tel_types
-        
+       
         self.min_num_tels = min_num_tels
         self.cut_condition = cut_condition
 
@@ -208,7 +208,6 @@ class HDF5DataLoader(DataLoader):
         self.images = {}
 
         self.num_events = 0
-        self.num_images_before_cuts = {}
 
         self.num_events_before_cuts_by_class_name = {}
         self.num_images_before_cuts_by_tel_and_class_name = {}
@@ -336,8 +335,6 @@ class HDF5DataLoader(DataLoader):
             for tel_type in self.total_telescopes:
                 tel_ids = self.total_telescopes[tel_type]
                 indices = row[tel_type + '_indices']
-                if not tel_type in self.num_images_before_cuts:
-                    self.num_images_before_cuts[tel_type] = 0
                 if not tel_type in self.images:
                     self.images[tel_type] = []
                 if not tel_type in self.num_images_before_cuts_by_tel_and_class_name:
@@ -350,7 +347,6 @@ class HDF5DataLoader(DataLoader):
                             ] = (filename, tel_type, image_index)
                     if image_index != 0:
                         self.images[tel_type].append((row['run_number'], row['event_number'], tel_id))
-                        self.num_images_before_cuts[tel_type] += 1
                         if class_name not in self.num_images_before_cuts_by_tel_and_class_name[tel_type]:
                             self.num_images_before_cuts_by_tel_and_class_name[tel_type][class_name] = 0
                         self.num_images_before_cuts_by_tel_and_class_name[tel_type][class_name] += 1
@@ -392,9 +388,9 @@ class HDF5DataLoader(DataLoader):
                     tel_type, tel_ids in self.selected_telescopes.items()},
                 'num_events_before_cuts_by_class_name': self.num_events_before_cuts_by_class_name,
                 'num_images_before_cuts_by_tel_and_class_name': self.num_images_before_cuts_by_tel_and_class_name,
-                'num_events_after_cuts_by_class_name' : self.num_passing_events_by_class_name,
-                'num_images_after_cuts_by_class_name' : self.num_passing_images_by_class_name,
-                'num_val_examples_by_class_name' : self.num_val_examples_by_class_name,
+                'num_events_after_cuts_by_class_name': self.num_passing_events_by_class_name,
+                'num_images_after_cuts_by_tel_and_class_name': self.num_passing_images_by_tel_and_class_name,
+                'num_val_examples_by_class_name': self.num_val_examples_by_class_name,
                 'num_position_coordinates': self.num_position_coordinates,
                 'labels_to_class_names': self.labels_to_class_names,
                 'class_names_to_labels': self.class_names_to_labels
@@ -427,6 +423,7 @@ class HDF5DataLoader(DataLoader):
 
         self.selected_telescopes = {}
         for tel_type in self.selected_telescope_types:
+            # Check that the tel_type is in the data and mapping tables
             if tel_type not in self.total_telescopes:
                 raise ValueError("Selected tel type {} not found in "
                         "dataset.".format(tel_type))
@@ -434,6 +431,7 @@ class HDF5DataLoader(DataLoader):
                 raise NotImplementedError("Mapping table for selected "
                         "tel type {} not implemented.".format(tel_type))
             available_tel_ids = self.total_telescopes[tel_type]
+            # Keep only the selected tel ids for the tel type
             if tel_type in self.selected_tel_ids:
                 # Check that all requested telescopes are available to select
                 requested_tel_ids = self.selected_tel_ids[tel_type]
@@ -556,74 +554,90 @@ class HDF5DataLoader(DataLoader):
 
         return data + labels
 
-    # Function to get all indices in each HDF5 file which pass a provided cut condition
-    # For single tel mode, returns all MSTS image table indices from events passing the cuts
-    # For array-level mode, returns all event table indices from events passing the cuts
-    # Cut condition must be a string formatted as a Pytables selection condition
-    # (i.e. for table.where()). See Pytables documentation for examples.
-    # If cut condition is empty, do not apply any cuts.
-
-    # Min num tels is a dictionary specifying the minimum number of telescopes of each type required
+    # Get all indices in each HDF5 file which pass a provided cut condition.
+    # In single_tel mode, return all image table indices from events
+    # passing the cuts. In array-level mode, return all event table indices
+    # from events passing the cuts.
+    # Apply two kinds of cuts. First, apply cuts specified in the cut
+    # condition, a string formatted as a PyTables selection condition (i.e. 
+    # for table.where()). See Pytables documentation for examples.
+    # If the cut condition is empty, don't apply any cuts here.
+    # Second, cut events with fewer than the minimum number of telescopes 
+    # as specifed by min_num_tels.
     def _apply_cuts(self):
 
         passing_examples = []
         self.num_passing_events = 0
         self.num_passing_events_by_class_name = {}
         self.num_passing_images = 0
-        self.num_passing_images_by_class_name = {}
-        
-        tel_type = self.selected_telescope_type
+        self.num_passing_images_by_tel_and_class_name = {tel_type: {}
+                for tel_type in self.selected_telescopes}
+        self.num_passing_examples = 0
+        self.num_passing_examples_by_class_name = 0
 
         for filename in self.files:
             f = self.files[filename]
-            
             particle_id = f.root._v_attrs.particle_type
             class_name = PARTICLE_ID_TO_CLASS_NAME[particle_id]
-            
-            if class_name not in self.num_passing_images_by_class_name:
-                self.num_passing_images_by_class_name[class_name] = 0
-            
             if class_name not in self.num_passing_events_by_class_name:
                 self.num_passing_events_by_class_name[class_name] = 0
-    
+            
+            for tel_type in self.num_passing_images_by_tel_and_class_name:
+                if class_name not in self.num_passing_images_by_tel_and_class_name[tel_type]):
+                self.num_passing_images_by_tel_and_class_name[tel_type][class_name] = 0
+            
             event_table = f.root.Event_Info
             
-            # Apply the cuts specified in cut condition
-            rows = event_table.where(self.cut_condition) if self.cut_condition else event_table.iterrows()
+            # Choose only rows passing the cuts specified in cut condition
+            rows = (event_table.where(self.cut_condition) 
+                    if self.cut_condition else event_table.iterrows())
             for row in rows:
-                # First check if min num tels cut is passed
-                if np.count_nonzero(row[tel_type + "_indices"]) < self.min_num_tels:
+                # Check that the event has the mininum number of telescopes,
+                # ignoring non-selected telescopes
+                num_triggered_tels = 0
+                num_triggered_tels_by_type = {}
+                triggered_tel_ids = []
+                for tel_type, tel_ids in self.selected_telescopes.items():
+                    image_indices = row[tel_type + "_indices"]
+                    tel_indices = np.array([
+                            self.total_telescopes[tel_type].index(tel_id)
+                            for tel_id in tel_ids])
+                    triggered_image_indices = image_indices[tel_indices]
+                    num_tels = np.count_nonzero(triggered_image_indices)
+                    num_triggered_tels += num_tels
+                    num_triggered_tels_by_type[tel_type] = num_tels
+                    triggered_tel_ids.append(list(triggered_image_indices))
+                if num_tels < self.min_num_tels:
                     continue
-               
+
+                # The event passed all cuts
                 self.num_passing_events += 1
                 self.num_passing_events_by_class_name[class_name] += 1
-                
-                # If example_type is single_tel, there will 
-                # be only a single selected telescope type
-                
-                image_indices = row[tel_type + "_indices"]
-                for tel_id in self.selected_telescopes[tel_type]:
-                    index = self.total_telescopes[tel_type].index(tel_id)
-                    if image_indices[index] != 0:
-                        if self.example_type == "single_tel":
-                            passing_examples.append((row["run_number"], row["event_number"], tel_id))
-                        self.num_passing_images += 1
-                        self.num_passing_images_by_class_name[class_name] += 1
-                        
-                # if example type is array, ???
-                if self.example_type == "array":                               
-                    passing_examples.append((row["run_number"], row["event_number"]))
+                self.num_passing_images += num_triggered_tels
+                self.num_passing_images_by_tel_and_class_name[tel_type][class_name] += num_triggered_tels_by_type
+
+                # Save the passing example(s) depending on the example type
+                if self.example_type == 'single_tel':
+                    for tel_id in triggered_tel_ids:
+                        passing_examples.append((row['run_number'],
+                                row['event_number'], tel_id))
+                elif self.example_type == 'array':
+                    passing_examples.append((row['run_number'],
+                        row['event_number']))
                     
 
-        # get total number of examples
+        # Record total number of examples
         if self.example_type == 'single_tel':
             self.num_passing_examples = self.num_passing_images
-            self.num_passing_examples_by_class_name = self.num_passing_images_by_class_name
+            self.num_passing_examples_by_class_name = \
+                    self.num_passing_images_by_tel_and_class_name[
+                            self.selected_telescope_types[0]]
         elif self.example_type == 'array':
             self.num_passing_examples = self.num_passing_events
-            self.num_passing_examples_by_class_name = self.num_passing_events_by_class_name
+            self.num_passing_examples_by_class_name = \
+                    self.num_passing_events_by_class_name
 
-        # compute class weights
+        # Compute class weights
         self.class_weights = []
         for class_name in sorted(self.num_passing_examples_by_class_name, key=lambda x: self.class_names_to_labels[x]):
             self.class_weights.append(self.num_passing_examples/float(self.num_passing_examples_by_class_name[class_name]))

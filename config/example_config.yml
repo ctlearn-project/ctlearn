@@ -61,11 +61,12 @@ Data:
         # auxiliary info) for each telescope type into three combined data
         # arrays, instead of returning them as sublists grouped by tel type.
         # Images must have the same dimensions (at least post-processing)!
-        merge_tel_types: False
+        merge_tel_types: false
 
-        # Optional integer. Default: 1
-        # Minimum number of triggered telescopes of the selected type which
-        # must be present for an event to be loaded.
+        # Optional int. Default: 1
+        # Minimum number of triggered telescopes among all selected 
+        # telescopes (of all types) which must be present for an event to be
+        # loaded. Telescopes that aren't selected don't count.
         min_num_tels: 1
 
         # Optional string. Default: don't apply any cuts.
