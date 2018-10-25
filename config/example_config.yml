@@ -46,7 +46,7 @@ Data:
         #   - 'SSTC': SST-2M GCT Telescope with CHEC Camera
         #   - 'VTS': VERITAS Telescope and Camera
         # List of telescope types to load.
-        selected_telescopes: ['LST']
+        selected_tel_types: ['LST']
         
         # Optional dictionary with string keys and list of integer values,
         # or null. If null, default is an empty dictionary.

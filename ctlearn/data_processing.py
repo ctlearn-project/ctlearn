@@ -45,7 +45,7 @@ class DataProcessor():
         SortParams = namedtuple('SortParams', ['reverse', 'key'])
         self.sorting_params = {
                 # List triggered telescopes first
-                'trigger': SortParams(reverse=True, key=itemgetter(1))
+                'trigger': SortParams(reverse=True, key=itemgetter(1)),
                 # List from largest to smallest sum of pixel charges
                 'size': SortParams(reverse=True, 
                     key=lambda x: np.sum(x[0]))

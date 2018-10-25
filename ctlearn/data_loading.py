@@ -163,8 +163,8 @@ class HDF5DataLoader(DataLoader):
         # Apply cuts to get lists of valid examples
         self._apply_cuts()
 
-        # Calculate class weights to normalize uneven classes
-        self._calculate_class_weights()
+        # Compute class weights to normalize uneven classes
+        self._compute_class_weights()
 
         # Split into training/validation/test sets
         self._split_into_datasets()
@@ -572,7 +572,7 @@ class HDF5DataLoader(DataLoader):
     # as specifed by min_num_tels.
     def _apply_cuts(self):
 
-        passing_examples = []
+        self.passing_examples = []
         self.num_passing_events = 0
         self.num_passing_events_by_class_name = {}
         self.num_passing_images = 0
@@ -589,8 +589,8 @@ class HDF5DataLoader(DataLoader):
                 self.num_passing_events_by_class_name[class_name] = 0
             
             for tel_type in self.num_passing_images_by_tel_and_class_name:
-                if class_name not in self.num_passing_images_by_tel_and_class_name[tel_type]):
-                self.num_passing_images_by_tel_and_class_name[tel_type][class_name] = 0
+                if class_name not in self.num_passing_images_by_tel_and_class_name[tel_type]:
+                    self.num_passing_images_by_tel_and_class_name[tel_type][class_name] = 0
             
             event_table = f.root.Event_Info
             
@@ -613,22 +613,23 @@ class HDF5DataLoader(DataLoader):
                     num_triggered_tels += num_tels
                     num_triggered_tels_by_type[tel_type] = num_tels
                     triggered_tel_ids.append(list(triggered_image_indices))
-                if num_tels < self.min_num_tels:
+                if num_triggered_tels < self.min_num_tels:
                     continue
 
                 # The event passed all cuts
                 self.num_passing_events += 1
                 self.num_passing_events_by_class_name[class_name] += 1
                 self.num_passing_images += num_triggered_tels
-                self.num_passing_images_by_tel_and_class_name[tel_type][class_name] += num_triggered_tels_by_type
+                for tel_type in self.selected_telescopes:
+                    self.num_passing_images_by_tel_and_class_name[tel_type][class_name] += num_triggered_tels_by_type[tel_type]
 
                 # Save the passing example(s) depending on the example type
                 if self.example_type == 'single_tel':
                     for tel_id in triggered_tel_ids:
-                        passing_examples.append((row['run_number'],
-                                row['event_number'], tel_id))
+                        self.passing_examples.append((row['run_number'],
+                            row['event_number'], tel_id))
                 elif self.example_type == 'array':
-                    passing_examples.append((row['run_number'],
+                    self.passing_examples.append((row['run_number'],
                         row['event_number']))
                     
         # Record total number of examples
@@ -666,13 +667,13 @@ class HDF5DataLoader(DataLoader):
             if self.seed is not None:
                 random.seed(self.seed)
             
-            random.shuffle(passing_examples)
+            random.shuffle(self.passing_examples)
 
             # Split examples into training and validation sets
-            num_validation = math.ceil(self.validation_split * len(passing_examples)) 
+            num_validation = math.ceil(self.validation_split * len(self.passing_examples)) 
            
-            self.training_examples = passing_examples[num_validation:len(passing_examples)]
-            self.validation_examples = passing_examples[0:num_validation]
+            self.training_examples = self.passing_examples[num_validation:len(self.passing_examples)]
+            self.validation_examples = self.passing_examples[0:num_validation]
             
             # Count validation examples
             for example in self.validation_examples:
@@ -696,7 +697,7 @@ class HDF5DataLoader(DataLoader):
 
         elif self.mode == 'test':
 
-            self.examples = passing_examples
+            self.examples = self.passing_examples
 
     # Given a list of examples (tuples), returns a generator function 
     # which yields from the list. Optionally shuffles the examples
