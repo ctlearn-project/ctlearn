@@ -35,8 +35,8 @@ Data:
 		# If True, an additional channel is loaded indicated peak pulse arrival time per pixel
 		use_peak_times: False
 
-        # Optional string. Default: 'LST'
-        # Valid options:
+        # Optional list of tel_type strings or null. Default if null: ['LST']
+        # Valid tel_types:
         #   - 'LST': LST Telescope and Camera
         #   - 'MSTF': MST Telescope with FlashCAM Camera
         #   - 'MSTN': MST Telescope with NectarCAM Camera
@@ -45,13 +45,16 @@ Data:
         #   - 'SSTA': SST-2M ASTRI Telescope and Camera
         #   - 'SSTC': SST-2M GCT Telescope with CHEC Camera
         #   - 'VTS': VERITAS Telescope and Camera
-        # Telescope type to load.
-        selected_tel_type: 'LST'
+        # List of telescope types to load.
+        selected_telescopes: ['LST']
         
-        # Optional list of integers. Default: load all telescopes of the
-        # selected tel type.
-        # ID numbers of telescopes to load of the selected tel type.
-        selected_tel_ids: [1, 2, 3, 4]
+        # Optional dictionary with string keys and list of integer values,
+        # or null. If null, default is an empty dictionary.
+        # Valid keys are the tel_types listed above, and the values should be
+        # the tel_ids of the telescopes to load of that tel_type.
+        # Default if tel_type not in dict: load all telescopes of the tel_type.
+        selected_tel_ids:
+            LST: [1, 2, 3, 4]
 
         # Optional integer. Default: 1
         # Minimum number of triggered telescopes of the selected type which

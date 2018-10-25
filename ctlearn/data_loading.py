@@ -66,7 +66,7 @@ class HDF5DataLoader(DataLoader):
             mode='train',
             use_peak_times = False,
             example_type='array',
-            selected_tel_type='LST',
+            selected_tel_types=None,
             selected_tel_ids=None,
             min_num_tels=1,
             cut_condition=None,
@@ -96,8 +96,15 @@ class HDF5DataLoader(DataLoader):
         else:
             raise ValueError("Invalid example type selection: {}. Select 'single_tel' or 'array'.".format(example_type))
 
-        self.cut_condition = cut_condition
+        if selected_tel_types is None:
+            selected_tel_types = ['LST']
+        self.selected_telescope_types = selected_tel_types
+        if selected_tel_ids is None:
+            selected_tel_ids = {}
+        self.selected_tel_ids = selected_tel_ids
+        
         self.min_num_tels = min_num_tels
+        self.cut_condition = cut_condition
 
         if validation_split < 1.0 and validation_split > 0.0:
             self.validation_split = validation_split
@@ -139,10 +146,9 @@ class HDF5DataLoader(DataLoader):
             self.data_processor.add_image_charge_mins(
                     self.image_charge_mins
                     )
-            
         
         # Select desired telescopes
-        self._select_telescopes(selected_tel_type, tel_ids=selected_tel_ids)
+        self._select_telescopes()
 
         # Apply cuts to get lists of valid examples
         self._apply_cuts()
@@ -370,7 +376,7 @@ class HDF5DataLoader(DataLoader):
                 'total_telescopes': self.total_telescopes,
                 'num_total_telescopes': {tel_type: len(tel_ids) for
                     tel_type, tel_ids in self.total_telescopes.items()},
-                'selected_telescope_types': [self.selected_telescope_type],
+                'selected_telescope_types': self.selected_telescope_types,
                 'selected_telescopes': self.selected_telescopes,
                 'num_selected_telescopes': {tel_type: len(tel_ids) for
                     tel_type, tel_ids in self.selected_telescopes.items()},
@@ -407,26 +413,29 @@ class HDF5DataLoader(DataLoader):
 
     # Select which telescopes from the full dataset to include in each event 
     # by a telescope type and an optional list of telescope ids.
-    def _select_telescopes(self, tel_type, tel_ids=None):
-       
-        if tel_type not in self.total_telescopes:
-            raise ValueError("Selected tel type {} not found in dataset.".format(tel_type))
-        if tel_type not in self._image_mapper.mapping_tables:
-            raise NotImplementedError("Mapping table for selected tel type {} not implemented.".format(tel_type))
-        self.selected_telescope_type = tel_type
-        self.selected_telescopes = {
-                self.selected_telescope_type: self.total_telescopes[tel_type]}
-        if tel_ids:
-            requested_telescopes = {self.selected_telescope_type: tel_ids}
-            invalid_telescopes = {}
-            # Confirm requested telescopes are a subset of selected telescopes
-            for tel_type, requested_tel_ids in requested_telescopes.items():
-                invalid_telescopes[tel_type] = list(
-                        set(requested_tel_ids).difference(
-                            self.selected_telescopes[tel_type]))
-            if any(invalid_telescopes.values()):
-                raise ValueError("The selected tel types do not have selected tel ids: {}".format(invalid_telescopes))
-            self.selected_telescopes = requested_telescopes
+    def _select_telescopes(self):
+
+        self.selected_telescopes = {}
+        for tel_type in self.selected_telescope_types:
+            if tel_type not in self.total_telescopes:
+                raise ValueError("Selected tel type {} not found in "
+                        "dataset.".format(tel_type))
+            if tel_type not in self._image_mapper.mapping_tables:
+                raise NotImplementedError("Mapping table for selected "
+                        "tel type {} not implemented.".format(tel_type))
+            available_tel_ids = self.total_telescopes[tel_type]
+            if tel_type in self.selected_tel_ids:
+                # Check that all requested telescopes are available to select
+                requested_tel_ids = self.selected_tel_ids[tel_type]
+                invalid_tel_ids = list(set(requested_tel_ids) -
+                        set(available_tel_ids))
+                if invalid_tel_ids:
+                    raise ValueError("Tel ids {} are not a valid selection"
+                            "for tel type '{}'".format(invalid_tel_ids,
+                                tel_type))
+                self.selected_telescopes[tel_type] = requested_tel_ids
+            else:
+                self.selected_telescopes[tel_type] = available_tel_ids
   
     # Get a single telescope image from a particular event, 
     # uniquely identified by a tuple (run_number, event_number, tel_id).
