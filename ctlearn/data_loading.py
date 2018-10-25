@@ -144,7 +144,7 @@ class HDF5DataLoader(DataLoader):
         
         # If needed for normalization, update min max charge values
         # And feed them to the data processor
-        if  self.data_processor is not None and \
+        if self.data_processor is not None and \
             self.data_processor.normalization is not None:
             
             self.image_charge_mins = {}
@@ -162,6 +162,12 @@ class HDF5DataLoader(DataLoader):
 
         # Apply cuts to get lists of valid examples
         self._apply_cuts()
+
+        # Calculate class weights to normalize uneven classes
+        self._calculate_class_weights()
+
+        # Split into training/validation/test sets
+        self._split_into_datasets()
 
         # Based on example_type and selected telescopes, compute the generator
         # output datatypes and map_fn output datatypes.
@@ -625,7 +631,6 @@ class HDF5DataLoader(DataLoader):
                     passing_examples.append((row['run_number'],
                         row['event_number']))
                     
-
         # Record total number of examples
         if self.example_type == 'single_tel':
             self.num_passing_examples = self.num_passing_images
@@ -637,10 +642,21 @@ class HDF5DataLoader(DataLoader):
             self.num_passing_examples_by_class_name = \
                     self.num_passing_events_by_class_name
 
-        # Compute class weights
+    def _compute_class_weights(self):
         self.class_weights = []
-        for class_name in sorted(self.num_passing_examples_by_class_name, key=lambda x: self.class_names_to_labels[x]):
-            self.class_weights.append(self.num_passing_examples/float(self.num_passing_examples_by_class_name[class_name]))
+        for class_name in sorted(self.num_passing_examples_by_class_name,
+                key=lambda x: self.class_names_to_labels[x]):
+            class_examples = self.num_passing_examples_by_class_name[class_name]
+            try:
+                class_inverse_frac = self.num_passing_examples / class_examples
+            except ZeroDivisionError:
+                print("Warning: class '{}' has no examples, unable to "
+                        "calculate class weights".format(class_name))
+                self.class_weights = [1.0 for c in class_names]
+                return
+            self.class_weights.append(class_inverse_frac)
+
+    def _split_into_datasets(self):
         
         self.num_val_examples_by_class_name = {}
         
