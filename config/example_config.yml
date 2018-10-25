@@ -55,6 +55,13 @@ Data:
         # Default if tel_type not in dict: load all telescopes of the tel_type.
         selected_tel_ids:
             LST: [1, 2, 3, 4]
+        
+        # Optional Boolean. Default: False
+        # In array mode, merge the data arrays (images, triggers, and
+        # auxiliary info) for each telescope type into three combined data
+        # arrays, instead of returning them as sublists grouped by tel type.
+        # Images must have the same dimensions (at least post-processing)!
+        merge_tel_types: False
 
         # Optional integer. Default: 1
         # Minimum number of triggered telescopes of the selected type which

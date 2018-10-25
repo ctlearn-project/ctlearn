@@ -64,10 +64,11 @@ class HDF5DataLoader(DataLoader):
     def __init__(self, 
             file_list,
             mode='train',
-            use_peak_times = False,
+            use_peak_times=False,
             example_type='array',
             selected_tel_types=None,
             selected_tel_ids=None,
+            merge_tel_types=False,
             min_num_tels=1,
             cut_condition=None,
             validation_split=0.1,
@@ -99,9 +100,18 @@ class HDF5DataLoader(DataLoader):
         if selected_tel_types is None:
             selected_tel_types = ['LST']
         self.selected_telescope_types = selected_tel_types
+        if not self.selected_telescope_types:
+            raise ValueError("No telescope types selected.")
+            
+        if (self.example_type == 'single_tel'
+                and len(self.selected_telescope_types) != 1):
+            raise ValueError("Must select exactly one tel type in single tel "
+                    "mode. Selected: {}".format(self.selected_telescope_types))
+
         if selected_tel_ids is None:
             selected_tel_ids = {}
         self.selected_tel_ids = selected_tel_ids
+        self.merge_tel_types = merge_tel_types
         
         self.min_num_tels = min_num_tels
         self.cut_condition = cut_condition
@@ -476,79 +486,63 @@ class HDF5DataLoader(DataLoader):
 
     def get_example(self, *identifiers):
 
+        # Get record for the event 
+        run_number, event_number = identifiers[0:2]
+        filename, index = self.__events_to_indices[(run_number, event_number)]
+        f = self.files[filename]
+        record = f.root.Event_Info[index]
+        
+        # Get classification label by converting CORSIKA particle code
+        class_name = PARTICLE_ID_TO_CLASS_NAME[event_record['particle_id']]
+        labels = [self.class_names_to_labels[class_name]]
+
+        # Get data
         if self.example_type == "single_tel":
-
-            run_number, event_number, tel_id = identifiers
-
-            # get image from image table
-            image = self.get_image(run_number, event_number, tel_id) 
-
-            # locate corresponding event record to get particle type
-            filename, index = self.__events_to_indices[(run_number, event_number)]
-            f = self.files[filename]
-            event_record = f.root.Event_Info[index]
-
-            # Get classification label by converting CORSIKA particle code
-            class_name = PARTICLE_ID_TO_CLASS_NAME[event_record['particle_id']]
-            label = self.class_names_to_labels[class_name]
-            
-            data = [image]
-            labels = [label]
-
+            # Easy for single tel - just the image
+            tel_id = identifiers[2]
+            data = self.get_image(run_number, event_number, tel_id)
+            # Add telescope dimension for compatibility with array models
+            # when using single tel for generating pretrained weights 
+            data = np.expand_dims(data, axis=0).astype(np.float32)
         elif self.example_type == "array":
+            # Loop over the selected telescopes in the event to get
+            # the images, binary trigger values, and auxiliary inputs
+            data = []
+            for tel_type, tel_ids in self.selected_telescopes.items():
+                data.append([[], [], []])
+                for tel_id in tel_ids:
+                    tel_index = self.total_telescopes[tel_type].index(tel_id)
+                    image_index = record[tel_type + "_indices"][tel_index]
+                    if image_index == 0:
+                        # Telescope did not trigger. Its outputs will be
+                        # dropped out, so input is arbitrary. Use an 
+                        # empty array for efficiency.
+                        image_shape = self._image_mapper.image_shapes[tel_type] 
+                        image = np.empty(image_shape)
+                        trigger = 0
+                    else:
+                        image = self.get_image(run_number, event_number, tel_id)
+                        trigger = 1
+                    data[-1][0].append(image)
+                    data[-1][1].append(trigger)
+                    aux_inputs = []
+                    if self.use_telescope_positions:
+                        normalized_position = [float(tel_coord) / max_coord
+                                for tel_coord, max_coord in zip(
+                                    self.telescope_positions[tel_type][tel_id],
+                                    self.max_telescope_position)]
+                        aux_inputs.append(normalized_position)
+                    data[-1][2].append(aux_inputs)
+            # Convert lists to NumPy arrays
+            for tel_data in data:
+                tel_data[0] = np.stack(tel_data[0]).astype(np.float32)
+                tel_data[1] = np.array(tel_data[1], dtype=np.int8)
+                tel_data[2] = np.array(tel_data[2], dtype=np.float32)
 
-            run_number, event_number = identifiers
-            tel_type = self.selected_telescope_type
-
-            # get filename, image table name (telescope type), and index
-            # corresponding to the desired image
-            filename, index = self.__events_to_indices[(run_number, event_number)]
-            
-            f = self.files[filename]
-            record = f.root.Event_Info[index]
-
-            # Get classification label by converting CORSIKA particle code
-            class_name = PARTICLE_ID_TO_CLASS_NAME[record['particle_id']]
-            label = self.class_names_to_labels[class_name]
-          
-            # Collect images and binary trigger values only for telescopes
-            # in selected_telescopes            
-            images = []
-            triggers = []
-            aux_inputs = []
-            image_shape = self._image_mapper.image_shapes[tel_type] 
-            
-            for tel_id in self.selected_telescopes[tel_type]:
-                index = self.total_telescopes[tel_type].index(tel_id)
-                i = record[tel_type + "_indices"][index]
-                if i == 0:
-                    # Telescope did not trigger. Its outputs will be dropped
-                    # out, so input is arbitrary. Use an empty array for
-                    # efficiency.
-                    images.append(np.empty(image_shape))
-                    triggers.append(0)  
-                else:
-                    image = self.get_image(run_number, event_number, tel_id)
-                    images.append(image)
-                    triggers.append(1)
-                if self.use_telescope_positions:
-                    telescope_position = self.telescope_positions[tel_type][tel_id]
-                    telescope_position = [float(telescope_position[i]) / self.max_telescope_position[i] 
-                            for i in range(self.num_position_coordinates)]
-                    aux_inputs.append(telescope_position)
-            
-            data = [images, triggers, aux_inputs]
-            labels = [label]
-
+        # Process the example
         if self.data_processor:
-            data, labels = self.data_processor.process_example(data, labels, self.selected_telescope_type)
-
-        if self.example_type == 'single_tel':
-            data[0] = np.stack(data[0]).astype(np.float32)
-        elif self.example_type == 'array':
-            data[0] = np.stack(data[0]).astype(np.float32)
-            data[1] = np.array(data[1], dtype=np.int8)
-            data[2] = np.array(data[2], dtype=np.float32)
+            data, labels = self.data_processor.process_example(data, labels,
+                    self.selected_telescope_types)
 
         return data + labels
 

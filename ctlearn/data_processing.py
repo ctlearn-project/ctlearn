@@ -166,7 +166,7 @@ class DataProcessor():
 
         return image, auxiliary_info
 
-    def process_example(self, data, label, tel_type):
+    def process_example(self, data, label, tel_types):
         
         # infer whether example is single tel or array based on
         # number of elements in data
@@ -178,7 +178,7 @@ class DataProcessor():
         if example_type == "single_tel":
             image = data[0]
 
-            image, _ = self._process_image(image, tel_type)
+            image, _ = self._process_image(image, tel_types[0])
             data = [image]
             
             return [data, label]
@@ -187,21 +187,22 @@ class DataProcessor():
             images = data[0]
             triggers = data[1]
             aux_inputs = data[2]
-            
-            image_shape = self.image_shapes[tel_type]
-            for i in range(len(images)):
-                trigger = triggers[i]
-                if trigger == 0:
-                    # telescope did not trigger, so provide a
-                    # zeroed-out image
-                    images[i] = np.zeros(image_shape)
-                    if self.crop:
-                        # add dummy centroid position to aux info
-                        aux_inputs[i].extend([0.0, 0.0])
-                else:
-                    image, auxiliary_info = self._process_image(images[i], tel_type)
-                    images[i] = image
-                    aux_inputs[i].extend(auxiliary_info)
+
+            for tel_images, tel_type in zip(images, tel_types):
+                image_shape = self.image_shapes[tel_type]
+                for i, image in enumerate(tel_images):
+                    trigger = triggers[i]
+                    if trigger == 0:
+                        # telescope did not trigger, so provide a
+                        # zeroed-out image
+                        images[i] = np.zeros(image_shape)
+                        if self.crop:
+                            # add dummy centroid position to aux info
+                            aux_inputs[i].extend([0.0, 0.0])
+                    else:
+                        image, auxiliary_info = self._process_image(images[i], tel_type)
+                        images[i] = image
+                        aux_inputs[i].extend(auxiliary_info)
       
             if self.sort_images_by == "trigger":
                 # Sort the images, triggers, and grouped auxiliary inputs by
