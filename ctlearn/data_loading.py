@@ -481,6 +481,7 @@ class HDF5DataLoader(DataLoader):
         # Create image by indexing into the trace using the mapping table, then adding a
         # dimension to given shape (length,width,1)
         image = self._image_mapper.map_image(trace, tel_type)
+        image = np.array(image, dtype=np.float32)
 
         return image
 
@@ -503,10 +504,15 @@ class HDF5DataLoader(DataLoader):
             data = self.get_image(run_number, event_number, tel_id)
             # Add telescope dimension for compatibility with array models
             # when using single tel for generating pretrained weights 
-            data = np.expand_dims(data, axis=0).astype(np.float32)
+            data = [np.expand_dims(data, axis=0).astype(np.float32)]
         elif self.example_type == "array":
-            # Loop over the selected telescopes in the event to get
-            # the images, binary trigger values, and auxiliary inputs
+            # Loop over the selected telescopes in the event to get the
+            # data, in the form:
+            # list over tel_types:
+            #   list:
+            #       list of images (NumPy arrays),
+            #       NumPy array of binary trigger values,
+            #       list of auxiliary inputs (NumPy arrays)
             data = []
             for tel_type, tel_ids in self.selected_telescopes.items():
                 data.append([[], [], []])
@@ -514,17 +520,15 @@ class HDF5DataLoader(DataLoader):
                     tel_index = self.total_telescopes[tel_type].index(tel_id)
                     image_index = record[tel_type + "_indices"][tel_index]
                     if image_index == 0:
-                        # Telescope did not trigger. Its outputs will be
-                        # dropped out, so input is arbitrary. Use an 
-                        # empty array for efficiency.
+                        # Telescope didn't trigger, load dummy data
                         image_shape = self._image_mapper.image_shapes[tel_type] 
-                        image = np.empty(image_shape)
+                        image = np.zeros(image_shape, dtype=np.float32)
                         trigger = 0
                     else:
                         image = self.get_image(run_number, event_number, tel_id)
                         trigger = 1
                     data[-1][0].append(image)
-                    data[-1][1].append(trigger)
+                    data[-1][1].append(np.array(trigger, dtype=np.int8))
                     aux_inputs = []
                     if self.use_telescope_positions:
                         normalized_position = [float(tel_coord) / max_coord
@@ -532,17 +536,23 @@ class HDF5DataLoader(DataLoader):
                                     self.telescope_positions[tel_type][tel_id],
                                     self.max_telescope_position)]
                         aux_inputs.append(normalized_position)
+                    aux_inputs = np.array(aux_inputs, dtype=np.float32)
                     data[-1][2].append(aux_inputs)
-            # Convert lists to NumPy arrays
-            for tel_data in data:
-                tel_data[0] = np.stack(tel_data[0]).astype(np.float32)
-                tel_data[1] = np.array(tel_data[1], dtype=np.int8)
-                tel_data[2] = np.array(tel_data[2], dtype=np.float32)
 
         # Process the example
         if self.data_processor:
             data, labels = self.data_processor.process_example(data, labels,
-                    self.selected_telescope_types)
+                    self.selected_telescope_types,
+                    example_type=self.example_type)
+
+        # Combine the data arrays for all telescopes of each type
+        for type_i, tel_type_data in enumerate(data):
+            data[type_i][0] = np.stack([data][type_i][0])
+            data[type_i][1] = np.concatenate([data][type_i][1])
+            data[type_i][2] = np.stack([data][type_i][2])
+        # If specified, combine the arrays for all tel types
+        if self.merge_tel_types:
+            data = [np.concatenate(d) for d in zip(*data)]
 
         return data + labels
 

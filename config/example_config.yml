@@ -140,7 +140,7 @@ Data:
         #   - 'size': Order by largest to smallest total sum of pixel values
         #   - null: Keep DataLoader ordering (by telescope ID)
         # How to sort telescope images when loading data in array mode.
-        sort_images_by: null
+        sorting: null
    
     # Settings for the TensorFlow Estimator input function.
     Input:
