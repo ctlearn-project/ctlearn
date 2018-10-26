@@ -167,24 +167,24 @@ class DataProcessor():
     # list of additional auxiliary parameters produced by
     # the processing.
     def _process_image(self, image, tel_type, dummy_image=False):
-        auxiliary_info = []
+        auxiliary_input = []
 
         if dummy_image: # No trigger - image is blank
             if self.crop:
                 # Add dummy centroid position to aux info
-                auxiliary_info.extend([0.0, 0.0])
-            return image, auxiliary_info
+                auxiliary_input.extend([0.0, 0.0])
+            return image, auxiliary_input
 
         if self.crop:
             image, *shower_position = self._crop_image(image, tel_type)
             image_width = self._image_mapper.image_shapes[tel_type][0]
             normalized_shower_position = [float(p) / image_width for p
                     in shower_position] 
-            auxiliary_info.extend(normalized_shower_position)
+            auxiliary_input.extend(normalized_shower_position)
         if self.normalization:
             image = self._normalize_image(image, tel_type)
 
-        return image, auxiliary_info
+        return image, auxiliary_input
 
     # Process the example using the specified processing options
     def process_example(self, data, label, tel_types, example_type='array'):
@@ -209,7 +209,8 @@ class DataProcessor():
                 tel_image, aux_input = self._process_image(tel_image, tel_type,
                         dummy_image=dummy_image)
                 data[type_i][0][tel_i] = tel_image
-                data[type_i][2][tel_i] = np.append(tel_aux_input, aux_input)
+                data[type_i][2][tel_i] = np.append(tel_aux_input,
+                        aux_input).astype(np.float32)
       
             # Sort the images, triggers, and grouped auxiliary inputs together
             if self.sorting is not None:

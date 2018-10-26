@@ -174,7 +174,8 @@ class HDF5DataLoader(DataLoader):
         # NOTE: these dtypes will ultimately be converted to TF datatypes using
         # tf.as_dtype()
         if self.example_type == 'single_tel':
-            self.generator_output_dtypes = [np.dtype(np.int64), np.dtype(np.int64), np.dtype(np.int64)] 
+            self.generator_output_dtypes = [np.dtype(np.int64),
+                    np.dtype(np.int64), np.dtype(np.int64)] 
             
             data_dtypes = [np.dtype(np.float32)]
             label_dtypes = [np.dtype(np.int64)]
@@ -184,17 +185,25 @@ class HDF5DataLoader(DataLoader):
             self.map_fn_output_dtypes = data_dtypes + label_dtypes
                     
         elif self.example_type == 'array':
-            self.generator_output_dtypes = [np.dtype(np.int64), np.dtype(np.int64)] 
-           
-            data_dtypes = [np.dtype(np.float32), 
-                   np.dtype(np.int8),
-                   np.dtype(np.float32)
-                   ]
+            self.generator_output_dtypes = [np.dtype(np.int64),
+                    np.dtype(np.int64)] 
+            
+            tel_types = (['telescope'] if self.merge_tel_types 
+                    else self.selected_telescope_types)
+            data_output_names = []
+            data_dtypes = []
+            for tel_type in tel_types:
+                data_output_names.extend([tel_type + '_data',
+                    tel_type + '_triggers', tel_type + '_aux_inputs'])
+                data_dtypes.extend([np.dtype(np.float32), np.dtype(np.int8),
+                    np.dtype(np.float32)])
 
+            label_output_names = ['gamma_hadron_label']
             label_dtypes = [np.dtype(np.int64)]
             
-            self.output_names = ['telescope_data', 'telescope_triggers', 'telescope_aux_inputs', 'gamma_hadron_label']
-            self.output_is_label = [False, False, False, True]
+            self.output_names = data_output_names + label_output_names
+            self.output_is_label = ([False for n in data_output_names]
+                    + [True for n in label_output_names])
             self.map_fn_output_dtypes = data_dtypes + label_dtypes
 
     # Compute and save a collection of metadata parameters
@@ -491,14 +500,14 @@ class HDF5DataLoader(DataLoader):
 
     def get_example(self, *identifiers):
 
-        # Get record for the event 
+        # Get record for the event
         run_number, event_number = identifiers[0:2]
         filename, index = self.__events_to_indices[(run_number, event_number)]
         f = self.files[filename]
         record = f.root.Event_Info[index]
         
         # Get classification label by converting CORSIKA particle code
-        class_name = PARTICLE_ID_TO_CLASS_NAME[event_record['particle_id']]
+        class_name = PARTICLE_ID_TO_CLASS_NAME[record['particle_id']]
         labels = [self.class_names_to_labels[class_name]]
 
         # Get data
@@ -549,14 +558,15 @@ class HDF5DataLoader(DataLoader):
                     self.selected_telescope_types,
                     example_type=self.example_type)
 
-        # Combine the data arrays for all telescopes of each type
-        for type_i, tel_type_data in enumerate(data):
-            data[type_i][0] = np.stack([data][type_i][0])
-            data[type_i][1] = np.concatenate([data][type_i][1])
-            data[type_i][2] = np.stack([data][type_i][2])
-        # If specified, combine the arrays for all tel types
-        if self.merge_tel_types:
-            data = [np.concatenate(d) for d in zip(*data)]
+        if self.example_type == 'array':
+            # Combine the data arrays for all telescopes of each type
+            for type_i in range(len(data)):
+                data[type_i][0] = np.stack(data[type_i][0])
+                data[type_i][1] = np.stack(data[type_i][1])
+                data[type_i][2] = np.stack(data[type_i][2])
+            # If specified, combine the arrays for all tel types
+            if self.merge_tel_types:
+                data = [np.concatenate(d) for d in zip(*data)]
 
         return data + labels
 
@@ -604,15 +614,17 @@ class HDF5DataLoader(DataLoader):
                 num_triggered_tels_by_type = {}
                 triggered_tel_ids = []
                 for tel_type, tel_ids in self.selected_telescopes.items():
-                    image_indices = row[tel_type + "_indices"]
-                    tel_indices = np.array([
+                    tel_id_to_index = {tel_id:
                             self.total_telescopes[tel_type].index(tel_id)
-                            for tel_id in tel_ids])
+                            for tel_id in tel_ids}
+                    tel_indices = np.array(list(tel_id_to_index.values()))
+                    image_indices = row[tel_type + "_indices"]
                     triggered_image_indices = image_indices[tel_indices]
                     num_tels = np.count_nonzero(triggered_image_indices)
                     num_triggered_tels += num_tels
                     num_triggered_tels_by_type[tel_type] = num_tels
-                    triggered_tel_ids.append(list(triggered_image_indices))
+                    triggered_tel_ids.extend([tel_id for tel_id in tel_ids
+                        if tel_id_to_index[tel_id] in triggered_image_indices])
                 if num_triggered_tels < self.min_num_tels:
                     continue
 
