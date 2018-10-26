@@ -63,13 +63,20 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     logger.info("Logging has been correctly set up")
     
     # Load options to specify the model
-    sys.path.append(config['Model']['model_directory'])
+    try:
+        model_directory = config['Model']['model_directory']
+        if model_directory is None:
+            raise KeyError
+    except KeyError:
+        model_directory = os.path.abspath(os.path.join(
+            os.path.dirname(__file__), "default_models/"))
+    sys.path.append(model_directory)
     model_module = importlib.import_module(config['Model']['model']['module'])
     model = getattr(model_module, config['Model']['model']['function'])
     model_type = config['Data'].get('Loading', {}).get('example_type', 'array')
     
     model_hyperparameters = config['Model'].get('Model Parameters', {})
-    model_hyperparameters['model_directory'] = config['Model']['model_directory']
+    model_hyperparameters['model_directory'] = model_directory
 
     # Load options related to the data format and location
     data_format = config['Data']['format']

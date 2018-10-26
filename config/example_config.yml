@@ -191,9 +191,10 @@ Image Mapping:
 # Settings for the TensorFlow model.
 Model:
 
-    # Required string.
+    # Optional string or null. Default if missing or null is to load
+    # CTLearn default models directory: 'ctlearn/ctlearn/default_models/'
     # Path to directory containing model module.
-    model_directory: '/path/to/ctlearn/models/'
+    model_directory: '/my/model/path/'
 
     # Required list of two strings.
     # Module in model directory and function in module implementing the model.
