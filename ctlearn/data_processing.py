@@ -4,8 +4,10 @@ from operator import itemgetter
 import cv2
 import numpy as np
 
-from ctlearn.data_loading import get_camera_type
 from ctlearn.image_mapping import ImageMapper
+
+def get_camera_type(tel_type):
+    return tel_type.split(':')[1]
 
 class DataProcessor():
 

@@ -6,14 +6,25 @@ import cv2
 
 from scipy.sparse import csr_matrix
 
-from ctlearn.data_loading import NEW_TEL_NAMES_TO_OLD
-
 logger = logging.getLogger(__name__)
 
 # Multithread-safe PyTables open and close file functions
 # See http://www.pytables.org/latest/cookbook/threading.html
 lock = threading.Lock()
 
+# TEMPORARY: Maps old telescope names into new
+# For training with datasets generated with versions prior to image-extractor v0.6.0
+OLD_TEL_NAMES_TO_NEW = {
+    'LST':'LST:LSTCam',
+    'MSTF':'MST:FlashCam',
+    'MSTN':'MST:NectarCam',
+    'MSTS':'SCT:SCTCam',
+    'SSTC':'SST:CHEC',
+    'SST1':'SST:DigiCam',
+    'SSTA':'SST:ASTRICam'
+}
+
+NEW_TEL_NAMES_TO_OLD = {v: k for k, v in OLD_TEL_NAMES_TO_NEW.items()}
 
 class ImageMapper():
 
@@ -716,7 +727,8 @@ class ImageMapper():
         raise NotImplementedError
 
     # internal methods to create pixel pos numpy files
-    def __get_pos_from_h5(self, tel_table, camera_type="FlashCam", write=False, outfile=None):
+    @staticmethod
+    def __get_pos_from_h5(tel_table, camera_type="FlashCam", write=False, outfile=None):
 
         CAMERA_TYPE_TO_TEL_TYPE = {
             'LSTCam': 'LST:LSTCam',
@@ -747,13 +759,14 @@ class ImageMapper():
             np.save(outfile, pixel_pos)
         return pixel_pos
 
-    def __create_pix_pos_files(self, data_file):
+    @staticmethod
+    def create_pix_pos_files(data_file):
         import tables # expect this to be run very rarely...
 
         with tables.open_file(data_file, "r") as f:
             tel_table = f.root.Telescope_Info
             for row in tel_table.iterrows():
-                self.__get_pos_from_h5(tel_table, camera_type=row[1].decode("utf-8"), write=True)
+                ImageMapper.__get_pos_from_h5(tel_table, camera_type=row[1].decode("utf-8"), write=True)
 
     def __read_pix_pos_files(self, camera_type):
         if camera_type in self.pixel_lengths:
