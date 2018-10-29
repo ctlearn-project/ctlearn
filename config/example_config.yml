@@ -35,8 +35,8 @@ Data:
 		# If True, an additional channel is loaded indicated peak pulse arrival time per pixel
 		use_peak_times: False
 
-        # Optional string. Default: 'LST'
-        # Valid options:
+        # Optional list of tel_type strings or null. Default if null: ['LST']
+        # Valid tel_types:
         #   - 'LST': LST Telescope and Camera
         #   - 'MSTF': MST Telescope with FlashCAM Camera
         #   - 'MSTN': MST Telescope with NectarCAM Camera
@@ -45,17 +45,28 @@ Data:
         #   - 'SSTA': SST-2M ASTRI Telescope and Camera
         #   - 'SSTC': SST-2M GCT Telescope with CHEC Camera
         #   - 'VTS': VERITAS Telescope and Camera
-        # Telescope type to load.
-        selected_tel_type: 'LST'
+        # List of telescope types to load.
+        selected_tel_types: ['LST']
         
-        # Optional list of integers. Default: load all telescopes of the
-        # selected tel type.
-        # ID numbers of telescopes to load of the selected tel type.
-        selected_tel_ids: [1, 2, 3, 4]
+        # Optional dictionary with string keys and list of integer values,
+        # or null. If null, default is an empty dictionary.
+        # Valid keys are the tel_types listed above, and the values should be
+        # the tel_ids of the telescopes to load of that tel_type.
+        # Default if tel_type not in dict: load all telescopes of the tel_type.
+        selected_tel_ids:
+            LST: [1, 2, 3, 4]
+        
+        # Optional Boolean. Default: False
+        # In array mode, merge the data arrays (images, triggers, and
+        # auxiliary info) for each telescope type into three combined data
+        # arrays, instead of returning them as sublists grouped by tel type.
+        # Images must have the same dimensions (at least post-processing)!
+        merge_tel_types: false
 
-        # Optional integer. Default: 1
-        # Minimum number of triggered telescopes of the selected type which
-        # must be present for an event to be loaded.
+        # Optional int. Default: 1
+        # Minimum number of triggered telescopes among all selected 
+        # telescopes (of all types) which must be present for an event to be
+        # loaded. Telescopes that aren't selected don't count.
         min_num_tels: 1
 
         # Optional string. Default: don't apply any cuts.
@@ -130,7 +141,7 @@ Data:
         #   - 'size': Order by largest to smallest total sum of pixel values
         #   - null: Keep DataLoader ordering (by telescope ID)
         # How to sort telescope images when loading data in array mode.
-        sort_images_by: null
+        sorting: null
    
     # Settings for the TensorFlow Estimator input function.
     Input:
