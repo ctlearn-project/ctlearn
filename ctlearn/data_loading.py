@@ -170,41 +170,58 @@ class HDF5DataLoader(DataLoader):
         self._split_into_datasets()
 
         # Based on example_type and selected telescopes, compute the generator
-        # output datatypes and map_fn output datatypes.
+        # output datatypes and map_fn output names and datatypes.
         # NOTE: these dtypes will ultimately be converted to TF datatypes using
         # tf.as_dtype()
         if self.example_type == 'single_tel':
-            self.generator_output_dtypes = [np.dtype(np.int64),
-                    np.dtype(np.int64), np.dtype(np.int64)] 
-            
-            data_dtypes = [np.dtype(np.float32)]
-            label_dtypes = [np.dtype(np.int64)]
-
-            self.output_names = ['telescope_data', 'gamma_hadron_label']
-            self.output_is_label = [False, True]
-            self.map_fn_output_dtypes = data_dtypes + label_dtypes
-                    
+            generator_outputs = {
+                    'run_number': np.dtype(np.int64),
+                    'event_number': np.dtype(np.int64),
+                    'tel_id': np.dtype(np.int64)
+                    }
+            data_outputs = {
+                    # camera images
+                    'data': np.dtype(np.float32)
+                    }
+            tel_types = ['telescope']
         elif self.example_type == 'array':
-            self.generator_output_dtypes = [np.dtype(np.int64),
-                    np.dtype(np.int64)] 
-            
-            tel_types = (['telescope'] if self.merge_tel_types 
+            generator_outputs = {
+                    'run_number': np.dtype(np.int64),
+                    'event_number': np.dtype(np.int64)
+                    }
+            data_outputs = {
+                    # camera images
+                    'data': np.dtype(np.float32),
+                    # binary trigger values (0 or 1)
+                    'triggers': np.dtype(np.int8),
+                    # position coordinates and other info
+                    'aux_inputs': np.dtype(np.float32)
+                    }
+            tel_types = (['telescope'] if self.merge_tel_types
                     else self.selected_telescope_types)
-            data_output_names = []
-            data_dtypes = []
-            for tel_type in tel_types:
-                data_output_names.extend([tel_type + '_data',
-                    tel_type + '_triggers', tel_type + '_aux_inputs'])
-                data_dtypes.extend([np.dtype(np.float32), np.dtype(np.int8),
-                    np.dtype(np.float32)])
 
-            label_output_names = ['gamma_hadron_label']
-            label_dtypes = [np.dtype(np.int64)]
-            
-            self.output_names = data_output_names + label_output_names
-            self.output_is_label = ([False for n in data_output_names]
-                    + [True for n in label_output_names])
-            self.map_fn_output_dtypes = data_dtypes + label_dtypes
+        label_outputs = {
+                # gamma / proton classification label
+                'gamma_hadron_label': np.dtype(np.int64)
+                }
+
+        self.generator_output_dtypes = [dtype for dtype in
+                generator_outputs.values()] 
+
+        self.output_names = []
+        self.output_is_label = []
+        self.map_fn_output_dtypes = []
+        
+        for tel_type in tel_types:
+            for name, dtype in data_outputs.items():
+                self.output_names.append(tel_type + '_' + name)
+                self.output_is_label.append(False)
+                self.map_fn_output_dtypes.append(dtype)
+        
+        for name, dtype in label_outputs.items():
+            self.output_names.append(name)
+            self.output_is_label.append(True)
+            self.map_fn_output_dtypes.append(dtype)
 
     # Compute and save a collection of metadata parameters
     # which describe the dataset
