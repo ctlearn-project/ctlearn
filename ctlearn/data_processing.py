@@ -4,6 +4,7 @@ from operator import itemgetter
 import cv2
 import numpy as np
 
+from ctlearn.data_loading import get_camera_type
 from ctlearn.image_mapping import ImageMapper
 
 class DataProcessor():
@@ -24,7 +25,7 @@ class DataProcessor():
         self.crop = crop
 
         if bounding_box_sizes is None:
-            bounding_box_sizes = {'MSTS': 48}
+            bounding_box_sizes = {'SCTCam': 48}
         self.bounding_box_sizes = bounding_box_sizes
         
         if image_cleaning in ['twolevel', None]:
@@ -33,7 +34,7 @@ class DataProcessor():
             raise ValueError("Invalid image cleaning method: {}. Select 'twolevel' or None.".format(image_cleaning))
         
         if thresholds is None:
-            thresholds = {'MSTS': (5.5, 1.0)}
+            thresholds = {'SCTCam': (5.5, 1.0)}
         self.thresholds = thresholds
         self.return_cleaned_images = return_cleaned_images
 
@@ -57,13 +58,13 @@ class DataProcessor():
                     "'trigger', 'size', or None.".format(sorting))
 
         self.image_shapes = {}
-        for tel_type in self._image_mapper.image_shapes:
-            if self.crop and tel_type in self.bounding_box_sizes:
-                self.image_shapes[tel_type]= [self.bounding_box_sizes[tel_type], 
-                    self.bounding_box_sizes[tel_type], 
-                    self._image_mapper.image_shapes[tel_type][2]]
+        for camera_type in self._image_mapper.image_shapes:
+            if self.crop and camera_type in self.bounding_box_sizes:
+                self.image_shapes[camera_type]= [self.bounding_box_sizes[camera_type],
+                    self.bounding_box_sizes[camera_type],
+                    self._image_mapper.image_shapes[camera_type][2]]
             else:
-                self.image_shapes[tel_type] = self._image_mapper.image_shapes[tel_type]
+                self.image_shapes[camera_type] = self._image_mapper.image_shapes[camera_type]
 
         self.num_additional_aux_params = 0
         if self.crop:
@@ -75,7 +76,7 @@ class DataProcessor():
     # pixel positions weighted by the charge, after cleaning. The cropped image is
     # obtained as a square bounding box centered on the centroid of side length
     # bounding_box_size.
-    def _crop_image(self, image, tel_type):
+    def _crop_image(self, image, camera_type):
 
         if self.image_cleaning is None:
             cleaned_image = image
@@ -85,17 +86,17 @@ class DataProcessor():
             # Next, retain weaker pixels at the shower edge by allowing pixels
             # adjacent to those passing the first cut to pass a weaker cut
             # (boundary threshold).
-            
+
             # Get only the first channel (charge) of an image of arbitrary depth
             image_charge = image[:,:,0]
 
             # Apply picture threshold to charge image to get mask
-            m = (image_charge > self.thresholds[tel_type][0]).astype(np.uint8)
+            m = (image_charge > self.thresholds[camera_type][0]).astype(np.uint8)
             # Dilate the mask once to add all adjacent pixels (i.e. kernel is 3x3)
-            kernel = np.ones((3,3), np.uint8) 
+            kernel = np.ones((3,3), np.uint8)
             m = cv2.dilate(m, kernel)
             # Apply boundary threshold to keep weaker but adjacent pixels
-            m = (m * image_charge > self.thresholds[tel_type][1]).astype(np.uint8)
+            m = (m * image_charge > self.thresholds[camera_type][1]).astype(np.uint8)
             m = np.expand_dims(m, 2)
 
             # Multiply by the mask to get the cleaned image
@@ -115,9 +116,9 @@ class DataProcessor():
         # NOTE: these values are rounded and cast to integers, so they are valid indices
         # into the array
         # NOTE: rounding (and subtracting one from the max values) ensures that for all
-        # float values of x_0, y_0, the values of indices x_min, x_max, y_min, y_max mark 
+        # float values of x_0, y_0, the values of indices x_min, x_max, y_min, y_max mark
         # a bounding box of exactly shape (BOUNDING_BOX_SIZE, BOUNDING_BOX_SIZE)
-        bounding_box_size = self.bounding_box_sizes[tel_type]
+        bounding_box_size = self.bounding_box_sizes[camera_type]
         x_min = int(round(x_0 - bounding_box_size/2))
         x_max = int(round(x_0 + bounding_box_size/2)) - 1
         y_min = int(round(y_0 - bounding_box_size/2))
@@ -167,6 +168,7 @@ class DataProcessor():
     # list of additional auxiliary parameters produced by
     # the processing.
     def _process_image(self, image, tel_type, dummy_image=False):
+        camera_type = get_camera_type(tel_type)
         auxiliary_input = []
 
         if dummy_image: # No trigger - image is blank
@@ -176,10 +178,10 @@ class DataProcessor():
             return image, auxiliary_input
 
         if self.crop:
-            image, *shower_position = self._crop_image(image, tel_type)
-            image_width = self._image_mapper.image_shapes[tel_type][0]
+            image, *shower_position = self._crop_image(image, camera_type)
+            image_width = self._image_mapper.image_shapes[camera_type][0]
             normalized_shower_position = [float(p) / image_width for p
-                    in shower_position] 
+                    in shower_position]
             auxiliary_input.extend(normalized_shower_position)
         if self.normalization:
             image = self._normalize_image(image, tel_type)
