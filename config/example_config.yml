@@ -1,3 +1,7 @@
+# Example config file containing all possible options for CTLearn, whether
+# they're required or optional, their datatypes, and default arguments.
+---
+
 Logging:
     # Required string.
     # Path to directory to store TensorFlow model checkpoints and summaries.
@@ -5,7 +9,7 @@ Logging:
     model_directory: '/tmp/logs/example/'
 
 Data:
-    # Required string. 
+    # Required string.
     # Valid options:
     #   - 'HDF5': ImageExtractor v0.5.1 HDF5 format
     # Data file format. Used to choose the right DataLoader subclass.
@@ -20,7 +24,7 @@ Data:
     # is instantiated and Data:Processing settings are not used.
     # Useful for quickly turning off all data processing, e.g., when debugging.
     apply_processing: true
-    
+
     # Settings for instantiating the DataLoader.
     Loading:
         # Optional string. Default: 'array'
@@ -30,10 +34,11 @@ Data:
         # How to construct examples from the data.
         example_type: 'array'
 
-		# Optional Boolean. Default: False
-		# If False, only a channel of integrated energy pulse per pixel is loaded 
-		# If True, an additional channel is loaded indicated peak pulse arrival time per pixel
-		use_peak_times: False
+        # Optional Boolean. Default: False
+        # If False, load only a channel of integrated energy pulse per pixel
+        # If True, load an additional channel indicating peak pulse arrival
+        # time per pixel
+        use_peak_times: False
 
         # Optional string. Default: 'LST'
         # Valid options:
@@ -47,7 +52,7 @@ Data:
         #   - 'VTS': VERITAS Telescope and Camera
         # Telescope type to load.
         selected_tel_type: 'LST'
-        
+
         # Optional list of integers. Default: load all telescopes of the
         # selected tel type.
         # ID numbers of telescopes to load of the selected tel type.
@@ -66,13 +71,13 @@ Data:
         cut_condition: '(mc_energy > 1.0) & (h_first_int < 20000)'
 
         # Optional float. Default: 0.1
-        # Randomly chosen fraction of data to set aside for validation. 
+        # Randomly chosen fraction of data to set aside for validation.
         validation_split: 0.1
 
         # Optional integer. Default: use default random initialization.
         # Seed for randomly splitting data into training and validation sets.
         seed: 1234
-    
+
     # Settings for instantiating the DataProcessor.
     Processing:
         # Optional Boolean. Default: false
@@ -93,7 +98,7 @@ Data:
         # When cropping, whether to return the cleaned instead of original
         # cropped images.
         return_cleaned_images: false
-       
+
         # Optional dictionary with string keys and integer values.
         # See Data:Loading:selected_tel_type for valid keys.
         # Default:
@@ -101,7 +106,7 @@ Data:
         # When cropping, side length of the square cropped image.
         bounding_box_sizes:
             'MSTS': 48
-             
+
         # Optional dictionary with string keys and list of two integers values.
         # See Data:Loading:selected_tel_type for valid keys.
         # Default:
@@ -112,7 +117,7 @@ Data:
         # second is the boundary threshold, which adds all pixels greater
         # than it and adjacent to previously selected pixels.
         thresholds:
-            'MSTS': 
+            'MSTS':
                 - 5.5
                 - 1.0
 
@@ -131,7 +136,7 @@ Data:
         #   - null: Keep DataLoader ordering (by telescope ID)
         # How to sort telescope images when loading data in array mode.
         sort_images_by: null
-   
+
     # Settings for the TensorFlow Estimator input function.
     Input:
         # Required integer.
@@ -141,7 +146,7 @@ Data:
         # Required Boolean.
         # Whether to prefetch examples in the TensorFlow Dataset.
         prefetch: true
-    
+
         # Required integer.
         # If prefetching, maximum number of examples to prefetch and store
         # in buffer.
@@ -158,7 +163,7 @@ Data:
         # Required Boolean.
         # Whether to shuffle examples when creating the TensorFlow Dataset.
         shuffle: true
-        
+
         # Required integer.
         # Number of examples to shuffle at once. Larger buffer sizes
         # give a more uniform shuffle at the cost of a longer time to shuffle.
@@ -208,14 +213,14 @@ Model:
     #       array model feeding combined outputs of a CNN for each
     #       telescope into a CNN network head
     model: {module: 'cnn_rnn', function: 'cnn_rnn_model'}
-    
+
     # The options in this section are combined with the dataset metadata
     # and passed as a dictionary called "params" to the model function.
     # The config option 'model_directory' above is included in params as well.
     # None of these options are accessed anywhere outside the model, so
     # arbitrary options may be added here. This permits custom configuration
     # of user-provided models.
-    # Below are listed the configuration options for the CTLearn included 
+    # Below are listed the configuration options for the CTLearn included
     # models, which are only accessed if using those models.
     Model Parameters:
         single_tel:
@@ -236,14 +241,14 @@ Model:
             # Valid options:
             #   - {module: 'basic', function: 'conv_block'}
             cnn_block: {module: 'basic', function: 'conv_block'}
-            
+
             # Required string or null.
             # Path to a checkpoint file or model directory from which to load
             # pretrained CNN block weights. If null, don't load any weights.
             pretrained_weights: null
-            
+
             # Optional float. Default: 0.5
-            # Dropout rate of dropout layers. 
+            # Dropout rate of dropout layers.
             dropout_rate: 0.5
 
         variable_input_model:
@@ -252,10 +257,10 @@ Model:
             # Valid options:
             #   - {module: 'basic', function: 'conv_block'}
             cnn_block: {module: 'basic', function: 'conv_block'}
-            
+
             # Required string.
             # Valid options:
-            #   - 'vector': Use for network heads expecting an input vector 
+            #   - 'vector': Use for network heads expecting an input vector
             #   - 'feature_maps': Use for networks heads expecting input as
             #       a stack of feature maps as used for convolutional layers
             telescope_combination: 'feature_maps'
@@ -266,7 +271,7 @@ Model:
             #   - {module: 'basic', function: 'fc_head'}
             #   - {module: 'basic', function: 'conv_head'}
             network_head: {module: 'basic', function: 'conv_head'}
-            
+
             # Required string or null.
             # Path to a checkpoint file or model directory from which to load
             # pretrained CNN block weights. If null, don't load any weights.
@@ -282,17 +287,17 @@ Model:
                     - {filters: 32, kernel_size: 3}
                     - {filters: 64, kernel_size: 3}
                     - {filters: 128, kernel_size: 3}
-                
+
                 # Required dictionary with keys 'size' and 'strides' and
                 # integer values, or null.
                 # Max pool size and strides. If null, don't perform any pooling.
                 max_pool: {size: 2, strides: 2}
-                
+
                 # Required integer or null.
                 # Number of output filters of a final 1x1 convolutional layer.
                 # If null, don't include this bottleneck layer.
                 bottleneck: null
-                
+
                 # Optional Boolean. Default: false
                 # Whether to include a batch normalization layer after each
                 # convolutional layer. Exercise caution when using with
@@ -303,7 +308,7 @@ Model:
                 # Required list of integers.
                 # Number of units for each fully-connected head dense layer.
                 layers: [1024, 512, 256, 128, 64]
-                
+
                 # Optional Boolean. Default: false
                 # Whether to include a batch normalization layer after each
                 # dense layer.
@@ -318,17 +323,17 @@ Model:
                     - {filters: 64, kernel_size: 3}
                     - {filters: 128, kernel_size: 3}
                     - {filters: 256, kernel_size: 3}
-                
+
                 # Optional Boolean. Default: true
                 # Whether to perform average pooling over spatial dimensions
                 # of the convolutional output before calculating final output.
                 final_avg_pool: true
-                
+
                 # Optional Boolean. Default: false
                 # Whether to include a batch normalization layer after each
                 # convolutional layer.
                 batchnorm: false
-            
+
             # Optional float. Default: 0.99
             # Decay parameter for batch normalization layers.
             batchnorm_decay: 0.99
@@ -340,7 +345,8 @@ Training:
     num_validations: 0
 
     # Required integer.
-    # Number of training steps to run before each evaluation on the validation set.
+    # Number of training steps to run before each evaluation
+    # on the validation set.
     num_training_steps_per_validation: 1000
 
     Hyperparameters:
@@ -348,11 +354,11 @@ Training:
         # Valid options: ['Adadelta', 'Adam', 'RMSProp', 'SGD']
         # Optimizer function for training.
         optimizer: 'Adam'
-        
+
         # Optional float. Required if optimizer is 'Adam', ignored otherwise.
         # Epsilon parameter for the Adam optimizer.
         adam_epsilon: 1.0e-8
-        
+
         # Required integer.
         # Base learning rate before scaling or annealing.
         base_learning_rate: 0.001
@@ -367,7 +373,7 @@ Training:
         apply_class_weights: false
 
         # Required string or null. If provided, train on only variables
-        # within the scope matching this name, freezing all others. This is 
+        # within the scope matching this name, freezing all others. This is
         # useful when loading pretrained weights. If null, train on all
         # trainable variables.
         variables_to_train: null
@@ -406,7 +412,7 @@ Multiple Configurations Settings:
     num_grouped_range_values: 5
 
 # Optional: used in run_multiple_configurations.py only
-# Each item in this section has the form 
+# Each item in this section has the form
 # <config_nickname>:
 #   config: list of the keys to access the config parameter in config file
 #   value_type: one of
@@ -425,7 +431,7 @@ Multiple Configurations Settings:
 #   selection: Required string. Valid options:
 #       - 'random': Select values at random from a uniform distribution
 #       - 'grid': Select values from an evenly-spaced grid
-#   num_values: Required integer or null. Number of values to generate. All 
+#   num_values: Required integer or null. Number of values to generate. All
 #       range configs with num_values null are grouped together with
 #       num_grouped_range_values the total number of values generated. The
 #       recommended usage in most cases is to specify num_values for grid
