@@ -511,7 +511,7 @@ class HDF5DataLoader(DataLoader):
         # Create image by indexing into the trace using the mapping table, then adding a
         # dimension to given shape (length,width,1)
         image = self._image_mapper.map_image(trace, tel_type)
-        image = np.array(image, dtype=np.float32)
+        image = image.astype(np.float32)
 
         return image
 
