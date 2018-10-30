@@ -9,7 +9,7 @@ import numpy as np
 import tables
 
 from ctlearn.data_processing import DataProcessor
-from ctlearn.image_mapping import ImageMapper
+from ctlearn.image_mapping import ImageMapper, get_camera_type
 
 # TEMPORARY: Maps old telescope names into new
 # For training with datasets generated with versions prior to image-extractor v0.6.0
@@ -31,9 +31,6 @@ PARTICLE_ID_TO_CLASS_NAME = {
         0: 'gamma',
         101:'proton'
         }
-
-def get_camera_type(tel_type):
-    return tel_type.split(':')[1]
 
 # General abstract class for loading CTA event data from a dataset
 # stored in some file format.
@@ -492,7 +489,7 @@ class HDF5DataLoader(DataLoader):
         self.selected_telescopes = {}
         for tel_type in self.selected_telescope_types:
             # Get camera type from tel type
-            camera_type = self.get_camera_type(tel_type)
+            camera_type = get_camera_type(tel_type)
             # Check that the tel_type is in the data and mapping tables
             if tel_type not in self.total_telescopes:
                 raise ValueError("Selected tel type {} not found in "
@@ -522,7 +519,7 @@ class HDF5DataLoader(DataLoader):
     def get_image(self, run_number, event_number, tel_id):
         
         tel_type = self.__tel_id_to_tel_type[tel_id]
-        camera_type = self.get_camera_type(tel_type)
+        camera_type = get_camera_type(tel_type)
 
         if camera_type not in self._image_mapper.mapping_tables:
             raise NotImplementedError("Requested image from camera type {} without valid mapping table.".format(camera_type))
@@ -589,7 +586,7 @@ class HDF5DataLoader(DataLoader):
             #       list of auxiliary inputs (NumPy arrays)
             data = []
             for tel_type, tel_ids in self.selected_telescopes.items():
-                camera_type = self.get_camera_type(tel_type)
+                camera_type = get_camera_type(tel_type)
                 data.append([[], [], []])
                 for tel_id in tel_ids:
                     tel_index = self.total_telescopes[tel_type].index(tel_id)

@@ -26,6 +26,9 @@ OLD_TEL_NAMES_TO_NEW = {
 
 NEW_TEL_NAMES_TO_OLD = {v: k for k, v in OLD_TEL_NAMES_TO_NEW.items()}
 
+def get_camera_type(tel_type):
+    return tel_type.split(':')[1]
+
 class ImageMapper():
 
     pixel_lengths = {
@@ -745,11 +748,11 @@ class ImageMapper():
             'HESS-II': 'LST:HESS-II'
         }
 
-        # TEMPORARY: Map camera type to (old) telescope type
+        # TEMPORARY: Map camera type to (old) telescope type       
         try:
-            selected_tel_rows = np.array([row.nrow for row in tel_table.where('tel_type=={}'.format(CAMERA_TYPE_TO_TEL_TYPE[camera_type]))])[0]
+            selected_tel_rows = np.array([row.nrow for row in tel_table.where('tel_type=={}'.format(CAMERA_TYPE_TO_TEL_TYPE[camera_type].encode()))])[0]
         except:
-            selected_tel_rows = np.array([row.nrow for row in tel_table.where('tel_type=={}'.format(NEW_TEL_NAMES_TO_OLD[CAMERA_TYPE_TO_TEL_TYPE[camera_type]]))])[0]
+            selected_tel_rows = np.array([row.nrow for row in tel_table.where('tel_type=={}'.format(NEW_TEL_NAMES_TO_OLD[CAMERA_TYPE_TO_TEL_TYPE[camera_type]].encode()))])[0]
 
         pixel_pos = tel_table.cols.pixel_pos[selected_tel_rows]
         if write:
@@ -766,7 +769,11 @@ class ImageMapper():
         with tables.open_file(data_file, "r") as f:
             tel_table = f.root.Telescope_Info
             for row in tel_table.iterrows():
-                ImageMapper.__get_pos_from_h5(tel_table, camera_type=row[1].decode("utf-8"), write=True)
+                tel_type = row['tel_type'].decode("utf-8")
+                if tel_type in OLD_TEL_NAMES_TO_NEW:
+                    tel_type = OLD_TEL_NAMES_TO_NEW[tel_type]
+                camera_type = get_camera_type(tel_type)
+                ImageMapper.__get_pos_from_h5(tel_table, camera_type=camera_type, write=True)
 
     def __read_pix_pos_files(self, camera_type):
         if camera_type in self.pixel_lengths:
