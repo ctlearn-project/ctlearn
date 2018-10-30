@@ -594,9 +594,9 @@ class HDF5DataLoader(DataLoader):
 
                     #TEMPORARY: MAP NEW TELESCOPE NAMES TO OLD
                     try:
-                        image_index = row[tel_type + '_indices'][tel_index]
+                        image_index = record[tel_type + '_indices'][tel_index]
                     except:
-                        image_index = row[NEW_TEL_NAMES_TO_OLD[tel_type] + '_indices'][tel_index]
+                        image_index = record[NEW_TEL_NAMES_TO_OLD[tel_type] + '_indices'][tel_index]
 
                     if image_index == 0:
                         # Telescope didn't trigger, load dummy data
