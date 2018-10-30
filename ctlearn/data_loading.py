@@ -458,7 +458,8 @@ class HDF5DataLoader(DataLoader):
                 'num_val_examples_by_class_name': self.num_val_examples_by_class_name,
                 'num_position_coordinates': self.num_position_coordinates,
                 'labels_to_class_names': self.labels_to_class_names,
-                'class_names_to_labels': self.class_names_to_labels
+                'class_names_to_labels': self.class_names_to_labels,
+                'telescope_type_to_camera_type': {tel_type: get_camera_type(tel_type) for tel_type in self.total_telescopes}
            }
 
         if self.data_processor is not None:
