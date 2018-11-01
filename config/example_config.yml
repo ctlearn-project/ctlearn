@@ -1,3 +1,7 @@
+# Example config file containing all possible options for CTLearn, whether
+# they're required or optional, their datatypes, and default arguments.
+---
+
 Logging:
     # Required string.
     # Path to directory to store TensorFlow model checkpoints and summaries.
@@ -31,8 +35,14 @@ Data:
         example_type: 'array'
 
         # Optional Boolean. Default: False
+<<<<<<< HEAD
         # If False, only a channel of integrated energy pulse per pixel is loaded
         # If True, an additional channel is loaded indicated peak pulse arrival time per pixel
+=======
+        # If False, load only a channel of integrated energy pulse per pixel
+        # If True, load an additional channel indicating peak pulse arrival
+        # time per pixel
+>>>>>>> 14baff411b9e4ce45699843ad13ff79276736395
         use_peak_times: False
 
         # Optional list of tel_type strings or null. Default if null: ['LST:LSTCam']
@@ -47,15 +57,15 @@ Data:
         #   - 'MST:VERITAS': VERITAS Telescope and Camera
         # List of telescope types to load.
         selected_tel_types: ['LST:LSTCam']
-
-        # Optional dictionary with string keys and list of integer values,
+        
+            # Optional dictionary with string keys and list of integer values,
         # or null. If null, default is an empty dictionary.
         # Valid keys are the tel_types listed above, and the values should be
         # the tel_ids of the telescopes to load of that tel_type.
         # Default if tel_type not in dict: load all telescopes of the tel_type.
         selected_tel_ids:
             'LST:LSTCam': [1, 2, 3, 4]
-
+        
         # Optional Boolean. Default: False
         # In array mode, merge the data arrays (images, triggers, and
         # auxiliary info) for each telescope type into three combined data
@@ -351,7 +361,8 @@ Training:
     num_validations: 0
 
     # Required integer.
-    # Number of training steps to run before each evaluation on the validation set.
+    # Number of training steps to run before each evaluation
+    # on the validation set.
     num_training_steps_per_validation: 1000
 
     Hyperparameters:
