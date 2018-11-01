@@ -9,21 +9,8 @@ import numpy as np
 import tables
 
 from ctlearn.data_processing import DataProcessor
-from ctlearn.image_mapping import ImageMapper, get_camera_type
-
-# TEMPORARY: Maps old telescope names into new
-# For training with datasets generated with versions prior to image-extractor v0.6.0
-OLD_TEL_NAMES_TO_NEW = {
-    'LST':'LST:LSTCam',
-    'MSTF':'MST:FlashCam',
-    'MSTN':'MST:NectarCam',
-    'MSTS':'SCT:SCTCam',
-    'SSTC':'SST:CHEC',
-    'SST1':'SST:DigiCam',
-    'SSTA':'SST:ASTRICam'
-}
-
-NEW_TEL_NAMES_TO_OLD = {v: k for k, v in OLD_TEL_NAMES_TO_NEW.items()}
+from ctlearn.image_mapping import (ImageMapper, get_camera_type,
+    OLD_TEL_NAMES_TO_NEW, NEW_TEL_NAMES_TO_OLD)
 
 # Maps CORSIKA particle id codes
 # to particle class names
