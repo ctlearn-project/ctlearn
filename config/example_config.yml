@@ -35,14 +35,9 @@ Data:
         example_type: 'array'
 
         # Optional Boolean. Default: False
-<<<<<<< HEAD
-        # If False, only a channel of integrated energy pulse per pixel is loaded
-        # If True, an additional channel is loaded indicated peak pulse arrival time per pixel
-=======
         # If False, load only a channel of integrated energy pulse per pixel
         # If True, load an additional channel indicating peak pulse arrival
         # time per pixel
->>>>>>> 14baff411b9e4ce45699843ad13ff79276736395
         use_peak_times: False
 
         # Optional list of tel_type strings or null. Default if null: ['LST:LSTCam']
