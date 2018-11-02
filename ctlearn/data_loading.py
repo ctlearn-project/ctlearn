@@ -9,18 +9,19 @@ import numpy as np
 import tables
 
 from ctlearn.data_processing import DataProcessor
-from ctlearn.image_mapping import ImageMapper
+from ctlearn.image_mapping import (ImageMapper, get_camera_type,
+    OLD_TEL_NAMES_TO_NEW, NEW_TEL_NAMES_TO_OLD)
 
 # Maps CORSIKA particle id codes
 # to particle class names
 PARTICLE_ID_TO_CLASS_NAME = {
         0: 'gamma',
         101:'proton'
-        } 
+        }
 
 # General abstract class for loading CTA event data from a dataset
 # stored in some file format.
-# Provided as a template for the implementation of alternative data formats 
+# Provided as a template for the implementation of alternative data formats
 # for storing training data.
 class DataLoader(ABC):
 
@@ -45,6 +46,7 @@ class DataLoader(ABC):
     @abstractmethod
     def get_example_generators(self):
         pass
+
 
 # PyTables HDF5 implementation of DataLoader
 # Corresponds to standard CTA ML format specified by
@@ -98,7 +100,7 @@ class HDF5DataLoader(DataLoader):
             raise ValueError("Invalid example type selection: {}. Select 'single_tel' or 'array'.".format(example_type))
 
         if selected_tel_types is None:
-            selected_tel_types = ['LST']
+            selected_tel_types = ['LST:LSTCam']
         self.selected_telescope_types = selected_tel_types
         if not self.selected_telescope_types:
             raise ValueError("No telescope types selected.")
@@ -284,6 +286,12 @@ class HDF5DataLoader(DataLoader):
         for row in f.root.Array_Info.iterrows():
             # note: tel type strings stored in Pytables as byte strings, must be decoded
             tel_type = row['tel_type'].decode('utf-8')
+
+            # TEMPORARY: Convert old telescope names into new
+            # For training with datasets generated with versions prior to image-extractor v0.6.0
+            if tel_type in OLD_TEL_NAMES_TO_NEW:
+                tel_type = OLD_TEL_NAMES_TO_NEW[tel_type]
+
             tel_id = row['tel_id']
             
             # Store the telescope for indexing
@@ -294,7 +302,7 @@ class HDF5DataLoader(DataLoader):
             # the ImageExtractor v0.5.1 data format. The tel_ids > 255 
             # have looped back around to 0. SST1 is the only affected 
             # telescope type. SST1 has tel_id 220-255 followed by "0-33".
-            if tel_type == 'SST1' and tel_id < 220:
+            if tel_type == 'SST:DigiCam' and tel_id < 220:
                 tel_id += 256
                 
             telescopes[tel_type].append(tel_id)
@@ -366,7 +374,13 @@ class HDF5DataLoader(DataLoader):
     
             for tel_type in self.total_telescopes:
                 tel_ids = self.total_telescopes[tel_type]
-                indices = row[tel_type + '_indices']
+
+                #TEMPORARY: MAP NEW TELESCOPE NAMES TO OLD
+                try:
+                    indices = row[tel_type + '_indices']
+                except:
+                    indices = row[NEW_TEL_NAMES_TO_OLD[tel_type] + '_indices']
+
                 if not tel_type in self.images:
                     self.images[tel_type] = []
                 if not tel_type in self.num_images_before_cuts_by_tel_and_class_name:
@@ -391,7 +405,13 @@ class HDF5DataLoader(DataLoader):
         # type for normalization
         # NOTE: This step is time-intensive.
         for tel_type in self.total_telescopes.keys():
-            tel_table = f.root._f_get_child(tel_type)
+
+            #TEMPORARY: MAP NEW TELESCOPE NAMES TO OLD
+            try:
+                tel_table = f.root._f_get_child(tel_type)
+            except:
+                tel_table = f.root._f_get_child(NEW_TEL_NAMES_TO_OLD[tel_type])
+
             records = tel_table.read(1,tel_table.shape[0])
             images = records['image_charge']
 
@@ -425,7 +445,8 @@ class HDF5DataLoader(DataLoader):
                 'num_val_examples_by_class_name': self.num_val_examples_by_class_name,
                 'num_position_coordinates': self.num_position_coordinates,
                 'labels_to_class_names': self.labels_to_class_names,
-                'class_names_to_labels': self.class_names_to_labels
+                'class_names_to_labels': self.class_names_to_labels,
+                'telescope_type_to_camera_type': {tel_type: get_camera_type(tel_type) for tel_type in self.total_telescopes}
            }
 
         if self.data_processor is not None:
@@ -455,13 +476,15 @@ class HDF5DataLoader(DataLoader):
 
         self.selected_telescopes = {}
         for tel_type in self.selected_telescope_types:
+            # Get camera type from tel type
+            camera_type = get_camera_type(tel_type)
             # Check that the tel_type is in the data and mapping tables
             if tel_type not in self.total_telescopes:
                 raise ValueError("Selected tel type {} not found in "
                         "dataset.".format(tel_type))
-            if tel_type not in self._image_mapper.mapping_tables:
+            if camera_type not in self._image_mapper.mapping_tables:
                 raise NotImplementedError("Mapping table for selected "
-                        "tel type {} not implemented.".format(tel_type))
+                        "camera type {} not implemented.".format(camera_type))
             available_tel_ids = self.total_telescopes[tel_type]
             # Keep only the selected tel ids for the tel type
             if tel_type in self.selected_tel_ids:
@@ -484,17 +507,23 @@ class HDF5DataLoader(DataLoader):
     def get_image(self, run_number, event_number, tel_id):
         
         tel_type = self.__tel_id_to_tel_type[tel_id]
-        
-        if tel_type not in self._image_mapper.mapping_tables:
-            raise NotImplementedError("Requested image from tel_type {} without valid mapping table.".format(tel_type))
+        camera_type = get_camera_type(tel_type)
+
+        if camera_type not in self._image_mapper.mapping_tables:
+            raise NotImplementedError("Requested image from camera type {} without valid mapping table.".format(camera_type))
 
         # get filename, image table name (telescope type), and index
         # corresponding to the desired image
         filename, tel_type, index = self.__single_tel_examples_to_indices[(run_number, event_number, tel_id)]
         
         f = self.files[filename]
-        record = f.root._f_get_child(tel_type)[index]
-        
+
+        #TEMPORARY: MAP NEW TELESCOPE NAMES TO OLD
+        try:
+            record = f.root._f_get_child(tel_type)[index]
+        except:
+            record = f.root._f_get_child(NEW_TEL_NAMES_TO_OLD[tel_type])[index]
+
         # Allocate empty numpy array of shape (len_trace + 1,) to hold trace plus
         # "empty" pixel at index 0 (used to fill blank areas in image)
         if self.use_peak_times:
@@ -510,7 +539,7 @@ class HDF5DataLoader(DataLoader):
 
         # Create image by indexing into the trace using the mapping table, then adding a
         # dimension to given shape (length,width,1)
-        image = self._image_mapper.map_image(trace, tel_type)
+        image = self._image_mapper.map_image(trace, camera_type)
         image = image.astype(np.float32)
 
         return image
@@ -545,13 +574,20 @@ class HDF5DataLoader(DataLoader):
             #       list of auxiliary inputs (NumPy arrays)
             data = []
             for tel_type, tel_ids in self.selected_telescopes.items():
+                camera_type = get_camera_type(tel_type)
                 data.append([[], [], []])
                 for tel_id in tel_ids:
                     tel_index = self.total_telescopes[tel_type].index(tel_id)
-                    image_index = record[tel_type + "_indices"][tel_index]
+
+                    #TEMPORARY: MAP NEW TELESCOPE NAMES TO OLD
+                    try:
+                        image_index = record[tel_type + '_indices'][tel_index]
+                    except:
+                        image_index = record[NEW_TEL_NAMES_TO_OLD[tel_type] + '_indices'][tel_index]
+
                     if image_index == 0:
                         # Telescope didn't trigger, load dummy data
-                        image_shape = self._image_mapper.image_shapes[tel_type] 
+                        image_shape = self._image_mapper.image_shapes[camera_type]
                         image = np.zeros(image_shape, dtype=np.float32)
                         trigger = 0
                     else:
@@ -635,7 +671,13 @@ class HDF5DataLoader(DataLoader):
                             self.total_telescopes[tel_type].index(tel_id)
                             for tel_id in tel_ids}
                     tel_indices = np.array(list(tel_id_to_index.values()))
-                    image_indices = row[tel_type + "_indices"]
+
+                    #TEMPORARY: MAP NEW TELESCOPE NAMES TO OLD
+                    try:
+                        image_indices = row[tel_type + '_indices']
+                    except:
+                        image_indices = row[NEW_TEL_NAMES_TO_OLD[tel_type] + '_indices']
+
                     triggered_image_indices = image_indices[tel_indices]
                     num_tels = np.count_nonzero(triggered_image_indices)
                     num_triggered_tels += num_tels

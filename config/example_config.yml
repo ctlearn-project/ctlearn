@@ -40,27 +40,27 @@ Data:
         # time per pixel
         use_peak_times: False
 
-        # Optional list of tel_type strings or null. Default if null: ['LST']
+        # Optional list of tel_type strings or null. Default if null: ['LST:LSTCam']
         # Valid tel_types:
-        #   - 'LST': LST Telescope and Camera
-        #   - 'MSTF': MST Telescope with FlashCAM Camera
-        #   - 'MSTN': MST Telescope with NectarCAM Camera
-        #   - 'MSTS': SCT Telescope and Camera
-        #   - 'SST1': SST-1M Telescope with DigiCam Camera
-        #   - 'SSTA': SST-2M ASTRI Telescope and Camera
-        #   - 'SSTC': SST-2M GCT Telescope with CHEC Camera
-        #   - 'VTS': VERITAS Telescope and Camera
+        #   - 'LST:LSTCam': LST Telescope and Camera
+        #   - 'MST:FlashCam': MST Telescope with FlashCAM Camera
+        #   - 'MST:NectarCam': MST Telescope with NectarCAM Camera
+        #   - 'SCT:SCTCam': SCT Telescope and Camera
+        #   - 'SST:DigiCam': SST-1M Telescope with DigiCam Camera
+        #   - 'SST:ASTRICam': SST-2M ASTRI Telescope and Camera
+        #   - 'SST:CHEC': SST-2M GCT Telescope with CHEC Camera
+        #   - 'MST:VERITAS': VERITAS Telescope and Camera
         # List of telescope types to load.
-        selected_tel_types: ['LST']
-
-        # Optional dictionary with string keys and list of integer values,
+        selected_tel_types: ['LST:LSTCam']
+        
+            # Optional dictionary with string keys and list of integer values,
         # or null. If null, default is an empty dictionary.
         # Valid keys are the tel_types listed above, and the values should be
         # the tel_ids of the telescopes to load of that tel_type.
         # Default if tel_type not in dict: load all telescopes of the tel_type.
         selected_tel_ids:
-            LST: [1, 2, 3, 4]
-
+            'LST:LSTCam': [1, 2, 3, 4]
+        
         # Optional Boolean. Default: False
         # In array mode, merge the data arrays (images, triggers, and
         # auxiliary info) for each telescope type into three combined data
@@ -113,22 +113,22 @@ Data:
         # Optional dictionary with string keys and integer values.
         # See Data:Loading:selected_tel_type for valid keys.
         # Default:
-        #   'MSTS': 48
+        #   'SCTCam': 48
         # When cropping, side length of the square cropped image.
         bounding_box_sizes:
-            'MSTS': 48
+            'SCTCam': 48
 
         # Optional dictionary with string keys and list of two integers values.
         # See Data:Loading:selected_tel_type for valid keys.
         # Default:
-        #   MSTS: [5.5, 1.0]
+        #   SCTCam: [5.5, 1.0]
         # When cropping and using two level cleaning method, absolute cleaning
         # thresholds to use. The first value is the picture threshold,
         # which passes all pixels in the image greater than it, and the
         # second is the boundary threshold, which adds all pixels greater
         # than it and adjacent to previously selected pixels.
         thresholds:
-            'MSTS':
+            'SCTCam':
                 - 5.5
                 - 1.0
 
@@ -195,14 +195,14 @@ Image Mapping:
     # Number of pixels of padding to add around the edge of the mapped image.
     # A value of 1 will increase both the image height and width by 2, etc.
     padding:
-        'LST': 2
-        'MSTF': 1
-        'MSTN': 2
-        'MSTS': 4
-        'SST1': 1
-        'SSTA': 0
-        'SSTC': 0
-        'VTS': 1
+        'LSTCam': 2
+        'FlashCam': 1
+        'NectarCam': 2
+        'SCTCam': 4
+        'DigiCam': 1
+        'ASTRICam': 0
+        'CHEC': 0
+        'VERITAS': 1
 
 # Settings for the TensorFlow model.
 Model:
@@ -469,14 +469,14 @@ Multiple Configurations Values:
         config: ['Data', 'Loading', 'selected_tel_type']
         value_type: 'grouped'
         values:
-            LST: 'LST'
-            MSTN: 'MSTN'
+            'LST:LSTCam': 'LST:LSTCam'
+            'MST:NectarCam': 'MST:NectarCam'
     selected_telescopes:
         config: ['Data', 'Loading', 'selected_tel_ids']
         value_type: 'grouped'
         values:
-            LST: [1, 2, 3, 4]
-            MSTN: [30, 31, 32, 33]
+            'LST:LSTCam': [1, 2, 3, 4]
+            'MST:NectarCam': [30, 31, 32, 33]
     network_type:
         config: ['Model', 'model']
         value_type: 'grouped'
