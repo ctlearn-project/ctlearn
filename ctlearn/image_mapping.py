@@ -76,13 +76,7 @@ class ImageMapper():
             'HESS-II': (104,104,1)
             }
 
-        if hex_conversion_algorithm in ['oversampling']:
-            self.hex_conversion_algorithm = hex_conversion_algorithm
-        elif hex_conversion_algorithm in ['nearest_interpolation']:
-            self.hex_conversion_algorithm = hex_conversion_algorithm
-        elif hex_conversion_algorithm in ['linear_interpolation']:
-            self.hex_conversion_algorithm = hex_conversion_algorithm
-        elif hex_conversion_algorithm in ['cubic_interpolation']:
+        if hex_conversion_algorithm in ['oversampling', 'nearest_interpolation', 'linear_interpolation', 'cubic_interpolation']:
             self.hex_conversion_algorithm = hex_conversion_algorithm
         else:
             raise NotImplementedError("Hex conversion algorithm {} is not implemented.".format(hex_conversion_algorithm))
@@ -159,28 +153,25 @@ class ImageMapper():
         for channel in range(n_channels):
             vector = pixels[:,channel]
 
-            if self.hex_conversion_algorithm == 'oversampling':
-                if telescope_type == 'MSTS':
+            if self.hex_conversion_algorithm in ['oversampling']:
+                # MSTS is treated differently due to runtime purposes
+                if telescope_type in ['MSTS']:
                     image_2D = vector[self.mapping_tables[telescope_type]].T[:,:,np.newaxis]
                 elif telescope_type in ['LST', 'MSTF', 'MSTN', 'SST1', 'SSTC', 'SSTA', 'VTS', 'MGC', 'FACT','HESS-I','HESS-II']:
                     image_2D = (vector.T @ self.mapping_tables[telescope_type]).reshape(self.image_shapes[telescope_type][0],
                                                                                        self.image_shapes[telescope_type][1], 1)
                 result.append(image_2D)
 
-            elif (self.hex_conversion_algorithm == 'linear_interpolation' or self.hex_conversion_algorithm == 'cubic_interpolation' or self.hex_conversion_algorithm == 'nearest_interpolation') :
+            elif self.hex_conversion_algorithm in ['nearest_interpolation', 'linear_interpolation', 'cubic_interpolation']:
                 if telescope_type in ['LST','MSTF','MSTN','SST1','VTS','MGC','FACT','HESS-I','HESS-II']:
                     # Get pixel positions and padding information
                     pos = self.pixel_positions[telescope_type]
                     pad = self.padding[telescope_type]
                     # Get relevant parameters
-                    output_dim = self.image_shapes[telescope_type][0]+pad*2
+                    output_dim = self.image_shapes[telescope_type][0]
                     num_pixels = self.num_pixels[telescope_type]
                     pixel_length = self.pixel_lengths[telescope_type]
-                    '''
-                    The pixel positions from files are already rotated!
-                    if telescope_type in ["LST", "MSTN"]:
-                        pos = self.rotate_cam(pos)
-                    '''
+  
                     # Adding intensities (0.0) for virtual pixels outside the camera
                     x=pos[0]
                     y=pos[1]
@@ -188,35 +179,27 @@ class ImageMapper():
                     while x.shape!=z.shape:
                         z=np.concatenate((z,[0.0]))
                     # Shifting and rescaling the pixel positions
+                    # Hardcoded value below are necessary due to two extra rows and columns of virtual pixels outside the camera.
                     x -= np.min(x)
                     y -= np.min(y)
-                    pad*=2
-                    x *= ((output_dim-pad)/np.max(x))
-                    y *= ((output_dim-pad)/np.max(y))
-                    if (telescope_type in ['MGC']):
-                        x += pad
-                        y += pad
-                    else:
-                        x += pad/2
-                        y += pad/2
-                    total_intensity = np.sum(z)
+                    x *= ((output_dim-pad*2+4)/np.max(x))
+                    y *= ((output_dim-pad*2+4)/np.max(y))
+                    x += pad-2
+                    y += pad-2
+                    
+                    # Preserve the total intensity in the camera
+                    #total_intensity = np.sum(z)
+                    
                     # Creating the output grid.
                     # Change thrid argument in np.linespace for different resolution.
                     ti = np.linspace(0, output_dim, output_dim)
                     XI, YI = np.meshgrid(ti, ti)
                     # Applying the interpolation
-                    if self.hex_conversion_algorithm == 'nearest_interpolation':
-                        image_2D = griddata((x.ravel(), y.ravel()), z.ravel(), (XI, YI), method='nearest',fill_value=0.0)
-                        interpolated_total_intensity = np.sum(image_2D)
-                        image_2D *= (total_intensity/interpolated_total_intensity)
-                    elif self.hex_conversion_algorithm == 'linear_interpolation':
-                        image_2D = griddata((x.ravel(), y.ravel()), z.ravel(), (XI, YI), method='linear',fill_value=0.0)
-                        interpolated_total_intensity = np.sum(image_2D)
-                        image_2D *= (total_intensity/interpolated_total_intensity)
-                    elif self.hex_conversion_algorithm == 'cubic_interpolation':
-                        image_2D = griddata((x.ravel(), y.ravel()), z.ravel(), (XI, YI), method='cubic',fill_value=0.0)
-                        interpolated_total_intensity = np.sum(image_2D)
-                        image_2D *= (total_intensity/interpolated_total_intensity)
+                    method_dict = {'nearest_interpolation': 'nearest', 'linear_interpolation': 'linear', 'cubic_interpolation': 'cubic'}
+                    method = method_dict[self.hex_conversion_algorithm]
+                    image_2D = griddata((x.ravel(), y.ravel()), z.ravel(), (XI, YI), method=method,fill_value=0.0)
+                    #interpolated_total_intensity = np.sum(image_2D)
+                    #image_2D = image_2D * (float(total_intensity)/interpolated_total_intensity)
                     image_2D = np.expand_dims(image_2D, axis=2)
                 else:
                     raise ValueError("Sorry! Telescope type {} isn\'t supported with the conversion algorithm \'{}\'.".format(telescope_type,self.hex_conversion_algorithm))
@@ -226,11 +209,9 @@ class ImageMapper():
         telescope_image = np.concatenate(result, axis = -1)
         
         # Rotating the MAGIC camera by -19.1°
-        if (telescope_type == 'MGC'):
+        if telescope_type in ['MGC']:
             pad = self.padding[telescope_type]
             (h, w) = telescope_image.shape[:2]
-            h+=pad*2
-            w+=pad*2
             center = (w/2.0, h/2.0)
             angle=-19.1
             scale=1.0
@@ -430,7 +411,7 @@ class ImageMapper():
                     pos[pixel_index - 1, 0] = x
                     pos[pixel_index - 1, 1] = y
             
-        pos_shifted = pos + (self.image_shapes['MGC'][0]-2)/2 + pixel_side_len / 2.0
+        pos_shifted = pos + 40 + pixel_side_len / 2.0
                 
         delta_x = int((self.image_shapes['MGC'][0] - 82) / 2)
         delta_y = int((self.image_shapes['MGC'][1] - 82) / 2)
@@ -654,7 +635,7 @@ class ImageMapper():
         """
             Function returning HESS-I or HESS-II mapping table (used to index into the trace when converting from trace to image).
         """
-        if (tel_type=='HESS-I'):
+        if tel_type in ['HESS-I']:
             image_dim=72
             img_map = np.full([image_dim,image_dim], 0, dtype=int)
             blocks_num=8
@@ -662,7 +643,7 @@ class ImageMapper():
             start_y=[68,60,52,44,36,28,20,12]
             column_num_per_block = [20,28,36,36,36,36,28,20]
         
-        if (tel_type=='HESS-II'):
+        if tel_type in ['HESS-II']:
             image_dim=104
             img_map = np.full([image_dim,image_dim], 0, dtype=int)
             blocks_num=12
@@ -722,14 +703,6 @@ class ImageMapper():
         pos = self.pixel_positions[tel_type]
         pos = self.slice_pixelPos(pos,num_pixels)
         
-        '''
-        The pixel positions from files are already rotated!
-        # For LST and MSTN cameras, rotate by a fixed amount to
-        # align for oversampling
-        if tel_type in ["LST", "MSTN"]:
-            pos = self.rotate_cam(pos)
-        '''
-        
         # Compute mapping matrix
         pos_int = pos / pixel_length * 2
         pos_int[0, :] = pos_int[0, :] / np.sqrt(3) * 2
@@ -772,16 +745,6 @@ class ImageMapper():
         slice_pos.append(pos[1][0:num_pixels])
         slice_pos=np.array(slice_pos)
         return slice_pos
-        
-    '''
-    The pixel positions from files are already rotated!
-    def rotate_cam(self, pos):
-        rotation_matrix = np.matrix([[0.98198181, 0.18897548],
-                             [-0.18897548, 0.98198181]], dtype=float)
-        pos_rotated = np.squeeze(np.asarray(np.dot(rotation_matrix, pos)))
-
-        return pos_rotated
-    '''
     
     def rebinning(self):
         # placeholder
