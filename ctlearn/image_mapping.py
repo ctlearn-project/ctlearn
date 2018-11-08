@@ -182,24 +182,31 @@ class ImageMapper():
                     # Hardcoded value below are necessary due to two extra rows and columns of virtual pixels outside the camera.
                     x -= np.min(x)
                     y -= np.min(y)
-                    x *= ((output_dim-pad*2+4)/np.max(x))
-                    y *= ((output_dim-pad*2+4)/np.max(y))
-                    x += pad-2
-                    y += pad-2
+                    x *= ((output_dim-pad*2+2)/np.max(x))
+                    y *= ((output_dim-pad*2+2)/np.max(y))
+                    x += pad-1
+                    y += pad-1
                     
                     # Preserve the total intensity in the camera
-                    #total_intensity = np.sum(z)
+                    total_intensity = np.sum(z)
                     
                     # Creating the output grid.
-                    # Change thrid argument in np.linespace for different resolution.
-                    ti = np.linspace(0, output_dim, output_dim)
+                    # Different resolution.
+                    resolution_factor=1
+                    ti = np.linspace(0, output_dim, output_dim*resolution_factor)
+                    self.image_shapes[telescope_type] = (
+                                               self.image_shapes[telescope_type][0] * resolution_factor,
+                                               self.image_shapes[telescope_type][1] * resolution_factor,
+                                               self.image_shapes[telescope_type][2]
+                                               )
+
                     XI, YI = np.meshgrid(ti, ti)
                     # Applying the interpolation
                     method_dict = {'nearest_interpolation': 'nearest', 'linear_interpolation': 'linear', 'cubic_interpolation': 'cubic'}
                     method = method_dict[self.hex_conversion_algorithm]
                     image_2D = griddata((x.ravel(), y.ravel()), z.ravel(), (XI, YI), method=method,fill_value=0.0)
-                    #interpolated_total_intensity = np.sum(image_2D)
-                    #image_2D = image_2D * (float(total_intensity)/interpolated_total_intensity)
+                    interpolated_total_intensity = np.sum(image_2D)
+                    image_2D *= (float(total_intensity)/float(interpolated_total_intensity))
                     image_2D = np.expand_dims(image_2D, axis=2)
                 else:
                     raise ValueError("Sorry! Telescope type {} isn\'t supported with the conversion algorithm \'{}\'.".format(telescope_type,self.hex_conversion_algorithm))
