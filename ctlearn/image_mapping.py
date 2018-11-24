@@ -3,9 +3,10 @@ import logging
 import threading
 import os 
 import cv2
-
+    
+from scipy import spatial
 from scipy.sparse import csr_matrix
-from scipy.interpolate import griddata
+from collections import Counter
 
 logger = logging.getLogger(__name__)
 
@@ -13,34 +14,33 @@ logger = logging.getLogger(__name__)
 # See http://www.pytables.org/latest/cookbook/threading.html
 lock = threading.Lock()
 
-
 class ImageMapper():
 
     pixel_lengths = {
-        'LST': 0.05,
-        'MSTF': 0.05,
-        'MSTN': 0.05,
-        'MSTS': 0.00669,
-        'SST1': 0.0236,
-        'SSTC':0.0064,
-        'SSTA':0.0071638,
-        'VTS': 1.0 * np.sqrt(2),
-        'MGC': 1.0 * np.sqrt(2),
+        'LSTCam': 0.05,
+        'FlashCam': 0.05,
+        'NectarCam': 0.05,
+        'SCTCam': 0.00669,
+        'DigiCam': 0.0236,
+        'CHEC':0.0064,
+        'ASTRICam':0.0071638,
+        'VERITAS': 1.0 * np.sqrt(2),
+        'MAGICCam': 1.0 * np.sqrt(2),
         'FACT': 0.0095,
         'HESS-I': 0.0514,
         'HESS-II': 0.0514
         }
 
     num_pixels = {
-        'LST': 1855,
-        'MSTF': 1764,
-        'MSTN': 1855,
-        'MSTS': 11328,
-        'SST1': 1296,
-        'SSTC': 2048,
-        'SSTA': 2368,
-        'VTS': 499,
-        'MGC': 1039,
+        'LSTCam': 1855,
+        'FlashCam': 1764,
+        'NectarCam': 1855,
+        'SCTCam': 11328,
+        'DigiCam': 1296,
+        'CHEC': 2048,
+        'ASTRICam': 2368,
+        'VERITAS': 499,
+        'MAGICCam': 1039,
         'FACT': 1440,
         'HESS-I': 960,
         'HESS-II': 2048
@@ -48,6 +48,7 @@ class ImageMapper():
 
     def __init__(self,
                  hex_conversion_algorithm='oversampling',
+                 interpolation_image_shape=None,
                  padding=None,
                  use_peak_times=False):
         """   
@@ -62,89 +63,109 @@ class ImageMapper():
         # image_shapes should be a non static field to prevent problems 
         # when multiple instances of ImageMapper are created
         self.image_shapes = {
-            'LST': (108, 108, 1),
-            'MSTF': (110, 110, 1),
-            'MSTN': (108, 108, 1),
-            'MSTS': (120, 120, 1),
-            'SST1': (94, 94, 1),
-            'SSTC': (48, 48, 1),
-            'SSTA': (56, 56, 1),
-            'VTS': (54, 54, 1),
-            'MGC': (82, 82, 1),
+            'LSTCam': (108, 108, 1),
+            'FlashCam': (110, 110, 1),
+            'NectarCam': (108, 108, 1),
+            'SCTCam': (120, 120, 1),
+            'DigiCam': (94, 94, 1),
+            'CHEC': (48, 48, 1),
+            'ASTRICam': (56, 56, 1),
+            'VERITAS': (54, 54, 1),
+            'MAGICCam': (82, 82, 1),
             'FACT': (90,90,1),
             'HESS-I': (72,72,1),
             'HESS-II': (104,104,1)
             }
 
-        if hex_conversion_algorithm in ['oversampling', 'nearest_interpolation', 'linear_interpolation', 'cubic_interpolation']:
+        if hex_conversion_algorithm in ['oversampling', 'rebinning', 'nearest_interpolation', 'linear_interpolation', 'cubic_interpolation']:
             self.hex_conversion_algorithm = hex_conversion_algorithm
         else:
             raise NotImplementedError("Hex conversion algorithm {} is not implemented.".format(hex_conversion_algorithm))
 
+
+        if interpolation_image_shape is not None and hex_conversion_algorithm not in ['oversampling']:
+            self.image_shapes=interpolation_image_shape
+
         if padding is None:
             padding = {
-                    'LST': 0,
-                    'MSTF': 0,
-                    'MSTN': 0,
-                    'MSTS': 0,
-                    'SST1': 0,
-                    'SSTC': 0,
-                    'SSTA': 0,
-                    'VTS': 0,
-                    'MGC': 0,
+                    'LSTCam': 0,
+                    'FlashCam': 0,
+                    'NectarCam': 0,
+                    'SCTCam': 0,
+                    'DigiCam': 0,
+                    'CHEC': 0,
+                    'ASTRICam': 0,
+                    'VERITAS': 0,
+                    'MAGICCam': 0,
                     'FACT': 0,
                     'HESS-I': 0,
                     'HESS-II': 0
                     }
         self.padding = padding
         
-        for tel_, pad_ in self.padding.items():
+        for camera_type, pad_ in self.padding.items():
             if pad_ > 0:
-                self.image_shapes[tel_] = (
-                    self.image_shapes[tel_][0] + pad_ * 2,
-                    self.image_shapes[tel_][1] + pad_ * 2,
-                    self.image_shapes[tel_][2]
+                self.image_shapes[camera_type] = (
+                    self.image_shapes[camera_type][0] + pad_ * 2,
+                    self.image_shapes[camera_type][1] + pad_ * 2,
+                    self.image_shapes[camera_type][2]
                 )
         
         if use_peak_times:
-            for tel_ in self.image_shapes:
-                self.image_shapes[tel_] = (
-                    self.image_shapes[tel_][0],
-                    self.image_shapes[tel_][1],
+            for camera_type in self.image_shapes:
+                self.image_shapes[camera_type] = (
+                    self.image_shapes[camera_type][0],
+                    self.image_shapes[camera_type][1],
                     2 # number of channels
                 )
 
-        self.pixel_positions = {tel_type:self.__read_pix_pos_files(tel_type) for tel_type in self.pixel_lengths}
+        self.pixel_positions = {camera_type:self.__read_pix_pos_files(camera_type) for camera_type in self.pixel_lengths}
 
-        self.mapping_tables = {
-            'LST': self.generate_table_generic('LST'),
-            'MSTF': self.generate_table_generic('MSTF'),
-            'MSTN': self.generate_table_generic('MSTN'),
-            'MSTS': self.generate_table_MSTS(),
-            'SST1': self.generate_table_generic('SST1'),
-            'SSTC': self.generate_table_SSTC(),
-            'SSTA': self.generate_table_SSTA(),
-            'VTS': self.generate_table_VTS(),
-            'MGC': self.generate_table_MGC(),
-            'FACT': self.generate_table_generic('FACT'),
-            'HESS-I': self.generate_table_HESS('HESS-I'),
-            'HESS-II': self.generate_table_HESS('HESS-II')
-            }
-
-    def map_image(self, pixels, telescope_type):
+        if hex_conversion_algorithm in ['oversampling']:
+            self.mapping_tables = {
+                'LSTCam': self.generate_table('LSTCam'),
+                'FlashCam': self.generate_table('FlashCam'),
+                'NectarCam': self.generate_table('NectarCam'),
+                'SCTCam': self.generate_table_SCTCam(),
+                'DigiCam': self.generate_table('DigiCam'),
+                'CHEC': self.generate_table_CHEC(),
+                'ASTRICam': self.generate_table_ASTRICam(),
+                'VERITAS': self.generate_table_VERITAS(),
+                'MAGICCam': self.generate_table_MAGICCam(),
+                'FACT': self.generate_table('FACT'),
+                'HESS-I': self.generate_table_HESS('HESS-I'),
+                'HESS-II': self.generate_table_HESS('HESS-II')
+                }
+        elif hex_conversion_algorithm in ['rebinning','nearest_interpolation','linear_interpolation','cubic_interpolation']:
+            self.mapping_tables = {
+                'LSTCam': self.generate_table('LSTCam'),
+                'FlashCam': self.generate_table('FlashCam'),
+                'NectarCam': self.generate_table('NectarCam'),
+                'DigiCam': self.generate_table('DigiCam'),
+                'VERITAS': self.generate_table('VERITAS'),
+                'MAGICCam': self.generate_table('MAGICCam'),
+                'FACT': self.generate_table('FACT'),
+                'HESS-I': self.generate_table('HESS-I'),
+                'HESS-II': self.generate_table('HESS-II')
+                }
+                    
+    def map_image(self, pixels, camera_type):
         """
         :param pixels: a numpy array of values for each pixel, in order of pixel index.
                        For future reference: 
                        The array should have dimensions [N_pixels, N_channels] where N_channels is e.g., 
                        1 when just using charges and 2 when using charges and peak arrival times. 
-        :param telescope_type: a string specifying the telescope type as defined in the HDF5 format, 
-                        e.g., 'MSTS' for SCT data, which is the only currently implemented telescope type.
+        :param camera_type: a string specifying the telescope type as defined in the HDF5 format,
+                        e.g., 'SCTCam' for SCT data, which is the only currently implemented telescope type.
         :return: a numpy array of shape [img_width, img_length, N_channels]
         """
-        if telescope_type in self.image_shapes.keys():
-            self.telescope_type = telescope_type
+        if camera_type in self.image_shapes.keys():
+            self.camera_type = camera_type
         else:
-            raise ValueError("Sorry! Telescope type {} isn\'t supported.".format(telescope_type))
+            raise ValueError("Sorry! Telescope type {} isn\'t supported.".format(camera_type))
+        
+        if self.hex_conversion_algorithm not in ['oversampling'] and camera_type in ['SCTCam','CHEC','ASTRICam']:
+            raise ValueError("Sorry! Telescope type {} isn\'t supported with the conversion algorithm \'{}\'.".format(camera_type,self.hex_conversion_algorithm))
         
         n_channels = pixels.shape[1]
         
@@ -152,86 +173,282 @@ class ImageMapper():
         result = []
         for channel in range(n_channels):
             vector = pixels[:,channel]
+            
+            # SCTCam is treated differently due to runtime purposes
+            if camera_type in ['SCTCam']:
+                image_2D = vector[self.mapping_tables[camera_type]].T[:,:,np.newaxis]
+            elif camera_type in ['LSTCam', 'FlashCam', 'NectarCam', 'DigiCam', 'CHEC', 'ASTRICam', 'VERITAS', 'MAGICCam', 'FACT','HESS-I','HESS-II']:
+                image_2D = (vector.T @ self.mapping_tables[camera_type]).reshape(self.image_shapes[camera_type][0],
+                                                                    self.image_shapes[camera_type][1], 1)
+            result.append(image_2D)
 
-            if self.hex_conversion_algorithm in ['oversampling']:
-                # MSTS is treated differently due to runtime purposes
-                if telescope_type in ['MSTS']:
-                    image_2D = vector[self.mapping_tables[telescope_type]].T[:,:,np.newaxis]
-                elif telescope_type in ['LST', 'MSTF', 'MSTN', 'SST1', 'SSTC', 'SSTA', 'VTS', 'MGC', 'FACT','HESS-I','HESS-II']:
-                    image_2D = (vector.T @ self.mapping_tables[telescope_type]).reshape(self.image_shapes[telescope_type][0],
-                                                                                       self.image_shapes[telescope_type][1], 1)
-                result.append(image_2D)
-
-            elif self.hex_conversion_algorithm in ['nearest_interpolation', 'linear_interpolation', 'cubic_interpolation']:
-                if telescope_type in ['LST','MSTF','MSTN','SST1','VTS','MGC','FACT','HESS-I','HESS-II']:
-                    # Get pixel positions and padding information
-                    pos = self.pixel_positions[telescope_type]
-                    pad = self.padding[telescope_type]
-                    # Get relevant parameters
-                    output_dim = self.image_shapes[telescope_type][0]
-                    num_pixels = self.num_pixels[telescope_type]
-                    pixel_length = self.pixel_lengths[telescope_type]
-  
-                    # Adding intensities (0.0) for virtual pixels outside the camera
-                    x=pos[0]
-                    y=pos[1]
-                    z=vector[1:num_pixels+1]
-                    while x.shape!=z.shape:
-                        z=np.concatenate((z,[0.0]))
-                    # Shifting and rescaling the pixel positions
-                    # Hardcoded value below are necessary due to two extra rows and columns of virtual pixels outside the camera.
-                    x -= np.min(x)
-                    y -= np.min(y)
-                    x *= ((output_dim-pad*2+2)/np.max(x))
-                    y *= ((output_dim-pad*2+2)/np.max(y))
-                    x += pad-1
-                    y += pad-1
-                    
-                    # Preserve the total intensity in the camera
-                    total_intensity = np.sum(z)
-                    
-                    # Creating the output grid.
-                    # Different resolution.
-                    resolution_factor=1
-                    ti = np.linspace(0, output_dim, output_dim*resolution_factor)
-                    self.image_shapes[telescope_type] = (
-                                               self.image_shapes[telescope_type][0] * resolution_factor,
-                                               self.image_shapes[telescope_type][1] * resolution_factor,
-                                               self.image_shapes[telescope_type][2]
-                                               )
-
-                    XI, YI = np.meshgrid(ti, ti)
-                    # Applying the interpolation
-                    method_dict = {'nearest_interpolation': 'nearest', 'linear_interpolation': 'linear', 'cubic_interpolation': 'cubic'}
-                    method = method_dict[self.hex_conversion_algorithm]
-                    image_2D = griddata((x.ravel(), y.ravel()), z.ravel(), (XI, YI), method=method,fill_value=0.0)
-                    interpolated_total_intensity = np.sum(image_2D)
-                    image_2D *= (float(total_intensity)/float(interpolated_total_intensity))
-                    image_2D = np.expand_dims(image_2D, axis=2)
-                else:
-                    raise ValueError("Sorry! Telescope type {} isn\'t supported with the conversion algorithm \'{}\'.".format(telescope_type,self.hex_conversion_algorithm))
-        
-                result.append(image_2D)
-        
         telescope_image = np.concatenate(result, axis = -1)
-        
-        # Rotating the MAGIC camera by -19.1°
-        if telescope_type in ['MGC']:
-            pad = self.padding[telescope_type]
-            (h, w) = telescope_image.shape[:2]
-            center = (w/2.0, h/2.0)
-            angle=-19.1
-            scale=1.0
-            M = cv2.getRotationMatrix2D(center, angle, scale)
-            telescope_image = cv2.warpAffine(telescope_image, M, (w, h))
-            telescope_image = np.expand_dims(telescope_image, axis=2)
-        
         return telescope_image
 
+    def generate_table(self, camera_type):
+        # Note that this only works for Hex cams
+        # Get relevant parameters
+        output_dim = self.image_shapes[camera_type][0]
+        num_pixels = self.num_pixels[camera_type]
+        pixel_length = self.pixel_lengths[camera_type]
+        # Get telescope pixel positions and padding for the given tel type
+        pos = self.pixel_positions[camera_type]
+        pad = self.padding[camera_type]
+        
+        # Shifting and rescaling the hexangonal pixel positions and creating
+        # a hexagonalgrid for the rebinning and interpolation methods
+        if self.hex_conversion_algorithm not in ['oversampling']:
+            x_hex = pos[0]
+            y_hex = pos[1]
+            x_hex -= np.min(x_hex)
+            y_hex -= np.min(y_hex)
+            x_hex *= ((output_dim-pad*2)/np.max(x_hex))
+            y_hex *= ((output_dim-pad*2)/np.max(y_hex))
+            x_hex += pad
+            y_hex += pad
+            hex_grid = np.column_stack([x_hex, y_hex])
 
-    def generate_table_VTS(self):
+        # Oversampling
+        if self.hex_conversion_algorithm in ['oversampling']:
+            pos = self.slice_pixelPos(pos,num_pixels)
+            # Compute mapping matrix
+            pos_int = pos / pixel_length * 2
+            pos_int[0, :] = pos_int[0, :] / np.sqrt(3) * 2
+            # below put the image in the corner
+            pos_int[0, :] -= np.min(pos_int[0, :])
+            pos_int[1, :] -= np.min(pos_int[1, :])
+            p0_lim = np.max(pos_int[0, :]) - np.min(pos_int[0, :])
+            p1_lim = np.max(pos_int[1, :]) - np.min(pos_int[1, :])
+            if output_dim < p0_lim or output_dim < p1_lim:
+                print("Danger! output image shape too small, will be cropped!")
+            # below put the image in the center
+            if camera_type in ["FACT"]:
+                pos_int[0, :] += (output_dim - p0_lim) / 2. - 1.0
+                pos_int[1, :] += (output_dim - p1_lim - 0.8) / 2. - 1.0
+            else:
+                pos_int[0, :] += (output_dim - p0_lim) / 2.
+                pos_int[1, :] += (output_dim - p1_lim - 0.8) / 2.
+            
+            mapping_matrix3d = np.zeros((num_pixels + 1, output_dim, output_dim), dtype=float)
+            pixel_weight=1.0/4
+            for i in range(num_pixels):
+                x, y = pos_int[:, i]
+                x_S = int(round(x))
+                x_L = x_S + 1
+                y_S = int(round(y))
+                y_L = y_S + 1
+                # leave 0 for padding, mapping matrix from 1 to 499
+                #mapping_matrix[i + 1, x_S:x_L + 1, y_S:y_L + 1] = pixel_weight
+                mapping_matrix3d[i + 1, y_S:y_L + 1, x_S:x_L + 1] = pixel_weight
+                                                                        
+            # make sparse matrix of shape (num_pixels + 1, output_dim * output_dim)
+            sparse_map_mat = csr_matrix(mapping_matrix3d.reshape(mapping_matrix3d.shape[0], output_dim * output_dim))
+
+            return sparse_map_mat
+
+        # Rebinning (approximation)
+        elif self.hex_conversion_algorithm in ['rebinning']:
+            # "MC" points per square pixel = factor x factor
+            factor = 10
+            # Setting up the grid with the "MC" points
+            mc_grid = self.get_outputgrid(output_dim, factor)
+            
+            # Finding the nearest point in the hexagonal grid for each point in the square "MC" grid
+            tree = spatial.cKDTree(hex_grid)
+            minid = np.reshape(tree.query(mc_grid)[1],(output_dim*factor, output_dim*factor))
+            
+            # Calculating the overlapping area/weights for each square pixel
+            mapping_matrix3d = np.zeros((len(x_hex)+1,output_dim, output_dim))
+            for y_grid in np.arange(0, output_dim*factor, factor):
+                for x_grid in np.arange(0, output_dim*factor, factor):
+                    counter = Counter(np.reshape(minid[y_grid:y_grid+factor, x_grid:x_grid+factor],-1))
+                    pixel_index = np.array(list(counter.keys()))+1
+                    weights = list(counter.values())/np.sum(list(counter.values()))
+                    for key in np.arange(0,len(pixel_index),1):
+                        mapping_matrix3d[pixel_index[key]][int(y_grid/factor)][int(x_grid/factor)] = weights[key]
+
+            mapping_matrix3d = mapping_matrix3d[0:num_pixels+1]
+            # Normalization of the mapping table
+            for i in np.arange(0,mapping_matrix3d.shape[0],1):
+                # Rotating the MAGIC camera by -19.1°
+                if camera_type in ['MAGICCam']:
+                    mapping_matrix3d[i] = self.rotateMAGICCam(mapping_matrix3d[i])
+                if np.sum(mapping_matrix3d[i]) != 0:
+                    mapping_matrix3d[i] /= np.sum(mapping_matrix3d[i])
+            
+            sparse_map_mat = csr_matrix(mapping_matrix3d.reshape(mapping_matrix3d.shape[0],
+                                                                 self.image_shapes[camera_type][0]*
+                                                                 self.image_shapes[camera_type][1]))
+            return sparse_map_mat
+                            
+        # Nearest interpolation
+        elif self.hex_conversion_algorithm in ['nearest_interpolation']:
+            # Finding the nearest point in the hexagonal grid for each point in the square table grid
+            table_grid = self.get_outputgrid(output_dim, factor=1)
+            tree = spatial.cKDTree(hex_grid)
+            minid = np.reshape(tree.query(table_grid)[1],(output_dim, output_dim))
+                            
+            mapping_matrix3d = np.zeros((len(x_hex)+1,output_dim, output_dim))
+            for y_grid in np.arange(0, output_dim, 1):
+                for x_grid in np.arange(0, output_dim, 1):
+                    mapping_matrix3d[minid[y_grid][x_grid]+1][y_grid][x_grid] = 1
+        
+            mapping_matrix3d = mapping_matrix3d[0:num_pixels+1]
+            # Rotating the MAGIC camera by -19.1°
+            for i in np.arange(0,mapping_matrix3d.shape[0],1):
+                if camera_type in ['MAGICCam']:
+                    mapping_matrix3d[i] = self.rotateMAGICCam(mapping_matrix3d[i])
+                                                        
+            sparse_map_mat = csr_matrix(mapping_matrix3d.reshape(mapping_matrix3d.shape[0],
+                                                                self.image_shapes[camera_type][0]*
+                                                                self.image_shapes[camera_type][1]))
+                                                            
+            return sparse_map_mat
+                                                                
+        # Linear interpolation
+        elif self.hex_conversion_algorithm in ['linear_interpolation']:
+            table_grid = self.get_outputgrid(output_dim, factor=1)
+            tri = spatial.Delaunay(hex_grid)
+                
+            table_simplex = tri.simplices[tri.find_simplex(table_grid)]
+            table_simplex_points = hex_grid[table_simplex]
+            weights = self.get_weights(table_simplex_points, table_grid)
+            weights = np.reshape(weights, (output_dim, output_dim, weights.shape[1]))
+            table_simplex = np.reshape(table_simplex,(output_dim, output_dim, table_simplex.shape[1]))
+            
+            mapping_matrix3d = np.zeros((len(x_hex)+1, output_dim, output_dim))
+            for i in np.arange(0,output_dim,1):
+                for j in np.arange(0,output_dim,1):
+                    for k in np.arange(0,3,1):
+                        mapping_matrix3d[table_simplex[j][i][k]+1][j][i] = weights[j][i][k]
+
+            mapping_matrix3d = mapping_matrix3d[0:num_pixels+1]
+            # Normalization of the mapping table
+            for i in np.arange(0,mapping_matrix3d.shape[0],1):
+                # Rotating the MAGIC camera by -19.1°
+                if camera_type in ['MAGICCam']:
+                    mapping_matrix3d[i] = self.rotateMAGICCam(mapping_matrix3d[i])
+                if np.sum(mapping_matrix3d[i]) != 0:
+                    mapping_matrix3d[i] /= np.sum(mapping_matrix3d[i])
+                                                                                                        
+            sparse_map_mat = csr_matrix(mapping_matrix3d.reshape(mapping_matrix3d.shape[0],
+                                                                self.image_shapes[camera_type][0]*
+                                                                self.image_shapes[camera_type][1]))
+                                                                                                            
+            return sparse_map_mat
+                                                                                                                
+        # Cubic interpolation
+        elif self.hex_conversion_algorithm in ['cubic_interpolation']:
+            #
+            #                 /\        /\
+            #                /  \      /  \
+            #               /    \    /    \
+            #              / 2NN  \  / 2NN  \
+            #             /________\/________\
+            #            /\        /\        /\
+            #           /  \  NN  /  \  NN  /  \
+            #          /    \    /    \    /    \
+            #         / 2NN  \  /  .   \  /  2NN \
+            #        /________\/________\/________\
+            #                 /\        /\
+            #                /  \  NN  /  \
+            #               /    \    /    \
+            #              / 2NN  \  / 2NN  \
+            #             /________\/________\
+            #
+            
+            table_grid = self.get_outputgrid(output_dim, factor=1)
+            tri = spatial.Delaunay(hex_grid)
+                                                                                                                    
+            # Get all relevant simplex indices
+            simplex_index = tri.find_simplex(table_grid)
+            simplex_index_NN = tri.neighbors[simplex_index]
+            simplex_index_2NN = tri.neighbors[simplex_index_NN]
+            
+            table_simplex = tri.simplices[simplex_index]
+            table_simplex_points = hex_grid[table_simplex]
+
+            # NN
+            weights_NN = []
+            simplexes_NN = []
+            for i in np.arange(0,simplex_index.shape[0],1):
+                if -1 not in simplex_index_NN[i]:
+                    corner_points_NN, corner_simplexes_NN = self.get_triangle(tri, hex_grid, simplex_index_NN[i], table_simplex[i])
+                    target = table_grid[i]
+                    target = np.expand_dims(target, axis=0)
+                    w = self.get_weights(corner_points_NN, target)
+                    w = np.squeeze(w, axis=0)
+                    weights_NN.append(w)
+                    simplexes_NN.append(corner_simplexes_NN)
+                else:
+                    w = np.array([0,0,0])
+                    weights_NN.append(w)
+                    corner_simplexes_2NN = np.array([-1,-1,-1])
+                    simplexes_NN.append(corner_simplexes_2NN)
+                                                                                                                                                
+            weights_NN = np.array(weights_NN)
+            simplexes_NN = np.array(simplexes_NN)
+
+            # 2NN
+            weights_2NN = []
+            simplexes_2NN = []
+            for i in np.arange(0,3,1):
+                weights = []
+                simplexes = []
+                for j in np.arange(0,simplex_index.shape[0],1):
+                    if -1 not in simplex_index_2NN[j][i] and -1 not in simplex_index_NN[j]:
+                        table_simplex_NN = tri.simplices[simplex_index_NN[j][i]]
+                        corner_points_2NN, corner_simplexes_2NN = self.get_triangle(tri, hex_grid, simplex_index_2NN[j][i], table_simplex_NN)
+                        target = table_grid[j]
+                        target = np.expand_dims(target, axis=0)
+                        w = self.get_weights(corner_points_2NN, target)
+                        w = np.squeeze(w, axis=0)
+                        weights.append(w)
+                        simplexes.append(corner_simplexes_2NN)
+                    else:
+                        w = np.array([0,0,0])
+                        weights.append(w)
+                        corner_simplexes_2NN = np.array([-1,-1,-1])
+                        simplexes.append(corner_simplexes_2NN)
+                                                                                                                                                                            
+                weights = np.array(weights)
+                simplexes = np.array(simplexes)
+                weights_2NN.append(weights)
+                simplexes_2NN.append(simplexes)
+
+            weights_2NN.append(weights_NN)
+            simplexes_2NN.append(simplexes_NN)
+            weights_2NN = np.array(weights_2NN)
+            simplexes_2NN = np.array(simplexes_2NN)
+            weights_2NN = np.reshape(weights_2NN,(weights_2NN.shape[0], output_dim, output_dim, weights_2NN.shape[2]))
+            simplexes_2NN = np.reshape(simplexes_2NN,(simplexes_2NN.shape[0], output_dim, output_dim, simplexes_2NN.shape[2]))
+
+            mapping_matrix3d = np.zeros((len(x_hex)+1, output_dim, output_dim))
+            for i in np.arange(0,4,1):
+                for j in np.arange(0,output_dim,1):
+                    for k in np.arange(0,output_dim,1):
+                        for l in np.arange(0,3,1):
+                            mapping_matrix3d[simplexes_2NN[i][k][j][l]+1][k][j] = weights_2NN[i][k][j][l]/4
+
+            mapping_matrix3d = mapping_matrix3d[0:num_pixels+1]
+            # Normalization of the mapping table
+            for i in np.arange(0,mapping_matrix3d.shape[0],1):
+                # Rotating the MAGIC camera by -19.1°
+                if camera_type in ['MAGICCam']:
+                    mapping_matrix3d[i] = self.rotateMAGICCam(mapping_matrix3d[i])
+                if np.sum(mapping_matrix3d[i]) != 0:
+                    mapping_matrix3d[i] /= np.sum(mapping_matrix3d[i])
+                                                                                                                                                                                                                            
+            sparse_map_mat = csr_matrix(mapping_matrix3d.reshape(mapping_matrix3d.shape[0],
+                                                                self.image_shapes[camera_type][0]*
+                                                                self.image_shapes[camera_type][1]))
+                                                                                                                                                                                                                                
+            return sparse_map_mat
+
+
+    def generate_table_VERITAS(self):
         """
-        Function returning VTS mapping matrix (used to convert a 1d trace to a resampled 2d image in square lattice).
+        Function returning VERITAS mapping matrix (used to convert a 1d trace to a resampled 2d image in square lattice).
         Note that for a VERITAS telescope, input trace is of shape (499), while output image is of shape (54, 54, 1)
         The return matrix is of shape (499+1, 54*54) = (500, 2916)
                                       # the added 1 is for the 0th channel = 0 for padding
@@ -240,7 +457,7 @@ class ImageMapper():
         """
         # telescope hardcoded values
         num_pixels = 499
-        pixel_side_len = self.pixel_lengths['VTS']
+        pixel_side_len = self.pixel_lengths['VERITAS']
         num_spirals = 13
 
         pixel_weight = 1.0/4 #divide each pixel intensity into 4 sub pixels
@@ -253,7 +470,7 @@ class ImageMapper():
 
         # return mapping_matrix (54, 54)
         # leave 0 for padding, mapping matrix from 1 to 499
-        mapping_matrix = np.zeros((num_pixels + 1, self.image_shapes['VTS'][0], self.image_shapes['VTS'][1]), dtype=float)
+        mapping_matrix3d = np.zeros((num_pixels + 1, self.image_shapes['VERITAS'][0], self.image_shapes['VERITAS'][1]), dtype=float)
 
         for i in range(1, num_spirals + 1):
             x = 2.0 * i * delta_x
@@ -310,8 +527,8 @@ class ImageMapper():
                     pos[pixel_index - 1, 1] = y
 
         pos_shifted = pos + 26 + pixel_side_len / 2.0
-        delta_x = int((self.image_shapes['VTS'][0] - 54) / 2)
-        delta_y = int((self.image_shapes['VTS'][1] - 54) / 2)
+        delta_x = int((self.image_shapes['VERITAS'][0] - 54) / 2)
+        delta_y = int((self.image_shapes['VERITAS'][1] - 54) / 2)
 
         for i in range(num_pixels):
             x, y = pos_shifted[i, :]
@@ -321,16 +538,16 @@ class ImageMapper():
             y_S = int(round(y - pixel_side_len / 2.0)) + delta_y
 
             # leave 0 for padding, mapping matrix from 1 to 499
-            #mapping_matrix[i + 1, x_S:x_L + 1, y_S:y_L + 1] = pixel_weight
-            mapping_matrix[i + 1, y_S:y_L + 1, x_S:x_L + 1] = pixel_weight
+            #mapping_matrix3d[i + 1, x_S:x_L + 1, y_S:y_L + 1] = pixel_weight
+            mapping_matrix3d[i + 1, y_S:y_L + 1, x_S:x_L + 1] = pixel_weight
 
-        mapping_matrix = csr_matrix(mapping_matrix.reshape(num_pixels + 1, self.image_shapes['VTS'][0] * self.image_shapes['VTS'][1]))
+        sparse_map_mat = csr_matrix(mapping_matrix3d.reshape(mapping_matrix3d.shape[0], self.image_shapes['VERITAS'][0] * self.image_shapes['VERITAS'][1]))
         
-        return mapping_matrix
+        return sparse_map_mat
 
-    def generate_table_MGC(self):
+    def generate_table_MAGICCam(self):
         """
-            Function returning MGC mapping matrix (used to convert a 1d trace to a resampled 2d image in square lattice).
+            Function returning MAGICCam mapping matrix (used to convert a 1d trace to a resampled 2d image in square lattice).
             Note that for a MAGIC telescope, input trace is of shape (1039), while output image is of shape (82, 82, 1)
             The return matrix is of shape (1039+1, 82*82) = (1040, 6724)
             # the added 1 is for the 0th channel = 0 for padding
@@ -339,7 +556,7 @@ class ImageMapper():
             """
         # telescope hardcoded values
         num_pixels = 1039
-        pixel_side_len = self.pixel_lengths['MGC']
+        pixel_side_len = self.pixel_lengths['MAGICCam']
         num_spirals = 19
         
         pixel_weight = 1.0/4 #divide each pixel intensity into 4 sub pixels
@@ -352,7 +569,7 @@ class ImageMapper():
         
         # return mapping_matrix (82, 82)
         # leave 0 for padding, mapping matrix from 1 to 1038
-        mapping_matrix = np.zeros((num_pixels + 1, self.image_shapes['MGC'][0], self.image_shapes['MGC'][1]), dtype=float)
+        mapping_matrix3d = np.zeros((num_pixels + 1, self.image_shapes['MAGICCam'][0], self.image_shapes['MAGICCam'][1]), dtype=float)
         
         for i in range(1, num_spirals + 1):
             
@@ -420,8 +637,8 @@ class ImageMapper():
             
         pos_shifted = pos + 40 + pixel_side_len / 2.0
                 
-        delta_x = int((self.image_shapes['MGC'][0] - 82) / 2)
-        delta_y = int((self.image_shapes['MGC'][1] - 82) / 2)
+        delta_x = int((self.image_shapes['MAGICCam'][0] - 82) / 2)
+        delta_y = int((self.image_shapes['MAGICCam'][1] - 82) / 2)
 
         for i in range(num_pixels):
             x, y = pos_shifted[i, :]
@@ -431,17 +648,24 @@ class ImageMapper():
             y_S = int(round(y - pixel_side_len / 2.0)) + delta_y
     
             # leave 0 for padding, mapping matrix from 1 to 1038
-            #mapping_matrix[i + 1, x_S:x_L + 1, y_S:y_L + 1] = pixel_weight
-            mapping_matrix[i + 1, y_S:y_L + 1, x_S:x_L + 1] = pixel_weight
+            #mapping_matrix3d[i + 1, x_S:x_L + 1, y_S:y_L + 1] = pixel_weight
+            mapping_matrix3d[i + 1, y_S:y_L + 1, x_S:x_L + 1] = pixel_weight
         
-        mapping_matrix = csr_matrix(mapping_matrix.reshape(num_pixels + 1, self.image_shapes['MGC'][0] * self.image_shapes['MGC'][1]))
+        # Normalization of the mapping table
+        for i in np.arange(0,mapping_matrix3d.shape[0],1):
+            # Rotating the MAGIC camera by -19.1°
+            mapping_matrix3d[i] = self.rotateMAGICCam(mapping_matrix3d[i])
+            if np.sum(mapping_matrix3d[i]) != 0:
+                mapping_matrix3d[i] /= np.sum(mapping_matrix3d[i])
         
-        return mapping_matrix
+        sparse_map_mat = csr_matrix(mapping_matrix3d.reshape(mapping_matrix3d.shape[0], self.image_shapes['MAGICCam'][0] * self.image_shapes['MAGICCam'][1]))
+        
+        return sparse_map_mat
 
 
-    def generate_table_MSTS(self):
+    def generate_table_SCTCam(self):
         """
-        Function returning MSTS mapping table (used to index into the trace when converting from trace to image).
+        Function returning SCTCam mapping table (used to index into the trace when converting from trace to image).
         """
 
         ROWS = 15
@@ -465,16 +689,16 @@ class ImageMapper():
 
         # bottom left corner of each 8 x 8 module in the camera
         # counting from the bottom row, left to right
-        MODULE_START_POSITIONS = [(((self.image_shapes['MSTS'][0] - MODULES_PER_ROW[j] *
+        MODULE_START_POSITIONS = [(((self.image_shapes['SCTCam'][0] - MODULES_PER_ROW[j] *
                                      MODULE_DIM) / 2) +
                                    (MODULE_DIM * i),
-                                   ((self.image_shapes['MSTS'][1] - MODULES_PER_ROW[ROWS//2] *
+                                   ((self.image_shapes['SCTCam'][1] - MODULES_PER_ROW[ROWS//2] *
                                      MODULE_DIM) / 2) +
                                    (j * MODULE_DIM))
                                   for j in range(ROWS)
                                   for i in range(MODULES_PER_ROW[j])]
 
-        table = np.zeros(shape=(self.image_shapes['MSTS'][0], self.image_shapes['MSTS'][1]), dtype=int)
+        table = np.zeros(shape=(self.image_shapes['SCTCam'][0], self.image_shapes['SCTCam'][1]), dtype=int)
         # Fill appropriate positions with indices
         # NOTE: we append a 0 entry to the (11328,) trace array to allow us to use fancy indexing to fill
         # the empty areas of the (120,120) image. Accordingly, all indices in the mapping table are increased by 1
@@ -489,9 +713,9 @@ class ImageMapper():
 
         return table
 
-    def generate_table_SSTC(self):
+    def generate_table_CHEC(self):
         """
-        Function returning SSTC mapping table (used to index into the trace when converting from trace to image).
+        Function returning CHEC mapping table (used to index into the trace when converting from trace to image).
         """
 
         MODULES_PER_ROW_DICT = { 0: 32,
@@ -544,30 +768,30 @@ class ImageMapper():
                                  47: 32 }
 
         # This is set to int because no oversampling is done
-        mapping_matrix3d = np.zeros((self.num_pixels['SSTC'] + 1,
-                                     self.image_shapes['SSTC'][0],
-                                     self.image_shapes['SSTC'][1]), dtype=int)
+        mapping_matrix3d = np.zeros((self.num_pixels['CHEC'] + 1,
+                                     self.image_shapes['CHEC'][0],
+                                     self.image_shapes['CHEC'][1]), dtype=int)
 
         i = 0  # Pixel count
         # offset vertically:
-        delta_x = int((self.image_shapes['SSTC'][1] - MODULES_PER_ROW_DICT[23]) / 2)
+        delta_x = int((self.image_shapes['CHEC'][1] - MODULES_PER_ROW_DICT[23]) / 2)
         for row_, n_per_row_ in MODULES_PER_ROW_DICT.items():
-            row_start_ = int((self.image_shapes['SSTC'][0] - n_per_row_) / 2)
+            row_start_ = int((self.image_shapes['CHEC'][0] - n_per_row_) / 2)
             for j in range(n_per_row_):
                 x, y = (row_ + delta_x, j + row_start_)
                 mapping_matrix3d[i + 1, x, y] = 1
                 i += 1
 
-        sparse_map_mat = csr_matrix(mapping_matrix3d.reshape(self.num_pixels['SSTC'] + 1,
-                                                             self.image_shapes['SSTC'][0]*
-                                                             self.image_shapes['SSTC'][1]))
+        sparse_map_mat = csr_matrix(mapping_matrix3d.reshape(mapping_matrix3d.shape[0],
+                                                             self.image_shapes['CHEC'][0]*
+                                                             self.image_shapes['CHEC'][1]))
 
         return sparse_map_mat
 
 
-    def generate_table_SSTA(self):
+    def generate_table_ASTRICam(self):
         """
-        Function returning SSTA mapping table (used to index into the trace when converting from trace to image).
+        Function returning ASTRICam mapping table (used to index into the trace when converting from trace to image).
         """
         img_map = np.full([56, 56], -1, dtype=int)
 
@@ -619,30 +843,30 @@ class ImageMapper():
         img_map = img_map + 1
 
         # This is set to int because no oversampling is done
-        mapping_matrix3d = np.zeros((self.num_pixels['SSTA'] + 1,
-                                     self.image_shapes['SSTA'][0],
-                                     self.image_shapes['SSTA'][1]), dtype=int)
+        mapping_matrix3d = np.zeros((self.num_pixels['ASTRICam'] + 1,
+                                     self.image_shapes['ASTRICam'][0],
+                                     self.image_shapes['ASTRICam'][1]), dtype=int)
 
         # offset to the center:
-        delta_x = int((self.image_shapes['SSTA'][1] - 56) / 2)
-        delta_y = int((self.image_shapes['SSTA'][0] - 56) / 2)
+        delta_x = int((self.image_shapes['ASTRICam'][1] - 56) / 2)
+        delta_y = int((self.image_shapes['ASTRICam'][0] - 56) / 2)
 
         for x in range(56):
             for y in range(56):
                 if img_map[x, y] > 0:
                     mapping_matrix3d[img_map[x, y], x + delta_x, y + delta_y] = 1
 
-        sparse_map_mat = csr_matrix(mapping_matrix3d.reshape(self.num_pixels['SSTA'] + 1,
-                                                             self.image_shapes['SSTA'][0]*
-                                                             self.image_shapes['SSTA'][1]))
+        sparse_map_mat = csr_matrix(mapping_matrix3d.reshape(mapping_matrix3d.shape[0],
+                                                             self.image_shapes['ASTRICam'][0]*
+                                                             self.image_shapes['ASTRICam'][1]))
 
         return sparse_map_mat
 
-    def generate_table_HESS(self, tel_type):
+    def generate_table_HESS(self, camera_type):
         """
             Function returning HESS-I or HESS-II mapping table (used to index into the trace when converting from trace to image).
         """
-        if tel_type in ['HESS-I']:
+        if camera_type in ['HESS-I']:
             image_dim=72
             img_map = np.full([image_dim,image_dim], 0, dtype=int)
             blocks_num=8
@@ -650,7 +874,7 @@ class ImageMapper():
             start_y=[68,60,52,44,36,28,20,12]
             column_num_per_block = [20,28,36,36,36,36,28,20]
         
-        if tel_type in ['HESS-II']:
+        if camera_type in ['HESS-II']:
             image_dim=104
             img_map = np.full([image_dim,image_dim], 0, dtype=int)
             blocks_num=12
@@ -681,90 +905,109 @@ class ImageMapper():
                 #Update y position
                 x-=2
         
-        mapping_matrix3d = np.zeros((self.num_pixels[tel_type] + 1,
-                                     self.image_shapes[tel_type][0],
-                                     self.image_shapes[tel_type][1]), dtype=float)
+        mapping_matrix3d = np.zeros((self.num_pixels[camera_type] + 1,
+                                     self.image_shapes[camera_type][0],
+                                     self.image_shapes[camera_type][1]), dtype=float)
             
         # offset to the center:
-        delta_x = int((self.image_shapes[tel_type][1] - image_dim) / 2)
-        delta_y = int((self.image_shapes[tel_type][0] - image_dim) / 2)
+        delta_x = int((self.image_shapes[camera_type][1] - image_dim) / 2)
+        delta_y = int((self.image_shapes[camera_type][0] - image_dim) / 2)
                                      
         for x in range(image_dim):
             for y in range(image_dim):
                 if img_map[x, y] > 0:
                     mapping_matrix3d[img_map[x, y], x + delta_x, y + delta_y] = pixel_weight
 
-        sparse_map_mat = csr_matrix(mapping_matrix3d.reshape(self.num_pixels[tel_type] + 1,
-                                                     self.image_shapes[tel_type][0]*
-                                                     self.image_shapes[tel_type][1]))
+        sparse_map_mat = csr_matrix(mapping_matrix3d.reshape(mapping_matrix3d.shape[0],
+                                                     self.image_shapes[camera_type][0]*
+                                                     self.image_shapes[camera_type][1]))
 
         return sparse_map_mat
-    
-    def generate_table_generic(self, tel_type, pixel_weight=1.0/4):
-        # Note that this only works for Hex cams
-        # Get relevant parameters
-        output_dim = self.image_shapes[tel_type][0]
-        num_pixels = self.num_pixels[tel_type]
-        pixel_length = self.pixel_lengths[tel_type]
-        # Get telescope pixel positions for the given tel type
-        pos = self.pixel_positions[tel_type]
-        pos = self.slice_pixelPos(pos,num_pixels)
+
+    def get_triangle(self, tri, hex_grid, simplex_index_NN, table_simplex):
+        corner_points = []
+        corner_simplexes = []
+        for neighbors in np.arange(0,3,1):
+            table_simplex_NN = tri.simplices[simplex_index_NN[neighbors]]
+            simplex = np.array(list(set(table_simplex_NN) - set(table_simplex)))
+            simplex = np.squeeze(simplex, axis=0)
+            corner_simplexes.append(simplex)
+            corner_points.append(hex_grid[simplex])
+        corner_points = np.array(corner_points)
+        corner_simplexes = np.array(corner_simplexes)
+        corner_points = np.expand_dims(corner_points, axis=0)
+        return corner_points, corner_simplexes
+
+    def get_weights(self, p, target):
+        #       Barycentric coordinates:
+        #                 (x3,y3)
+        #                   .
+        #                  / \
+        #                 /   \
+        #                /     \
+        #               /       \
+        #              /         \
+        #             /        .  \
+        #            /       (x,y) \
+        #    (x1,y1)._______________.(x2,y2)
+        #
+        #       x = w1*x1 + w2*x2 + w3*x3
+        #       y = w1*y1 + w2*y2 + w3*y3
+        #       1 = w1 + w2 + w3
+        #
+        #       -> Rearranging:
+        #              (y2-y3)*(x-x3)+(x3-x2)*(y-y3)
+        #       w1 = ---------------------------------
+        #             (y2-y3)*(x1-x3)+(x3-x2)*(y1-y3)
+        #
+        #              (y3-y1)*(x-x3)+(x1-x2)*(y-y3)
+        #       w2 = ---------------------------------
+        #             (y2-y3)*(x1-x3)+(x3-x2)*(y1-y3)
+        #
+        #       w3 = 1 - w1 - w2
+        #
         
-        # Compute mapping matrix
-        pos_int = pos / pixel_length * 2
-        pos_int[0, :] = pos_int[0, :] / np.sqrt(3) * 2
-        # below put the image in the corner
-        pos_int[0, :] -= np.min(pos_int[0, :])
-        pos_int[1, :] -= np.min(pos_int[1, :])
-        p0_lim = np.max(pos_int[0, :]) - np.min(pos_int[0, :])
-        p1_lim = np.max(pos_int[1, :]) - np.min(pos_int[1, :])
-        if output_dim < p0_lim or output_dim < p1_lim:
-            print("Danger! output image shape too small, will be cropped!")
-        # below put the image in the center
-        if tel_type in ["FACT"]:
-            pos_int[0, :] += (output_dim - p0_lim) / 2. - 1.0
-            pos_int[1, :] += (output_dim - p1_lim - 0.8) / 2. - 1.0
-        else:
-            pos_int[0, :] += (output_dim - p0_lim) / 2.
-            pos_int[1, :] += (output_dim - p1_lim - 0.8) / 2.
+        weights = []
+        for i in np.arange(0,p.shape[0],1):
+            divisor = ((p[i][1][1]-p[i][2][1])*(p[i][0][0]-p[i][2][0])+(p[i][2][0]-p[i][1][0])*(p[i][0][1]-p[i][2][1]))
+            w = [((p[i][1][1]-p[i][2][1])*(target[i][0]-p[i][2][0])+(p[i][2][0]-p[i][1][0])*(target[i][1]-p[i][2][1]))/divisor]
+            w.append(((p[i][2][1]-p[i][0][1])*(target[i][0]-p[i][2][0])+(p[i][0][0]-p[i][2][0])*(target[i][1]-p[i][2][1]))/divisor)
+            w.append(1-w[0]-w[1])
+            weights.append(w)
+        return np.array(weights)
 
-
-        mapping_matrix = np.zeros((num_pixels + 1, output_dim, output_dim), dtype=float)
-            
-        for i in range(num_pixels):
-            x, y = pos_int[:, i]
-            x_S = int(round(x))
-            x_L = x_S + 1
-            y_S = int(round(y))
-            y_L = y_S + 1
-            # leave 0 for padding, mapping matrix from 1 to 499
-            #mapping_matrix[i + 1, x_S:x_L + 1, y_S:y_L + 1] = pixel_weight
-            mapping_matrix[i + 1, y_S:y_L + 1, x_S:x_L + 1] = pixel_weight
-
-        # make sparse matrix of shape (num_pixels + 1, output_dim * output_dim)
-        mapping_matrix = csr_matrix(mapping_matrix.reshape(num_pixels + 1, output_dim * output_dim))
-
-        return mapping_matrix
-
+    def get_outputgrid(self, output_dim, factor):
+        x = y = np.linspace(0, output_dim, num=output_dim*factor, endpoint=False)
+        x_grid, y_grid = np.meshgrid(x, y)
+        x_grid = np.reshape(x_grid,-1)
+        y_grid = np.reshape(y_grid,-1)
+        return np.column_stack([x_grid, y_grid])
+    
     def slice_pixelPos(self, pos, num_pixels):
         slice_pos = []
         slice_pos.append(pos[0][0:num_pixels])
         slice_pos.append(pos[1][0:num_pixels])
-        slice_pos=np.array(slice_pos)
+        slice_pos = np.array(slice_pos)
         return slice_pos
-    
-    def rebinning(self):
-        # placeholder
-        raise NotImplementedError
 
+    def rotateMAGICCam(self, image):
+        image = np.expand_dims(image, axis=2)
+        h = w = self.image_shapes['MAGICCam'][0]
+        center = (w/2.0, h/2.0)
+        angle=-19.1
+        scale=1.0
+        M = cv2.getRotationMatrix2D(center, angle, scale)
+        image = cv2.warpAffine(image, M, (w, h))
+        return image
+    
     # internal methods to create pixel pos numpy files 
-    def __get_pos_from_h5(self, tel_table, tel_type="MSTF", write=False, outfile=None):
-        selected_tel_rows = np.array([row.nrow for row in tel_table.where('tel_type=={}'.format(tel_type))])[0]
+    def __get_pos_from_h5(self, tel_table, camera_type="FlashCam", write=False, outfile=None):
+        selected_tel_rows = np.array([row.nrow for row in tel_table.where('camera_type=={}'.format(camera_type))])[0]
         pixel_pos = tel_table.cols.pixel_pos[selected_tel_rows]
         if write:
             if outfile is None:
-                #outfile = "pixel_pos_files/{}_pos.npy".format(tel_type)
-                outfile = os.path.join(os.path.dirname(__file__), "pixel_pos_files/{}_pos.npy".format(tel_type))
+                #outfile = "pixel_pos_files/{}_pos.npy".format(camera_type)
+                outfile = os.path.join(os.path.dirname(__file__), "pixel_pos_files/{}_pos.npy".format(camera_type))
             np.save(outfile, pixel_pos)
         return pixel_pos
     
@@ -774,13 +1017,13 @@ class ImageMapper():
         with tables.open_file(data_file, "r") as f:
             tel_table = f.root.Telescope_Info
             for row in tel_table.iterrows():
-                self.__get_pos_from_h5(tel_table, tel_type=row[1].decode("utf-8"), write=True)
+                self.__get_pos_from_h5(tel_table, camera_type=row[1].decode("utf-8"), write=True)
 
-    def __read_pix_pos_files(self, tel_type):
-        if tel_type in self.pixel_lengths: 
-            #infile = "pixel_pos_files/{}_pos.npy".format(tel_type)
-            infile = os.path.join(os.path.dirname(__file__), "pixel_pos_files/{}_pos.npy".format(tel_type))
+    def __read_pix_pos_files(self, camera_type):
+        if camera_type in self.pixel_lengths:
+            #infile = "pixel_pos_files/{}_pos.npy".format(camera_type)
+            infile = os.path.join(os.path.dirname(__file__), "pixel_pos_files/{}_pos.npy".format(camera_type))
             return np.load(infile)
         else:
-            logger.error("Telescope type {} isn't supported.".format(tel_type))
+            logger.error("Telescope type {} isn't supported.".format(camera_type))
             return False
