@@ -91,7 +91,7 @@ class ImageMapper():
             
             if self.hex_conversion_algorithm[camtype] not in ['oversampling', 'rebinning', 'nearest_interpolation', 'bilinear_interpolation', 'bicubic_interpolation']:
                 raise NotImplementedError("Hex conversion algorithm {} is not implemented.".format(hex_conversion_algorithm[camtype]))
-            elif self.hex_conversion_algorithm[camtype] not in ['oversampling'] and camtype in ['SCTCam','CHEC','ASTRICam']:
+            elif self.hex_conversion_algorithm[camtype] not in ['oversampling', 'rebinning', 'nearest_interpolation'] and camtype in ['SCTCam','CHEC','ASTRICam']:
                 raise ValueError("Sorry! Camera type {} isn\'t supported with the conversion algorithm \'{}\'.".format(camtype,self.hex_conversion_algorithm[camtype]))
             
             if interpolation_image_shape is None:
@@ -586,14 +586,20 @@ class ImageMapper():
             y = np.concatenate((y,np.array(virtual_pixel_y)))
             hex_grid = np.column_stack([x,y])
             
-            # Padding
-            for i in np.arange(0,pad,1):
+            if hex_algo in ['oversampling']:
+                for i in np.arange(0,pad,1):
                     x_ticks.append(np.around(x_ticks[-1]+x_dist,decimals=3))
                     x_ticks.insert(0,np.around(x_ticks[0]-x_dist,decimals=3))
                     y_ticks.append(np.around(y_ticks[-1]+y_dist,decimals=3))
                     y_ticks.insert(0,np.around(y_ticks[0]-y_dist,decimals=3))
-            
-            x_grid, y_grid = np.meshgrid(x_ticks, y_ticks)
+                x_grid, y_grid = np.meshgrid(x_ticks, y_ticks)
+            else:
+                x_pad = pad*(np.max(x_ticks)-np.min(x_ticks))/(output_dim-pad*2)
+                y_pad = pad*(np.max(y_ticks)-np.min(y_ticks))/(output_dim-pad*2)
+                xx = np.linspace(np.min(x_ticks)-x_pad, np.max(x_ticks)+x_pad, num=output_dim*grid_size_factor, endpoint=True)
+                yy = np.linspace(np.min(y_ticks)-y_pad, np.max(y_ticks)+y_pad, num=output_dim*grid_size_factor, endpoint=True)
+                x_grid, y_grid = np.meshgrid(xx, yy)
+
             x_grid = np.reshape(x_grid,-1)
             y_grid = np.reshape(y_grid,-1)
             output_grid = np.column_stack([x_grid, y_grid])
