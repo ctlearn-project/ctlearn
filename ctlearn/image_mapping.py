@@ -1,7 +1,7 @@
 import numpy as np
 import logging
 import threading
-import os 
+import os
 import cv2
     
 from scipy import spatial
@@ -14,8 +14,25 @@ logger = logging.getLogger(__name__)
 # See http://www.pytables.org/latest/cookbook/threading.html
 lock = threading.Lock()
 
-class ImageMapper():
+# TEMPORARY: Maps old telescope names into new
+# For training with datasets generated with versions prior to image-extractor v0.6.0
+OLD_TEL_NAMES_TO_NEW = {
+    'LST':'LST:LSTCam',
+    'MSTF':'MST:FlashCam',
+    'MSTN':'MST:NectarCam',
+    'MSTS':'SCT:SCTCam',
+    'SSTC':'SST:CHEC',
+    'SST1':'SST:DigiCam',
+    'SSTA':'SST:ASTRICam'
+}
 
+NEW_TEL_NAMES_TO_OLD = {v: k for k, v in OLD_TEL_NAMES_TO_NEW.items()}
+
+def get_camera_type(tel_type):
+    return tel_type.split(':')[1]
+
+class ImageMapper():
+  
     num_pixels = {
         'LSTCam': 1855,
         'FlashCam': 1764,
@@ -39,15 +56,16 @@ class ImageMapper():
                  use_peak_times=False):
         """
         :param camera_type:  an array of strings specifying the camera types
+
         :param hex_conversion_algorithm: algorithm to be used when converting
                                          hexagonal pixel camera data to square images
         :param padding: number of pixels of padding to be added symmetrically to the sides
                         of the square image
-        :param use_peak_times: if true, the number of input channels is 2 
+        :param use_peak_times: if true, the number of input channels is 2
                                (charges and peak arrival times)
         """
-        
-        # image_shapes should be a non static field to prevent problems 
+
+        # image_shapes should be a non static field to prevent problems
         # when multiple instances of ImageMapper are created
         self.image_shapes = {
             'LSTCam': (110, 110, 1),
@@ -149,8 +167,9 @@ class ImageMapper():
         default_pad = self.default_pad
         map_tab = self.mapping_tables[camera_type]
         hex_algo = self.hex_conversion_algorithm[camera_type]
+
         n_channels = pixels.shape[1]
-        
+
         # We reshape each channel and then stack the result
         result = []
         for channel in range(n_channels):
@@ -603,6 +622,7 @@ class ImageMapper():
             x_grid = np.reshape(x_grid,-1)
             y_grid = np.reshape(y_grid,-1)
             output_grid = np.column_stack([x_grid, y_grid])
+
         else:
             if len(x_ticks) < len(y_ticks):
                 first_ticks=x_ticks
@@ -760,10 +780,32 @@ class ImageMapper():
         M = cv2.getRotationMatrix2D(center, angle, scale)
         image = cv2.warpAffine(image, M, (w, h))
         return image
-    
-    # internal methods to create pixel pos numpy files 
-    def __get_pos_from_h5(self, tel_table, camera_type="FlashCam", write=False, outfile=None):
-        selected_tel_rows = np.array([row.nrow for row in tel_table.where('camera_type=={}'.format(camera_type))])[0]
+
+    # internal methods to create pixel pos numpy files
+    @staticmethod
+    def __get_pos_from_h5(tel_table, camera_type="FlashCam", write=False, outfile=None):
+
+        CAMERA_TYPE_TO_TEL_TYPE = {
+            'LSTCam': 'LST:LSTCam',
+            'FlashCam': 'MST:FlashCam',
+            'NectarCam': 'MST:NectarCam',
+            'SCTCam': 'SCT:SCTCam',
+            'DigiCam': 'SST:DigiCam',
+            'CHEC': 'SST:CHEC',
+            'ASTRICam': 'SST:ASTRICam',
+            'VERITAS': 'MST:VERITAS',
+            'MAGICCam': 'MST:MAGICCam',
+            'FACT': 'SST:FACT',
+            'HESS-I': 'MST:HESS-I',
+            'HESS-II': 'LST:HESS-II'
+        }
+
+        # TEMPORARY: Map camera type to (old) telescope type       
+        try:
+            selected_tel_rows = np.array([row.nrow for row in tel_table.where('tel_type=={}'.format(CAMERA_TYPE_TO_TEL_TYPE[camera_type].encode()))])[0]
+        except:
+            selected_tel_rows = np.array([row.nrow for row in tel_table.where('tel_type=={}'.format(NEW_TEL_NAMES_TO_OLD[CAMERA_TYPE_TO_TEL_TYPE[camera_type]].encode()))])[0]
+
         pixel_pos = tel_table.cols.pixel_pos[selected_tel_rows]
         if write:
             if outfile is None:
@@ -771,29 +813,35 @@ class ImageMapper():
                 outfile = os.path.join(os.path.dirname(__file__), "pixel_pos_files/{}_pos.npy".format(camera_type))
             np.save(outfile, pixel_pos)
         return pixel_pos
-    
-    def __create_pix_pos_files(self, data_file):
+
+    @staticmethod
+    def create_pix_pos_files(data_file):
         import tables # expect this to be run very rarely...
 
         with tables.open_file(data_file, "r") as f:
             tel_table = f.root.Telescope_Info
             for row in tel_table.iterrows():
-                self.__get_pos_from_h5(tel_table, camera_type=row[1].decode("utf-8"), write=True)
+                tel_type = row['tel_type'].decode("utf-8")
+                if tel_type in OLD_TEL_NAMES_TO_NEW:
+                    tel_type = OLD_TEL_NAMES_TO_NEW[tel_type]
+                camera_type = get_camera_type(tel_type)
+                ImageMapper.__get_pos_from_h5(tel_table, camera_type=camera_type, write=True)
 
-    def __read_pix_pos_files(self, camtype):
+    def __read_pix_pos_files(self, camera_type):
         if camtype in self.num_pixels.keys():
             #infile = "pixel_pos_files/{}_pos.npy".format(camera_type)
-            infile = os.path.join(os.path.dirname(__file__), "pixel_pos_files/{}_pos.npy".format(camtype))
+            infile = os.path.join(os.path.dirname(__file__), "pixel_pos_files/{}_pos.npy".format(camera_type))
             return np.load(infile)
         else:
-            logger.error("Camera type {} isn't supported.".format(camtype))
+            logger.error("Camera type {} isn't supported.".format(camera_type))
             return False
 
-    def __read_pix_pos_from_fits(self, camtype):
+    def __read_pix_pos_from_fits(self, camera_type):
         from astropy.io import fits
-        if camtype in self.num_pixels.keys():
+        if camera_type in self.num_pixels.keys():
             # Camera geometry fits files from cta-observatory/ctapipe-extra v0.2.16
-            hdul = fits.open('pixel_pos_files/{}.camgeom.fits'.format(camtype))
+            infile = os.path.join(os.path.dirname(__file__),"pixel_pos_files/{}.camgeom.fits".format(camera_type))
+            hdul = fits.open(infile)
             data = hdul[1].data
             header = hdul[1].header
             x = data.field('pix_x')
@@ -802,7 +850,7 @@ class ImageMapper():
             pixel_rot = 0.0
             # For LSTCam/NectarCam and MAGICCam, rotate by a fixed amount to
             # align with x and y axis.
-            if camtype in ['LSTCam','NectarCam','MAGICCam']:
+            if camera_type in ['LSTCam','NectarCam','MAGICCam']:
                 pixel_rot = 90.0-header['PIX_ROT']
                 pos = self.rotate_pixel_pos(pos, pixel_rot)
             return pos, pixel_rot

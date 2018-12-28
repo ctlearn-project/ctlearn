@@ -10,7 +10,8 @@ def single_tel_model(features, params, training):
     if num_telescope_types != 1:
         raise ValueError('Must use a single telescope type for single telescope model. Number used: {}'.format(num_telescope_types))
     telescope_type = params['selected_telescope_types'][0]
-    image_width, image_length, image_depth = params['image_shapes'][telescope_type]
+    camera_type = params['telescope_type_to_camera_type'][telescope_type]
+    image_width, image_length, image_depth = params['image_shapes'][camera_type]
     num_gamma_hadron_classes = params['num_classes']
     
     telescope_data = features['telescope_data']

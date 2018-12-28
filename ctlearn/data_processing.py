@@ -1,8 +1,10 @@
-import numpy as np
-import cv2
+from collections import namedtuple
 from operator import itemgetter
 
-from ctlearn.image_mapping import ImageMapper
+import cv2
+import numpy as np
+
+from ctlearn.image_mapping import ImageMapper, get_camera_type
 
 class DataProcessor():
 
@@ -14,7 +16,7 @@ class DataProcessor():
             thresholds=None,
             return_cleaned_images=False,
             normalization=None,
-            sort_images_by=None
+            sorting=None
             ):
         
         self._image_mapper = image_mapper
@@ -22,7 +24,7 @@ class DataProcessor():
         self.crop = crop
 
         if bounding_box_sizes is None:
-            bounding_box_sizes = {'MSTS': 48}
+            bounding_box_sizes = {'SCTCam': 48}
         self.bounding_box_sizes = bounding_box_sizes
         
         if image_cleaning in ['twolevel', None]:
@@ -31,7 +33,7 @@ class DataProcessor():
             raise ValueError("Invalid image cleaning method: {}. Select 'twolevel' or None.".format(image_cleaning))
         
         if thresholds is None:
-            thresholds = {'MSTS': (5.5, 1.0)}
+            thresholds = {'SCTCam': (5.5, 1.0)}
         self.thresholds = thresholds
         self.return_cleaned_images = return_cleaned_images
 
@@ -40,19 +42,28 @@ class DataProcessor():
         else:
             raise ValueError("Invalid normalization method: {}. Select 'log' or None.".format(normalization))
 
-        if sort_images_by in ['trigger', 'size', None]:
-            self.sort_images_by = sort_images_by
+        SortParams = namedtuple('SortParams', ['reverse', 'key'])
+        self.sorting_params = {
+                # List triggered telescopes first
+                'trigger': SortParams(reverse=True, key=itemgetter(1)),
+                # List from largest to smallest sum of pixel charges
+                'size': SortParams(reverse=True, 
+                    key=lambda x: np.sum(x[0]))
+                }
+        if sorting in list(self.sorting_params) + [None]:
+            self.sorting = sorting
         else:
-            raise ValueError("Invalid image sorting method: {}. Select 'trigger', 'size', or None.".format(sort_images_by))
+            raise ValueError("Invalid image sorting method: {}. Select "
+                    "'trigger', 'size', or None.".format(sorting))
 
         self.image_shapes = {}
-        for tel_type in self._image_mapper.image_shapes:
-            if self.crop and tel_type in self.bounding_box_sizes:
-                self.image_shapes[tel_type]= [self.bounding_box_sizes[tel_type], 
-                    self.bounding_box_sizes[tel_type], 
-                    self._image_mapper.image_shapes[tel_type][2]]
+        for camera_type in self._image_mapper.image_shapes:
+            if self.crop and camera_type in self.bounding_box_sizes:
+                self.image_shapes[camera_type]= [self.bounding_box_sizes[camera_type],
+                    self.bounding_box_sizes[camera_type],
+                    self._image_mapper.image_shapes[camera_type][2]]
             else:
-                self.image_shapes[tel_type] = self._image_mapper.image_shapes[tel_type]
+                self.image_shapes[camera_type] = self._image_mapper.image_shapes[camera_type]
 
         self.num_additional_aux_params = 0
         if self.crop:
@@ -64,7 +75,7 @@ class DataProcessor():
     # pixel positions weighted by the charge, after cleaning. The cropped image is
     # obtained as a square bounding box centered on the centroid of side length
     # bounding_box_size.
-    def _crop_image(self, image, tel_type):
+    def _crop_image(self, image, camera_type):
 
         if self.image_cleaning is None:
             cleaned_image = image
@@ -74,17 +85,17 @@ class DataProcessor():
             # Next, retain weaker pixels at the shower edge by allowing pixels
             # adjacent to those passing the first cut to pass a weaker cut
             # (boundary threshold).
-            
+
             # Get only the first channel (charge) of an image of arbitrary depth
             image_charge = image[:,:,0]
 
             # Apply picture threshold to charge image to get mask
-            m = (image_charge > self.thresholds[tel_type][0]).astype(np.uint8)
+            m = (image_charge > self.thresholds[camera_type][0]).astype(np.uint8)
             # Dilate the mask once to add all adjacent pixels (i.e. kernel is 3x3)
-            kernel = np.ones((3,3), np.uint8) 
+            kernel = np.ones((3,3), np.uint8)
             m = cv2.dilate(m, kernel)
             # Apply boundary threshold to keep weaker but adjacent pixels
-            m = (m * image_charge > self.thresholds[tel_type][1]).astype(np.uint8)
+            m = (m * image_charge > self.thresholds[camera_type][1]).astype(np.uint8)
             m = np.expand_dims(m, 2)
 
             # Multiply by the mask to get the cleaned image
@@ -104,9 +115,9 @@ class DataProcessor():
         # NOTE: these values are rounded and cast to integers, so they are valid indices
         # into the array
         # NOTE: rounding (and subtracting one from the max values) ensures that for all
-        # float values of x_0, y_0, the values of indices x_min, x_max, y_min, y_max mark 
+        # float values of x_0, y_0, the values of indices x_min, x_max, y_min, y_max mark
         # a bounding box of exactly shape (BOUNDING_BOX_SIZE, BOUNDING_BOX_SIZE)
-        bounding_box_size = self.bounding_box_sizes[tel_type]
+        bounding_box_size = self.bounding_box_sizes[camera_type]
         x_min = int(round(x_0 - bounding_box_size/2))
         x_max = int(round(x_0 + bounding_box_size/2)) - 1
         y_min = int(round(y_0 - bounding_box_size/2))
@@ -155,67 +166,62 @@ class DataProcessor():
     # on a given image. Returns the processed image and a
     # list of additional auxiliary parameters produced by
     # the processing.
-    def _process_image(self, image, tel_type):
-        auxiliary_info = []
+    def _process_image(self, image, tel_type, dummy_image=False):
+        camera_type = get_camera_type(tel_type)
+        auxiliary_input = []
+
+        if dummy_image: # No trigger - image is blank
+            if self.crop:
+                # Add dummy centroid position to aux info
+                auxiliary_input.extend([0.0, 0.0])
+            return image, auxiliary_input
+
         if self.crop:
-            image, *shower_position = self._crop_image(image, tel_type)
-            normalized_shower_position = [float(i)/self._image_mapper.image_shapes[tel_type][0] for i in shower_position] 
-            auxiliary_info.extend(normalized_shower_position)
+            image, *shower_position = self._crop_image(image, camera_type)
+            image_width = self._image_mapper.image_shapes[camera_type][0]
+            normalized_shower_position = [float(p) / image_width for p
+                    in shower_position]
+            auxiliary_input.extend(normalized_shower_position)
         if self.normalization:
             image = self._normalize_image(image, tel_type)
 
-        return image, auxiliary_info
+        return image, auxiliary_input
 
-    def process_example(self, data, label, tel_type):
+    # Process the example using the specified processing options
+    def process_example(self, data, label, tel_types, example_type='array'):
         
-        # infer whether example is single tel or array based on
-        # number of elements in data
-        if len(data) == 1:
-            example_type = "single_tel"
-        else:
-            example_type = "array"
-
-        if example_type == "single_tel":
+        if example_type not in ['single_tel', 'array']:
+            raise ValueError("Invalid example type selection: {}. Select "
+                    "'single_tel' or 'array'.".format(example_type))
+        
+        # For single tel, just need to process the image
+        if example_type == 'single_tel':
             image = data[0]
-
-            image, _ = self._process_image(image, tel_type)
+            image, _ = self._process_image(image, tel_types[0])
             data = [image]
-            
-            return [data, label]
-        
-        elif example_type == "array":
-            images = data[0]
-            triggers = data[1]
-            aux_inputs = data[2]
-            
-            image_shape = self.image_shapes[tel_type]
-            for i in range(len(images)):
-                trigger = triggers[i]
-                if trigger == 0:
-                    # telescope did not trigger, so provide a
-                    # zeroed-out image
-                    images[i] = np.zeros(image_shape)
-                    if self.crop:
-                        # add dummy centroid position to aux info
-                        aux_inputs[i].extend([0.0, 0.0])
-                else:
-                    image, auxiliary_info = self._process_image(images[i], tel_type)
-                    images[i] = image
-                    aux_inputs[i].extend(auxiliary_info)
-      
-            if self.sort_images_by == "trigger":
-                # Sort the images, triggers, and grouped auxiliary inputs by
-                # trigger, listing the triggered telescopes first
-                images, triggers, aux_inputs = map(list,
-                        zip(*sorted(zip(images, triggers, aux_inputs), reverse=True, key=itemgetter(1))))
-            elif self.sort_images_by == "size":
-                # Sort images by size (sum of charge in all pixels) from largest to smallest
-                images, triggers, aux_inputs = map(list,
-                        zip(*sorted(zip(images, triggers, aux_inputs), reverse=True, key=lambda x: np.sum(x[0]))))
-            
-            data = [images, triggers, aux_inputs]
+            return data, label
 
-            return [data, label]
+        # Otherwise, array example. More complex processing is needed.
+        for type_i, tel_type in enumerate(tel_types):
+            for tel_i, tel_trigger in enumerate(data[type_i][1]):
+                tel_image = data[type_i][0][tel_i]
+                tel_aux_input = data[type_i][2][tel_i]
+                dummy_image = True if tel_trigger == 0 else False
+                tel_image, aux_input = self._process_image(tel_image, tel_type,
+                        dummy_image=dummy_image)
+                data[type_i][0][tel_i] = tel_image
+                data[type_i][2][tel_i] = np.append(tel_aux_input,
+                        aux_input).astype(np.float32)
+      
+            # Sort the images, triggers, and grouped auxiliary inputs together
+            if self.sorting is not None:
+                # Sort according to the specified parameters
+                sort_params = self.sorting_params[self.sorting]
+                data[type_i] = list(map(list, zip(*sorted(zip(*data[type_i]),
+                        key=sort_params.key,
+                        reverse=sort_params.reverse))))
+        
+        return data, label
 
     def get_metadata(self):
         
