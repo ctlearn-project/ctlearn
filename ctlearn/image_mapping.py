@@ -3,6 +3,7 @@ import logging
 import threading
 import os
 import cv2
+import bisect
     
 from scipy import spatial
 from scipy.sparse import csr_matrix
@@ -109,7 +110,7 @@ class ImageMapper():
             
             if self.hex_conversion_algorithm[camtype] not in ['oversampling', 'rebinning', 'nearest_interpolation', 'bilinear_interpolation', 'bicubic_interpolation']:
                 raise NotImplementedError("Hex conversion algorithm {} is not implemented.".format(hex_conversion_algorithm[camtype]))
-            elif self.hex_conversion_algorithm[camtype] not in ['oversampling', 'rebinning', 'nearest_interpolation'] and camtype in ['SCTCam','CHEC','ASTRICam']:
+            elif self.hex_conversion_algorithm[camtype] in ['bicubic_interpolation'] and camtype in ['SCTCam','CHEC','ASTRICam']:
                 raise ValueError("Sorry! Camera type {} isn\'t supported with the conversion algorithm \'{}\'.".format(camtype,self.hex_conversion_algorithm[camtype]))
             
             if interpolation_image_shape is None:
@@ -279,19 +280,98 @@ class ImageMapper():
             # Finding the nearest point in the hexagonal grid for each point in the square grid
             tree = spatial.cKDTree(hex_grid)
             nn_index = np.reshape(tree.query(table_grid)[1],(output_dim, output_dim))
-            tri = spatial.Delaunay(hex_grid)
+            
+            if camera_type in ['ASTRICam', 'CHEC', 'SCTCam']:
+                hex_grid_transpose=hex_grid.T
+                x_ticks=np.unique(hex_grid_transpose[0]).tolist()
+                y_ticks=np.unique(hex_grid_transpose[1]).tolist()
+               
+                dict_hex_grid = {}
+                for i, x_val in enumerate(x_ticks):
+                    for j, y_val in enumerate(y_ticks):
+                        for k in np.arange(0,hex_grid.shape[0],1):
+                            if hex_grid[k][0] == x_val and hex_grid[k][1] == y_val:
+                                dict_hex_grid[(x_val,y_val)] = k
+                                break
+            
+                dict_corner_index = {}
+                dict_corner_points = {}
+                for i, x_val in enumerate(x_ticks):
+                    for j, y_val in enumerate(y_ticks):
+                        if i == len(x_ticks)-1 and j < len(y_ticks)-1:
+                            square_points = [[x_ticks[i-1],y_val]]
+                            square_index = [dict_hex_grid[(x_ticks[i-1],y_val)]]
+                            square_points.append([x_ticks[i-1],y_ticks[j+1]])
+                            square_index.append(dict_hex_grid[(x_ticks[i-1],y_ticks[j+1])])
+                            square_points.append([x_val,y_val])
+                            square_index.append(dict_hex_grid[(x_val,y_val)])
+                            square_points.append([x_val,y_ticks[j+1]])
+                            square_index.append(dict_hex_grid[(x_val,y_ticks[j+1])])
+                        elif j == len(y_ticks)-1 and i < len(x_ticks)-1:
+                            square_points = [[x_val,y_ticks[j-1]]]
+                            square_index = [dict_hex_grid[(x_val,y_ticks[j-1])]]
+                            square_points.append([x_val,y_val])
+                            square_index.append(dict_hex_grid[(x_val,y_val)])
+                            square_points.append([x_ticks[i+1],y_ticks[j-1]])
+                            square_index.append(dict_hex_grid[(x_ticks[i+1],y_ticks[j-1])])
+                            square_points.append([x_ticks[i+1],y_val])
+                            square_index.append(dict_hex_grid[(x_ticks[i+1],y_val)])
+                        elif i == len(x_ticks)-1 and j == len(y_ticks)-1:
+                            square_points = [[x_ticks[i-1],y_ticks[j-1]]]
+                            square_index = [dict_hex_grid[(x_ticks[i-1],y_ticks[j-1])]]
+                            square_points.append([x_ticks[i-1],y_val])
+                            square_index.append(dict_hex_grid[(x_ticks[i-1],y_val)])
+                            square_points.append([x_val,y_ticks[j-1]])
+                            square_index.append(dict_hex_grid[(x_val,y_ticks[j-1])])
+                            square_points.append([x_val,y_val])
+                            square_index.append(dict_hex_grid[(x_val,y_val)])
+                        else:
+                            square_points = [[x_val,y_val]]
+                            square_index = [dict_hex_grid[(x_val,y_val)]]
+                            square_points.append([x_val,y_ticks[j+1]])
+                            square_index.append(dict_hex_grid[(x_val,y_ticks[j+1])])
+                            square_points.append([x_ticks[i+1],y_val])
+                            square_index.append(dict_hex_grid[(x_ticks[i+1],y_val)])
+                            square_points.append([x_ticks[i+1],y_ticks[j+1]])
+                            square_index.append(dict_hex_grid[(x_ticks[i+1],y_ticks[j+1])])
+                        
+                        square_points = np.array(square_points)
+                        square_index = np.array(square_index)
+                        dict_corner_points[(i,j)] = square_points
+                        dict_corner_index[(i,j)] = square_index
+                        
+                corner_points = []
+                corner_index = [] # index in hexgrid
+                for i in np.arange(0,table_grid.shape[0],1):
+                    x_index = bisect.bisect_left(x_ticks, table_grid[i][0])
+                    y_index = bisect.bisect_left(y_ticks, table_grid[i][1])
+                    if x_index != 0:
+                        x_index = x_index-1
+                    if y_index != 0:
+                        y_index = y_index-1
+                    
+                    corner_points.append(dict_corner_points[(x_index,y_index)])
+                    corner_index.append(dict_corner_index[(x_index,y_index)])
+                        
+                corner_points = np.array(corner_points)
+                corner_index = np.array(corner_index)
+            
+            else:
+                # Drawing Delaunay triangulation on the hex grid
+                tri = spatial.Delaunay(hex_grid)
                 
-            table_simplex = tri.simplices[tri.find_simplex(table_grid)]
-            table_simplex_points = hex_grid[table_simplex]
-            weights = self.get_weights(table_simplex_points, table_grid)
+                corner_index = tri.simplices[tri.find_simplex(table_grid)]
+                corner_points = hex_grid[corner_index]
+                
+            weights = self.get_weights(corner_points, table_grid)
             weights = np.reshape(weights, (output_dim, output_dim, weights.shape[1]))
-            table_simplex = np.reshape(table_simplex,(output_dim, output_dim, table_simplex.shape[1]))
+            corner_index = np.reshape(corner_index,(output_dim, output_dim, corner_index.shape[1]))
             
             mapping_matrix3d = np.zeros((hex_grid.shape[0]+1, output_dim, output_dim))
             for i in np.arange(0,output_dim,1):
                 for j in np.arange(0,output_dim,1):
-                    for k in np.arange(0,3,1):
-                        mapping_matrix3d[table_simplex[j][i][k]+1][j][i] = weights[j][i][k]
+                    for k in np.arange(0,corner_index.shape[2],1):
+                        mapping_matrix3d[corner_index[j][i][k]+1][j][i] = weights[j][i][k]
 
             mapping_matrix3d = mapping_matrix3d[0:num_pixels+1]
             
@@ -484,47 +564,85 @@ class ImageMapper():
 
     def get_weights(self, p, target):
         """
-        :param p: a numpy array of shape (i,3,2) for three 2D points (one triangual). The index i means that one can calculate the weights for multiply trianguals with one function call.
+        :param p: a numpy array of shape (i,3 or 4,2) for three or four 2D points (one triangual or square). The index i means that one can calculate the weights for multiply trianguals or squares with one function call.
         :param target: a numpy array of shape (i,2) for one target 2D point.
-        :return: a numpy array of shape (i,3) containing the three weights.
+        :return: a numpy array of shape (i,3) containing the three or four weights.
         """
-       
-        #       Barycentric coordinates:
-        #                 (x3,y3)
-        #                   .
-        #                  / \
-        #                 /   \
-        #                /     \
-        #               /       \
-        #              /         \
-        #             /        .  \
-        #            /       (x,y) \
-        #    (x1,y1)._______________.(x2,y2)
-        #
-        #       x = w1*x1 + w2*x2 + w3*x3
-        #       y = w1*y1 + w2*y2 + w3*y3
-        #       1 = w1 + w2 + w3
-        #
-        #       -> Rearranging:
-        #              (y2-y3)*(x-x3)+(x3-x2)*(y-y3)
-        #       w1 = ---------------------------------
-        #             (y2-y3)*(x1-x3)+(x3-x2)*(y1-y3)
-        #
-        #              (y3-y1)*(x-x3)+(x1-x3)*(y-y3)
-        #       w2 = ---------------------------------
-        #             (y2-y3)*(x1-x3)+(x3-x2)*(y1-y3)
-        #
-        #       w3 = 1 - w1 - w2
-        #
-        
         weights = []
-        for i in np.arange(0,p.shape[0],1):
-            w=[0,0,0]
-            divisor = float(((p[i][1][1]-p[i][2][1])*(p[i][0][0]-p[i][2][0])+(p[i][2][0]-p[i][1][0])*(p[i][0][1]-p[i][2][1])))
-            w[0] = float(((p[i][1][1]-p[i][2][1])*(target[i][0]-p[i][2][0])+(p[i][2][0]-p[i][1][0])*(target[i][1]-p[i][2][1])))/divisor
-            w[1] = float(((p[i][2][1]-p[i][0][1])*(target[i][0]-p[i][2][0])+(p[i][0][0]-p[i][2][0])*(target[i][1]-p[i][2][1])))/divisor
-            w[2] = 1-w[0]-w[1]
-            weights.append(w)
+        if p.shape[1] == 3:
+            #
+            #       Barycentric coordinates:
+            #                 (x3,y3)
+            #                   .
+            #                  / \
+            #                 /   \
+            #                /     \
+            #               /       \
+            #              /         \
+            #             /        .  \
+            #            /       (x,y) \
+            #    (x1,y1)._______________.(x2,y2)
+            #
+            #       x = w1*x1 + w2*x2 + w3*x3
+            #       y = w1*y1 + w2*y2 + w3*y3
+            #       1 = w1 + w2 + w3
+            #
+            #       -> Rearranging:
+            #              (y2-y3)*(x-x3)+(x3-x2)*(y-y3)
+            #       w1 = ---------------------------------
+            #             (y2-y3)*(x1-x3)+(x3-x2)*(y1-y3)
+            #
+            #              (y3-y1)*(x-x3)+(x1-x3)*(y-y3)
+            #       w2 = ---------------------------------
+            #             (y2-y3)*(x1-x3)+(x3-x2)*(y1-y3)
+            #
+            #       w3 = 1 - w1 - w2
+            #
+            for i in np.arange(0,p.shape[0],1):
+                w=[0,0,0]
+                divisor = float(((p[i][1][1]-p[i][2][1])*(p[i][0][0]-p[i][2][0])+(p[i][2][0]-p[i][1][0])*(p[i][0][1]-p[i][2][1])))
+                w[0] = float(((p[i][1][1]-p[i][2][1])*(target[i][0]-p[i][2][0])+(p[i][2][0]-p[i][1][0])*(target[i][1]-p[i][2][1])))/divisor
+                w[1] = float(((p[i][2][1]-p[i][0][1])*(target[i][0]-p[i][2][0])+(p[i][0][0]-p[i][2][0])*(target[i][1]-p[i][2][1])))/divisor
+                w[2] = 1-w[0]-w[1]
+                weights.append(w)
+
+        elif p.shape[1] == 4:
+            #
+            #        (x1,y2)          (x2,y2)
+            #         w2._______________.w4
+            #           |               |
+            #           |               |
+            #           |               |
+            #           |         .     |
+            #           |     (x,y)     |
+            #         w1._______________.w3
+            #       (x1,y1)             (x2,y1)
+            #
+            #              (x2-x)*(y2-y)
+            #       w1 = -----------------
+            #             (x2-x1)*(y2-y1)
+            #
+            #              (x2-x)*(y-y1)
+            #       w2 = -----------------
+            #             (x2-x1)*(y2-y1)
+            #
+            #              (x-x1)*(y2-y)
+            #       w3 = -----------------
+            #             (x2-x1)*(y2-y1)
+            #
+            #              (x-x1)*(y-y1)
+            #       w4 = -----------------
+            #             (x2-x1)*(y2-y1)
+            #
+            for i in np.arange(0,p.shape[0],1):
+                w=[0,0,0,0]
+                divisor = float((p[i][3][0]-p[i][0][0])*(p[i][3][1]-p[i][0][1]))
+                w[0] = float((p[i][3][0]-target[i][0])*(p[i][3][1]-target[i][1]))/divisor
+                w[1] = float((p[i][3][0]-target[i][0])*(target[i][1]-p[i][0][1]))/divisor
+                w[2] = float((target[i][0]-p[i][0][0])*(p[i][3][1]-target[i][1]))/divisor
+                w[3] = float((target[i][0]-p[i][0][0])*(target[i][1]-p[i][0][1]))/divisor
+                weights.append(w)
+
         return np.array(weights)
 
     def get_grids(self, pos, camera_type, grid_size_factor):
@@ -583,7 +701,7 @@ class ImageMapper():
         
             x_dist = np.around(abs(x_ticks[0]-x_ticks[1]),decimals=3)
             y_dist = np.around(abs(y_ticks[0]-y_ticks[1]),decimals=3)
-            for i in np.arange(0,default_pad,1):
+            for i in np.arange(0,pad+default_pad,1):
                 x_ticks.append(np.around(x_ticks[-1]+x_dist,decimals=3))
                 x_ticks.insert(0,np.around(x_ticks[0]-x_dist,decimals=3))
                 y_ticks.append(np.around(y_ticks[-1]+y_dist,decimals=3))
@@ -605,20 +723,9 @@ class ImageMapper():
             y = np.concatenate((y,np.array(virtual_pixel_y)))
             hex_grid = np.column_stack([x,y])
             
-            if hex_algo in ['oversampling']:
-                for i in np.arange(0,pad,1):
-                    x_ticks.append(np.around(x_ticks[-1]+x_dist,decimals=3))
-                    x_ticks.insert(0,np.around(x_ticks[0]-x_dist,decimals=3))
-                    y_ticks.append(np.around(y_ticks[-1]+y_dist,decimals=3))
-                    y_ticks.insert(0,np.around(y_ticks[0]-y_dist,decimals=3))
-                x_grid, y_grid = np.meshgrid(x_ticks, y_ticks)
-            else:
-                x_pad = pad*(np.max(x_ticks)-np.min(x_ticks))/(output_dim-pad*2)
-                y_pad = pad*(np.max(y_ticks)-np.min(y_ticks))/(output_dim-pad*2)
-                xx = np.linspace(np.min(x_ticks)-x_pad, np.max(x_ticks)+x_pad, num=output_dim*grid_size_factor, endpoint=True)
-                yy = np.linspace(np.min(y_ticks)-y_pad, np.max(y_ticks)+y_pad, num=output_dim*grid_size_factor, endpoint=True)
-                x_grid, y_grid = np.meshgrid(xx, yy)
-
+            xx = np.linspace(np.min(x), np.max(x), num=output_dim*grid_size_factor, endpoint=True)
+            yy = np.linspace(np.min(y), np.max(y), num=output_dim*grid_size_factor, endpoint=True)
+            x_grid, y_grid = np.meshgrid(xx, yy)
             x_grid = np.reshape(x_grid,-1)
             y_grid = np.reshape(y_grid,-1)
             output_grid = np.column_stack([x_grid, y_grid])
