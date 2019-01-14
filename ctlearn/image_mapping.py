@@ -110,8 +110,6 @@ class ImageMapper():
             
             if self.hex_conversion_algorithm[camtype] not in ['oversampling', 'rebinning', 'nearest_interpolation', 'bilinear_interpolation', 'bicubic_interpolation']:
                 raise NotImplementedError("Hex conversion algorithm {} is not implemented.".format(hex_conversion_algorithm[camtype]))
-            elif self.hex_conversion_algorithm[camtype] in ['bicubic_interpolation'] and camtype in ['SCTCam','CHEC','ASTRICam']:
-                raise ValueError("Sorry! Camera type {} isn\'t supported with the conversion algorithm \'{}\'.".format(camtype,self.hex_conversion_algorithm[camtype]))
             
             if interpolation_image_shape is None:
                 self.interpolation_image_shape = {camtype:self.image_shapes[camtype]}
@@ -127,7 +125,7 @@ class ImageMapper():
                 self.padding[camtype] = 0
             # A default padding is necessary for the hex_conversion_algorithm.
             self.default_pad = 2
-            if self.hex_conversion_algorithm in ['bicubic_interpolation']:
+            if self.hex_conversion_algorithm[camtype] in ['bicubic_interpolation']:
                 self.default_pad = 3
 
             if self.hex_conversion_algorithm[camtype] not in ['oversampling'] or camtype in ['ASTRICam', 'CHEC', 'SCTCam']:
@@ -294,54 +292,41 @@ class ImageMapper():
                                 dict_hex_grid[(x_val,y_val)] = k
                                 break
             
-                dict_corner_index = {}
+                dict_corner_indexes = {}
                 dict_corner_points = {}
                 for i, x_val in enumerate(x_ticks):
                     for j, y_val in enumerate(y_ticks):
                         if i == len(x_ticks)-1 and j < len(y_ticks)-1:
                             square_points = [[x_ticks[i-1],y_val]]
-                            square_index = [dict_hex_grid[(x_ticks[i-1],y_val)]]
                             square_points.append([x_ticks[i-1],y_ticks[j+1]])
-                            square_index.append(dict_hex_grid[(x_ticks[i-1],y_ticks[j+1])])
                             square_points.append([x_val,y_val])
-                            square_index.append(dict_hex_grid[(x_val,y_val)])
                             square_points.append([x_val,y_ticks[j+1]])
-                            square_index.append(dict_hex_grid[(x_val,y_ticks[j+1])])
                         elif j == len(y_ticks)-1 and i < len(x_ticks)-1:
                             square_points = [[x_val,y_ticks[j-1]]]
-                            square_index = [dict_hex_grid[(x_val,y_ticks[j-1])]]
                             square_points.append([x_val,y_val])
-                            square_index.append(dict_hex_grid[(x_val,y_val)])
                             square_points.append([x_ticks[i+1],y_ticks[j-1]])
-                            square_index.append(dict_hex_grid[(x_ticks[i+1],y_ticks[j-1])])
                             square_points.append([x_ticks[i+1],y_val])
-                            square_index.append(dict_hex_grid[(x_ticks[i+1],y_val)])
                         elif i == len(x_ticks)-1 and j == len(y_ticks)-1:
                             square_points = [[x_ticks[i-1],y_ticks[j-1]]]
-                            square_index = [dict_hex_grid[(x_ticks[i-1],y_ticks[j-1])]]
                             square_points.append([x_ticks[i-1],y_val])
-                            square_index.append(dict_hex_grid[(x_ticks[i-1],y_val)])
                             square_points.append([x_val,y_ticks[j-1]])
-                            square_index.append(dict_hex_grid[(x_val,y_ticks[j-1])])
                             square_points.append([x_val,y_val])
-                            square_index.append(dict_hex_grid[(x_val,y_val)])
                         else:
                             square_points = [[x_val,y_val]]
-                            square_index = [dict_hex_grid[(x_val,y_val)]]
                             square_points.append([x_val,y_ticks[j+1]])
-                            square_index.append(dict_hex_grid[(x_val,y_ticks[j+1])])
                             square_points.append([x_ticks[i+1],y_val])
-                            square_index.append(dict_hex_grid[(x_ticks[i+1],y_val)])
                             square_points.append([x_ticks[i+1],y_ticks[j+1]])
-                            square_index.append(dict_hex_grid[(x_ticks[i+1],y_ticks[j+1])])
                         
                         square_points = np.array(square_points)
-                        square_index = np.array(square_index)
+                        square_indexes = []
+                        for k in np.arange(0,square_points.shape[0],1):
+                            square_indexes.append(dict_hex_grid[(square_points[k][0],square_points[k][1])])
+                        square_indexes = np.array(square_indexes)
                         dict_corner_points[(i,j)] = square_points
-                        dict_corner_index[(i,j)] = square_index
+                        dict_corner_indexes[(i,j)] = square_indexes
                         
                 corner_points = []
-                corner_index = [] # index in hexgrid
+                corner_indexes = [] # index in hexgrid
                 for i in np.arange(0,table_grid.shape[0],1):
                     x_index = bisect.bisect_left(x_ticks, table_grid[i][0])
                     y_index = bisect.bisect_left(y_ticks, table_grid[i][1])
@@ -351,27 +336,27 @@ class ImageMapper():
                         y_index = y_index-1
                     
                     corner_points.append(dict_corner_points[(x_index,y_index)])
-                    corner_index.append(dict_corner_index[(x_index,y_index)])
+                    corner_indexes.append(dict_corner_indexes[(x_index,y_index)])
                         
                 corner_points = np.array(corner_points)
-                corner_index = np.array(corner_index)
+                corner_indexes = np.array(corner_indexes)
             
             else:
                 # Drawing Delaunay triangulation on the hex grid
                 tri = spatial.Delaunay(hex_grid)
                 
-                corner_index = tri.simplices[tri.find_simplex(table_grid)]
-                corner_points = hex_grid[corner_index]
+                corner_indexes = tri.simplices[tri.find_simplex(table_grid)]
+                corner_points = hex_grid[corner_indexes]
                 
             weights = self.get_weights(corner_points, table_grid)
             weights = np.reshape(weights, (output_dim, output_dim, weights.shape[1]))
-            corner_index = np.reshape(corner_index,(output_dim, output_dim, corner_index.shape[1]))
+            corner_indexes = np.reshape(corner_indexes,(output_dim, output_dim, corner_indexes.shape[1]))
             
             mapping_matrix3d = np.zeros((hex_grid.shape[0]+1, output_dim, output_dim))
             for i in np.arange(0,output_dim,1):
                 for j in np.arange(0,output_dim,1):
-                    for k in np.arange(0,corner_index.shape[2],1):
-                        mapping_matrix3d[corner_index[j][i][k]+1][j][i] = weights[j][i][k]
+                    for k in np.arange(0,corner_indexes.shape[2],1):
+                        mapping_matrix3d[corner_indexes[j][i][k]+1][j][i] = weights[j][i][k]
 
             mapping_matrix3d = mapping_matrix3d[0:num_pixels+1]
             
@@ -403,99 +388,207 @@ class ImageMapper():
                                                                                                                 
         # Bicubic interpolation
         elif hex_algo in ['bicubic_interpolation']:
-            #
-            #                 /\        /\
-            #                /  \      /  \
-            #               /    \    /    \
-            #              / 2NN  \  / 2NN  \
-            #             /________\/________\
-            #            /\        /\        /\
-            #           /  \  NN  /  \  NN  /  \
-            #          /    \    /    \    /    \
-            #         / 2NN  \  /  .   \  /  2NN \
-            #        /________\/________\/________\
-            #                 /\        /\
-            #                /  \  NN  /  \
-            #               /    \    /    \
-            #              / 2NN  \  / 2NN  \
-            #             /________\/________\
-            #
-            
             # Finding the nearest point in the hexagonal grid for each point in the square grid
             tree = spatial.cKDTree(hex_grid)
             nn_index = np.reshape(tree.query(table_grid)[1],(output_dim, output_dim))
-            tri = spatial.Delaunay(hex_grid)
-                                                                                                                    
-            # Get all relevant simplex indices
-            simplex_index = tri.find_simplex(table_grid)
-            simplex_index_NN = tri.neighbors[simplex_index]
-            simplex_index_2NN = tri.neighbors[simplex_index_NN]
             
-            table_simplex = tri.simplices[simplex_index]
-            table_simplex_points = hex_grid[table_simplex]
-
-            # NN
-            weights_NN = []
-            simplexes_NN = []
-            for i in np.arange(0,simplex_index.shape[0],1):
-                if -1 in simplex_index_NN[i] or all(ind >= num_pixels for ind in table_simplex[i]):
-                    w = np.array([0,0,0])
-                    weights_NN.append(w)
-                    corner_simplexes_2NN = np.array([-1,-1,-1])
-                    simplexes_NN.append(corner_simplexes_2NN)
-                else:
-                    corner_points_NN, corner_simplexes_NN = self.get_triangle(tri, hex_grid, simplex_index_NN[i], table_simplex[i])
+            if camera_type in ['ASTRICam', 'CHEC', 'SCTCam']:
+                # Drawing four bigger squares (*,+,-,~) around the target point (.)
+                # and then calculate the weights.
+                #
+                #       +____~____+____~
+                #       |    |    |    |
+                #       *____-____*____-
+                #       |    |  . |    |
+                #       +____~____+____~
+                #       |    |    |    |
+                #       *____-____*____-
+                #
+                hex_grid_transpose=hex_grid.T
+                x_ticks=np.unique(hex_grid_transpose[0]).tolist()
+                y_ticks=np.unique(hex_grid_transpose[1]).tolist()
+                
+                dict_hex_grid = {}
+                for i, x_val in enumerate(x_ticks):
+                    for j, y_val in enumerate(y_ticks):
+                        for k in np.arange(0,hex_grid.shape[0],1):
+                            if hex_grid[k][0] == x_val and hex_grid[k][1] == y_val:
+                                dict_hex_grid[(x_val,y_val)] = k
+                                break
+                
+                dict_corner_indexes = {}
+                dict_corner_points = {}
+                invalid_x_val = x_ticks[0]-1
+                invalid_y_val = y_ticks[0]-1
+                for i, x_val in enumerate(x_ticks):
+                    for j, y_val in enumerate(y_ticks):
+                        square_points = []
+                        if i == 0 or j == 0 or i >= len(x_ticks)-2 or j >= len(y_ticks)-2:
+                            for k in np.arange(0,16,1):
+                                square_points.append([invalid_x_val,invalid_y_val])
+                        else:
+                            # The square marked as '*' in the drawing above.
+                            square_points.append([x_ticks[i-1],y_ticks[j-1]])
+                            square_points.append([x_ticks[i-1],y_ticks[j+1]])
+                            square_points.append([x_ticks[i+1],y_ticks[j-1]])
+                            square_points.append([x_ticks[i+1],y_ticks[j+1]])
+                            # The square marked as '+' in the drawing above.
+                            square_points.append([x_ticks[i-1],y_val])
+                            square_points.append([x_ticks[i-1],y_ticks[j+2]])
+                            square_points.append([x_ticks[i+1],y_val])
+                            square_points.append([x_ticks[i+1],y_ticks[j+2]])
+                            # The square marked as '-' in the drawing above.
+                            square_points.append([x_val,y_ticks[j-1]])
+                            square_points.append([x_val,y_ticks[j+1]])
+                            square_points.append([x_ticks[i+2],y_ticks[j-1]])
+                            square_points.append([x_ticks[i+2],y_ticks[j+1]])
+                            # The square marked as '~' in the drawing above.
+                            square_points.append([x_val,y_val])
+                            square_points.append([x_val,y_ticks[j+2]])
+                            square_points.append([x_ticks[i+2],y_val])
+                            square_points.append([x_ticks[i+2],y_ticks[j+2]])
+                        
+                        square_points = np.array(square_points)
+                        square_indexes = []
+                        for k in np.arange(0,square_points.shape[0],1):
+                            if square_points[k][0] == invalid_x_val:
+                                square_indexes.append(-1)
+                            else:
+                                square_indexes.append(dict_hex_grid[(square_points[k][0],square_points[k][1])])
+                        square_indexes = np.array(square_indexes)
+                        #reshape square_points and square_indexes
+                        square_indexes = np.reshape(square_indexes,(4,4))
+                        square_points = np.reshape(square_points,(4,4,square_points.shape[1]))
+                        
+                        dict_corner_points[(i,j)] = square_points
+                        dict_corner_indexes[(i,j)] = square_indexes
+                            
+                weights = []
+                corner_indexes = [] # index in hexgrid
+                for i in np.arange(0,table_grid.shape[0],1):
+                    x_index = bisect.bisect_left(x_ticks, table_grid[i][0])
+                    y_index = bisect.bisect_left(y_ticks, table_grid[i][1])
+                    if x_index != 0:
+                        x_index = x_index-1
+                    if y_index != 0:
+                        y_index = y_index-1
+                            
+                    corner_points = dict_corner_points[(x_index,y_index)]
                     target = table_grid[i]
                     target = np.expand_dims(target, axis=0)
-                    w = self.get_weights(corner_points_NN, target)
-                    w = np.squeeze(w, axis=0)
-                    weights_NN.append(w)
-                    simplexes_NN.append(corner_simplexes_NN)
+                    weights_temp = []
+                    for j in np.arange(0,corner_points.shape[0],1):
+                        if corner_points[j][0][0] == invalid_x_val:
+                            w = np.array([0,0,0,0])
+                        else:
+                            cp = np.expand_dims(corner_points[j], axis=0)
+                            w = self.get_weights(cp, target)
+                            w = np.squeeze(w, axis=0)
+                        weights_temp.append(w)
+                
+                    weights_temp = np.array(weights_temp)
+                    weights.append(weights_temp)
+                    corner_indexes.append(dict_corner_indexes[(x_index,y_index)])
 
-            weights_NN = np.array(weights_NN)
-            simplexes_NN = np.array(simplexes_NN)
-
-            # 2NN
-            weights_2NN = []
-            simplexes_2NN = []
-            for i in np.arange(0,3,1):
-                weights = []
-                simplexes = []
-                for j in np.arange(0,simplex_index.shape[0],1):
-                    table_simplex_NN = tri.simplices[simplex_index_NN[j][i]]
-                    if -1 in simplex_index_2NN[j][i] or -1 in simplex_index_NN[j] or all(ind >= num_pixels for ind in table_simplex_NN):
-                        w = np.array([0,0,0])
-                        weights.append(w)
-                        corner_simplexes_2NN = np.array([-1,-1,-1])
-                        simplexes.append(corner_simplexes_2NN)
-                    else:
-                        corner_points_2NN, corner_simplexes_2NN = self.get_triangle(tri, hex_grid, simplex_index_2NN[j][i], table_simplex_NN)
-                        target = table_grid[j]
-                        target = np.expand_dims(target, axis=0)
-                        w = self.get_weights(corner_points_2NN, target)
-                        w = np.squeeze(w, axis=0)
-                        weights.append(w)
-                        simplexes.append(corner_simplexes_2NN)
-            
                 weights = np.array(weights)
-                simplexes = np.array(simplexes)
-                weights_2NN.append(weights)
-                simplexes_2NN.append(simplexes)
+                corner_indexes = np.array(corner_indexes)
+                weights = np.reshape(weights, (output_dim, output_dim, weights.shape[1], weights.shape[2]))
+                corner_indexes = np.reshape(corner_indexes,(output_dim, output_dim, corner_indexes.shape[1], corner_indexes.shape[2]))
+                
+            else:
+                #
+                #                 /\        /\
+                #                /  \      /  \
+                #               /    \    /    \
+                #              / 2NN  \  / 2NN  \
+                #             /________\/________\
+                #            /\        /\        /\
+                #           /  \  NN  /  \  NN  /  \
+                #          /    \    /    \    /    \
+                #         / 2NN  \  /  .   \  /  2NN \
+                #        /________\/________\/________\
+                #                 /\        /\
+                #                /  \  NN  /  \
+                #               /    \    /    \
+                #              / 2NN  \  / 2NN  \
+                #             /________\/________\
+                #
+            
+                tri = spatial.Delaunay(hex_grid)
+                                                                                                                    
+                # Get all relevant simplex indices
+                simplex_index = tri.find_simplex(table_grid)
+                simplex_index_NN = tri.neighbors[simplex_index]
+                simplex_index_2NN = tri.neighbors[simplex_index_NN]
+            
+                table_simplex = tri.simplices[simplex_index]
+                table_simplex_points = hex_grid[table_simplex]
 
-            weights_2NN.append(weights_NN)
-            simplexes_2NN.append(simplexes_NN)
-            weights_2NN = np.array(weights_2NN)
-            simplexes_2NN = np.array(simplexes_2NN)
-            weights_2NN = np.reshape(weights_2NN,(weights_2NN.shape[0], output_dim, output_dim, weights_2NN.shape[2]))
-            simplexes_2NN = np.reshape(simplexes_2NN,(simplexes_2NN.shape[0], output_dim, output_dim, simplexes_2NN.shape[2]))
+                # NN
+                weights_NN = []
+                simplexes_NN = []
+                for i in np.arange(0,simplex_index.shape[0],1):
+                    if -1 in simplex_index_NN[i] or all(ind >= num_pixels for ind in table_simplex[i]):
+                        w = np.array([0,0,0])
+                        weights_NN.append(w)
+                        corner_simplexes_2NN = np.array([-1,-1,-1])
+                        simplexes_NN.append(corner_simplexes_2NN)
+                    else:
+                        corner_points_NN, corner_simplexes_NN = self.get_triangle(tri, hex_grid, simplex_index_NN[i], table_simplex[i])
+                        target = table_grid[i]
+                        target = np.expand_dims(target, axis=0)
+                        w = self.get_weights(corner_points_NN, target)
+                        w = np.squeeze(w, axis=0)
+                        weights_NN.append(w)
+                        simplexes_NN.append(corner_simplexes_NN)
+
+                weights_NN = np.array(weights_NN)
+                simplexes_NN = np.array(simplexes_NN)
+
+                # 2NN
+                weights_2NN = []
+                simplexes_2NN = []
+                for i in np.arange(0,3,1):
+                    weights = []
+                    simplexes = []
+                    for j in np.arange(0,simplex_index.shape[0],1):
+                        table_simplex_NN = tri.simplices[simplex_index_NN[j][i]]
+                        if -1 in simplex_index_2NN[j][i] or -1 in simplex_index_NN[j] or all(ind >= num_pixels for ind in table_simplex_NN):
+                            w = np.array([0,0,0])
+                            weights.append(w)
+                            corner_simplexes_2NN = np.array([-1,-1,-1])
+                            simplexes.append(corner_simplexes_2NN)
+                        else:
+                            corner_points_2NN, corner_simplexes_2NN = self.get_triangle(tri, hex_grid, simplex_index_2NN[j][i], table_simplex_NN)
+                            target = table_grid[j]
+                            target = np.expand_dims(target, axis=0)
+                            w = self.get_weights(corner_points_2NN, target)
+                            w = np.squeeze(w, axis=0)
+                            weights.append(w)
+                            simplexes.append(corner_simplexes_2NN)
+            
+                    weights = np.array(weights)
+                    simplexes = np.array(simplexes)
+                    weights_2NN.append(weights)
+                    simplexes_2NN.append(simplexes)
+
+                weights_2NN.append(weights_NN)
+                simplexes_2NN.append(simplexes_NN)
+                weights_2NN = np.array(weights_2NN)
+                simplexes_2NN = np.array(simplexes_2NN)
+                weights = np.reshape(weights_2NN,(weights_2NN.shape[0], output_dim, output_dim, weights_2NN.shape[2]))
+                corner_indexes = np.reshape(simplexes_2NN,(simplexes_2NN.shape[0], output_dim, output_dim, simplexes_2NN.shape[2]))
 
             mapping_matrix3d = np.zeros((hex_grid.shape[0]+1, output_dim, output_dim))
             for i in np.arange(0,4,1):
                 for j in np.arange(0,output_dim,1):
                     for k in np.arange(0,output_dim,1):
-                        for l in np.arange(0,3,1):
-                            mapping_matrix3d[simplexes_2NN[i][k][j][l]+1][k][j] = weights_2NN[i][k][j][l]/4
-
+                        for l in np.arange(0,weights.shape[3],1):
+                            if weights.shape[3] == 3:
+                                mapping_matrix3d[corner_indexes[i][k][j][l]+1][k][j] = weights[i][k][j][l]/4
+                            elif weights.shape[3] == 4:
+                                mapping_matrix3d[corner_indexes[k][j][i][l]+1][k][j] = weights[k][j][i][l]/4
+            
             mapping_matrix3d = mapping_matrix3d[0:num_pixels+1]
 
             # Normalization (approximation) of the mapping table
