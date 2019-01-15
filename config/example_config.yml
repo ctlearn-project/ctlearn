@@ -182,12 +182,31 @@ Data:
 
 # Settings for mapping 1D pixel vectors to 2D images.
 Image Mapping:
-    # Optional string. Default: 'oversampling'
+    # Optional list of tel_type strings or null. Default if null: ['LSTCam']
+    # Only the mapping tables of this list will be calculated.
+    camera_type: ['LSTCam']
+
+    # Optional dictionary with string keys and string values. Default: 'oversampling'
     # Valid options:
-    #   - 'oversampling': Convert each each hexagonal pixel to four square
+    #   - 'oversampling': Convert each hexagonal pixel to four square
     #       pixels and reweight the charge to realign to a square grid
+    #   - 'rebinning': Interpret the intensity as a histogram and rebin
+    #       the hexagonal histogram into a square one.
+    #   - 'nearest_interpolation': Perform nearest neighbor
+    #   - 'bilinear_interpolation': Draw Delaunay triangulation and
+    #       perform bilinear interpolation
+    #   - 'bicubic_interpolation': Draw Delaunay triangulation and
+    #       perform bilinear interpolation
     # Algorithm to convert images with hexagonal pixel grids to square grids
-    hex_conversion_algorithm: 'oversampling'
+    hex_conversion_algorithm:
+        'LSTCam': 'oversampling'
+        'FlashCam': 'nearest_interpolation'
+        'NectarCam': 'rebinning'
+        'SCTCam': 'oversampling'
+        'DigiCam': 'bilinear_interpolation'
+        'ASTRICam': 'bicubic_interpolation'
+        'CHEC': 'bilinear_interpolation'
+        'VERITAS': 'nearest_interpolation'
 
     # Optional dictionary with string keys and integer values.
     # See Data:Loading:selected_tel_type for valid keys.

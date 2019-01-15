@@ -7,6 +7,7 @@ dependencies:
     - python=3.6.5
     - matplotlib
     - numpy
+    - astropy
     - opencv3
     - pillow
     - pip

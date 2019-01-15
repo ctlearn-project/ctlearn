@@ -41,6 +41,7 @@ NOTE for developers: If you wish to fork/clone the respository and make changes 
 - Python 3.6.5
 - TensorFlow 1.9.0
 - NumPy
+- AstroPy
 - OpenCV
 - PyTables
 - PyYAML
@@ -73,7 +74,7 @@ If the option `use_peak_times` is set to `True`, an additional channel with peak
 
 ### Image Mapping
 
-Set parameters for mapping the 1D pixel vectors in the raw data into 2D images, including the hexagonal grid conversion algorithm to use and how much padding to apply. As of CTLearn v0.2.0, the only implemented hexagonal conversion algorithm is oversampling.
+Set parameters for mapping the 1D pixel vectors in the raw data into 2D images, including the hexagonal grid conversion algorithm to use and how much padding to apply. The implemented hexagonal conversion algorithm are oversampling, nearest interpolation, rebinning, bilinear interpolation and bicubic interpolation.
 
 ### Model
 
@@ -132,7 +133,7 @@ tensorboard --logdir=/path/to/my/model_dir
 
 **DataProcessor** Preprocess IACT data. DataProcessor has a method `process_example()` that accepts an example of a list of NumPy arrays of data and an integer label along with the telescope type and returns preprocessed data in the same format, and a method `get_metadata()` that returns a dictionary of information about the processed data. A DataProcessor with no options set leaves the example unchanged. Preprocessing methods implemented in CTLearn v0.2.0 include cropping an image about the shower centroid and applying logarithmic normalization. 
 
-**ImageMapper** Map vectors of pixel values (as stored in the raw data) to square camera images. This is done with the `map_image()` method that accepts a vector of pixel values and telescope type and returns the camera image converted to a square array. This is not a unique transformation for cameras with pixels laid out in a hexagonal grid, so the hexagonal conversion method is configurable. However, as of CTLearn v0.2.0, the only implemented method is oversampling. ImageMapper can convert data from all CTA telescope and camera combinations currently under development, as well as data from VERITAS.
+**ImageMapper** Map vectors of pixel values (as stored in the raw data) to square camera images. This is done with the `map_image()` method that accepts a vector of pixel values and telescope type and returns the camera image converted to a square array. This is not a unique transformation for cameras with pixels laid out in a hexagonal grid, so the hexagonal conversion method is configurable. The implemented method are oversampling, nearest interpolation, rebinning, bilinear interpolation and bicubic interpolation. ImageMapper can convert data from all CTA telescope and camera combinations currently under development, as well as data from all IACTs (VERITAS, MAGIC, FACT, HESS-I and HESS-II.)
 
 These classes may be used independently of the TensorFlow-based portion of CTLearn, e.g.:
 
@@ -152,6 +153,7 @@ print(data_loader.get_example(*example_identifiers))
 
 - **plot_classifier_values.py** Plot a histogram of gamma/hadron classification values from a CTLearn predictions file.
 - **plot_roc_curves.py** Plot gamma/hadron classification ROC curves from a list of CTLearn predictions files.
+- **plot_camera_image.py** Plot all cameras for all hexagonal conversion method with dummy data.
 - **print_dataset_metadata.py** Print metadata for a list of ImageExtractor HDF5 files using HDF5DataLoader.
 - **run_multiple_configurations.py** Generate a list of configuration combinations and run a model for each, for example, to conduct a hyperparameter search or to automate training or prediction for a set of models. Parses a standard CTLearn configuration file with two additional sections for Multiple Configurations added. Has an option to resume from a specific run in case the execution is interrupted.
 - **visualize_bounding_boxes.py** Plot IACT images with overlaid bounding boxes using DataProcessor's crop method. Useful for manually tuning cropping and cleaning parameters.
