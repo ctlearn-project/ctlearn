@@ -130,14 +130,14 @@ class ImageMapper():
 
             if self.hex_conversion_algorithm[camtype] not in ['oversampling'] or camtype in ['ASTRICam', 'CHEC', 'SCTCam']:
                 self.image_shapes[camtype] = (
-                    self.image_shapes[camtype][0] + (self.padding[camtype] + self.default_pad) * 2,
-                    self.image_shapes[camtype][1] + (self.padding[camtype] + self.default_pad) * 2,
+                    self.image_shapes[camtype][0] + self.default_pad * 2,
+                    self.image_shapes[camtype][1] + self.default_pad * 2,
                     self.image_shapes[camtype][2]
                 )
             else:
                 self.image_shapes[camtype] = (
-                    self.image_shapes[camtype][0] + (self.padding[camtype] + self.default_pad*2) * 2,
-                    self.image_shapes[camtype][1] + (self.padding[camtype] + self.default_pad*2) * 2,
+                    self.image_shapes[camtype][0] + self.default_pad * 4,
+                    self.image_shapes[camtype][1] + self.default_pad * 4,
                     self.image_shapes[camtype][2]
                 )
 
@@ -219,17 +219,25 @@ class ImageMapper():
                 pixel_weight = 1/4
             else:
                 pixel_weight = 1
-            mapping_matrix3d = np.zeros((hex_grid.shape[0]+1,output_dim, output_dim))
+            mapping_matrix3d = np.zeros((hex_grid.shape[0]+1,output_dim + pad*2, output_dim + pad*2))
             for y_grid in np.arange(0, output_dim, 1):
                 for x_grid in np.arange(0, output_dim, 1):
-                    mapping_matrix3d[nn_index[y_grid][x_grid]+1][y_grid][x_grid] = pixel_weight
+                    mapping_matrix3d[nn_index[y_grid][x_grid]+1][y_grid+pad][x_grid+pad] = pixel_weight
         
             mapping_matrix3d = mapping_matrix3d[0:num_pixels+1]
             
+            # Padding
+            if pad != 0:
+                self.image_shapes[camera_type] = (
+                    self.image_shapes[camera_type][0] + pad * 2,
+                    self.image_shapes[camera_type][1] + pad * 2,
+                    self.image_shapes[camera_type][2]
+                )
+        
             # Rotating the camera back to the original orientation
             if camera_type in ['LSTCam', 'NectarCam', 'MAGICCam']:
                 for i in np.arange(0,mapping_matrix3d.shape[0],1):
-                    mapping_matrix3d[i] = self.rotate_image(mapping_matrix3d[i],camera_type,self.pixel_rotation[camera_type])
+                    mapping_matrix3d[i] = self.rotate_image(mapping_matrix3d[i],camera_type,self.image_shapes[camera_type][0],self.pixel_rotation[camera_type])
 
             sparse_map_mat = csr_matrix(mapping_matrix3d.reshape(mapping_matrix3d.shape[0],
                                                                  self.image_shapes[camera_type][0]*
@@ -244,16 +252,24 @@ class ImageMapper():
             nn_index = np.reshape(tree.query(table_grid)[1],(output_dim*grid_size_factor, output_dim*grid_size_factor))
             
             # Calculating the overlapping area/weights for each square pixel
-            mapping_matrix3d = np.zeros((hex_grid.shape[0]+1,output_dim, output_dim))
+            mapping_matrix3d = np.zeros((hex_grid.shape[0]+1,output_dim + pad*2, output_dim + pad*2))
             for y_grid in np.arange(0, output_dim*grid_size_factor, grid_size_factor):
                 for x_grid in np.arange(0, output_dim*grid_size_factor, grid_size_factor):
                     counter = Counter(np.reshape(nn_index[y_grid:y_grid+grid_size_factor, x_grid:x_grid+grid_size_factor],-1))
                     pixel_index = np.array(list(counter.keys()))+1
                     weights = list(counter.values())/np.sum(list(counter.values()))
                     for key in np.arange(0,len(pixel_index),1):
-                        mapping_matrix3d[pixel_index[key]][int(y_grid/grid_size_factor)][int(x_grid/grid_size_factor)] = weights[key]
+                        mapping_matrix3d[pixel_index[key]][int(y_grid/grid_size_factor)+pad][int(x_grid/grid_size_factor)+pad] = weights[key]
 
             mapping_matrix3d = mapping_matrix3d[0:num_pixels+1]
+            
+            # Padding
+            if pad != 0:
+                self.image_shapes[camera_type] = (
+                    self.image_shapes[camera_type][0] + pad * 2,
+                    self.image_shapes[camera_type][1] + pad * 2,
+                    self.image_shapes[camera_type][2]
+                )
             
             # Normalization (approximation) of the mapping table
             norm_factor = 0
@@ -266,7 +282,7 @@ class ImageMapper():
             # Rotating the camera back to the original orientation
             if camera_type in ['LSTCam', 'NectarCam', 'MAGICCam']:
                 for i in np.arange(0,mapping_matrix3d.shape[0],1):
-                    mapping_matrix3d[i] = self.rotate_image(mapping_matrix3d[i],camera_type,self.pixel_rotation[camera_type])
+                    mapping_matrix3d[i] = self.rotate_image(mapping_matrix3d[i],camera_type,self.image_shapes[camera_type][0],self.pixel_rotation[camera_type])
             
             sparse_map_mat = csr_matrix(mapping_matrix3d.reshape(mapping_matrix3d.shape[0],
                                                                  self.image_shapes[camera_type][0]*
@@ -352,14 +368,22 @@ class ImageMapper():
             weights = np.reshape(weights, (output_dim, output_dim, weights.shape[1]))
             corner_indexes = np.reshape(corner_indexes,(output_dim, output_dim, corner_indexes.shape[1]))
             
-            mapping_matrix3d = np.zeros((hex_grid.shape[0]+1, output_dim, output_dim))
+            mapping_matrix3d = np.zeros((hex_grid.shape[0]+1, output_dim + pad*2, output_dim + pad*2))
             for i in np.arange(0,output_dim,1):
                 for j in np.arange(0,output_dim,1):
                     for k in np.arange(0,corner_indexes.shape[2],1):
-                        mapping_matrix3d[corner_indexes[j][i][k]+1][j][i] = weights[j][i][k]
+                        mapping_matrix3d[corner_indexes[j][i][k]+1][j+pad][i+pad] = weights[j][i][k]
 
             mapping_matrix3d = mapping_matrix3d[0:num_pixels+1]
-            
+
+            # Padding
+            if pad != 0:
+                self.image_shapes[camera_type] = (
+                    self.image_shapes[camera_type][0] + pad * 2,
+                    self.image_shapes[camera_type][1] + pad * 2,
+                    self.image_shapes[camera_type][2]
+                )
+
             # Normalization (approximation) of the mapping table
             norm_factor = 0
             for i in np.arange(1,mapping_matrix3d.shape[0],1):
@@ -369,16 +393,16 @@ class ImageMapper():
                 mapping_matrix3d[i] /= norm_factor
             
             # Mask interpolation
-            for j in np.arange(0,nn_index.shape[0],1):
-                for k in np.arange(0,nn_index.shape[1],1):
-                    if nn_index[k][j] >= num_pixels:
-                        for i in np.arange(1,mapping_matrix3d.shape[0],1):
-                            mapping_matrix3d[i][k][j] = 0.0
+            for i in np.arange(0,nn_index.shape[0],1):
+                for j in np.arange(0,nn_index.shape[1],1):
+                    if nn_index[j][i] >= num_pixels:
+                        for k in np.arange(1,mapping_matrix3d.shape[0],1):
+                            mapping_matrix3d[k][j+pad][i+pad] = 0.0
 
             # Rotating the camera back to the original orientation
             if camera_type in ['LSTCam', 'NectarCam', 'MAGICCam']:
                 for i in np.arange(0,mapping_matrix3d.shape[0],1):
-                    mapping_matrix3d[i] = self.rotate_image(mapping_matrix3d[i],camera_type,self.pixel_rotation[camera_type])
+                    mapping_matrix3d[i] = self.rotate_image(mapping_matrix3d[i],camera_type,self.image_shapes[camera_type][0],self.pixel_rotation[camera_type])
 
             sparse_map_mat = csr_matrix(mapping_matrix3d.reshape(mapping_matrix3d.shape[0],
                                                                 self.image_shapes[camera_type][0]*
@@ -579,18 +603,26 @@ class ImageMapper():
                 weights = np.reshape(weights_2NN,(weights_2NN.shape[0], output_dim, output_dim, weights_2NN.shape[2]))
                 corner_indexes = np.reshape(simplexes_2NN,(simplexes_2NN.shape[0], output_dim, output_dim, simplexes_2NN.shape[2]))
 
-            mapping_matrix3d = np.zeros((hex_grid.shape[0]+1, output_dim, output_dim))
+            mapping_matrix3d = np.zeros((hex_grid.shape[0]+1, output_dim + pad*2, output_dim + pad*2))
             for i in np.arange(0,4,1):
                 for j in np.arange(0,output_dim,1):
                     for k in np.arange(0,output_dim,1):
                         for l in np.arange(0,weights.shape[3],1):
                             if weights.shape[3] == 3:
-                                mapping_matrix3d[corner_indexes[i][k][j][l]+1][k][j] = weights[i][k][j][l]/4
+                                mapping_matrix3d[corner_indexes[i][k][j][l]+1][k+pad][j+pad] = weights[i][k][j][l]/4
                             elif weights.shape[3] == 4:
-                                mapping_matrix3d[corner_indexes[k][j][i][l]+1][k][j] = weights[k][j][i][l]/4
+                                mapping_matrix3d[corner_indexes[k][j][i][l]+1][k+pad][j+pad] = weights[k][j][i][l]/4
             
             mapping_matrix3d = mapping_matrix3d[0:num_pixels+1]
 
+            # Padding
+            if pad != 0:
+                self.image_shapes[camera_type] = (
+                    self.image_shapes[camera_type][0] + pad * 2,
+                    self.image_shapes[camera_type][1] + pad * 2,
+                    self.image_shapes[camera_type][2]
+                )
+            
             # Normalization (approximation) of the mapping table
             norm_factor = 0
             for i in np.arange(1,mapping_matrix3d.shape[0],1):
@@ -600,16 +632,16 @@ class ImageMapper():
                 mapping_matrix3d[i] /= norm_factor
             
             # Mask interpolation
-            for j in np.arange(0,nn_index.shape[0],1):
-                for k in np.arange(0,nn_index.shape[1],1):
-                    if nn_index[k][j] >= num_pixels:
-                        for i in np.arange(1,mapping_matrix3d.shape[0],1):
-                            mapping_matrix3d[i][k][j] = 0.0
+            for i in np.arange(0,nn_index.shape[0],1):
+                for j in np.arange(0,nn_index.shape[1],1):
+                    if nn_index[j][i] >= num_pixels:
+                        for k in np.arange(1,mapping_matrix3d.shape[0],1):
+                            mapping_matrix3d[k][j+pad][i+pad] = 0.0
 
             # Rotating the camera back to the original orientation
             if camera_type in ['LSTCam', 'NectarCam', 'MAGICCam']:
                 for i in np.arange(0,mapping_matrix3d.shape[0],1):
-                    mapping_matrix3d[i] = self.rotate_image(mapping_matrix3d[i],camera_type,self.pixel_rotation[camera_type])
+                    mapping_matrix3d[i] = self.rotate_image(mapping_matrix3d[i],camera_type,self.image_shapes[camera_type][0],self.pixel_rotation[camera_type])
 
             sparse_map_mat = csr_matrix(mapping_matrix3d.reshape(mapping_matrix3d.shape[0],
                                                                 self.image_shapes[camera_type][0]*
@@ -749,7 +781,6 @@ class ImageMapper():
         # Get relevant parameters
         output_dim = self.image_shapes[camera_type][0]
         num_pixels = self.num_pixels[camera_type]
-        pad = self.padding[camera_type]
         default_pad = self.default_pad
         hex_algo = self.hex_conversion_algorithm[camera_type]
         
@@ -794,7 +825,7 @@ class ImageMapper():
         
             x_dist = np.around(abs(x_ticks[0]-x_ticks[1]),decimals=3)
             y_dist = np.around(abs(y_ticks[0]-y_ticks[1]),decimals=3)
-            for i in np.arange(0,pad+default_pad,1):
+            for i in np.arange(0,default_pad,1):
                 x_ticks.append(np.around(x_ticks[-1]+x_dist,decimals=3))
                 x_ticks.insert(0,np.around(x_ticks[0]-x_dist,decimals=3))
                 y_ticks.append(np.around(y_ticks[-1]+y_dist,decimals=3))
@@ -868,21 +899,10 @@ class ImageMapper():
                 grid_second = []
                 for j in second_ticks:
                     grid_second.append(j+dist_second/2.0)
-                # Padding
-                dist_grid_first = np.around(abs(grid_first[0]-grid_first[1]),decimals=3)
-                dist_grid_second = np.around(abs(grid_second[0]-grid_second[1]),decimals=3)
-                for i in np.arange(0,pad,1):
-                    grid_first.append(np.around(grid_first[-1]+dist_grid_first,decimals=3))
-                    grid_first.insert(0,np.around(grid_first[0]-dist_grid_first,decimals=3))
-                    grid_second.append(np.around(grid_second[-1]+dist_grid_second,decimals=3))
-                    grid_second.insert(0,np.around(grid_second[0]-dist_grid_second,decimals=3))
             else:
                 # Add corner
-                first_pad = pad*(np.max(first_pos)-np.min(first_pos))/(output_dim-pad*2)
-                second_pad = pad*(np.max(second_pos)-np.min(second_pos))/(output_dim-pad*2)
-        
-                minimum = min([np.min(first_pos) - first_pad,np.min(second_pos) - second_pad])
-                maximum = max([np.max(first_pos) + first_pad,np.max(second_pos) + second_pad])
+                minimum = min([np.min(first_pos),np.min(second_pos)])
+                maximum = max([np.max(first_pos),np.max(second_pos)])
     
                 first_pos=np.concatenate((first_pos,[minimum]))
                 second_pos=np.concatenate((second_pos,[minimum]))
@@ -972,9 +992,9 @@ class ImageMapper():
         pos_rotated = np.squeeze(np.asarray(np.dot(rotation_matrix, pos)))
         return pos_rotated
 
-    def rotate_image(self, image, camera_type, angle):
+    def rotate_image(self, image, camera_type, output_dim, angle):
         image = np.expand_dims(image, axis=2)
-        h = w = self.image_shapes[camera_type][0]
+        h = w = output_dim
         center = (w/2.0, h/2.0)
         scale=1.0
         M = cv2.getRotationMatrix2D(center, angle, scale)
