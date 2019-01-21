@@ -166,23 +166,7 @@ class ImageMapper():
         result = []
         for channel in range(n_channels):
             vector = pixels[:,channel]
-            image_2D = (vector.T @ map_tab).reshape(self.image_shapes[camera_type][0],
-                                                                    self.image_shapes[camera_type][1], 1)
-            if default_pad != 0:
-                if hex_algo != 'oversampling' or camera_type in ['ASTRICam', 'CHEC', 'SCTCam']:
-                    image_2D = image_2D[default_pad:output_dim-default_pad, default_pad:output_dim-default_pad]
-                    self.image_shapes[camera_type] = (
-                        self.image_shapes[camera_type][0] - default_pad * 2,
-                        self.image_shapes[camera_type][1] - default_pad * 2,
-                        self.image_shapes[camera_type][2]
-                    )
-                else:
-                    image_2D = image_2D[default_pad*2:output_dim-default_pad*2, default_pad*2:output_dim-default_pad*2]
-                    self.image_shapes[camera_type] = (
-                        self.image_shapes[camera_type][0] - default_pad * 4,
-                        self.image_shapes[camera_type][1] - default_pad * 4,
-                        self.image_shapes[camera_type][2]
-                    )
+            image_2D = (vector.T @ map_tab).reshape(self.image_shapes[camera_type][0], self.image_shapes[camera_type][1], 1)
             result.append(image_2D)
         telescope_image = np.concatenate(result, axis = -1)
         return telescope_image
@@ -194,6 +178,7 @@ class ImageMapper():
         # Get telescope pixel positions and padding for the given tel type
         pos = self.pixel_positions[camera_type]
         pad = self.padding[camera_type]
+        default_pad = self.default_pad
         hex_algo = self.hex_conversion_algorithm[camera_type]
         pos = self.slice_pixelPos(pos,num_pixels)
         
@@ -213,30 +198,13 @@ class ImageMapper():
             else:
                 pixel_weight = 1
             mapping_matrix3d = np.zeros((hex_grid.shape[0]+1,output_dim + pad*2, output_dim + pad*2))
+            print('mapping_matrix3d shape: {}'.format(mapping_matrix3d.shape))
             for y_grid in np.arange(0, output_dim, 1):
                 for x_grid in np.arange(0, output_dim, 1):
                     mapping_matrix3d[nn_index[y_grid][x_grid]+1][y_grid+pad][x_grid+pad] = pixel_weight
         
             mapping_matrix3d = mapping_matrix3d[0:num_pixels+1]
             
-            # Padding
-            if pad != 0:
-                self.image_shapes[camera_type] = (
-                    self.image_shapes[camera_type][0] + pad * 2,
-                    self.image_shapes[camera_type][1] + pad * 2,
-                    self.image_shapes[camera_type][2]
-                )
-        
-            # Rotating the camera back to the original orientation
-            if camera_type in ['LSTCam', 'NectarCam', 'MAGICCam']:
-                mapping_matrix3d = self.rotate_mapping_table(mapping_matrix3d,camera_type,self.image_shapes[camera_type][0],self.pixel_rotation[camera_type])
-
-            sparse_map_mat = csr_matrix(mapping_matrix3d.reshape(mapping_matrix3d.shape[0],
-                                                                 self.image_shapes[camera_type][0]*
-                                                                 self.image_shapes[camera_type][1]))
-
-            return sparse_map_mat
-        
         # Rebinning (approximation)
         elif hex_algo == 'rebinning':
             # Finding the nearest point in the hexagonal grid for each point in the square grid
@@ -254,27 +222,8 @@ class ImageMapper():
                         mapping_matrix3d[pixel_index[key]][int(y_grid/grid_size_factor)+pad][int(x_grid/grid_size_factor)+pad] = weights[key]
 
             mapping_matrix3d = mapping_matrix3d[0:num_pixels+1]
-            
-            # Padding
-            if pad != 0:
-                self.image_shapes[camera_type] = (
-                    self.image_shapes[camera_type][0] + pad * 2,
-                    self.image_shapes[camera_type][1] + pad * 2,
-                    self.image_shapes[camera_type][2]
-                )
-            
             # Normalization (approximation) of the mapping table
             mapping_matrix3d = self.normalization(mapping_matrix3d, num_pixels)
-            
-            # Rotating the camera back to the original orientation
-            if camera_type in ['LSTCam', 'NectarCam', 'MAGICCam']:
-                mapping_matrix3d = self.rotate_mapping_table(mapping_matrix3d,camera_type,self.image_shapes[camera_type][0],self.pixel_rotation[camera_type])
-
-            
-            sparse_map_mat = csr_matrix(mapping_matrix3d.reshape(mapping_matrix3d.shape[0],
-                                                                 self.image_shapes[camera_type][0]*
-                                                                 self.image_shapes[camera_type][1]))
-            return sparse_map_mat
                 
         # Bilinear interpolation
         elif hex_algo == 'bilinear_interpolation':
@@ -362,31 +311,11 @@ class ImageMapper():
                         mapping_matrix3d[corner_indexes[j][i][k]+1][j+pad][i+pad] = weights[j][i][k]
 
             mapping_matrix3d = mapping_matrix3d[0:num_pixels+1]
-
-            # Padding
-            if pad != 0:
-                self.image_shapes[camera_type] = (
-                    self.image_shapes[camera_type][0] + pad * 2,
-                    self.image_shapes[camera_type][1] + pad * 2,
-                    self.image_shapes[camera_type][2]
-                )
-
             # Normalization (approximation) of the mapping table
             mapping_matrix3d = self.normalization(mapping_matrix3d, num_pixels)
-            
             # Mask interpolation
             mapping_matrix3d = self.mask_interpolation(mapping_matrix3d, nn_index, num_pixels, pad)
-            
-            # Rotating the camera back to the original orientation
-            if camera_type in ['LSTCam', 'NectarCam', 'MAGICCam']:
-                mapping_matrix3d = self.rotate_mapping_table(mapping_matrix3d,camera_type,self.image_shapes[camera_type][0],self.pixel_rotation[camera_type])
 
-            sparse_map_mat = csr_matrix(mapping_matrix3d.reshape(mapping_matrix3d.shape[0],
-                                                                self.image_shapes[camera_type][0]*
-                                                                self.image_shapes[camera_type][1]))
-                                                                                                            
-            return sparse_map_mat
-                                                                                                                
         # Bicubic interpolation
         elif hex_algo == 'bicubic_interpolation':
             # Finding the nearest point in the hexagonal grid for each point in the square grid
@@ -591,30 +520,40 @@ class ImageMapper():
                                 mapping_matrix3d[corner_indexes[k][j][i][l]+1][k+pad][j+pad] = weights[k][j][i][l]/4
             
             mapping_matrix3d = mapping_matrix3d[0:num_pixels+1]
-
-            # Padding
-            if pad != 0:
-                self.image_shapes[camera_type] = (
-                    self.image_shapes[camera_type][0] + pad * 2,
-                    self.image_shapes[camera_type][1] + pad * 2,
-                    self.image_shapes[camera_type][2]
-                )
-            
             # Normalization (approximation) of the mapping table
             mapping_matrix3d = self.normalization(mapping_matrix3d, num_pixels)
-            
             # Mask interpolation
             mapping_matrix3d = self.mask_interpolation(mapping_matrix3d, nn_index, num_pixels, pad)
-                                                       
-            # Rotating the camera back to the original orientation
-            if camera_type in ['LSTCam', 'NectarCam', 'MAGICCam']:
-                mapping_matrix3d = self.rotate_mapping_table(mapping_matrix3d,camera_type,self.image_shapes[camera_type][0],self.pixel_rotation[camera_type])
+                
+        # Rotating the camera back to the original orientation
+        if camera_type in ['LSTCam', 'NectarCam', 'MAGICCam']:
+            mapping_matrix3d = self.rotate_mapping_table(mapping_matrix3d,camera_type,output_dim+pad*2,self.pixel_rotation[camera_type])
 
-            sparse_map_mat = csr_matrix(mapping_matrix3d.reshape(mapping_matrix3d.shape[0],
-                                                                self.image_shapes[camera_type][0]*
-                                                                self.image_shapes[camera_type][1]))
+        if (pad+default_pad) != 0:
+            if hex_algo != 'oversampling' or camera_type in ['ASTRICam', 'CHEC', 'SCTCam']:
+                map_mat = np.zeros((mapping_matrix3d.shape[0], output_dim + (pad - default_pad)*2, output_dim + (pad - default_pad)*2))
+                for i in np.arange(0,mapping_matrix3d.shape[0],1):
+                    map_mat[i] = mapping_matrix3d[i][default_pad:output_dim+pad*2-default_pad, default_pad:output_dim+pad*2-default_pad]
+                self.image_shapes[camera_type] = (
+                    self.image_shapes[camera_type][0] + (pad - default_pad)*2,
+                    self.image_shapes[camera_type][1] + (pad - default_pad)*2,
+                    self.image_shapes[camera_type][2]
+                )
+            else:
+                map_mat = np.zeros((mapping_matrix3d.shape[0], output_dim + pad*2 - default_pad*4, output_dim + pad*2 - default_pad*4))
+                for i in np.arange(0,mapping_matrix3d.shape[0],1):
+                    map_mat[i] = mapping_matrix3d[i][default_pad*2:output_dim+pad*2-default_pad*2, default_pad*2:output_dim+pad*2-default_pad*2]
+                self.image_shapes[camera_type] = (
+                    self.image_shapes[camera_type][0] + pad*2 - default_pad*4,
+                    self.image_shapes[camera_type][1] + pad*2 - default_pad*4,
+                    self.image_shapes[camera_type][2]
+                )
+
+        sparse_map_mat = csr_matrix(map_mat.reshape(map_mat.shape[0],
+                                                    self.image_shapes[camera_type][0]*
+                                                    self.image_shapes[camera_type][1]))
                                                                                                                                                                                                                                 
-            return sparse_map_mat
+        return sparse_map_mat
 
     def get_triangle(self, tri, hex_grid, simplex_index_NN, table_simplex):
         """
