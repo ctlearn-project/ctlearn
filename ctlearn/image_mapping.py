@@ -54,7 +54,8 @@ class ImageMapper():
                  hex_conversion_algorithm=None,
                  interpolation_image_shape=None,
                  padding=None,
-                 use_peak_times=False):
+                 use_peak_times=False,
+                 mask_interpolation=False):
         """
         :param camera_type:  an array of strings specifying the camera types
 
@@ -64,6 +65,8 @@ class ImageMapper():
                         of the square image
         :param use_peak_times: if true, the number of input channels is 2
                                (charges and peak arrival times)
+        :param mask_interpolation: if true, mask interpolation will be performed
+                                   (only for bilinear and bicubic interpolation)
         """
 
         # image_shapes should be a non static field to prevent problems
@@ -99,6 +102,10 @@ class ImageMapper():
         if padding is None:
             padding = {}
         self.padding = {**{c: 0 for c in self.camera_type}, **padding}
+        # Mask interpolation
+        self.mask = False
+        if mask_interpolation is True:
+            self.mask = mask_interpolation
         # Pixel positions and mapping tables initialization
         self.pixel_positions = {}
         self.pixel_rotation = {}
@@ -198,12 +205,9 @@ class ImageMapper():
             else:
                 pixel_weight = 1
             mapping_matrix3d = np.zeros((hex_grid.shape[0]+1,output_dim + pad*2, output_dim + pad*2))
-            print('mapping_matrix3d shape: {}'.format(mapping_matrix3d.shape))
             for y_grid in np.arange(0, output_dim, 1):
                 for x_grid in np.arange(0, output_dim, 1):
                     mapping_matrix3d[nn_index[y_grid][x_grid]+1][y_grid+pad][x_grid+pad] = pixel_weight
-        
-            mapping_matrix3d = mapping_matrix3d[0:num_pixels+1]
             
         # Rebinning (approximation)
         elif hex_algo == 'rebinning':
@@ -220,10 +224,6 @@ class ImageMapper():
                     weights = list(counter.values())/np.sum(list(counter.values()))
                     for key in np.arange(0,len(pixel_index),1):
                         mapping_matrix3d[pixel_index[key]][int(y_grid/grid_size_factor)+pad][int(x_grid/grid_size_factor)+pad] = weights[key]
-
-            mapping_matrix3d = mapping_matrix3d[0:num_pixels+1]
-            # Normalization (approximation) of the mapping table
-            mapping_matrix3d = self.normalization(mapping_matrix3d, num_pixels)
                 
         # Bilinear interpolation
         elif hex_algo == 'bilinear_interpolation':
@@ -309,12 +309,6 @@ class ImageMapper():
                 for j in np.arange(0,output_dim,1):
                     for k in np.arange(0,corner_indexes.shape[2],1):
                         mapping_matrix3d[corner_indexes[j][i][k]+1][j+pad][i+pad] = weights[j][i][k]
-
-            mapping_matrix3d = mapping_matrix3d[0:num_pixels+1]
-            # Normalization (approximation) of the mapping table
-            mapping_matrix3d = self.normalization(mapping_matrix3d, num_pixels)
-            # Mask interpolation
-            mapping_matrix3d = self.mask_interpolation(mapping_matrix3d, nn_index, num_pixels, pad)
 
         # Bicubic interpolation
         elif hex_algo == 'bicubic_interpolation':
@@ -518,16 +512,18 @@ class ImageMapper():
                                 mapping_matrix3d[corner_indexes[i][k][j][l]+1][k+pad][j+pad] = weights[i][k][j][l]/4
                             elif weights.shape[3] == 4:
                                 mapping_matrix3d[corner_indexes[k][j][i][l]+1][k+pad][j+pad] = weights[k][j][i][l]/4
-            
-            mapping_matrix3d = mapping_matrix3d[0:num_pixels+1]
-            # Normalization (approximation) of the mapping table
-            mapping_matrix3d = self.normalization(mapping_matrix3d, num_pixels)
-            # Mask interpolation
-            mapping_matrix3d = self.mask_interpolation(mapping_matrix3d, nn_index, num_pixels, pad)
                 
+        # Cutting the mapping table after num_pixels+1, since the virtual pixels have intensity zero.
+        mapping_matrix3d = mapping_matrix3d[0:num_pixels+1]
+        # Mask interpolation
+        if self.mask and hex_algo in ['bilinear_interpolation', 'bicubic_interpolation']:
+            mapping_matrix3d = self.mask_interpolation(mapping_matrix3d, nn_index, num_pixels, pad)
         # Rotating the camera back to the original orientation
         if camera_type in ['LSTCam', 'NectarCam', 'MAGICCam']:
             mapping_matrix3d = self.rotate_mapping_table(mapping_matrix3d,camera_type,output_dim+pad*2,self.pixel_rotation[camera_type])
+        # Normalization (approximation) of the mapping table
+        if hex_algo not in ['oversampling', 'nearest_interpolation']:
+            mapping_matrix3d = self.normalization(mapping_matrix3d, num_pixels)
 
         if (pad+default_pad) != 0:
             if hex_algo != 'oversampling' or camera_type in ['ASTRICam', 'CHEC', 'SCTCam']:
@@ -985,6 +981,7 @@ class ImageMapper():
         from astropy.io import fits
         if camera_type in self.num_pixels.keys():
             # Camera geometry fits files from cta-observatory/ctapipe-extra v0.2.16
+            # These pixel positions refer to Monte-Carlo simulations; not to real (physical) pixel positions.
             infile = os.path.join(os.path.dirname(__file__),"pixel_pos_files/{}.camgeom.fits".format(camera_type))
             hdul = fits.open(infile)
             data = hdul[1].data
