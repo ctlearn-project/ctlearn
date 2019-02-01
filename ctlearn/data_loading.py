@@ -683,7 +683,7 @@ class HDF5DataLoader(DataLoader):
                     num_triggered_tels += num_tels
                     num_triggered_tels_by_type[tel_type] = num_tels
                     triggered_tel_ids.extend([tel_id for tel_id in tel_ids
-                        if tel_id_to_index[tel_id] in triggered_image_indices])
+                        if image_indices[tel_id_to_index[tel_id]] != 0])
                 if num_triggered_tels < self.min_num_tels:
                     continue
 
