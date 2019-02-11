@@ -237,13 +237,8 @@ class ImageMapper():
                 x_ticks=np.unique(hex_grid_transpose[0]).tolist()
                 y_ticks=np.unique(hex_grid_transpose[1]).tolist()
                
-                dict_hex_grid = {}
-                for i, x_val in enumerate(x_ticks):
-                    for j, y_val in enumerate(y_ticks):
-                        for k in np.arange(0,hex_grid.shape[0],1):
-                            if hex_grid[k][0] == x_val and hex_grid[k][1] == y_val:
-                                dict_hex_grid[(x_val,y_val)] = k
-                                break
+                dict_hex_grid = {tuple(coord): i for i, coord
+                        in enumerate(hex_grid)}
             
                 dict_corner_indexes = {}
                 dict_corner_points = {}
@@ -332,14 +327,8 @@ class ImageMapper():
                 hex_grid_transpose=hex_grid.T
                 x_ticks=np.unique(hex_grid_transpose[0]).tolist()
                 y_ticks=np.unique(hex_grid_transpose[1]).tolist()
-                
-                dict_hex_grid = {}
-                for i, x_val in enumerate(x_ticks):
-                    for j, y_val in enumerate(y_ticks):
-                        for k in np.arange(0,hex_grid.shape[0],1):
-                            if hex_grid[k][0] == x_val and hex_grid[k][1] == y_val:
-                                dict_hex_grid[(x_val,y_val)] = k
-                                break
+                dict_hex_grid = {tuple(coord): i for i, coord
+                        in enumerate(hex_grid)}
                 
                 dict_corner_indexes = {}
                 dict_corner_points = {}
@@ -840,20 +829,16 @@ class ImageMapper():
         return virtual_pixels
 
     def normalization(self, mapping_matrix3d, num_pixels):
-        norm_factor = 0
-        for i in np.arange(1,mapping_matrix3d.shape[0],1):
-            norm_factor += np.sum(mapping_matrix3d[i])
+        norm_factor = np.sum(mapping_matrix3d[1:])
         norm_factor /= float(num_pixels)
-        for i in np.arange(1,mapping_matrix3d.shape[0],1):
-            mapping_matrix3d[i] /= norm_factor
+        mapping_matrix3d[1:] /= norm_factor
         return mapping_matrix3d
                                                        
     def mask_interpolation(self, mapping_matrix3d, nn_index, num_pixels, pad):
         for i in np.arange(0,nn_index.shape[0],1):
             for j in np.arange(0,nn_index.shape[1],1):
                 if nn_index[j][i] >= num_pixels:
-                    for k in np.arange(1,mapping_matrix3d.shape[0],1):
-                        mapping_matrix3d[k][j+pad][i+pad] = 0.0
+                    mapping_matrix3d[1:][j+pad][i+pad] = 0.0
         return mapping_matrix3d
 
     def rotate_pixel_pos(self, pos, angle_deg):
