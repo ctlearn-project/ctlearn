@@ -50,23 +50,24 @@ class ImageMapper():
         }
 
     def __init__(self,
-                 camera_type=None,
+                 camera_types=None,
                  hex_conversion_algorithm=None,
-                 interpolation_image_shape=None,
                  padding=None,
-                 use_peak_times=False,
-                 mask_interpolation=False):
+                 interpolation_image_shape=None,
+                 mask_interpolation=False,
+                 use_peak_times=False):
         """
-        :param camera_type:  an array of strings specifying the camera types
-
+        :param camera_types:  an array of strings specifying the camera types
         :param hex_conversion_algorithm: algorithm to be used when converting
-                                         hexagonal pixel camera data to square images
-        :param padding: number of pixels of padding to be added symmetrically to the sides
-                        of the square image
-        :param use_peak_times: if true, the number of input channels is 2
-                               (charges and peak arrival times)
-        :param mask_interpolation: if true, mask interpolation will be performed
+                                         hexagonal pixel camera data to square
+                                         images
+        :param padding: number of pixels of padding to be added symmetrically
+                        to the sides of the square image
+        :param interpolation_image_shape: output image shape for interpolation
+        :param mask_interpolation: if True, mask interpolation will be performed
                                    (only for bilinear and bicubic interpolation)
+        :param use_peak_times: if True, the number of input channels is 2
+                               (charges and peak arrival times)
         """
 
         # image_shapes should be a non static field to prevent problems
@@ -86,22 +87,22 @@ class ImageMapper():
             'HESS-II': (104,104,1)
             }
         
-        # Camera_type
-        self.camera_type = camera_type
-        if self.camera_type is None:
-            self.camera_type = ['LSTCam']
+        # Camera types
+        self.camera_types = camera_types
+        if self.camera_types is None:
+            self.camera_types = [cam for cam in self.image_shapes]
         # Hexagonal conversion algorithm
         if hex_conversion_algorithm is None:
             hex_conversion_algorithm = {}
-        self.hex_conversion_algorithm = {**{c: 'oversampling' for c in self.camera_type}, **hex_conversion_algorithm}
+        self.hex_conversion_algorithm = {**{c: 'oversampling' for c in self.camera_types}, **hex_conversion_algorithm}
         # Interpolation image shape
         if interpolation_image_shape is None:
             interpolation_image_shape = {}
-        self.interpolation_image_shape = {**{c: self.image_shapes[c] for c in self.camera_type}, **interpolation_image_shape}
+        self.interpolation_image_shape = {**{c: self.image_shapes[c] for c in self.camera_types}, **interpolation_image_shape}
         # Padding
         if padding is None:
             padding = {}
-        self.padding = {**{c: 0 for c in self.camera_type}, **padding}
+        self.padding = {**{c: 0 for c in self.camera_types}, **padding}
         # Mask interpolation
         self.mask = False
         if mask_interpolation is True:
@@ -111,7 +112,7 @@ class ImageMapper():
         self.pixel_rotation = {}
         self.mapping_tables = {}
 
-        for camtype in self.camera_type:
+        for camtype in self.camera_types:
             # Read pixel positions from fits file
             self.pixel_positions[camtype],self.pixel_rotation[camtype] = self.__read_pix_pos_from_fits(camtype)
             hex_algo = self.hex_conversion_algorithm[camtype]
@@ -205,8 +206,8 @@ class ImageMapper():
             else:
                 pixel_weight = 1
             mapping_matrix3d = np.zeros((hex_grid.shape[0]+1,output_dim + pad*2, output_dim + pad*2))
-            for y_grid in np.arange(0, output_dim, 1):
-                for x_grid in np.arange(0, output_dim, 1):
+            for y_grid in np.arange(output_dim):
+                for x_grid in np.arange(output_dim):
                     mapping_matrix3d[nn_index[y_grid][x_grid]+1][y_grid+pad][x_grid+pad] = pixel_weight
             
         # Rebinning (approximation)
@@ -733,20 +734,9 @@ class ImageMapper():
                 y_ticks.append(np.around(y_ticks[-1]+y_dist,decimals=3))
                 y_ticks.insert(0,np.around(y_ticks[0]-y_dist,decimals=3))
 
-            virtual_pixel_x = []
-            virtual_pixel_y = []
-            for i in x_ticks:
-                for j in y_ticks:
-                    camPix=0
-                    for m in np.arange(0,num_pixels,1):
-                        if (x[m]==i and y[m]==j):
-                            camPix=1
-                    if (camPix==0):
-                        virtual_pixel_x.append(i)
-                        virtual_pixel_y.append(j)
-    
-            x = np.concatenate((x,np.array(virtual_pixel_x)))
-            y = np.concatenate((y,np.array(virtual_pixel_y)))
+            virtual_pixels = self.get_virtual_pixels(x_ticks, y_ticks, x, y)
+            x = np.concatenate((x, virtual_pixels[:,0]))
+            y = np.concatenate((y, virtual_pixels[:,1]))
             hex_grid = np.column_stack([x,y])
             
             xx = np.linspace(np.min(x), np.max(x), num=output_dim*grid_size_factor, endpoint=True)
@@ -787,11 +777,17 @@ class ImageMapper():
             if tick_diff % 2 != 0:
                 second_ticks.insert(0,np.around(second_ticks[0]-dist_second,decimals=3))
             
-            # Creating the virtual pixels outside of the camera.
-            virtual_pixel_x,virtual_pixel_y = self.add_virtualPixels(first_ticks, second_ticks, first_pos, second_pos, num_pixels)
+            # Create the virtual pixels outside of the camera
+            virtual_pixels = []
+            for i in [0, 1]:
+                j = i if camera_type != 'DigiCam' else 1 - i
+                virtual_pixels.append(self.get_virtual_pixels(
+                    first_ticks[i::2], second_ticks[j::2],
+                    first_pos, second_pos))
+            virtual_pixels = np.concatenate(virtual_pixels)
 
-            first_pos=np.concatenate((first_pos,np.array(virtual_pixel_x)))
-            second_pos=np.concatenate((second_pos,np.array(virtual_pixel_y)))
+            first_pos=np.concatenate((first_pos,np.array(virtual_pixels[:,0])))
+            second_pos=np.concatenate((second_pos,np.array(virtual_pixels[:,1])))
 
             if hex_algo == 'oversampling':
                 grid_first = []
@@ -836,56 +832,12 @@ class ImageMapper():
         slice_pos = np.array(slice_pos)
         return slice_pos
     
-    def add_virtualPixels(self, first_ticks, second_ticks, first_pos, second_pos, num_pixels):
-        virtual_pixel_x = []
-        virtual_pixel_y = []
-        pixCounter=0
-        for i in first_ticks[0::2]:
-            for j in second_ticks[0::2]:
-                camPix=0
-                for m in np.arange(0,num_pixels,1):
-                    if (first_pos[m]==i and second_pos[m]==j):
-                        camPix=1
-                        pixCounter+=1
-                if (camPix==0):
-                    virtual_pixel_x.append(i)
-                    virtual_pixel_y.append(j)
-        for i in first_ticks[1::2]:
-            for j in second_ticks[1::2]:
-                camPixel=0
-                for m in np.arange(0,num_pixels,1):
-                    if (first_pos[m]==i and second_pos[m]==j):
-                        camPixel=1
-                        pixCounter+=1
-                if (camPixel==0):
-                    virtual_pixel_x.append(i)
-                    virtual_pixel_y.append(j)
-                    
-        if pixCounter==0:
-            virtual_pixel_x = []
-            virtual_pixel_y = []
-            for i in first_ticks[1::2]:
-                for j in second_ticks[0::2]:
-                    camPix=0
-                    for m in np.arange(0,num_pixels,1):
-                        if (first_pos[m]==i and second_pos[m]==j):
-                            camPix=1
-                            pixCounter+=1
-                    if (camPix==0):
-                        virtual_pixel_x.append(i)
-                        virtual_pixel_y.append(j)
-            for i in first_ticks[0::2]:
-                for j in second_ticks[1::2]:
-                    camPixel=0
-                    for m in np.arange(0,num_pixels,1):
-                        if (first_pos[m]==i and second_pos[m]==j):
-                            camPixel=1
-                            pixCounter+=1
-                    if (camPixel==0):
-                        virtual_pixel_x.append(i)
-                        virtual_pixel_y.append(j)
-
-        return virtual_pixel_x,virtual_pixel_y
+    def get_virtual_pixels(self, x_ticks, y_ticks, x, y):
+        gridpoints = np.array(np.meshgrid(x_ticks, y_ticks)).T.reshape(-1, 2)
+        gridpoints = [tuple(l) for l in gridpoints.tolist()]
+        virtual_pixels = set(gridpoints) - set(zip(x, y))
+        virtual_pixels = np.array(list(virtual_pixels))
+        return virtual_pixels
 
     def normalization(self, mapping_matrix3d, num_pixels):
         norm_factor = 0
