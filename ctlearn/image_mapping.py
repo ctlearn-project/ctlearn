@@ -504,7 +504,7 @@ class ImageMapper():
                                 mapping_matrix3d[corner_indexes[k][j][i][l]+1][k+pad][j+pad] = weights[k][j][i][l]/4
                 
         # Cutting the mapping table after num_pixels+1, since the virtual pixels have intensity zero.
-        mapping_matrix3d = mapping_matrix3d[0:num_pixels+1]
+        mapping_matrix3d = mapping_matrix3d[:num_pixels+1]
         # Mask interpolation
         if self.mask and hex_algo in ['bilinear_interpolation', 'bicubic_interpolation']:
             mapping_matrix3d = self.mask_interpolation(mapping_matrix3d, nn_index, num_pixels, pad)
@@ -769,7 +769,16 @@ class ImageMapper():
             # Create the virtual pixels outside of the camera
             virtual_pixels = []
             for i in [0, 1]:
-                j = i if camera_type != 'DigiCam' else 1 - i
+                if hex_algo == 'oversampling':
+                    if camera_type not in ['DigiCam']:
+                        j = i if self.default_pad % 2 == 0 else 1 - i
+                    else:
+                        j = 1 - i if self.default_pad % 2 == 0 else i
+                else:
+                    if camera_type not in ['LSTCam','NectarCam','DigiCam']:
+                        j = i if self.default_pad % 2 == 0 else 1 - i
+                    else:
+                        j = 1 - i if self.default_pad % 2 == 0 else i
                 virtual_pixels.append(self.get_virtual_pixels(
                     first_ticks[i::2], second_ticks[j::2],
                     first_pos, second_pos))
@@ -835,10 +844,13 @@ class ImageMapper():
         return mapping_matrix3d
                                                        
     def mask_interpolation(self, mapping_matrix3d, nn_index, num_pixels, pad):
+        mask = np.zeros((nn_index.shape[0] + pad*2, nn_index.shape[1] + pad*2))
         for i in np.arange(0,nn_index.shape[0],1):
             for j in np.arange(0,nn_index.shape[1],1):
-                if nn_index[j][i] >= num_pixels:
-                    mapping_matrix3d[1:][j+pad][i+pad] = 0.0
+                if nn_index[j][i] < num_pixels:
+                    mask[j+pad][i+pad] = 1.0
+        for i in np.arange(1,mapping_matrix3d.shape[0],1):
+            mapping_matrix3d[i] *= mask
         return mapping_matrix3d
 
     def rotate_pixel_pos(self, pos, angle_deg):
