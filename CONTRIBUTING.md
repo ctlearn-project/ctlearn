@@ -20,4 +20,4 @@ Feel free to submit issues and enhancement requests through our [issues page on 
 
 CTLearn is licensed under the [BSD 3-Clause License](https://opensource.org/licenses/BSD-3-Clause).
 
-CTLearn does not require you to assign the copyright of your contributions, you retain the copyright. However, CTLearn does require that you make your contributions available under the BSD 3-Clause License in order for it be included in the main repository.
+CTLearn does require that you make your contributions available under the BSD 3-Clause License in order for it be included in the main repository.
