@@ -1,2 +1,3 @@
 include ctlearn/pixel_pos_files/*.npy
+include ctlearn/pixel_pos_files/*.fits
 include ctlearn/default_models/*
