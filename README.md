@@ -74,7 +74,7 @@ If the option `use_peak_times` is set to `True`, an additional channel with peak
 
 ### Image Mapping
 
-Set parameters for mapping the 1D pixel vectors in the raw data into 2D images, including the hexagonal grid conversion algorithm to use and how much padding to apply. The implemented hexagonal conversion algorithm are oversampling, nearest interpolation, rebinning, bilinear interpolation and bicubic interpolation.
+Set parameters for mapping the 1D pixel vectors in the raw data into 2D images, including the hexagonal grid conversion algorithm to use and how much padding to apply. The available hexagonal conversion algorithms are oversampling, nearest interpolation, rebinning, bilinear interpolation and bicubic interpolation, image shifting, and axial addressing.
 
 ### Model
 
