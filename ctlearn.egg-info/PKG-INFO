@@ -1,0 +1,10 @@
+Metadata-Version: 1.0
+Name: ctlearn
+Version: 0.2.0
+Summary: Deep learning for analysis and classification of image data for Imaging Atmospheric Cherenkov Telescopes, especially the Cherenkov Telescope Array (CTA).
+Home-page: https://github.com/ctlearn-project/ctlearn
+Author: UNKNOWN
+Author-email: UNKNOWN
+License: BSD-3-Clause
+Description: UNKNOWN
+Platform: UNKNOWN
