@@ -2,9 +2,9 @@
 import tensorflow as tf
 #import torch.nn as nn
 import tensorflow.nn as nn
-import Parameter as Parameter
+import parameter as Parameter
 
-#from torch.nn.parameter import Parameter
+# from torch.nn.parameter import Parameter
 import numpy as np
 
 
