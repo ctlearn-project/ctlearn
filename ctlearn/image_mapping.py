@@ -116,18 +116,23 @@ class ImageMapper():
             # Read pixel positions from fits file
             self.pixel_positions[camtype],self.pixel_rotation[camtype] = self.__read_pix_pos_from_fits(camtype)
             hex_algo = self.hex_conversion_algorithm[camtype]
-            if hex_algo not in ['oversampling', 'rebinning', 'nearest_interpolation', 'bilinear_interpolation', 'bicubic_interpolation']:
+            if hex_algo not in ['oversampling', 'rebinning', 'nearest_interpolation', 'bilinear_interpolation', 'bicubic_interpolation', 'image_shifting', 'axial_addressing']:
                 raise ValueError("Hex conversion algorithm {} is not implemented.".format(hex_algo))
+            elif hex_algo in ['image_shifting', 'axial_addressing'] and camtype in ['ASTRICam', 'CHEC', 'SCTCam']:
+                raise ValueError("{} (hexagonal convolution) is not available for square pixel cameras.".format(hex_algo))
 
-            if hex_algo != 'oversampling':
+            if hex_algo not in ['oversampling', 'image_shifting', 'axial_addressing']:
                 self.image_shapes[camtype] = self.interpolation_image_shape[camtype]
 
             # At the edges of the cameras the hexagonal conversion algorithms run into issues.
             # Therefore, we are using a default padding to ensure that the camera pixels aren't affected.
             # The default padding is removed after the conversion is finished.
-            self.default_pad = 2
-            if hex_algo == 'bicubic_interpolation':
+            if hex_algo in ['image_shifting', 'axial_addressing']:
+                self.default_pad = 0
+            elif hex_algo == 'bicubic_interpolation':
                 self.default_pad = 3
+            else:
+                self.default_pad = 2
 
             if hex_algo != 'oversampling' or camtype in ['ASTRICam', 'CHEC', 'SCTCam']:
                 self.image_shapes[camtype] = (
@@ -195,9 +200,10 @@ class ImageMapper():
         if hex_algo == 'rebinning':
             grid_size_factor = 10
         hex_grid, table_grid = self.get_grids(pos, camera_type, grid_size_factor)
-        
+        output_dim = self.image_shapes[camera_type][0]
+
         # Oversampling and nearest interpolation
-        if hex_algo in ['oversampling', 'nearest_interpolation']:
+        if hex_algo in ['oversampling', 'nearest_interpolation', 'image_shifting', 'axial_addressing']:
             # Finding the nearest point in the hexagonal grid for each point in the square grid
             tree = spatial.cKDTree(hex_grid)
             nn_index = np.reshape(tree.query(table_grid)[1],(output_dim, output_dim))
@@ -509,10 +515,10 @@ class ImageMapper():
         if self.mask and hex_algo in ['bilinear_interpolation', 'bicubic_interpolation']:
             mapping_matrix3d = self.mask_interpolation(mapping_matrix3d, nn_index, num_pixels, pad)
         # Rotating the camera back to the original orientation
-        if camera_type in ['LSTCam', 'NectarCam', 'MAGICCam']:
+        if camera_type in ['LSTCam', 'NectarCam', 'MAGICCam'] and hex_algo not in ['image_shifting', 'axial_addressing']:
             mapping_matrix3d = self.rotate_mapping_table(mapping_matrix3d,camera_type,output_dim+pad*2,self.pixel_rotation[camera_type])
         # Normalization (approximation) of the mapping table
-        if hex_algo not in ['oversampling', 'nearest_interpolation']:
+        if hex_algo in ['rebinning', 'bilinear_interpolation', 'bicubic_interpolation']:
             mapping_matrix3d = self.normalization(mapping_matrix3d, num_pixels)
 
         if (pad+default_pad) != 0:
@@ -534,6 +540,8 @@ class ImageMapper():
                     self.image_shapes[camera_type][1] + pad*2 - default_pad*4,
                     self.image_shapes[camera_type][2]
                 )
+        else:
+            map_mat = mapping_matrix3d
 
         sparse_map_mat = csr_matrix(map_mat.reshape(map_mat.shape[0],
                                                     self.image_shapes[camera_type][0]*
@@ -750,7 +758,7 @@ class ImageMapper():
             dist_first = np.around(abs(first_ticks[0]-first_ticks[1]),decimals=3)
             dist_second = np.around(abs(second_ticks[0]-second_ticks[1]),decimals=3)
         
-            if hex_algo == 'oversampling':
+            if hex_algo in ['oversampling', 'image_shifting']:
                 tick_diff = (len(first_ticks)*2 - len(second_ticks))
                 tick_diff_each_side = np.array(int(tick_diff/2))
             else:
@@ -767,25 +775,26 @@ class ImageMapper():
                 second_ticks.insert(0,np.around(second_ticks[0]-dist_second,decimals=3))
             
             # Create the virtual pixels outside of the camera
-            virtual_pixels = []
-            for i in [0, 1]:
-                if hex_algo == 'oversampling':
-                    if camera_type not in ['DigiCam']:
-                        j = i if self.default_pad % 2 == 0 else 1 - i
+            if hex_algo != 'axial_addressing':
+                virtual_pixels = []
+                for i in [0, 1]:
+                    if hex_algo in ['oversampling', 'image_shifting']:
+                        if camera_type not in ['DigiCam']:
+                            j = i if self.default_pad % 2 == 0 else 1 - i
+                        else:
+                            j = 1 - i if self.default_pad % 2 == 0 else i
                     else:
-                        j = 1 - i if self.default_pad % 2 == 0 else i
-                else:
-                    if camera_type not in ['LSTCam','NectarCam','DigiCam']:
-                        j = i if self.default_pad % 2 == 0 else 1 - i
-                    else:
-                        j = 1 - i if self.default_pad % 2 == 0 else i
-                virtual_pixels.append(self.get_virtual_pixels(
-                    first_ticks[i::2], second_ticks[j::2],
-                    first_pos, second_pos))
-            virtual_pixels = np.concatenate(virtual_pixels)
+                        if camera_type not in ['LSTCam','NectarCam','DigiCam']:
+                            j = i if self.default_pad % 2 == 0 else 1 - i
+                        else:
+                            j = 1 - i if self.default_pad % 2 == 0 else i
+                    virtual_pixels.append(self.get_virtual_pixels(
+                        first_ticks[i::2], second_ticks[j::2],
+                        first_pos, second_pos))
+                virtual_pixels = np.concatenate(virtual_pixels)
 
-            first_pos=np.concatenate((first_pos,np.array(virtual_pixels[:,0])))
-            second_pos=np.concatenate((second_pos,np.array(virtual_pixels[:,1])))
+                first_pos=np.concatenate((first_pos,np.array(virtual_pixels[:,0])))
+                second_pos=np.concatenate((second_pos,np.array(virtual_pixels[:,1])))
 
             if hex_algo == 'oversampling':
                 grid_first = []
@@ -795,6 +804,49 @@ class ImageMapper():
                 grid_second = []
                 for j in second_ticks:
                     grid_second.append(j+dist_second/2.0)
+
+            elif hex_algo == 'image_shifting':
+                for i in np.arange(0,len(second_pos),1):
+                    if second_pos[i] in second_ticks[::2]:
+                        second_pos[i]=second_ticks[second_ticks.index(second_pos[i])+1]
+                
+                grid_first=np.unique(first_pos).tolist()
+                grid_second=np.unique(second_pos).tolist()
+                self.image_shapes[camera_type] = (len(grid_first),len(grid_second),self.image_shapes[camera_type][2])
+
+            elif hex_algo == 'axial_addressing':
+                virtual_pixels = []
+                #manipulate y ticks with extra ticks
+                num_extra_ticks = len(y_ticks)
+                for i in np.arange(0,num_extra_ticks,1):
+                    second_ticks.append(np.around(second_ticks[-1]+dist_second,decimals=3))
+                first_ticks = reversed(first_ticks)
+                for shift, ticks in enumerate(first_ticks):
+                    for i in np.arange(0,len(second_pos),1):
+                        if first_pos[i]==ticks and  second_pos[i] in second_ticks:
+                            second_pos[i]=second_ticks[second_ticks.index(second_pos[i])+shift]
+
+                grid_first=np.unique(first_pos).tolist()
+                grid_second=np.unique(second_pos).tolist()
+
+                # Squaring the output image if grid axes have not the same length.
+                if len(grid_first) > len(grid_second):
+                    for i in np.arange(0,(len(grid_first) - len(grid_second)),1):
+                        grid_second.append(np.around(grid_second[-1]+dist_second,decimals=3))
+                elif len(grid_first) < len(grid_second):
+                    for i in np.arange(0,(len(grid_second) - len(grid_first)),1):
+                        grid_first.append(np.around(grid_first[-1]+dist_first,decimals=3))
+
+                # Creating the virtual pixels outside of the camera.
+                virtual_pixels.append(self.get_virtual_pixels(
+                        grid_first, grid_second,
+                        first_pos, second_pos))
+                virtual_pixels = np.concatenate(virtual_pixels)
+
+                first_pos=np.concatenate((first_pos,np.array(virtual_pixels[:,0])))
+                second_pos=np.concatenate((second_pos,np.array(virtual_pixels[:,1])))
+                self.image_shapes[camera_type] = (len(grid_first),len(grid_second),self.image_shapes[camera_type][2])
+
             else:
                 # Add corner
                 minimum = min([np.min(first_pos),np.min(second_pos)])

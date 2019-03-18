@@ -197,6 +197,10 @@ Image Mapping:
     #       perform bilinear interpolation
     #   - 'bicubic_interpolation': Draw Delaunay triangulation and
     #       perform bicubic interpolation
+    #   - 'image_shifting': Shift pixels of alternate rows (hexagonal cameras
+    #       only)
+    #   - 'axial_addressing': Warp images by relabeling axes (hexagonal
+    #       cameras only)
     # Algorithm to convert images with hexagonal pixel grids to square grids
     hex_conversion_algorithm:
         'LSTCam': 'oversampling'
