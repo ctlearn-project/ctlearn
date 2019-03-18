@@ -42,6 +42,7 @@ import copy
 from multiprocessing import Pool
 import os
 import sys
+import pkg_resources
 
 import numpy as np
 import yaml
@@ -201,6 +202,8 @@ combinations, configurations = make_configurations(base_config,
 # to a file for convenient lookup
 print(settings['run_combinations_path'])
 with open(settings['run_combinations_path'], 'w+') as combinations_file:
+    ctlearn_version=pkg_resources.get_distribution("ctlearn").version
+    combinations_file.write('# The training was performed using CTLearn version {}.\n'.format(ctlearn_version))
     yaml.dump(combinations, combinations_file, default_flow_style=False)
 
 # Run a model for each configuration combination from args.start
@@ -211,3 +214,4 @@ for run_name, config in configurations[args.resume_from_run:]:
     with Pool(1) as p:
         p.apply(run_model, (config,), dict(mode=args.mode, debug=args.debug,
                 log_to_file=args.log_to_file))
+

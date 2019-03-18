@@ -17,17 +17,46 @@ Data:
         shuffle_buffer_size: 10000
 Image Mapping:
     hex_conversion_algorithm: 'oversampling'
+    interpolation_image_shape:
+        'LSTCam':
+            - 110
+            - 110
+            - 1
+        'FlashCam':
+            - 112
+            - 112
+            - 1
+        'NectarCam':
+            - 110
+            - 110
+            - 1
+        'SCTCam':
+            - 120
+            - 120
+            - 1
+        'DigiCam':
+            - 96
+            - 96
+            - 1
+        'CHEC':
+            - 48
+            - 48
+            - 1
+        'ASTRICam':
+            - 56
+            - 56
+            - 1
     padding:
-        'LST': 2
-        'MSTF': 1
-        'MSTN': 2
-        'MSTS': 4
-        'SST1': 1
-        'SSTA': 0
-        'SSTC': 0
-        'VTS': 1
+        'LSTCam': 2
+        'FlashCam': 1
+        'NectarCam': 2
+        'SCTCam': 4
+        'DigiCam': 1
+        'ASTRICam': 0
+        'CHEC': 0
+        'VERITAS': 1
 Model:
-    model_directory: '/home/shevek/brill/ctlearn/models/'
+    model_directory: '/home/shevek/brill/ctlearn/ctlearn/default_models/'
     Model Parameters:
         single_tel:
             # Required dict with keys 'module' and 'function' & string values.
@@ -110,7 +139,7 @@ Multiple Configurations Values:
             single_tel: 'single_tel'
             cnn_rnn: 'array'
     sorting:
-        config: ['Data', 'Processing', 'sort_images_by']
+        config: ['Data', 'Processing', 'sorting']
         value_type: 'grouped'
         values:
             single_tel: null
@@ -138,50 +167,105 @@ Multiple Configurations Values:
             single_tel: 64
             cnn_rnn: 16
     tel_type:
-        config: ['Data', 'Loading', 'selected_tel_type']
+        config: ['Data', 'Loading', 'selected_tel_types']
         value_type: 'grouped'
         values:
-            LST: 'LST'
-            MSTF: 'MSTF'
-            MSTN: 'MSTN'
-            MSTS: 'MSTS'
-            SST1: 'SST1'
-            SSTA: 'SSTA'
-            SSTC: 'SSTC'
+            LSTCam: ['LST:LSTCam']
+            FlashCam: ['MST:FlashCam']
+            NectarCam: ['MST:NectarCam']
+            SCTCam: ['SCT:SCTCam']
+            DigiCam: ['SST:DigiCam']
+            ASTRICam: ['SST:ASTRICam']
+            CHEC: ['SST:CHEC']
+    camera_types:
+        config: ['Image Mapping', 'camera_types']
+        value_type: 'grouped'
+        values:
+            LSTCam: ['LSTCam']
+            FlashCam: ['FlashCam']
+            NectarCam: ['NectarCam']
+            SCTCam: ['SCTCam']
+            DigiCam: ['DigiCam']
+            ASTRICam: ['ASTRICam']
+            CHEC: ['CHEC']
+    hex_conversion_algorithm:
+        config: ['Image Mapping', 'hex_conversion_algorithm']
+        value_type: 'grouped'
+        values:
+            oversampling:
+                'LSTCam': 'oversampling'
+                'FlashCam': 'oversampling'
+                'NectarCam': 'oversampling'
+                'SCTCam': 'oversampling'
+                'DigiCam': 'oversampling'
+                'ASTRICam': 'oversampling'
+                'CHEC': 'oversampling'
+            rebinning:
+                'LSTCam': 'rebinning'
+                'FlashCam': 'rebinning'
+                'NectarCam': 'rebinning'
+                'SCTCam': 'rebinning'
+                'DigiCam': 'rebinning'
+                'ASTRICam': 'rebinning'
+                'CHEC': 'rebinning'
+            nearest_interpolation:
+                'LSTCam': 'nearest_interpolation'
+                'FlashCam': 'nearest_interpolation'
+                'NectarCam': 'nearest_interpolation'
+                'SCTCam': 'nearest_interpolation'
+                'DigiCam': 'nearest_interpolation'
+                'ASTRICam': 'nearest_interpolation'
+                'CHEC': 'nearest_interpolation'
+            bilinear_interpolation:
+                'LSTCam': 'bilinear_interpolation'
+                'FlashCam': 'bilinear_interpolation'
+                'NectarCam': 'bilinear_interpolation'
+                'SCTCam': 'bilinear_interpolation'
+                'DigiCam': 'bilinear_interpolation'
+                'ASTRICam': 'bilinear_interpolation'
+                'CHEC': 'bilinear_interpolation'
+            bicubic_interpolation:
+                'LSTCam': 'bicubic_interpolation'
+                'FlashCam': 'bicubic_interpolation'
+                'NectarCam': 'bicubic_interpolation'
+                'SCTCam': 'bicubic_interpolation'
+                'DigiCam': 'bicubic_interpolation'
+                'ASTRICam': 'bicubic_interpolation'
+                'CHEC': 'bicubic_interpolation'
     layers:
         config: ['Model', 'Model Parameters', 'basic', 'conv_block', 'layers']
         value_type: 'grouped'
         values:
-            LST:
+            LSTCam:
                 - {filters: 32, kernel_size: 3}
                 - {filters: 32, kernel_size: 3}
                 - {filters: 64, kernel_size: 3}
                 - {filters: 128, kernel_size: 3}
-            MSTF:
+            FlashCam:
                 - {filters: 32, kernel_size: 3}
                 - {filters: 32, kernel_size: 3}
                 - {filters: 64, kernel_size: 3}
                 - {filters: 128, kernel_size: 3}
-            MSTN:
+            NectarCam:
                 - {filters: 32, kernel_size: 3}
                 - {filters: 32, kernel_size: 3}
                 - {filters: 64, kernel_size: 3}
                 - {filters: 128, kernel_size: 3}
-            MSTS:
+            SCTCam:
                 - {filters: 32, kernel_size: 3}
                 - {filters: 32, kernel_size: 3}
                 - {filters: 64, kernel_size: 3}
                 - {filters: 128, kernel_size: 3}
-            SST1:
+            DigiCam:
                 - {filters: 32, kernel_size: 3}
                 - {filters: 32, kernel_size: 3}
                 - {filters: 64, kernel_size: 3}
                 - {filters: 128, kernel_size: 3}
-            SSTA:
+            ASTRICam:
                 - {filters: 32, kernel_size: 3}
                 - {filters: 64, kernel_size: 3}
                 - {filters: 128, kernel_size: 3}
-            SSTC:
+            CHEC:
                 - {filters: 32, kernel_size: 3}
                 - {filters: 64, kernel_size: 3}
                 - {filters: 128, kernel_size: 3}
