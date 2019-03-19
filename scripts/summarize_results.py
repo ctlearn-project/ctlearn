@@ -39,9 +39,6 @@ for folder in os.listdir('.'):
 	# compile the info we need
 	input_type = config['Data']['Loading']['example_type']
 	tel_type = config['Data']['Loading']['selected_tel_type']
-	
-	num_epochs = config['Training']['num_epochs']
-	num_training_steps_per_val = config['Training']['num_training_steps_per_validation']
 
 	auroc = float(re.findall(r"auc = [-+]?\d*\.*\d+", val_info)[0][6:])
 
