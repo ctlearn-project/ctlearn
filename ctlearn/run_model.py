@@ -8,6 +8,7 @@ import sys
 import time
 
 import yaml
+import pkg_resources
 
 import tensorflow as tf
 from tensorflow.python import debug as tf_debug
@@ -26,6 +27,8 @@ def setup_logging(config, log_dir, debug, log_to_file):
     time_str = time.strftime('%Y%m%d_%H%M%S')
     config_filename = os.path.join(log_dir, time_str + '_config.yml')
     with open(config_filename, 'w') as outfile:
+        ctlearn_version=pkg_resources.get_distribution("ctlearn").version
+        outfile.write('# The training was performed using CTLearn version {}.\n'.format(ctlearn_version))
         yaml.dump(config, outfile, default_flow_style=False)
 
     # Set up logger

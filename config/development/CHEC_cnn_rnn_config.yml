@@ -1,6 +1,6 @@
 Data:
   Input:
-    batch_size: 64
+    batch_size: 16
     map: true
     num_parallel_calls: 2
     prefetch: true
@@ -8,28 +8,41 @@ Data:
     shuffle: true
     shuffle_buffer_size: 10000
   Loading:
-    example_type: single_tel
+    example_type: array
     min_num_tels: 1
     seed: 1234
-    selected_tel_type: SSTA
+    selected_tel_types: ['SST:CHEC']
     validation_split: 0.1
   Processing:
-    sort_images_by: null
+    sorting: size
   file_list: /home/shevek/datasets/prototype/prototype_files_class_balanced.txt
   format: HDF5
 Image Mapping:
-  hex_conversion_algorithm: oversampling
+  hex_conversion_algorithm:
+    'LSTCam': 'oversampling'
+    'FlashCam': 'oversampling'
+    'NectarCam': 'oversampling'
+    'SCTCam': 'oversampling'
+    'DigiCam': 'oversampling'
+    'ASTRICam': 'oversampling'
+    'CHEC': 'oversampling'
+  camera_types: ['CHEC']
+  interpolation_image_shape:
+    'CHEC':
+        - 48
+        - 48
+        - 1
   padding:
-    LST: 2
-    MSTF: 1
-    MSTN: 2
-    MSTS: 4
-    SST1: 1
-    SSTA: 0
-    SSTC: 0
-    VTS: 1
+    'LSTCam': 2
+    'FlashCam': 1
+    'NectarCam': 2
+    'SCTCam': 4
+    'DigiCam': 1
+    'ASTRICam': 0
+    'CHEC': 0
+    'VERITAS': 1
 Logging:
-  model_directory: /data0/logs/v0_2_0_release/180806_benchmarks/run10
+  model_directory: /data0/logs/v0_2_0_release/180806_benchmarks/run13
 Model:
   Model Parameters:
     basic:
@@ -58,9 +71,9 @@ Model:
         module: basic
       pretrained_weights: null
   model:
-    function: single_tel_model
-    module: single_tel
-  model_directory: /home/shevek/brill/ctlearn/models/
+    function: cnn_rnn_model
+    module: cnn_rnn
+  model_directory: /home/shevek/brill/ctlearn/ctlearn/default_models/
 Prediction:
   export_as_file: true
   prediction_file_path: /home/shevek/brill/predictions.csv
@@ -71,7 +84,7 @@ Training:
   Hyperparameters:
     adam_epsilon: 1.0e-08
     apply_class_weights: true
-    base_learning_rate: 5.0e-05
+    base_learning_rate: 0.0001
     optimizer: Adam
     scale_learning_rate: false
     variables_to_train: null

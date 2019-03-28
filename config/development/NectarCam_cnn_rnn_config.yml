@@ -11,23 +11,36 @@ Data:
     example_type: array
     min_num_tels: 1
     seed: 1234
-    selected_tel_type: MSTN
+    selected_tel_types: ['MST:NectarCam']
     validation_split: 0.1
   Processing:
-    sort_images_by: size
+    sorting: size
   file_list: /home/shevek/datasets/prototype/prototype_files_class_balanced.txt
   format: HDF5
 Image Mapping:
-  hex_conversion_algorithm: oversampling
+  hex_conversion_algorithm:
+    'LSTCam': 'oversampling'
+    'FlashCam': 'oversampling'
+    'NectarCam': 'oversampling'
+    'SCTCam': 'oversampling'
+    'DigiCam': 'oversampling'
+    'ASTRICam': 'oversampling'
+    'CHEC': 'oversampling'
+  camera_types: ['NectarCam']
+  interpolation_image_shape:
+    'NectarCam':
+        - 110
+        - 110
+        - 1
   padding:
-    LST: 2
-    MSTF: 1
-    MSTN: 2
-    MSTS: 4
-    SST1: 1
-    SSTA: 0
-    SSTC: 0
-    VTS: 1
+    'LSTCam': 2
+    'FlashCam': 1
+    'NectarCam': 2
+    'SCTCam': 4
+    'DigiCam': 1
+    'ASTRICam': 0
+    'CHEC': 0
+    'VERITAS': 1
 Logging:
   model_directory: /data0/logs/v0_2_0_release/180806_benchmarks/run05
 Model:
@@ -62,7 +75,7 @@ Model:
   model:
     function: cnn_rnn_model
     module: cnn_rnn
-  model_directory: /home/shevek/brill/ctlearn/models/
+  model_directory: /home/shevek/brill/ctlearn/ctlearn/default_models/
 Prediction:
   export_as_file: true
   prediction_file_path: /home/shevek/brill/predictions.csv

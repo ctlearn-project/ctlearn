@@ -11,25 +11,37 @@ Data:
     example_type: single_tel
     min_num_tels: 1
     seed: 1234
-    selected_tel_type: SSTC
+    selected_tel_types: ['SCT:SCTCam']
     validation_split: 0.1
   Processing:
-    sort_images_by: null
+    sorting: null
   file_list: /home/shevek/datasets/prototype/prototype_files_class_balanced.txt
   format: HDF5
 Image Mapping:
-  hex_conversion_algorithm: oversampling
+  hex_conversion_algorithm:
+    'LSTCam': 'oversampling'
+    'FlashCam': 'oversampling'
+    'NectarCam': 'oversampling'
+    'SCTCam': 'oversampling'
+    'DigiCam': 'oversampling'
+    'ASTRICam': 'oversampling'
+    'CHEC': 'oversampling'
+  camera_types: ['SCTCam']
+  interpolation_image_shape:
+    'SCTCam':
+        - 120
+        - 120
+        - 1
   padding:
-    LST: 2
-    MSTF: 1
-    MSTN: 2
-    MSTS: 4
-    SST1: 1
-    SSTA: 0
-    SSTC: 0
-    VTS: 1
-Logging:
-  model_directory: /data0/logs/v0_2_0_release/180806_benchmarks/run12
+    'LSTCam': 2
+    'FlashCam': 1
+    'NectarCam': 2
+    'SCTCam': 4
+    'DigiCam': 1
+    'ASTRICam': 0
+    'CHEC': 0
+    'VERITAS': 1Logging:
+  model_directory: /data0/logs/v0_2_0_release/180806_benchmarks/run06
 Model:
   Model Parameters:
     basic:
@@ -37,6 +49,8 @@ Model:
         batchnorm: false
         bottleneck: null
         layers:
+        - filters: 32
+          kernel_size: 3
         - filters: 32
           kernel_size: 3
         - filters: 64
@@ -60,7 +74,7 @@ Model:
   model:
     function: single_tel_model
     module: single_tel
-  model_directory: /home/shevek/brill/ctlearn/models/
+  model_directory: /home/shevek/brill/ctlearn/ctlearn/default_models/
 Prediction:
   export_as_file: true
   prediction_file_path: /home/shevek/brill/predictions.csv
