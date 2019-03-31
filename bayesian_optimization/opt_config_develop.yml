@@ -1,0 +1,57 @@
+#Valid options: ['tree_parzen_estimators', 'random_search']
+optimization_type: 'tree_parzen_estimators'
+#ctlearn_config file name
+ctlearn_config: 'myconfig.yml'
+#Valid options: True, False
+predict: False
+#Valid options: ['Prediction', 'Validation'], if is set to 'Prediction', predict must be set to True
+data_set_to_optimize : 'Validation'
+#Valid options if data_set_to_optimize == 'Validation': ['auc', 'acc', 'acc_gamma', 'acc_proton', 'loss']
+#Valid options if data_set_to_optimize == 'Prediction': ['auc', 'acc', 'bacc', 'f1', 'prec', 'rec', 'log_loss']
+to_be_optimized_metric : 'auc'
+num_max_evals: 5
+# Valid options: True, False, if is set to True, 'trials.pkl' will be loaded
+reload_trials: False
+# Valid options: True, False, if is set to True, 'checking_file.csv' will be loaded
+reload_checking_file: False
+
+Basic_config:
+  #Basic config for ctlearn config file
+  num_training_steps_per_validation: 1000
+  num_validations: 2
+  #options: ['array', 'single_tel']
+  example_type: 'single_tel'
+  selected_tel_types: ['MST:NectarCam']
+  #Set training and predict file names, training_file_list is required only if predict is set to True
+  training_file_list: 'data_train.txt'
+  prediction_file_list: 'data_predict.txt'
+  batch_size : 64
+  model_directory: '/home/jredondo/ctlearn/ctlearn/default_models'
+  validation_split: 0.1
+
+Hyperparameters:
+#Valid options: [layer1_filters, layer2_filters, layer3_filters, layer4filters, layer1_kernel, layer2_kernel, layer3_kernel, layer4_kernel, pool_size, pool_strides, optimizer_type, base_learning_rate, adam_epsilon, cnn_rnn_dropout]
+
+
+  Fixed_hyperparameters:
+
+    pool_size:  2
+    pool_strides: 2
+    optimizer_type: 'Adam'
+    base_learning_rate: 5.0e-05
+    adam_epsilon: 1.0e-8
+    cnn_rnn_dropout: 0.5
+
+  Dependent_hyperparameters:
+
+    layer2_filters: {'factor': 2, 'operator': '*', 'hyperparameter': layer1_filters}
+    layer3_filters: {'factor': 4, 'operator': '*', 'hyperparameter': layer1_filters}
+    layer4_filters: {'factor': 8, 'operator': '*', 'hyperparameter': layer1_filters}
+
+  To_be_optimized_hyperparameters:
+
+    layer1_filters: {'type': quniform, 'range': [16, 64], 'step': 1}
+    layer1_kernel: {'type': quniform, 'range': [4,16], 'step': 1}
+    layer2_kernel: {'type': quniform, 'range': [4,16], 'step': 1}
+    layer3_kernel: {'type': quniform, 'range': [4,16], 'step': 1}
+    layer4_kernel: {'type': quniform, 'range': [4,16], 'step': 1}

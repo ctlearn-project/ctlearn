@@ -1,0 +1,56 @@
+Data:
+  Input: {batch_size: 64, map: true, num_parallel_calls: 2, prefetch: true, prefetch_buffer_size: 1,
+    shuffle: true, shuffle_buffer_size: 10000}
+  Loading:
+    example_type: single_tel
+    merge_tel_types: false
+    min_num_tels: 1
+    seed: 1234
+    selected_tel_types: ['MST:NectarCam']
+    validation_split: 0.1
+  Processing: {sorting: null}
+  file_list: data_train.txt
+  format: HDF5
+Image Mapping:
+  camera_types: [NectarCam]
+  interpolation_image_shape:
+    'NectarCam':
+        - 110
+        - 110
+        - 1
+  hex_conversion_algorithm: {ASTRICam: oversampling, CHEC: oversampling, DigiCam: oversampling,
+    FlashCam: oversampling, LSTCam: oversampling, NectarCam: oversampling, SCTCam: oversampling,
+    VERITAS: oversampling}
+  padding: {ASTRICam: 0, CHEC: 0, DigiCam: 1, FlashCam: 1, LSTCam: 2, NectarCam: 2,
+    SCTCam: 4, VERITAS: 1}
+Logging: {model_directory: ./run1}
+Model:
+  Model Parameters:
+    basic:
+      batchnorm_decay: 0.99
+      conv_block:
+        batchnorm: false
+        bottleneck: null
+        layers:
+        - {filters: 117, kernel_size: 12}
+        - {filters: 234, kernel_size: 10}
+        - {filters: 468, kernel_size: 7}
+        - {filters: 936, kernel_size: 6}
+        max_pool: {size: 2, strides: 2}
+    cnn_rnn:
+      cnn_block: {function: conv_block, module: basic}
+      dropout_rate: 0.5
+      pretrained_weights: null
+    single_tel:
+      network: {function: conv_block, module: basic}
+      pretrained_weights: null
+  model: {function: single_tel_model, module: single_tel}
+  model_directory: /home/jredondo/ctlearn/ctlearn/default_models
+Prediction: {export_as_file: true, prediction_file_path: ./run1/predictions_run1.csv,
+  true_labels_given: true}
+TensorFlow: {run_TFDBG: false}
+Training:
+  Hyperparameters: {adam_epsilon: 1.0e-08, apply_class_weights: true, base_learning_rate: 5.0e-05,
+    optimizer: Adam, scale_learning_rate: false, variables_to_train: null}
+  num_training_steps_per_validation: 2
+  num_validations: 1
