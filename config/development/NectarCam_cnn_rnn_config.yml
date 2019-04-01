@@ -9,6 +9,7 @@ Data:
     shuffle_buffer_size: 10000
   Loading:
     example_type: array
+    merge_tel_types: True
     min_num_tels: 1
     seed: 1234
     selected_tel_types: ['MST:NectarCam']

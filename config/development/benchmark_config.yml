@@ -6,6 +6,7 @@ Data:
     file_list: '/home/shevek/datasets/prototype/prototype_files_class_balanced.txt'
     Loading:
         min_num_tels: 1
+        merge_tel_types: True
         validation_split: 0.1
         seed: 1234
     Input:
@@ -16,7 +17,6 @@ Data:
         shuffle: true
         shuffle_buffer_size: 10000
 Image Mapping:
-    hex_conversion_algorithm: 'oversampling'
     interpolation_image_shape:
         'LSTCam':
             - 110
