@@ -1,0 +1,20 @@
+# conda env create -f environment-gpu.yml
+name: ctlearn
+channels:
+    - conda-forge
+    - menpo
+dependencies:
+    - python=3.6.5
+    - matplotlib
+    - numpy
+    - astropy
+    - opencv
+    - pillow
+    - pip
+    # TensorFlow-GPU v1.12.0:
+    - pip:
+        - https://storage.googleapis.com/tensorflow/windows/gpu/tensorflow_gpu-1.12.0-cp36-cp36m-win_amd64.whl
+    - pytables
+    - pyyaml
+    - scikit-learn
+    - scipy
