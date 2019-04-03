@@ -2,16 +2,70 @@ import numpy as np
 import sklearn
 import os
 import re
-from ctlearn.run_model import run_model
 import yaml
+from ctlearn.run_model import run_model
 from multiprocessing import Pool
+
+# auxiliar function to modify ctlearn config hyperparameters
+
+
+def auxiliar_modify_params(myconfig, params):
+
+    if 'layer1_filters' in params:
+        myconfig['Model']['Model Parameters']['basic']['conv_block'][
+            'layers'][0]['filters'] = int(params['layer1_filters'])
+    if 'layer1_kernel' in params:
+        myconfig['Model']['Model Parameters']['basic']['conv_block'][
+            'layers'][0]['kernel_size'] = int(params['layer1_kernel'])
+    if 'layer2_filters' in params:
+        myconfig['Model']['Model Parameters']['basic']['conv_block'][
+            'layers'][1]['filters'] = int(params['layer2_filters'])
+    if 'layer2_kernel' in params:
+        myconfig['Model']['Model Parameters']['basic']['conv_block'][
+            'layers'][1]['kernel_size'] = int(params['layer2_kernel'])
+    if 'layer3_filters' in params:
+        myconfig['Model']['Model Parameters']['basic']['conv_block'][
+            'layers'][2]['filters'] = int(params['layer3_filters'])
+    if 'layer3_kernel' in params:
+        myconfig['Model']['Model Parameters']['basic']['conv_block'][
+            'layers'][2]['kernel_size'] = int(params['layer3_kernel'])
+    if 'layer4_filters' in params:
+        myconfig['Model']['Model Parameters']['basic']['conv_block'][
+            'layers'][3]['filters'] = int(params['layer4_filters'])
+    if 'layer4_kernel' in params:
+        myconfig['Model']['Model Parameters']['basic']['conv_block'][
+            'layers'][3]['kernel_size'] = int(params['layer4_kernel'])
+    if 'pool_size' in params:
+        myconfig['Model']['Model Parameters']['basic'][
+            'conv_block']['max_pool']['size'] = int(params['pool_size'])
+    if 'pool_strides' in params:
+        myconfig['Model']['Model Parameters']['basic'][
+            'conv_block']['max_pool']['strides'] = int(params['pool_strides'])
+    if 'optimizer_type' in params:
+        if params['optimizer_type'] is dict:
+            myconfig['Training']['Hyperparameters']['optimizer'] = \
+                params['optimizer_type']['optimizer_type']
+        else:
+            myconfig['Training']['Hyperparameters']['optimizer'] = \
+                params['optimizer_type']
+    if 'base_learning_rate' in params:
+        myconfig['Training']['Hyperparameters']['base_learning_rate'] = \
+            params['base_learning_rate']
+    if 'adam_epsilon' in params:
+        myconfig['Training']['Hyperparameters']['adam_epsilon'] = \
+            params['adam_epsilon']
+    if 'cnn_rnn_dropout' in params:
+        myconfig['Model']['Model Parameters']['cnn_rnn'][
+            'dropout_rate'] = params['cnn_rnn_dropout']
+
+# get prediction set metrics
 
 
 def get_pred_metrics(self):
 
-    iteration = self.iteration
     predictions_path = './run' + \
-        str(iteration) + '/predictions_run{}.csv'.format(iteration)
+        str(self.iteration) + '/predictions_run{}.csv'.format(self.iteration)
+
     predictions = np.genfromtxt(predictions_path, delimiter=',', names=True)
     labels = predictions['gamma_hadron_label'].astype(int)
     gamma_classifier_values = predictions['gamma']
@@ -19,21 +73,21 @@ def get_pred_metrics(self):
 
     fpr, tpr, thresholds = sklearn.metrics.roc_curve(
         labels, gamma_classifier_values, pos_label=0)
-
     auc = sklearn.metrics.auc(fpr, tpr)
     f1 = sklearn.metrics.f1_score(labels, predicted_class)
     acc = sklearn.metrics.accuracy_score(labels, predicted_class)
     bacc = sklearn.metrics.balanced_accuracy_score(labels, predicted_class)
     prec = sklearn.metrics.precision_score(labels, predicted_class)
     rec = sklearn.metrics.recall_score(labels, predicted_class)
-    conf = sklearn.metrics.confusion_matrix(labels, predicted_class)
     log_loss = sklearn.metrics.log_loss(labels, predicted_class)
 
     metrics_pred = {'pred_auc': auc, 'pred_acc': acc, 'pred_bacc': bacc,
                     'pred_f1': f1, 'pred_prec': prec, 'pred_rec': rec,
-                    'pred_conf': conf, 'pred_log_loss': log_loss}
+                    'pred_log_loss': log_loss}
 
     return metrics_pred
+
+# get validation set metrics
 
 
 def get_val_metrics(self):
@@ -69,6 +123,8 @@ def get_val_metrics(self):
                    'val_loss': loss}
 
     return metrics_val
+
+# set basic config and not optimizable hypeparameters
 
 
 def set_initial_config(self):
@@ -120,49 +176,8 @@ def set_initial_config(self):
                 'layers'].append({'filters': 288, 'kernel_size': 288})
 
     params = self.fixed_hyperparameters
-    if 'layer1_filters' in params:
-        myconfig['Model']['Model Parameters']['basic']['conv_block'][
-            'layers'][0]['filters'] = int(params['layer1_filters'])
-    if 'layer1_kernel' in params:
-        myconfig['Model']['Model Parameters']['basic']['conv_block'][
-            'layers'][0]['kernel_size'] = int(params['layer1_kernel'])
-    if 'layer2_filters' in params:
-        myconfig['Model']['Model Parameters']['basic']['conv_block'][
-            'layers'][1]['filters'] = int(params['layer2_filters'])
-    if 'layer2_kernel' in params:
-        myconfig['Model']['Model Parameters']['basic']['conv_block'][
-            'layers'][1]['kernel_size'] = int(params['layer2_kernel'])
-    if 'layer3_filters' in params:
-        myconfig['Model']['Model Parameters']['basic']['conv_block'][
-            'layers'][2]['filters'] = int(params['layer3_filters'])
-    if 'layer3_kernel' in params:
-        myconfig['Model']['Model Parameters']['basic']['conv_block'][
-            'layers'][2]['kernel_size'] = int(params['layer3_kernel'])
-    if 'layer4_filters' in params:
-        myconfig['Model']['Model Parameters']['basic']['conv_block'][
-            'layers'][3]['filters'] = int(params['layer4_filters'])
-    if 'layer4_kernel' in params:
-        myconfig['Model']['Model Parameters']['basic']['conv_block'][
-            'layers'][3]['kernel_size'] = int(params['layer4_kernel'])
 
-    if 'pool_size' in params:
-        myconfig['Model']['Model Parameters']['basic'][
-            'conv_block']['max_pool']['size'] = int(params['pool_size'])
-    if 'pool_strides' in params:
-        myconfig['Model']['Model Parameters']['basic'][
-            'conv_block']['max_pool']['strides'] = int(params['pool_strides'])
-    if 'optimizer_type' in params:
-        myconfig['Training']['Hyperparameters']['optimizer'] = params[
-            'optimizer_type']
-    if 'base_learning_rate' in params:
-        myconfig['Training']['Hyperparameters']['base_learning_rate'] = params[
-            'base_learning_rate']
-    if 'adam_epsilon' in params:
-        myconfig['Training']['Hyperparameters']['adam_epsilon'] = params[
-            'adam_epsilon']
-    if 'cnn_rnn_dropout' in params:
-        myconfig['Model']['Model Parameters']['cnn_rnn'][
-            'dropout_rate'] = params['cnn_rnn_dropout']
+    auxiliar_modify_params(params)
 
     with open(self.ctlearn_config, 'w') as file:
         yaml.dump(myconfig, file)
@@ -171,6 +186,8 @@ def set_initial_config(self):
 def run_train(config):
 
     run_model(config, mode='train', debug=False, log_to_file=True)
+
+# run training
 
 
 def train(self):
@@ -193,6 +210,8 @@ def train(self):
 def run_pred(config):
 
     run_model(config, mode='predict', debug=False, log_to_file=True)
+
+# run prediction
 
 
 def predict(self):

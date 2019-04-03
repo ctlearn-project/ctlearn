@@ -31,7 +31,7 @@ class optimizer:
         if self.data_set_to_optimize == 'Prediction':
             assert(self.predict_bool is True)
 
-        if self.reload_checking_file:
+        if self.reload_trials:
 
             assert(os.path.isfile('trials.pkl'))
 
@@ -45,6 +45,35 @@ class optimizer:
             self.trials = hyperopt.Trials()
             print('No trials file loaded, starting from scratch')
             self.iteration = 0
+
+        if self.reload_checking_file:
+
+            assert(os.path.isfile('./checking_file.csv'))
+            with open('./checking_file.csv', 'r') as file:
+                existing_iters_csv = len(file.readlines()) - 1
+
+            print('Found checking_file.csv with {} saved trials, \
+                     new trials will be added'.format(existing_iters_csv))
+
+            if existing_iters_csv != self.iteration:
+                print('Caution: the number of saved trials in trials.pkl \
+                    and checking_file.csv files  does not match')
+
+        else:
+            print('No checking_file.csv file loaded, starting from scratch')
+
+            with open('./checking_file.csv', 'w') as file:
+
+                writer = csv.writer(file)
+
+                if self.predict_bool:
+                    writer.writerow(
+                        ['loss', 'iteration', 'params', 'metrics_val',
+                         'metrics_pred', 'run_time'])
+                else:
+                    writer.writerow(
+                        ['loss', 'iteration', 'params', 'metrics_val',
+                         'run_time'])
 
     def modify_optimizable_params(self, params):
         if self.optimization_type == 'tree_parzen_estimators':
@@ -77,35 +106,6 @@ class optimizer:
             return bayesian_tpe.objective(self, params)
 
     def optimize(self):
-
-        if self.reload_checking_file:
-
-            assert(os.path.isfile('./checking_file.csv'))
-            with open('./checking_file.csv', 'r') as file:
-                existing_iters_csv = len(file.readlines()) - 1
-
-            print('Found checking_file.csv with {} saved trials, \
-                     new trials will be added'.format(existing_iters_csv))
-
-            if existing_iters_csv != self.iteration:
-                print('Caution: the number of saved trials in trials.pkl \
-                    and checking_file.csv files  does not match')
-
-        else:
-            print('No checking_file.csv file loaded, starting from scratch')
-
-            with open('./checking_file.csv', 'w') as file:
-
-                writer = csv.writer(file)
-
-                if self.predict_bool:
-                    writer.writerow(
-                        ['loss', 'iteration', 'params', 'metrics_val',
-                         'metrics_pred', 'run_time'])
-                else:
-                    writer.writerow(
-                        ['loss', 'iteration', 'params', 'metrics_val',
-                         'run_time'])
 
         self.set_initial_config()
         parameter_space = self.create_space_params()

@@ -4,10 +4,13 @@ optimization_type: 'tree_parzen_estimators'
 ctlearn_config: 'myconfig.yml'
 #Valid options: True, False
 predict: False
-#Valid options: ['Prediction', 'Validation'], if is set to 'Prediction', predict must be set to True
+#Valid options: ['Prediction', 'Validation'], if is set to
+#'Prediction', predict must be set to True
 data_set_to_optimize : 'Validation'
-#Valid options if data_set_to_optimize == 'Validation': ['auc', 'acc', 'acc_gamma', 'acc_proton', 'loss']
-#Valid options if data_set_to_optimize == 'Prediction': ['auc', 'acc', 'bacc', 'f1', 'prec', 'rec', 'log_loss']
+#Valid options if data_set_to_optimize == 'Validation':
+#['auc', 'acc', 'acc_gamma', 'acc_proton', 'loss']
+#Valid options if data_set_to_optimize == 'Prediction':
+#['auc', 'acc', 'bacc', 'f1', 'prec', 'rec', 'log_loss']
 to_be_optimized_metric : 'auc'
 num_max_evals: 5
 # Valid options: True, False, if is set to True, 'trials.pkl' will be loaded
@@ -22,7 +25,8 @@ Basic_config:
   #options: ['array', 'single_tel']
   example_type: 'single_tel'
   selected_tel_types: ['MST:NectarCam']
-  #Set training and predict file names, training_file_list is required only if predict is set to True
+  #Set training and predict file names, training_file_list is required only if
+  #predict is set to True
   training_file_list: 'data_train.txt'
   prediction_file_list: 'data_predict.txt'
   batch_size : 64
@@ -30,7 +34,9 @@ Basic_config:
   validation_split: 0.1
 
 Hyperparameters:
-#Valid options: [layer1_filters, layer2_filters, layer3_filters, layer4filters, layer1_kernel, layer2_kernel, layer3_kernel, layer4_kernel, pool_size, pool_strides, optimizer_type, base_learning_rate, adam_epsilon, cnn_rnn_dropout]
+#Valid options: [layer1_filters, layer2_filters, layer3_filters, layer4filters,
+#layer1_kernel, layer2_kernel, layer3_kernel, layer4_kernel, pool_size,
+#pool_strides, optimizer_type, base_learning_rate, adam_epsilon, cnn_rnn_dropout]
 
 
   Fixed_hyperparameters:
