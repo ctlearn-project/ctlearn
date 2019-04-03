@@ -4,7 +4,7 @@
 
 ![Validation Accuracy](images/CTLearnTextCTinBox_WhiteBkgd.png)
 
-CTLearn is a package under active development to run deep learning models to analyze data from Imaging Atmospheric Cherenkov Telescopes (IACTs). CTLearn v0.2.0 can load data from [CTA](https://www.cta-observatory.org/) (Cherenkov Telescope Array) and [VERITAS](https://veritas.sao.arizona.edu/) telescopes processed using [ImageExtractor](https://github.com/cta-observatory/image-extractor), with the ultimate goal of compatibility with data from all IACT observatories.
+CTLearn is a package under active development to run deep learning models to analyze data from all major current and future arrays of Imaging Atmospheric Cherenkov Telescopes (IACTs). CTLearn v0.3.0 can load data from [CTA](https://www.cta-observatory.org/) (Cherenkov Telescope Array), [FACT](https://www.isdc.unige.ch/fact/), [H.E.S.S.](https://www.mpi-hd.mpg.de/hfm/HESS/), [MAGIC](https://magic.mpp.mpg.de/), and [VERITAS](https://veritas.sao.arizona.edu/) telescopes processed using [DL1DataHandler v0.6.0](https://github.com/cta-observatory/dl1-data-handler).
 
 ## Install CTLearn
 
@@ -25,7 +25,7 @@ Next, download and install [Anaconda](https://www.anaconda.com/download/), or, f
 conda env create -f </installation/path>/ctlearn/environment-<MODE>.yml
 ```
 
-where `<MODE>` is either 'cpu', 'gpu' (for linux systems) or 'macos' (for macOS systems), denoting the TensorFlow version to be installed. If installing the GPU version of TensorFlow, verify that your system fulfills all the requirements [here](https://www.tensorflow.org/install/install_linux#NVIDIARequirements). Note that there is no GPU-enabled TensorFlow version for macOS yet.
+where `<MODE>` is either 'cpu' or 'gpu' (for linux systems) or 'macos' (for macOS systems), denoting the TensorFlow version to be installed. If installing the GPU version of TensorFlow, verify that your system fulfills all the requirements [here](https://www.tensorflow.org/install/install_linux#NVIDIARequirements). Note that there is no GPU-enabled TensorFlow version for macOS yet.
 
 Finally, install CTLearn into the new conda environment with pip:
 
@@ -53,7 +53,7 @@ NOTE for developers: If you wish to fork/clone the respository and make changes 
   
 ## Download Data
 
-CTLearn can load and process data in the HDF5 PyTables format produced from simtel files by [ImageExtractor](https://github.com/cta-observatory/image-extractor). Instructions for how to download CTA Prod3b data processed into this format are available on the [CTA internal wiki](https://forge.in2p3.fr/projects/cta_analysis-and-simulations/wiki/Machine_Learning_for_Event_Reconstruction#Common-datasets).
+CTLearn can load and process data in the HDF5 PyTables format produced from simtel files by [DL1DataHandler](https://github.com/cta-observatory/dl1-data-handler). Instructions for how to download CTA Prod3b data processed into this format are available on the [CTA internal wiki](https://forge.in2p3.fr/projects/cta_analysis-and-simulations/wiki/Machine_Learning_for_Event_Reconstruction#Common-datasets).
 
 ## Configure a Run
 
@@ -67,7 +67,7 @@ Specify model directory to store TensorFlow checkpoints and summaries, a timesta
 
 Describe the data to use, including the format, list of file paths, and whether to apply preprocessing. Includes subsections for **Loading** for parameters for selecting data such as the telescope type and pre-selection cuts to apply, **Processing** for data preprocessing settings such as cropping or normalization, and **Input** for parameters of the TensorFlow Estimator input function that converts the loaded, processed data into tensors. 
 
-As of CTLearn v0.2.0, only data of a single telescope type may be loaded at a time, even if the underlying dataset includes telescopes of multiple types. Data may be loaded in two ways, either event-wise in `array` mode which yields data from all telescopes in a specified array as well as auxiliary information including each telescope's position, or one image at a time in `single_tel` mode. 
+Data may be loaded in two ways, either event-wise in `array` mode which yields data from all telescopes in a specified array as well as auxiliary information including each telescope's position, or one image at a time in `single_tel` mode. In `array` mode, data from either a single telescope type or multiple telescope types may be loaded. 
 
 By default, each input image has a single channel indicating integrated pulse intensity per pixel.
 If the option `use_peak_times` is set to `True`, an additional channel with peak pulse arrival times per pixel will be loaded.
@@ -129,7 +129,7 @@ tensorboard --logdir=/path/to/my/model_dir
 
 ## Classes
 
-**DataLoader and HDF5DataLoader** Load a set of IACT data and provide a generator yielding NumPy arrays of examples (data and labels) as well as additional information about the dataset. HDF5DataLoader is the specifc implementation of the abstract base class DataLoader for the ImageExtractor HDF5 format. Because it's prohibitive to store a large dataset in memory, HDF5DataLoader instead provides a method `get_example_generators()` that returns functions returning generators that yield example identifiers (run number, event number, and, in `single_tel` mode, tel id) as well as the class weights, and methods `get_example()` and `get_image()` to map these identifiers to examples of data and labels and to telescope images. HDF5DataLoader also provides methods `get_metadata()` and `get_auxiliary_data()` that return dictionaries of additional information about the dataset. A DataProcessor provided either at initialization or using the method `add_data_processor()` applies preprocessing to the examples and an ImageMapper provided at initialization maps the images.
+**DataLoader and HDF5DataLoader** Load a set of IACT data and provide a generator yielding NumPy arrays of examples (data and labels) as well as additional information about the dataset. HDF5DataLoader is the specifc implementation of the abstract base class DataLoader for the DL1DataHandler v0.6.0 HDF5 format. Because it's prohibitive to store a large dataset in memory, HDF5DataLoader instead provides a method `get_example_generators()` that returns functions returning generators that yield example identifiers (run number, event number, and, in `single_tel` mode, tel id) as well as the class weights, and methods `get_example()` and `get_image()` to map these identifiers to examples of data and labels and to telescope images. HDF5DataLoader also provides methods `get_metadata()` and `get_auxiliary_data()` that return dictionaries of additional information about the dataset. A DataProcessor provided either at initialization or using the method `add_data_processor()` applies preprocessing to the examples and an ImageMapper provided at initialization maps the images.
 
 **DataProcessor** Preprocess IACT data. DataProcessor has a method `process_example()` that accepts an example of a list of NumPy arrays of data and an integer label along with the telescope type and returns preprocessed data in the same format, and a method `get_metadata()` that returns a dictionary of information about the processed data. A DataProcessor with no options set leaves the example unchanged. Preprocessing methods implemented in CTLearn v0.2.0 include cropping an image about the shower centroid and applying logarithmic normalization. 
 

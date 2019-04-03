@@ -13,3 +13,5 @@
 # Compiled Python files
 __pycache__/
 *.py[cod]
+
+ctlearn.egg-info/
