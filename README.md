@@ -25,7 +25,7 @@ Next, download and install [Anaconda](https://www.anaconda.com/download/), or, f
 conda env create -f </installation/path>/ctlearn/environment-<MODE>.yml
 ```
 
-where `<MODE>` is either 'cpu', 'gpu' (for linux systems) or 'macos' (for macOS systems), denoting the TensorFlow version to be installed. If installing the GPU version of TensorFlow, verify that your system fulfills all the requirements [here](https://www.tensorflow.org/install/install_linux#NVIDIARequirements). Note that there is no GPU-enabled TensorFlow version for macOS yet.
+where `<MODE>` should be replaced with either 'cpu', 'gpu' (for linux systems), 'macos' (for macOS systems) or 'win-cpu', 'win-gpu' (for windows systems), denoting the TensorFlow version to be installed. If installing the GPU version of TensorFlow, verify that your system fulfills all the requirements [here](https://www.tensorflow.org/install/install_linux#NVIDIARequirements). Note that there is no GPU-enabled TensorFlow version for macOS yet.
 
 Finally, install CTLearn into the new conda environment with pip:
 
