@@ -8,11 +8,11 @@ dependencies:
     - matplotlib
     - numpy
     - astropy
-    - opencv3
+    - opencv
     - pillow
     - pip
-    #Install tensorflow-cpu via conda
-    - tensorflow=1.9.0
+    # Install tensorflow-cpu via conda
+    - tensorflow=1.12.0
     - pytables
     - pyyaml
     - scikit-learn
