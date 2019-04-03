@@ -1,4 +1,4 @@
-# conda env create -f requirements-cpu.yml
+# conda env create -f environment-cpu.yml
 name: ctlearn
 channels:
     - conda-forge
@@ -8,12 +8,12 @@ dependencies:
     - matplotlib
     - numpy
     - astropy
-    - opencv3
+    - opencv
     - pillow
     - pip
-    # TensorFlow-CPU v1.9.0:
+    # TensorFlow-CPU v1.12.0:
     - pip:
-        - https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-1.9.0-cp36-cp36m-linux_x86_64.whl
+        - https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-1.12.0-cp36-cp36m-linux_x86_64.whl
     - pytables
     - pyyaml
     - scikit-learn
