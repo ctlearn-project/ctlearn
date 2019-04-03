@@ -11,9 +11,8 @@ dependencies:
     - opencv3
     - pillow
     - pip
-    # TensorFlow-CPU v1.9.0:
-    - pip:
-        - https://storage.googleapis.com/tensorflow/windows/cpu/tensorflow-1.12.0-cp36-cp36m-win_amd64.whl
+    #Install tensorflow-cpu via conda
+    - tensorflow=1.9.0
     - pytables
     - pyyaml
     - scikit-learn
