@@ -1,5 +1,5 @@
 # conda env create -f environment-cpu.yml
-name: ctlearn-cpu
+name: ctlearn
 channels:
     - conda-forge
     - menpo

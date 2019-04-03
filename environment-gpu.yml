@@ -1,5 +1,5 @@
 # conda env create -f environment-gpu.yml
-name: ctlearn-gpu
+name: ctlearn
 channels:
     - conda-forge
     - menpo
