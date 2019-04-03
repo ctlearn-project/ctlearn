@@ -66,7 +66,7 @@ Data:
         # auxiliary info) for each telescope type into three combined data
         # arrays, instead of returning them as sublists grouped by tel type.
         # Images must have the same dimensions (at least post-processing)!
-        merge_tel_types: false
+        merge_tel_types: true
 
         # Optional int. Default: 1
         # Minimum number of triggered telescopes among all selected
@@ -184,7 +184,7 @@ Data:
 Image Mapping:
     # Optional list of tel_type strings or null. Default if null: ['LSTCam']
     # Only the mapping tables of this list will be calculated.
-    camera_type: ['LSTCam']
+    camera_types: ['LSTCam']
 
     # Optional dictionary with string keys and string values. Default: 'oversampling'
     # Valid options:
@@ -240,7 +240,7 @@ Model:
     # Optional string or null. Default if missing or null is to load
     # CTLearn default models directory: 'ctlearn/ctlearn/default_models/'
     # Path to directory containing model module.
-    model_directory: '/my/model/path/'
+    model_directory: null #'/my/model/path/'
 
     # Required list of two strings.
     # Module in model directory and function in module implementing the model.
@@ -496,11 +496,11 @@ Multiple Configurations Values:
             - 3
             - 4
     telescope_type:
-        config: ['Data', 'Loading', 'selected_tel_type']
+        config: ['Data', 'Loading', 'selected_tel_types']
         value_type: 'grouped'
         values:
-            'LST:LSTCam': 'LST:LSTCam'
-            'MST:NectarCam': 'MST:NectarCam'
+            'LST:LSTCam': ['LST:LSTCam']
+            'MST:NectarCam': ['MST:NectarCam']
     selected_telescopes:
         config: ['Data', 'Loading', 'selected_tel_ids']
         value_type: 'grouped'
@@ -518,7 +518,7 @@ Multiple Configurations Values:
                 module: 'variable_input_model'
                 function: 'variable_input_model'
     telescope_sorting:
-        config: ['Data', 'Processing', 'sort_images_by']
+        config: ['Data', 'Processing', 'sorting']
         value_type: 'grouped'
         values:
             CNN_RNN: 'size'
