@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import numpy as np
 import sklearn
 import os
@@ -7,62 +10,44 @@ from ctlearn.run_model import run_model
 from multiprocessing import Pool
 
 # auxiliar function to modify ctlearn config hyperparameters
-
-
 def auxiliar_modify_params(myconfig, params):
 
     if 'layer1_filters' in params:
-        myconfig['Model']['Model Parameters']['basic']['conv_block'][
-            'layers'][0]['filters'] = int(params['layer1_filters'])
+        myconfig['Model']['Model Parameters']['basic']['conv_block']['layers'][0]['filters'] = int(params['layer1_filters'])
     if 'layer1_kernel' in params:
-        myconfig['Model']['Model Parameters']['basic']['conv_block'][
-            'layers'][0]['kernel_size'] = int(params['layer1_kernel'])
+        myconfig['Model']['Model Parameters']['basic']['conv_block']['layers'][0]['kernel_size'] = int(params['layer1_kernel'])
     if 'layer2_filters' in params:
-        myconfig['Model']['Model Parameters']['basic']['conv_block'][
-            'layers'][1]['filters'] = int(params['layer2_filters'])
+        myconfig['Model']['Model Parameters']['basic']['conv_block']['layers'][1]['filters'] = int(params['layer2_filters'])
     if 'layer2_kernel' in params:
-        myconfig['Model']['Model Parameters']['basic']['conv_block'][
-            'layers'][1]['kernel_size'] = int(params['layer2_kernel'])
+        myconfig['Model']['Model Parameters']['basic']['conv_block']['layers'][1]['kernel_size'] = int(params['layer2_kernel'])
     if 'layer3_filters' in params:
-        myconfig['Model']['Model Parameters']['basic']['conv_block'][
-            'layers'][2]['filters'] = int(params['layer3_filters'])
+        myconfig['Model']['Model Parameters']['basic']['conv_block']['layers'][2]['filters'] = int(params['layer3_filters'])
     if 'layer3_kernel' in params:
-        myconfig['Model']['Model Parameters']['basic']['conv_block'][
-            'layers'][2]['kernel_size'] = int(params['layer3_kernel'])
+        myconfig['Model']['Model Parameters']['basic']['conv_block']['layers'][2]['kernel_size'] = int(params['layer3_kernel'])
     if 'layer4_filters' in params:
-        myconfig['Model']['Model Parameters']['basic']['conv_block'][
-            'layers'][3]['filters'] = int(params['layer4_filters'])
+        myconfig['Model']['Model Parameters']['basic']['conv_block']['layers'][3]['filters'] = int(params['layer4_filters'])
     if 'layer4_kernel' in params:
-        myconfig['Model']['Model Parameters']['basic']['conv_block'][
-            'layers'][3]['kernel_size'] = int(params['layer4_kernel'])
+        myconfig['Model']['Model Parameters']['basic']['conv_block']['layers'][3]['kernel_size'] = int(params['layer4_kernel'])
     if 'pool_size' in params:
-        myconfig['Model']['Model Parameters']['basic'][
-            'conv_block']['max_pool']['size'] = int(params['pool_size'])
+        myconfig['Model']['Model Parameters']['basic']['conv_block']['max_pool']['size'] = int(params['pool_size'])
     if 'pool_strides' in params:
-        myconfig['Model']['Model Parameters']['basic'][
-            'conv_block']['max_pool']['strides'] = int(params['pool_strides'])
+        myconfig['Model']['Model Parameters']['basic']['conv_block']['max_pool']['strides'] = int(params['pool_strides'])
     if 'optimizer_type' in params:
         if params['optimizer_type'] is dict:
-            myconfig['Training']['Hyperparameters']['optimizer'] = \
-                params['optimizer_type']['optimizer_type']
+            myconfig['Training']['Hyperparameters']['optimizer'] = params['optimizer_type']['optimizer_type']
         else:
-            myconfig['Training']['Hyperparameters']['optimizer'] = \
-                params['optimizer_type']
+            myconfig['Training']['Hyperparameters']['optimizer'] = params['optimizer_type']
     if 'base_learning_rate' in params:
-        myconfig['Training']['Hyperparameters']['base_learning_rate'] = \
-            params['base_learning_rate']
+        myconfig['Training']['Hyperparameters']['base_learning_rate'] = params['base_learning_rate']
     if 'adam_epsilon' in params:
-        myconfig['Training']['Hyperparameters']['adam_epsilon'] = \
-            params['adam_epsilon']
+        myconfig['Training']['Hyperparameters']['adam_epsilon'] = params['adam_epsilon']
     if 'cnn_rnn_dropout' in params:
-        myconfig['Model']['Model Parameters']['cnn_rnn'][
-            'dropout_rate'] = params['cnn_rnn_dropout']
+        myconfig['Model']['Model Parameters']['cnn_rnn']['dropout_rate'] = params['cnn_rnn_dropout']
 
 # get prediction set metrics
-
-
 def get_pred_metrics(self):
 
+    #load prediction.csv and compute metrics
     predictions_path = './run' + \
         str(self.iteration) + '/predictions_run{}.csv'.format(self.iteration)
 
@@ -88,12 +73,11 @@ def get_pred_metrics(self):
     return metrics_pred
 
 # get validation set metrics
-
-
 def get_val_metrics(self):
 
     iteration = self.iteration
 
+    #load training log file and get validation metrics
     run_folder = './run' + str(iteration)
     for file in os.listdir(run_folder):
         if file.endswith('logfile.log'):
@@ -110,12 +94,9 @@ def get_val_metrics(self):
         val_info = matches[-1]
 
     auc = float(re.findall(r'auc = [-+]?\d*\.*\d+', val_info)[0][6:])
-    accuracy = float(re.findall(
-        r'accuracy = [-+]?\d*\.*\d+', val_info)[0][11:])
-    accuracy_gamma = float(re.findall(
-        r'accuracy_gamma = [-+]?\d*\.*\d+', val_info)[0][17:])
-    accuracy_proton = float(re.findall(
-        r'accuracy_proton = [-+]?\d*\.*\d+', val_info)[0][18:])
+    accuracy = float(re.findall(r'accuracy = [-+]?\d*\.*\d+', val_info)[0][11:])
+    accuracy_gamma = float(re.findall(r'accuracy_gamma = [-+]?\d*\.*\d+', val_info)[0][17:])
+    accuracy_proton = float(re.findall(r'accuracy_proton = [-+]?\d*\.*\d+', val_info)[0][18:])
     loss = float(re.findall(r'loss = [-+]?\d*\.*\d+', val_info)[0][7:])
 
     metrics_val = {'val_auc': auc, 'val_acc': accuracy, 'val_acc_gamma':
@@ -124,24 +105,18 @@ def get_val_metrics(self):
 
     return metrics_val
 
-# set basic config and not optimizable hypeparameters
-
-
+# set basic config and not optimizable hyperparameters
 def set_initial_config(self):
 
     with open(self.ctlearn_config, 'r') as myconfig:
         myconfig = yaml.load(myconfig)
 
-    myconfig['Training']['num_validations'] = \
-        self.basic_config['num_validations']
-    myconfig['Training']['num_training_steps_per_validation'] = \
-        self.basic_config['num_training_steps_per_validation']
-    myconfig['Data']['Loading']['example_type'] = \
-        self.basic_config['example_type']
+    myconfig['Training']['num_validations'] = self.basic_config['num_validations']
+    myconfig['Training']['num_training_steps_per_validation'] = self.basic_config['num_training_steps_per_validation']
+    myconfig['Data']['Loading']['example_type'] = self.basic_config['example_type']
     myconfig['Data']['Input']['batch_size'] = self.basic_config['batch_size']
     myconfig['Model']['model_directory'] = self.basic_config['model_directory']
-    myconfig['Data']['Loading']['validation_split'] = self.basic_config[
-        'validation_split']
+    myconfig['Data']['Loading']['validation_split'] = self.basic_config['validation_split']
 
     if self.basic_config['example_type'] == 'array':
         myconfig['Data']['Loading']['merge_tel_types'] = True
@@ -149,35 +124,31 @@ def set_initial_config(self):
         myconfig['Model']['model']['function'] = 'cnn_rnn_model'
 
     elif self.basic_config['example_type'] == 'single_tel':
-        myconfig['Data']['Loading']['merge_tel_types'] = False
+        myconfig['Data']['Loading']['merge_tel_types'] = True
         myconfig['Model']['model']['module'] = 'single_tel'
         myconfig['Model']['model']['function'] = 'single_tel_model'
 
-    myconfig['Data']['Loading']['selected_tel_types'] = \
-        self.basic_config['selected_tel_types']
+    myconfig['Data']['Loading']['selected_tel_types'] = self.basic_config['selected_tel_types']
 
-    if self.basic_config['selected_tel_types'] == 'SST:ASTRICam' or 'SST:CHEC':
-        length = len(myconfig['Model']['Model Parameters']['basic'][
-            'conv_block']['layers'])
+    #make sure that the number of convolutional layers is correct
+    if self.basic_config['selected_tel_types'] == (['SST:ASTRICam'] or ['SST:CHEC']):
 
-        while length > 3:
-            del myconfig['Model']['Model Parameters']['basic']['conv_block'][
-                'layers'][-1]
-        while length < 3:
-            myconfig['Model']['Model Parameters']['basic']['conv_block'][
-                'layers'].append({'filters': 288, 'kernel_size': 288})
+        while len(myconfig['Model']['Model Parameters']['basic']['conv_block']['layers']) > 3:
+            del myconfig['Model']['Model Parameters']['basic']['conv_block']['layers'][-1]
+        while len(myconfig['Model']['Model Parameters']['basic']['conv_block']['layers']) < 3:
+            myconfig['Model']['Model Parameters']['basic']['conv_block']['layers'].append({'filters': 288, 'kernel_size': 288})
 
     else:
-        while length > 4:
-            del myconfig['Model']['Model Parameters']['basic']['conv_block'][
-                'layers'][-1]
-        while length < 4:
-            myconfig['Model']['Model Parameters']['basic']['conv_block'][
-                'layers'].append({'filters': 288, 'kernel_size': 288})
+
+        while len(myconfig['Model']['Model Parameters']['basic']['conv_block']['layers']) > 4:
+            del myconfig['Model']['Model Parameters']['basic']['conv_block']['layers'][-1]
+        while len(myconfig['Model']['Model Parameters']['basic']['conv_block']['layers']) < 4:
+            myconfig['Model']['Model Parameters']['basic']['conv_block']['layers'].append({'filters': 288, 'kernel_size': 288})
 
     params = self.fixed_hyperparameters
 
-    auxiliar_modify_params(params)
+    #modify ctlearn config file
+    auxiliar_modify_params(myconfig, params)
 
     with open(self.ctlearn_config, 'w') as file:
         yaml.dump(myconfig, file)
@@ -188,8 +159,6 @@ def run_train(config):
     run_model(config, mode='train', debug=False, log_to_file=True)
 
 # run training
-
-
 def train(self):
 
     with open(self.ctlearn_config, 'r') as file:
@@ -212,8 +181,6 @@ def run_pred(config):
     run_model(config, mode='predict', debug=False, log_to_file=True)
 
 # run prediction
-
-
 def predict(self):
 
     with open(self.ctlearn_config, 'r') as file:

@@ -1,11 +1,17 @@
-import bayesian_tpe
-import common
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import ctlearn_optimizer.bayesian_tpe as bayesian_tpe
+import ctlearn_optimizer.common as common
 import pickle
+import logging
+import argparse
 import hyperopt
 import os
 import csv
 from functools import partial
 import yaml
+from shutil import copyfile
 
 
 class optimizer:
@@ -22,45 +28,42 @@ class optimizer:
         self.reload_trials = opt_config['reload_trials']
         self.reload_checking_file = opt_config['reload_checking_file']
         self.basic_config = opt_config['Basic_config']
-        self.fixed_hyperparameters = opt_config[
-            'Hyperparameters']['Fixed_hyperparameters']
-        self.dependent_hyperparameters = opt_config[
-            'Hyperparameters']['Dependent_hyperparameters']
-        self.to_be_optimized_hyperparameters = opt_config[
-            'Hyperparameters']['To_be_optimized_hyperparameters']
+        self.fixed_hyperparameters = opt_config['Hyperparameters']['Fixed_hyperparameters']
+        self.dependent_hyperparameters = opt_config['Hyperparameters']['Dependent_hyperparameters']
+        self.to_be_optimized_hyperparameters = opt_config['Hyperparameters']['To_be_optimized_hyperparameters']
         if self.data_set_to_optimize == 'Prediction':
             assert(self.predict_bool is True)
 
+        #load trials file if reload_trials is True
         if self.reload_trials:
 
             assert(os.path.isfile('trials.pkl'))
 
             self.trials = pickle.load(open('trials.pkl', 'rb'))
-            print('Found trials.pkl file with {} saved trials'
+            logging.info('Found trials.pkl file with {} saved trials'
                   .format(len(self.trials.trials)))
+            #set iteration and num_max_evals to match load trials
             self.num_max_evals += len(self.trials.trials)
             self.iteration = len(self.trials.trials)
-
+        #create trials file
         else:
             self.trials = hyperopt.Trials()
-            print('No trials file loaded, starting from scratch')
+            logging.info('No trials file loaded, starting from scratch')
             self.iteration = 0
-
+        #load checking_file.csv if reload_checking_file is True
         if self.reload_checking_file:
 
             assert(os.path.isfile('./checking_file.csv'))
             with open('./checking_file.csv', 'r') as file:
                 existing_iters_csv = len(file.readlines()) - 1
 
-            print('Found checking_file.csv with {} saved trials, \
-                     new trials will be added'.format(existing_iters_csv))
+            logging.info('Found checking_file.csv with {} saved trials, new trials will be added'.format(existing_iters_csv))
 
             if existing_iters_csv != self.iteration:
-                print('Caution: the number of saved trials in trials.pkl \
-                    and checking_file.csv files  does not match')
-
+                logging.info('Caution: the number of saved trials in trials.pkl and checking_file.csv files  does not match')
+        #create checking_file.csv
         else:
-            print('No checking_file.csv file loaded, starting from scratch')
+            logging.info('No checking_file.csv file loaded, starting from scratch')
 
             with open('./checking_file.csv', 'w') as file:
 
@@ -75,34 +78,41 @@ class optimizer:
                         ['loss', 'iteration', 'params', 'metrics_val',
                          'run_time'])
 
+    # update ctlearn config file with new hyperparameters
     def modify_optimizable_params(self, params):
         if self.optimization_type == 'tree_parzen_estimators':
             bayesian_tpe.modify_optimizable_params(self, params)
 
+    # create hyperopt style hyperparameters space from optimization config file
     def create_space_params(self):
         if self.optimization_type == 'tree_parzen_estimators':
             params = bayesian_tpe.create_space_params(self)
         return params
 
+    # get prediction set metrics
     def get_pred_metrics(self):
         return common.get_pred_metrics(self)
 
+    # get validation set metrics
     def get_val_metrics(self):
         return common.get_val_metrics(self)
 
+    # set basic config and not optimizable hypeprarameters
     def set_initial_config(self):
         common.set_initial_config(self)
 
+    #run training
     def train(self):
         common.train(self)
 
+    #run predict
     def predict(self):
         common.predict(self)
 
+    # set objective function for hyperopt input - output workflow
     def objective(self, params):
 
         if self.optimization_type == 'tree_parzen_estimators':
-
             return bayesian_tpe.objective(self, params)
 
     def optimize(self):
@@ -110,26 +120,56 @@ class optimizer:
         self.set_initial_config()
         parameter_space = self.create_space_params()
 
+        #select otimization algorithm
         if self.optimization_type == 'tree_parzen_estimators':
             algo = partial(hyperopt.tpe.suggest, n_startup_jobs=20)
         if self.optimization_type == 'random_search':
             algo = hyperopt.rand.suggest
 
+        #call hyperopt optimizator
         fmin = hyperopt.fmin(self.objective, parameter_space,
                              algo, trials=self.trials,
                              max_evals=self.num_max_evals)
 
+        #save trials file
         pickle.dump(self.trials, open('trials.pkl', 'wb'))
-        print('trials.pkl saved')
-        print('Best set of hyperparameter found:', fmin)
+        logging.info('trials.pkl saved')
 
-        print('Optimization run finished')
+        losses = self.trials.losses()
+        losses.sort()
+        best_metric = 1 - losses[-1]
+
+        logging.info('Best metric score found: {0}' .format(best_metric))
+        logging.info('Best set of hyperparameter found: {0}' .format(fmin))
+        logging.info('Optimization run finished')
 
 
 if __name__ == "__main__":
 
-    with open('opt_config.yml', 'r') as opt_config:
+    parser = argparse.ArgumentParser(
+            description=('Run Ctlearn model optimization'))
+    parser.add_argument(
+            'opt_config',
+            help='path to YAML file containing ctlearn_optimizer configuration')
+    parser.add_argument(
+            'ctlearn_config',
+            help='path to YAML file containing CTLearn configuration')
+    args = parser.parse_args()
+
+    log_file = f"optimization.log"
+    logging.basicConfig(level=logging.INFO, filename=log_file)
+    consoleHandler = logging.StreamHandler(os.sys.stdout)
+    logging.getLogger().addHandler(consoleHandler)
+    logging.info(f'Starting optimization run')
+
+
+    with open(args.opt_config, 'r') as opt_config:
         opt_config = yaml.load(opt_config)
+
+    #make a copy of ctlearn_config file in order not to modificate it
+    copyfile(args.ctlearn_config, args.ctlearn_config.replace('.yml', '_copy.yml'))
+    #use copy
+    opt_config['ctlearn_config'] = args.ctlearn_config.replace('.yml', '_copy.yml')
 
     model = optimizer(opt_config)
     model.optimize()
