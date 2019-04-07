@@ -1,0 +1,20 @@
+Hi, my name is Ettore Mariotti and I am a graduating student in Telecommunication Enginnering (A MsC after a bachelor in Information Enginnering).
+My recent passion is Machine Learning in general, I have had some experience both in data-scarce (Brain Computer Interfaces problems) and in data-rich situations (IACT MAGIC reconstruction with CNNs).
+
+The Imaging Atmospheric Cherenkov technique is a ground-based technique for detecting gamma rays. In order to identify and fully characterize a gamma-ray source, it is necessary to detect a statistically significant number of gamma rays coming from the same direction in the sky. Moreover, by knowing the energy distribution of the gamma rays it is possible to characterize the spectrum of the source.
+To perform this analysis, three parameters need to be calculated:
+    1) Separation of gamma/hadron events (already implemented in CTLearn)
+    2) Reconstruction of the direction of the primary particle (double output regression)
+    3) Reconstruction of the energy of the primary particle (single output regression)
+
+In order to solve these challenges, this project proposes to infer them with a deep learning approach.
+It is plausible to think that the problem of reconstructing the direction and the energy of the primary particles from the IACT data share some hidden representation.
+For this reason an interesting approach to pursue would be Multi-Task Learning (MTL) with artificial neural networks.
+MTL is an approach that was proven successful in many machine learning tasks and works by jointly optimizing more than one loss function (thus by solving more than one problem).
+This comes with different advantages such as implicit regularization, better performances, reduced time for training and for inference.
+As Rich Caruana states: "MTL improves generalization by leveraging the domain-specific information contained in the training signals of related tasks".
+
+This project purposes to implement energy and direction estimation models for CTLearn library.
+
+From this experience, I really look forward to working with intelligent and competent people who know how to handle a project that receives many contributions from different people.
+Gaining the skill of writing good, clean code is at least as important as getting good ideas and implementing them.
