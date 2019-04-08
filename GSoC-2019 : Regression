@@ -1,0 +1,19 @@
+Hello everyone, I am a Btech Undergraduate at IIT Gandhinagar with majors in Computer Science and Engineering. 
+
+I am a deep learning enthusiast and algorithm lover. I have prior experience in the field of deep learning and computer vision.
+
+In this project, we have to perform 
+      1- regression for estimating the energy of the originating particle from IACTs 
+      2- reconstructing the arrival direction on the sky of that particle.
+      
+These tasks are critical for maximizing the energy resolution, angular resolution.
+
+Our approach to this problem is based on Multi-Task Learning. Essentially when we are optimizing over more than one loss function, we are doing MLT. Even regularization is a multi-task learning task.
+
+I will be using hard parameter sharing type MLT because of its resistance towards overfitting.
+
+MLT should work well in our case because the given two tasks are closely related to each other and the learned feature from one task can be very well generalized to the other task.
+
+Some of the benefits of using MLT are representation bias, double check on feature selection and generalization on another tasks.
+
+I look forward to contributing towards this project and gain valuable experience.
