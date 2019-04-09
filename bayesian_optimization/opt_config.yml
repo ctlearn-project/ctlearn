@@ -38,7 +38,6 @@ Hyperparameters:
 #layer1_kernel, layer2_kernel, layer3_kernel, layer4_kernel, pool_size,
 #pool_strides, optimizer_type, base_learning_rate, adam_epsilon, cnn_rnn_dropout]
 
-
   Fixed_hyperparameters:
 
     pool_size:  2
@@ -49,13 +48,16 @@ Hyperparameters:
     cnn_rnn_dropout: 0.5
 
   Dependent_hyperparameters:
+  #Operator valid options: [+,-,*,/]
 
     layer2_filters: {'factor': 2, 'operator': '*', 'hyperparameter': layer1_filters}
     layer3_filters: {'factor': 4, 'operator': '*', 'hyperparameter': layer1_filters}
     layer4_filters: {'factor': 8, 'operator': '*', 'hyperparameter': layer1_filters}
 
   To_be_optimized_hyperparameters:
-
+  #Valid options: uniform('type':, 'range':), quniform('type':, 'range':, 'step':), 
+  #loguniform, qloguniform, normal, qnormal, lognormal, qlognormal
+  
     layer1_filters: {'type': quniform, 'range': [16, 64], 'step': 1}
     layer1_kernel: {'type': quniform, 'range': [2,10], 'step': 1}
     layer2_kernel: {'type': quniform, 'range': [2,10], 'step': 1}
