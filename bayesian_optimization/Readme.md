@@ -24,8 +24,6 @@ CTLearn, hyperopt, sklearn, multiprocessing, os, re , yaml, numpy, logging, pick
 2. You will need both `myconfig.yml` (CTLearn config) and `opt_config.yml` (CTLearn Optimizer config) files. Examples are provided.
 3. Run `python PATH/TO/PROJECT/ctlearn_optimizer/optimizer.py opt_config.yml myconfig.yml`. 
 
-## Basic usage
-
 The outputs of a optimization session are:
 
   `optimization.log` file containg messages about the optimization run.
