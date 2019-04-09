@@ -1,0 +1,18 @@
+Hi everybody!
+I am a MS student in Astrophysics at Complutense University of Madrid and I obtained BS degree of physics on June 2018, after defending my final thesis 'High-Energy Universe through gamma-ray catalogs by Fermi-LAT'.
+I am currently working as an intern in the Basic Research Department of the Energetic, Environmental and Technological Research Center (CIEMAT) in Madrid for processing and data analysis for the Large-Sized Telescope 1 (LST1) of the Cherenkov Telescope Array CTA.
+I have started to work on the implementation of hexagonal convolution in Tensorflow for my MS final thesis, which will be direct applicable to CTLearn.
+
+As an student in astronomy and astrophysics, and former student of physics, I really appreciate the OpenAstronomy community effort to develop open-source tools for studying the Universe, since it has provided techniques for the scientific community to enhance their research and to improve our understanding of the cosmos. 
+
+
+The main goal of the project is to implement hexagonal convolution and pooling methods in Tensorflow for CTLearn. CTLearn is a Python package for using deep learning based methods to perform data analysis tasks on images from imaging atmospheric Cherenkov telescopes (IACTs) whose cameras, in many cases, are arranged in a hexagonal pixel distribution. 
+
+For that purpose, first we need to rearrange the data points to a Euclidean grid and adapt the square-grid operations applied on this data to conserve the symmetry of the hexagonal lattice.
+
+Then, it is therefore necessary to create convolution and pooling kernels for rearranged data, preserving the information and topological relations. 
+We can follow two different lines: implement indexed convolution for the hexagonal case, given an input vector of data and a matrix of indices describing every neighborhood relationships among the elements of the input vectors; or we can split the conventional square kernel into sub-kernels that, in combination, creates a custom kernel that covers the true neighbours of a data point in the original hexagonal grid, which is then equivalent to performing hexagonal convolutions.
+
+Another possible workline is to use methods already implemented in Tensorflow, like \textsc{Hexaconv} or another candidates we can seek. Hence, we must first study the adequacy of these code developments for the CTLearn purpose.
+
+Finally, the CTLearn default models will be tested on the new method and compared with the conventional conversion methods.
