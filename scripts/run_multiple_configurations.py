@@ -199,6 +199,8 @@ changing_configurations = raw_config["Multiple Configurations Values"]
 # Settings" and store them in the right order. This information will be written
 # in the run_combination.yaml file as a comment, so that the rename_run_folders.sh
 # can easily parse the comments and rename the run folders automatically.
+base_model_dir = base_config['Logging']['model_directory']
+base_scripts_dir = base_config['Logging'].get('scripts_directory', '')
 multiple_config_values_all = raw_config["Multiple Configurations Values"]
 multiple_config_values = []
 for key in multiple_config_values_all.keys():
@@ -247,4 +249,10 @@ for run_name, config in configurations[args.resume_from_run:]:
     with Pool(1) as p:
         p.apply(run_model, (config,), dict(mode=args.mode, debug=args.debug,
                 log_to_file=args.log_to_file))
+
+if base_scripts_dir != '':
+    os.system("cp {}rename_run_folders.sh {}".format(base_scripts_dir,base_model_dir))
+    os.system("bash {}rename_run_folders.sh '{}'".format(base_model_dir,base_model_dir))
+
+
 

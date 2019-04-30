@@ -8,6 +8,12 @@ Logging:
     # A timestamped copy of the configuration file will also be put here.
     model_directory: '/tmp/logs/example/'
 
+    # Optional string.
+    # Path to directory to the ctlearn additional scripts.
+    # Selecting this string will automatically rename the 
+    # run folders int the 'model_directory' above.
+    scripts_directory: 'my/path/to/ctlearn/scripts/'
+
 Data:
     # Required string.
     # Valid options:

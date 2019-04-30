@@ -1,5 +1,6 @@
 Logging:
     model_directory: '/data0/logs/v0_2_0_release/180806_benchmarks'
+    scripts_directory: '/home/shevek/test/ctlearn/scripts/'
 
 Data:
     format: 'HDF5'
