@@ -43,6 +43,7 @@ from multiprocessing import Pool
 import os
 import sys
 import pkg_resources
+import itertools
 
 import numpy as np
 import yaml
@@ -194,6 +195,32 @@ base_config = {key:val for key, val in raw_config.items() if key not in
 settings = raw_config["Multiple Configurations Settings"]
 changing_configurations = raw_config["Multiple Configurations Values"]
 
+# Detect the possible configuration combinations of the "Multiple Configurations
+# Settings" and store them in the right order. This information will be written
+# in the run_combination.yaml file as a comment, so that the rename_run_folders.sh
+# can easily parse the comments and rename the run folders automatically.
+multiple_config_values_all = raw_config["Multiple Configurations Values"]
+multiple_config_values = []
+for key in multiple_config_values_all.keys():
+    values = []
+    for val in multiple_config_values_all[key]['values'].keys():
+        values.append(val)
+    if values not in multiple_config_values:
+        multiple_config_values.append(values)
+multiple_config_values = np.array(multiple_config_values)
+
+configuration_combinations = []
+command = "itertools.product("
+for i in np.arange(multiple_config_values.shape[0],0,-1):
+    if i-1 != 0:
+        command += "multiple_config_values[{}],".format(i-1)
+    else:
+        command += "multiple_config_values[{}])".format(i-1)
+
+for combination in eval(command):
+    configuration_combinations.append(combination)
+configuration_combinations = np.array(configuration_combinations)
+
 # Generate a configuration for each combination of settings as specified
 combinations, configurations = make_configurations(base_config,
         changing_configurations, settings)
@@ -204,6 +231,12 @@ print(settings['run_combinations_path'])
 with open(settings['run_combinations_path'], 'w+') as combinations_file:
     ctlearn_version=pkg_resources.get_distribution("ctlearn").version
     combinations_file.write('# The training was performed using CTLearn version {}.\n'.format(ctlearn_version))
+    combinations_file.write('# Multiple configurations: ({})\n'.format(configuration_combinations.shape[0]))
+    for combination in np.arange(0,configuration_combinations.shape[0]):
+        combinations_file.write('# ({}) ['.format(combination))
+        for val in configuration_combinations[combination]:
+            combinations_file.write('{}'.format(val))
+        combinations_file.write(']\n')
     yaml.dump(combinations, combinations_file, default_flow_style=False)
 
 # Run a model for each configuration combination from args.start
