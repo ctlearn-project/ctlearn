@@ -13,7 +13,7 @@ import tensorflow as tf
 from tensorflow.python import debug as tf_debug
 import yaml
 
-from dl1datahandler.reader import DL1DataReader
+from dl1_data_handler.reader import DL1DataReader
 
 # Disable Tensorflow info and warning messages (not error messages)
 #os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -101,7 +101,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     for t in config['Data']['transforms']:
         if 'path' in t and t['path'] not in sys.path:
             sys.path.append(t['path'])
-        module_name = t.get('module', 'dl1datahandler.processor')
+        module_name = t.get('module', 'dl1_data_handler.processor')
         module = importlib.import_module(module_name)
         transform = getattr(module, t['name'])(**t.get('args', {}))
         transforms.append(transform)
@@ -111,18 +111,23 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     if 'interpolation_image_shape' in config['Data'].get('mapping_settings',
                                                          {}):
         config['Data']['mapping_settings']['interpolation_image_shape'] = {
-                k: tuple(l) for k, l in config['Data']['mapping_settings']['interpolation_image_shape']}
+                k: tuple(l) for k, l in config['Data']['mapping_settings']['interpolation_image_shape'].items()}
 
     # Create data reader
-    reader = DL1DataReader(file_list, **config['Data'])
+    reader = DL1DataReader(**config['Data'])
     params['example_description'] = reader.example_description
 
     # Define format for TensorFlow dataset
-    output_names = [d['name'] for d in reader.example_description]
-    output_dtypes = (tf.as_dtype(d['dtype']) for d
-                     in reader.example_description)
+    config['Input']['output_names'] = [d['name'] for d
+                                       in reader.example_description]
+    config['Input']['output_dtypes'] = tuple(tf.as_dtype(d['dtype']) for d
+                                             in reader.example_description)
 
     # Load either training or prediction options
+    # and log information about the data set
+    batch_size = config['Input'].get('batch_args', {}).get('batch_size', 1)
+    logger.info("Batch size: {}".format(batch_size))
+    
     if mode == 'train':
 
         params['training'] = config['Training']['Hyperparameters']
@@ -136,9 +141,21 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             raise ValueError("Invalid validation split: {}. "
                              "Must be between 0.0 and 1.0".format(
                                  validation_split))
-        num_validation_examples = math.ceil(self.validation_split*len(reader))
-        training_reader = reader[:num_validation_examples]
-        validation_reader = reader[num_validation_examples:]
+        num_validation_examples = math.ceil(validation_split * len(reader))
+        num_training_examples = len(reader) - num_validation_examples
+        indices = range(len(reader))
+        training_indices = indices[:num_training_examples]
+        validation_indices = indices[num_training_examples:]
+        
+        logger.info("Training and evaluating...")
+        logger.info("Total number of training examples: {}".format(
+                    num_training_examples))
+        logger.info("Total number of validation examples: {}".format(
+                    num_validation_examples))
+        logger.info("Number of training steps per epoch: {}".format(
+                    int(num_training_examples / batch_size)))
+        logger.info("Number of training steps between validations: {}".format(
+                    num_training_steps_per_validation))
 
     elif mode == 'predict':
 
@@ -147,15 +164,25 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                                                           False)
         if export_prediction_file:
             prediction_path = config['Prediction']['prediction_file_path']
+        
+        logger.info("Predicting...")
+        logger.info("Total number of test examples: {}".format(len(reader)))
     
     # Load options for TensorFlow
     run_tfdbg = config.get('TensorFlow', {}).get('run_TFDBG', False)
+
+    # Log the breakdown of examples by class
+    group_by = config.get('Input', {}).get('label_names')
+    logger.info("Number of examples by class: {}".format(
+        reader.num_examples(group_by=group_by)))
     
     # Define input function for TF Estimator
-    def input_fn(reader, output_names, output_dtypes, label_names=None,
-                 shuffle=False, shuffle_args=None, batch=False,
-                 batch_args=None, prefetch=False, prefetch_args=None): 
-        dataset = tf.data.Dataset.from_generator(reader, output_dtypes)
+    def input_fn(generator, output_names, output_dtypes, indices=None,
+                 label_names=None, shuffle=False, shuffle_args=None,
+                 batch=False, batch_args=None, prefetch=False,
+                 prefetch_args=None):
+        dataset = tf.data.Dataset.from_generator(generator, output_dtypes)#,
+                                                 #args=(indices,))
         if shuffle:
             if shuffle_args is None: shuffle_args = {}
             dataset = dataset.shuffle(**shuffle_args)
@@ -298,27 +325,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                 train_op=train_op,
                 eval_metric_ops=eval_metric_ops)
 
-    # Log information on number of training and validation events, or test
-    # events, depending on the mode
-    batch_size = config['Input']['batch_args']['batch_size']
-    logger.info("Batch size: {}".format(batch_size))
-    if mode == 'train':
-        logger.info("Training and evaluating...")
-        logger.info("Total number of training events: {}".format(
-                    len(training_reader))
-        logger.info("Total number of validation events: {}".format(
-                    len(validation_reader)))
-        logger.info("Number of training steps per epoch: {}".format(
-                    int(len(training_reader) / batch_size)))
-        logger.info("Number of training steps until each validation: {}".format(
-                    num_training_steps_per_validation))
-    elif mode == 'predict':
-        logger.info("Predicting...")
-        logger.info("Total number of test events: {}".format(len(reader)))
-
-    # Log the breakdown of examples by class
-    data_loader.log_class_breakdown(logger)
-
     estimator = tf.estimator.Estimator(
             model_fn, 
             model_dir=model_dir, 
@@ -337,10 +343,12 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         num_validations_remaining = num_validations
         while train_forever or num_validations_remaining:
             estimator.train(
-                    lambda: input_fn(training_reader, **config['Input']),
+                    lambda: input_fn(reader.generator,
+                        indices=training_indices, **config['Input']),
                     steps=num_training_steps_per_validation, hooks=hooks)
             estimator.evaluate(
-                    lambda: input_fn(validation_reader, **config['Input']),
+                    lambda: input_fn(reader.generator,
+                        indices=validation_indices, **config['Input']),
                     hooks=hooks, name='validation')
             if not train_forever:
                 num_validations_remaining -= 1
@@ -351,7 +359,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
         # Generate predictions and add to output
         predictions = estimator.predict(
-                lambda: input_fn(reader, **config['Input']),
+                lambda: input_fn(reader.generator, **config['Input']),
                 hooks=hooks)
         for event in predictions:
             for key, value in event.items():
@@ -429,6 +437,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
    
     with open(args.config_file, 'r') as config_file:
-        config = yaml.load(config_file)
+        config = yaml.safe_load(config_file)
 
     run_model(config, mode=args.mode, debug=args.debug, log_to_file=args.log_to_file)

@@ -171,11 +171,11 @@ Data:
         -
             name: 'NormalizeTelescopePositions'
             args: {'norm_x': 1.0, 'norm_y': 1.0, 'norm_z': 1.0}
-        -
-            path: '/path/to/my/module/'
-            module: 'my_transform'
-            name: 'MyTransform'
-            args: {'arg1': 'foo', 'arg2': 3.14}
+#       -
+#           path: '/path/to/my/module/'
+#           module: 'my_transform'
+#           name: 'MyTransform'
+#           args: {'arg1': 'foo', 'arg2': 3.14}
 
     # Whether to validate that the shape and dtype of the processed data
     # matches the example description.
@@ -240,7 +240,7 @@ Model:
     #   - {module: 'variable_input_model', function: 'variable_input_model'}:
     #       array model feeding combined outputs of a CNN for each
     #       telescope into a CNN network head
-    model: {module: 'cnn_rnn', function: 'cnn_rnn_model'}
+    model: {module: 'single_tel', function: 'single_tel_model'}
 
     # The options in this section are combined with the dataset metadata
     # and passed as a dictionary called "params" to the model function.
