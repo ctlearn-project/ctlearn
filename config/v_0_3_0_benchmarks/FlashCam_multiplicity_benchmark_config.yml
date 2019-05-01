@@ -1,0 +1,230 @@
+Logging:
+    model_directory: '/data/users/tjark/logs/test/'
+    scripts_directory: '/home/tjark/test/ctlearn/scripts/'
+Data:
+    format: 'HDF5'
+    file_list: '/home/tjark/prototype_files_class_balanced.txt'
+    Loading:
+        merge_tel_types: True
+        validation_split: 0.1
+        seed: 1234
+    Input:
+        prefetch: true
+        prefetch_buffer_size: 1
+        map: true
+        num_parallel_calls: 2
+        shuffle: true
+        shuffle_buffer_size: 10000
+Image Mapping:
+    interpolation_image_shape:
+        'LSTCam':
+            - 110
+            - 110
+            - 1
+        'FlashCam':
+            - 112
+            - 112
+            - 1
+        'NectarCam':
+            - 110
+            - 110
+            - 1
+        'SCTCam':
+            - 120
+            - 120
+            - 1
+        'DigiCam':
+            - 96
+            - 96
+            - 1
+        'CHEC':
+            - 48
+            - 48
+            - 1
+        'ASTRICam':
+            - 56
+            - 56
+            - 1
+    padding:
+        'LSTCam': 2
+        'FlashCam': 1
+        'NectarCam': 2
+        'SCTCam': 4
+        'DigiCam': 1
+        'ASTRICam': 0
+        'CHEC': 0
+        'VERITAS': 1
+Model:
+    model_directory: '/home/tjark/ctlearn/ctlearn/default_models/'
+    Model Parameters:
+        single_tel:
+            # Required dict with keys 'module' and 'function' & string values.
+            # Module and function for image classification network.
+            # Valid options:
+            #   - {module: 'basic', function: 'conv_block'}
+            network: {module: 'basic', function: 'conv_block'}
+
+            # Required string or null.
+            # Path to a checkpoint file or model directory from which to load
+            # pretrained network weights. If null, don't load any weights.
+            pretrained_weights: null
+
+        cnn_rnn:
+            # Required dict with keys 'module' and 'function' & string values.
+            # Module and function for single telescope CNN.
+            # Valid options:
+            #   - {module: 'basic', function: 'conv_block'}
+            cnn_block: {module: 'basic', function: 'conv_block'}
+            
+            # Required string or null.
+            # Path to a checkpoint file or model directory from which to load
+            # pretrained CNN block weights. If null, don't load any weights.
+            pretrained_weights: null
+            
+            # Optional float. Default: 0.5
+            # Dropout rate of dropout layers. 
+            dropout_rate: 0.5
+
+        basic:
+            conv_block:
+                
+                # Required dictionary with keys 'size' and 'strides' and
+                # integer values, or null.
+                # Max pool size and strides. If null, don't perform any pooling.
+                max_pool: {size: 2, strides: 2}
+                
+                # Required integer or null.
+                # Number of output filters of a final 1x1 convolutional layer.
+                # If null, don't include this bottleneck layer.
+                bottleneck: null
+                
+                # Optional Boolean. Default: false
+                # Whether to include a batch normalization layer after each
+                # convolutional layer. Exercise caution when using with
+                # array-level models.
+                batchnorm: false
+
+Training:
+    num_validations: 15
+    num_training_steps_per_validation: 2500
+    Hyperparameters:
+        optimizer: 'Adam'
+        adam_epsilon: 1.0e-8
+        scale_learning_rate: false
+        apply_class_weights: true
+        variables_to_train: null
+
+Prediction:
+    true_labels_given: true
+    export_as_file: true
+    prediction_file_path: '/home/tjark/predictions.csv'
+
+TensorFlow:
+    # Optional Boolean. Default: false
+    # Whether to run TensorFlow debugger.
+    run_TFDBG: false
+
+Multiple Configurations Settings:
+    # Required string.
+    # Path to file to save configuration combination for each run for reference.
+    run_combinations_path: '/data/users/tjark/logs/test/run_combinations.yml'
+    num_grouped_range_values: 15
+
+Multiple Configurations Values:
+    min_num_tels:
+        config: ['Data', 'Loading', 'min_num_tels']
+        value_type: 'grouped'
+        values:
+            mult2: 2
+            mult3: 3
+            mult4: 4
+    example_type:
+        config: ['Data', 'Loading', 'example_type']
+        value_type: 'grouped'
+        values:
+            cnn_rnn: 'array'
+    sorting:
+        config: ['Data', 'Processing', 'sorting']
+        value_type: 'grouped'
+        values:
+            cnn_rnn: 'size'
+    model:
+        config: ['Model', 'model']
+        value_type: 'grouped'
+        values:
+            cnn_rnn:
+                module: 'cnn_rnn'
+                function: 'cnn_rnn_model'
+    learning_rate:
+        config: ['Training', 'Hyperparameters', 'base_learning_rate']
+        value_type: 'grouped'
+        values:
+            cnn_rnn: 0.0001
+    batch_size:
+        config: ['Data', 'Input', 'batch_size']
+        value_type: 'grouped'
+        values:
+            cnn_rnn: 16
+    tel_type:
+        config: ['Data', 'Loading', 'selected_tel_types']
+        value_type: 'grouped'
+        values:
+            FlashCam: ['MST:FlashCam']
+    camera_types:
+        config: ['Image Mapping', 'camera_types']
+        value_type: 'grouped'
+        values:
+            FlashCam: ['FlashCam']
+    hex_conversion_algorithm:
+        config: ['Image Mapping', 'hex_conversion_algorithm']
+        value_type: 'grouped'
+        values:
+            oversampling:
+                'LSTCam': 'oversampling'
+                'FlashCam': 'oversampling'
+                'NectarCam': 'oversampling'
+                'SCTCam': 'oversampling'
+                'DigiCam': 'oversampling'
+                'ASTRICam': 'oversampling'
+                'CHEC': 'oversampling'
+            rebinning:
+                'LSTCam': 'rebinning'
+                'FlashCam': 'rebinning'
+                'NectarCam': 'rebinning'
+                'SCTCam': 'rebinning'
+                'DigiCam': 'rebinning'
+                'ASTRICam': 'rebinning'
+                'CHEC': 'rebinning'
+            nearest_interpolation:
+                'LSTCam': 'nearest_interpolation'
+                'FlashCam': 'nearest_interpolation'
+                'NectarCam': 'nearest_interpolation'
+                'SCTCam': 'nearest_interpolation'
+                'DigiCam': 'nearest_interpolation'
+                'ASTRICam': 'nearest_interpolation'
+                'CHEC': 'nearest_interpolation'
+            bilinear_interpolation:
+                'LSTCam': 'bilinear_interpolation'
+                'FlashCam': 'bilinear_interpolation'
+                'NectarCam': 'bilinear_interpolation'
+                'SCTCam': 'bilinear_interpolation'
+                'DigiCam': 'bilinear_interpolation'
+                'ASTRICam': 'bilinear_interpolation'
+                'CHEC': 'bilinear_interpolation'
+            bicubic_interpolation:
+                'LSTCam': 'bicubic_interpolation'
+                'FlashCam': 'bicubic_interpolation'
+                'NectarCam': 'bicubic_interpolation'
+                'SCTCam': 'bicubic_interpolation'
+                'DigiCam': 'bicubic_interpolation'
+                'ASTRICam': 'bicubic_interpolation'
+                'CHEC': 'bicubic_interpolation'
+    layers:
+        config: ['Model', 'Model Parameters', 'basic', 'conv_block', 'layers']
+        value_type: 'grouped'
+        values:
+            FlashCam:
+                - {filters: 32, kernel_size: 3}
+                - {filters: 32, kernel_size: 3}
+                - {filters: 64, kernel_size: 3}
+                - {filters: 128, kernel_size: 3}
