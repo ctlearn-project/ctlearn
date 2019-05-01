@@ -970,7 +970,7 @@ class ImageMapper():
                 ImageMapper.__get_pos_from_h5(tel_table, camera_type=camera_type, write=True)
 
     def __read_pix_pos_files(self, camera_type):
-        if camtype in self.num_pixels.keys():
+        if camera_type in self.num_pixels.keys():
             #infile = "pixel_pos_files/{}_pos.npy".format(camera_type)
             infile = os.path.join(os.path.dirname(__file__), "pixel_pos_files/{}_pos.npy".format(camera_type))
             return np.load(infile)
