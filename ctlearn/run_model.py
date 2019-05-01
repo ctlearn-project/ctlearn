@@ -2,20 +2,18 @@ import argparse
 from collections import OrderedDict
 import importlib
 import logging
+import math
 import os
 from pprint import pformat
 import sys
 import time
 
-import yaml
 import pkg_resources
-
 import tensorflow as tf
 from tensorflow.python import debug as tf_debug
+import yaml
 
-from ctlearn.image_mapping import ImageMapper
-from ctlearn.data_loading import DataLoader, HDF5DataLoader
-from ctlearn.data_processing import DataProcessor
+from dl1datahandler.reader import DL1DataReader
 
 # Disable Tensorflow info and warning messages (not error messages)
 #os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -64,6 +62,9 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     logger.debug(pformat(config))
 
     logger.info("Logging has been correctly set up")
+
+    # Create params dictionary that will be passed to the model_fn
+    params = {}
     
     # Load options to specify the model
     try:
@@ -78,147 +79,104 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     model = getattr(model_module, config['Model']['model']['function'])
     model_type = config['Data'].get('Loading', {}).get('example_type', 'array')
     
-    model_hyperparameters = config['Model'].get('Model Parameters', {})
-    model_hyperparameters['model_directory'] = model_directory
+    params['model'] = config['Model'].get('Model Parameters', {})
+    params['model']['model_directory'] = model_directory
 
-    # Load options related to the data format and location
-    data_format = config['Data']['format']
-    data_files = []
-    with open(config['Data']['file_list']) as f:
-        for line in f:
-            line = line.strip()
-            if line and line[0] != "#":
-                data_files.append(line)
+    # Parse file list
+    if isinstance(config['Data']['file_list'], str):
+        data_files = []
+        with open(config['Data']['file_list']) as f:
+            for line in f:
+                line = line.strip()
+                if line and line[0] != "#":
+                    data_files.append(line)
+        config['Data']['file_list'] = data_files
+    if not isinstance(config['Data']['file_list'], list):
+        raise ValueError("Invalid file list '{}'. "
+                         "Must be list or path to file".format(
+                             config['Data']['file_list']))
 
-    # Load options related to image mapping
-    image_mapping_settings = config.get('Image Mapping', {})
-    if 'use_peak_times' in config['Data']['Loading']:
-        image_mapping_settings['use_peak_times'] = config['Data']['Loading']['use_peak_times']
-    else:
-        image_mapping_settings['use_peak_times'] = False
+    # Parse list of Transforms
+    transforms = []
+    for t in config['Data']['transforms']:
+        if 'path' in t and t['path'] not in sys.path:
+            sys.path.append(t['path'])
+        module_name = t.get('module', 'dl1datahandler.processor')
+        module = importlib.import_module(module_name)
+        transform = getattr(module, t['name'])(**t.get('args', {}))
+        transforms.append(transform)
+    config['Data']['transforms'] = transforms
 
-    # Load options related to data loading
-    if mode == "train":
-        data_loader_mode = "train"
-    elif mode == "predict":
-        data_loader_mode = "test"
+    # Convert interpolation image shapes from lists to tuples, if present
+    if 'interpolation_image_shape' in config['Data'].get('mapping_settings',
+                                                         {}):
+        config['Data']['mapping_settings']['interpolation_image_shape'] = {
+                k: tuple(l) for k, l in config['Data']['mapping_settings']['interpolation_image_shape']}
 
-    data_loading_settings = config['Data'].get('Loading', {})
+    # Create data reader
+    reader = DL1DataReader(file_list, **config['Data'])
+    params['example_description'] = reader.example_description
 
-    # Load options related to data processing
-    apply_processing = config['Data'].get('apply_processing', True)
-    data_processing_settings = config['Data'].get('Processing', {})
+    # Define format for TensorFlow dataset
+    output_names = [d['name'] for d in reader.example_description]
+    output_dtypes = (tf.as_dtype(d['dtype']) for d
+                     in reader.example_description)
 
-    # Load options related to data input
-    data_input_settings = config['Data']['Input']
-    if data_format == 'HDF5':
-        data_input_settings['map'] = True
+    # Load either training or prediction options
+    if mode == 'train':
 
-    # Load options related to training hyperparameters
-    training_hyperparameters = config['Training']['Hyperparameters']
-    training_hyperparameters['model_type'] = model_type
-   
-    # Load other options related to training 
-    num_validations = config['Training']['num_validations']
-    train_forever = False if num_validations != 0 else True
-    num_training_steps_per_validation = config['Training']['num_training_steps_per_validation']
+        params['training'] = config['Training']['Hyperparameters']
+        params['training']['model_type'] = model_type
+        num_validations = config['Training']['num_validations']
+        train_forever = False if num_validations != 0 else True
+        num_training_steps_per_validation = config['Training']['num_training_steps_per_validation']
+        
+        validation_split = config['Training']['validation_split']
+        if not 0.0 < validation_split < 1.0:
+            raise ValueError("Invalid validation split: {}. "
+                             "Must be between 0.0 and 1.0".format(
+                                 validation_split))
+        num_validation_examples = math.ceil(self.validation_split*len(reader))
+        training_reader = reader[:num_validation_examples]
+        validation_reader = reader[num_validation_examples:]
 
-    # Load options related to prediction only if needed
-    if mode == 'predict':
+    elif mode == 'predict':
+
         true_labels_given = config['Prediction']['true_labels_given']
-        export_prediction_file = config['Prediction'].get('export_as_file', False)
+        export_prediction_file = config['Prediction'].get('export_as_file',
+                                                          False)
         if export_prediction_file:
             prediction_path = config['Prediction']['prediction_file_path']
-        # Don't allow parallelism in predict mode. This can lead to errors
-        # when reading from too many open files at once.
-        data_input_settings['num_parallel_calls'] = 1
     
     # Load options for TensorFlow
     run_tfdbg = config.get('TensorFlow', {}).get('run_TFDBG', False)
     
-    # Create data processor
-    if apply_processing:
-        logger.info("Creating DataProcessor...")
-        data_processor = DataProcessor(
-                image_mapper=ImageMapper(**image_mapping_settings),
-                **data_processing_settings)
-    else: data_processor = None
-
-    # Define data loading functions
-    if data_format == 'HDF5':
-        logger.info("Creating HDF5DataLoader...")
-        data_loader = HDF5DataLoader(
-                data_files,
-                mode=data_loader_mode,
-                data_processor=data_processor,
-                image_mapper=ImageMapper(**image_mapping_settings),
-                **data_loading_settings)
-
-        # Define format for Tensorflow dataset
-        # Build dataset from generator returning (HDF5_filename, index) pairs
-        # and a load_data function which maps (HDF5_filename, index) pairs
-        # to full training examples (images and labels)
-        data_input_settings['generator_output_types'] = tuple([tf.as_dtype(dtype) for dtype in data_loader.generator_output_dtypes])
-        data_input_settings['map'] = True
-        map_fn_output_dtypes = [tf.as_dtype(dtype) for dtype in data_loader.map_fn_output_dtypes]
-        data_input_settings['map_func'] = lambda *x: tuple(tf.py_func(data_loader.get_example,
-            x, data_loader.map_fn_output_dtypes))
-        data_input_settings['output_names'] = data_loader.output_names
-        data_input_settings['output_is_label'] = data_loader.output_is_label
-
-        # Get data generators returning (filename,index) pairs from data files 
-        # by applying cuts and splitting into training and validation
-        if mode == 'train':
-            training_generator, validation_generator, class_weights = data_loader.get_example_generators()
-        elif mode == 'predict':
-            test_generator, class_weights = data_loader.get_example_generators()
-
-        training_hyperparameters['class_weights'] = class_weights
-
-    else:
-        raise ValueError("Invalid data format: {}".format(data_format))
-
-
     # Define input function for TF Estimator
-    def input_fn(generator, settings): 
-        # NOTE: Dataset.from_generator takes a callable (i.e. a generator
-        # function / function returning a generator) not a python generator
-        # object. To get the generator object from the function (i.e. to
-        # measure its length), the function must be called (i.e. generator())       
-        dataset = tf.data.Dataset.from_generator(generator,
-                settings['generator_output_types'])
-        if settings['shuffle']:
-            dataset = dataset.shuffle(settings['shuffle_buffer_size'])
-        if settings['map']:
-            dataset = dataset.map(settings['map_func'],
-                    num_parallel_calls=settings['num_parallel_calls'])
-        dataset = dataset.batch(settings['batch_size'])
-        if settings['prefetch']:
-            dataset = dataset.prefetch(settings['prefetch_buffer_size'])
+    def input_fn(reader, output_names, output_dtypes, label_names=None,
+                 shuffle=False, shuffle_args=None, batch=False,
+                 batch_args=None, prefetch=False, prefetch_args=None): 
+        dataset = tf.data.Dataset.from_generator(reader, output_dtypes)
+        if shuffle:
+            if shuffle_args is None: shuffle_args = {}
+            dataset = dataset.shuffle(**shuffle_args)
+        if batch:
+            if batch_args is None: batch_args = {}
+            dataset = dataset.batch(**batch_args)
+        if prefetch:
+            if prefetch_args is None: prefetch_args = {}
+            dataset = dataset.prefetch(**prefetch_args)
     
         iterator = dataset.make_one_shot_iterator()
 
-        # Return a batch of features and labels. For example, for an
-        # array-level network the features are images, triggers, and telescope
-        # positions, and the labels are the gamma-hadron labels
+        # Return a batch of features and labels
         example = iterator.get_next()
 
         features, labels = {}, {}        
-        for tensor, name, is_label in zip(example, settings['output_names'], settings['output_is_label']):
-            if is_label:
-                labels[name] = tensor
-            else:
-                features[name] = tensor
+        for tensor, name in zip(example, output_names):
+            dic = labels if name in label_names else features
+            dic[name] = tensor
 
         return features, labels
-
-    # Merge dictionaries for passing to the model function
-    metadata = data_loader.get_metadata()
-
-    params = {
-            'model': {**model_hyperparameters, **metadata},
-            'training': {**training_hyperparameters, **metadata}
-            }
 
     # Define model function with model, mode (train/predict),
     # metrics, optimizer, learning rate, etc.
@@ -342,23 +300,21 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     # Log information on number of training and validation events, or test
     # events, depending on the mode
-    logger.info("Batch size: {}".format(data_input_settings['batch_size']))
+    batch_size = config['Input']['batch_args']['batch_size']
+    logger.info("Batch size: {}".format(batch_size))
     if mode == 'train':
-        num_training_events = len(list(training_generator()))
-        num_validation_events = len(list(validation_generator()))
         logger.info("Training and evaluating...")
         logger.info("Total number of training events: {}".format(
-            num_training_events))
+                    len(training_reader))
         logger.info("Total number of validation events: {}".format(
-            num_validation_events))
-        logger.info("Number of training steps per epoch: {}".format(int(
-            num_training_events/data_input_settings['batch_size'])))
-        logger.info("Number of training steps before each validation: {}".format(
-            num_training_steps_per_validation))
+                    len(validation_reader)))
+        logger.info("Number of training steps per epoch: {}".format(
+                    int(len(training_reader) / batch_size)))
+        logger.info("Number of training steps until each validation: {}".format(
+                    num_training_steps_per_validation))
     elif mode == 'predict':
-        num_test_events = len(list(test_generator()))
         logger.info("Predicting...")
-        logger.info("Total number of test events: {}".format(num_test_events))
+        logger.info("Total number of test events: {}".format(len(reader)))
 
     # Log the breakdown of examples by class
     data_loader.log_class_breakdown(logger)
@@ -381,11 +337,11 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         num_validations_remaining = num_validations
         while train_forever or num_validations_remaining:
             estimator.train(
-                    lambda: input_fn(training_generator, data_input_settings),
+                    lambda: input_fn(training_reader, **config['Input']),
                     steps=num_training_steps_per_validation, hooks=hooks)
             estimator.evaluate(
-                    lambda: input_fn(validation_generator,
-                        data_input_settings), hooks=hooks, name='validation')
+                    lambda: input_fn(validation_reader, **config['Input']),
+                    hooks=hooks, name='validation')
             if not train_forever:
                 num_validations_remaining -= 1
 
@@ -395,7 +351,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
         # Generate predictions and add to output
         predictions = estimator.predict(
-                lambda: input_fn(test_generator, data_input_settings),
+                lambda: input_fn(reader, **config['Input']),
                 hooks=hooks)
         for event in predictions:
             for key, value in event.items():
@@ -406,7 +362,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         
         # Get true labels and add to prediction output if available
         if true_labels_given:
-            features, labels = input_fn(test_generator, data_input_settings)
+            features, labels = input_fn(reader, **config['Input'])
             with tf.Session() as sess:
                 while True:
                     try:
@@ -453,7 +409,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
-            description=("Train/Predict with a ctalearn model."))
+            description=("Train/Predict with a CTLearn model."))
     parser.add_argument(
             '--mode',
             default="train",
@@ -476,4 +432,3 @@ if __name__ == "__main__":
         config = yaml.load(config_file)
 
     run_model(config, mode=args.mode, debug=args.debug, log_to_file=args.log_to_file)
-
