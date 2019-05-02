@@ -48,6 +48,42 @@ def setup_logging(config, log_dir, debug, log_to_file):
     
     return logger
 
+def compute_class_weights(labels, num_class_examples):
+    logger = logging.getLogger()
+    class_weights = []
+    total_num = sum(num_class_examples.values())
+    logger.info("Computing class weights...")
+    for idx, class_name in enumerate(labels['class_label']):
+        try:
+            num = num_class_examples[(idx,)]
+            class_inverse_frac = total_num / num
+            class_weights.append(class_inverse_frac)
+        except KeyError:
+            logger.warning("Class '{}' has no examples, unable to "
+                           "calculate class weights".format(class_name))
+            class_weights = [1.0 for l in labels['class_label']]
+            break
+    logger.info("Class weights: {}".format(class_weights))
+    return class_weights
+ 
+def log_examples(reader, indices, labels, subset_name):
+    logger = logging.getLogger()
+    logger.info("Examples for " + subset_name + ':')
+    logger.info("  Total number: {}".format(len(indices)))
+    label_list = list(labels)
+    num_class_examples = reader.num_examples(group_by=label_list,
+                                             example_indices=indices)
+    logger.info("  Breakdown by " + ', '.join(label_list) + ':')
+    for cls, num in num_class_examples.items():
+        names = []
+        for label, idx in zip(label_list, cls):
+            # Value if regression label, else class name if class label
+            name = str(idx) if labels[label] is None else labels[label][idx]
+            names.append(name)
+        logger.info("    " + ', '.join(names) + ": {}".format(num))
+    logger.info('')
+    return num_class_examples
+
 def run_model(config, mode="train", debug=False, log_to_file=False):
 
     # Load options relating to logging and checkpointing
@@ -129,37 +165,38 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     # Load either training or prediction options
     # and log information about the data set
+    indices = list(range(len(reader)))
+    labels = config['Model'].get('label_names', {})
+    log_examples(reader, indices, labels, 'total dataset')
+    
     batch_size = config['Input'].get('batch_args', {}).get('batch_size', 1)
     logger.info("Batch size: {}".format(batch_size))
 
     if mode == 'train':
 
-        params['training'] = config['Training']['Hyperparameters']
+        params['training'] = config['Training']
         params['training']['model_type'] = model_type
-        num_validations = config['Training']['num_validations']
-        train_forever = False if num_validations != 0 else True
-        num_training_steps_per_validation = config['Training']['num_training_steps_per_validation']
         
         validation_split = config['Training']['validation_split']
         if not 0.0 < validation_split < 1.0:
             raise ValueError("Invalid validation split: {}. "
                              "Must be between 0.0 and 1.0".format(
                                  validation_split))
-        num_validation_examples = math.ceil(validation_split * len(reader))
-        num_training_examples = len(reader) - num_validation_examples
-        indices = list(range(len(reader)))
+        num_training_examples = math.floor((1 - validation_split) * len(reader))
         training_indices = indices[:num_training_examples]
         validation_indices = indices[num_training_examples:]
         
         logger.info("Training and evaluating...")
-        logger.info("Total number of training examples: {}".format(
-                    num_training_examples))
-        logger.info("Total number of validation examples: {}".format(
-                    num_validation_examples))
+        num_class_examples = log_examples(reader, training_indices,
+                                          labels, 'training')
+        log_examples(reader, validation_indices, labels, 'validation')
         logger.info("Number of training steps per epoch: {}".format(
                     int(num_training_examples / batch_size)))
         logger.info("Number of training steps between validations: {}".format(
-                    num_training_steps_per_validation))
+                    config['Training']['num_training_steps_per_validation']))
+        if config['Training']['apply_class_weights']:
+            class_weights = compute_class_weights(labels, num_class_examples)
+            params['training']['class_weights'] = class_weights
 
     elif mode == 'predict':
 
@@ -170,21 +207,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             prediction_path = config['Prediction']['prediction_file_path']
         
         logger.info("Predicting...")
-        logger.info("Total number of test examples: {}".format(len(reader)))
     
-    # Log the breakdown of examples by label
-    labels = config['Model'].get('label_names', {})
-    label_list = list(labels)
-    num_class_examples = reader.num_examples(group_by=label_list)
-    logger.info("Breakdown of examples by " + ', '.join(label_list) + ':')
-    for cls, num in num_class_examples.items():
-        names = []
-        for label, idx in zip(label_list, cls):
-            # Value if regression label, else class name if class label
-            name = str(idx) if labels[label] is None else labels[label][idx]
-            names.append(name)
-        logger.info("  " + ', '.join(names) + ": {}".format(num))
-
     # Load options for TensorFlow
     run_tfdbg = config.get('TensorFlow', {}).get('run_TFDBG', False)
 
@@ -246,14 +269,12 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                 name="true_classes")
 
         # Get class weights
-        # TODO: Implement class weights using the DL1DH num_examples method
-        #if training_params['apply_class_weights']:
-        #    class_weights = tf.constant(training_params['class_weights'],
-        #            dtype=tf.float32, name="class_weights") 
-        #    weights = tf.gather(class_weights, true_classes, name="weights")
-        #else:
-        #    weights = 1.0
-        weights = 1.0
+        if training_params['apply_class_weights']:
+            class_weights = tf.constant(training_params['class_weights'],
+                    dtype=tf.float32, name="class_weights") 
+            weights = tf.gather(class_weights, true_classes, name="weights")
+        else:
+            weights = 1.0
 
         num_classes = len(params['model']['label_names']['class_label'])
         onehot_labels = tf.one_hot(indices=true_classes, depth=num_classes)
@@ -350,12 +371,15 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     if mode == 'train':
 
         # Train and evaluate the model
+        num_validations = config['Training']['num_validations']
+        steps = config['Training']['num_training_steps_per_validation']
+        train_forever = False if num_validations != 0 else True
         num_validations_remaining = num_validations
         while train_forever or num_validations_remaining:
             estimator.train(
                     lambda: input_fn(reader, training_indices,
                                      **config['Input']),
-                    steps=num_training_steps_per_validation, hooks=hooks)
+                    steps=steps, hooks=hooks)
             estimator.evaluate(
                     lambda: input_fn(reader, validation_indices,
                                      **config['Input']),

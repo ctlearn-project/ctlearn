@@ -372,34 +372,33 @@ Training:
     # on the validation set.
     num_training_steps_per_validation: 1000
 
-    Hyperparameters:
-        # Required string.
-        # Valid options: ['Adadelta', 'Adam', 'RMSProp', 'SGD']
-        # Optimizer function for training.
-        optimizer: 'Adam'
+    # Required string.
+    # Valid options: ['Adadelta', 'Adam', 'RMSProp', 'SGD']
+    # Optimizer function for training.
+    optimizer: 'Adam'
 
-        # Optional float. Required if optimizer is 'Adam', ignored otherwise.
-        # Epsilon parameter for the Adam optimizer.
-        adam_epsilon: 1.0e-8
+    # Optional float. Required if optimizer is 'Adam', ignored otherwise.
+    # Epsilon parameter for the Adam optimizer.
+    adam_epsilon: 1.0e-8
 
-        # Required integer.
-        # Base learning rate before scaling or annealing.
-        base_learning_rate: 0.001
+    # Required integer.
+    # Base learning rate before scaling or annealing.
+    base_learning_rate: 0.001
 
-        # Required Boolean.
-        # Whether to scale the learning rate inversely proportional to the
-        # number of triggered telescopes. Not used for single tel models.
-        scale_learning_rate: false
+    # Required Boolean.
+    # Whether to scale the learning rate inversely proportional to the
+    # number of triggered telescopes. Not used for single tel models.
+    scale_learning_rate: false
 
-        # Required Boolean.
-        # Whether to weight the loss to rebalance unequal classes.
-        apply_class_weights: false
+    # Required Boolean.
+    # Whether to weight the loss to rebalance unequal classes.
+    apply_class_weights: false
 
-        # Required string or null. If provided, train on only variables
-        # within the scope matching this name, freezing all others. This is
-        # useful when loading pretrained weights. If null, train on all
-        # trainable variables.
-        variables_to_train: null
+    # Required string or null. If provided, train on only variables
+    # within the scope matching this name, freezing all others. This is
+    # useful when loading pretrained weights. If null, train on all
+    # trainable variables.
+    variables_to_train: null
 
 Prediction:
     # Required Boolean if running in predict mode, ignored otherwise.
