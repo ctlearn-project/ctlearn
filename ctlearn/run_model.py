@@ -125,6 +125,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                                              in reader.example_description)
     config['Input']['output_shapes'] = tuple(tf.TensorShape(d['shape']) for d
                                              in reader.example_description)
+    config['Input']['label_names'] = config['Model'].get('label_names', {})
 
     # Load either training or prediction options
     # and log information about the data set
@@ -171,18 +172,25 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         logger.info("Predicting...")
         logger.info("Total number of test examples: {}".format(len(reader)))
     
+    # Log the breakdown of examples by label
+    labels = config['Model'].get('label_names', {})
+    label_list = list(labels)
+    num_class_examples = reader.num_examples(group_by=label_list)
+    logger.info("Breakdown of examples by " + ', '.join(label_list) + ':')
+    for cls, num in num_class_examples.items():
+        names = []
+        for label, idx in zip(label_list, cls):
+            # Value if regression label, else class name if class label
+            name = str(idx) if labels[label] is None else labels[label][idx]
+            names.append(name)
+        logger.info("  " + ', '.join(names) + ": {}".format(num))
+
     # Load options for TensorFlow
     run_tfdbg = config.get('TensorFlow', {}).get('run_TFDBG', False)
 
-    # Log the breakdown of examples by class
-    group_by = config.get('Input', {}).get('label_names')
-    logger.info("Number of examples by class: {}".format(
-        reader.num_examples(group_by=group_by)))
-
     # Define input function for TF Estimator
     def input_fn(reader, indices, output_names, output_dtypes, output_shapes,
-                 label_names=None, seed=None, batch_size=1,
-                 prefetch_buffer_size=1):
+                 label_names, seed=None, batch_size=1, prefetch_buffer_size=1):
 
         def generator(indices):
             for idx in indices:
@@ -200,8 +208,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         example = iterator.get_next()
 
         features, labels = {}, {}
-        if label_names is None:
-            label_names = []
         for tensor, name in zip(example, output_names):
             dic = labels if name in label_names else features
             dic[name] = tensor
@@ -224,7 +230,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         predicted_classes = tf.cast(tf.argmax(classifier_values, axis=1),
                 tf.int32, name="predicted_classes")
         predictions['predicted_class'] = predicted_classes
-        for i, name in enumerate(params['model']['classification']['classes']):
+        for i, name in enumerate(params['model']['label_names']['class_label']):
             predictions[name] = classifier_values[:,i]
         
         # For predict mode, we're done
@@ -249,7 +255,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         #    weights = 1.0
         weights = 1.0
 
-        num_classes = len(params['model']['classification']['classes'])
+        num_classes = len(params['model']['label_names']['class_label'])
         onehot_labels = tf.one_hot(indices=true_classes, depth=num_classes)
 
         # compute cross-entropy loss
@@ -318,7 +324,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                 }
         
         # add class-wise accuracies
-        for i, name in enumerate(params['model']['classification']['classes']):
+        for i, name in enumerate(params['model']['label_names']['class_label']):
             weights = tf.cast(tf.equal(true_classes, tf.constant(i)), tf.int32)
             eval_metric_ops['accuracy_' + name] = tf.metrics.accuracy(
                     true_classes, predicted_classes, weights=weights)

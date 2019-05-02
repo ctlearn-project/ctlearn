@@ -9,7 +9,7 @@ def single_tel_model(features, model_params, example_description, training):
     for (name, f), d in zip(features.items(), example_description):
         if name == 'image':
             telescope_data = tf.reshape(f, [-1, *d['shape']])
-    num_classes = len(model_params['classification']['classes'])
+    num_classes = len(model_params['label_names']['class_label'])
 
     # Load neural network model
     sys.path.append(model_params['model_directory'])

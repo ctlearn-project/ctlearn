@@ -86,7 +86,7 @@ def variable_input_model(features, model_params, example_description, training):
                                        len(telescope_aux_inputs)],
                                       name='telescope_aux_inputs')
 
-    num_classes = len(model_params['classification']['classes'])
+    num_classes = len(model_params['label_names']['class_label'])
     
     # Split data by telescope by switching the batch and telescope dimensions
     # leaving width, length, and channel depth unchanged

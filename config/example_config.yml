@@ -187,10 +187,6 @@ Data:
 # Settings for the TensorFlow Estimator input_fn.
 Input:
 
-    # Names of the items in processed examples to be returned as labels.
-    # Optional list. Default: []
-    label_names: ['class_label']
-
     # Random seed for shuffling the dataset.
     # Optional integer. Default: use default TensorFlow behavior
     seed: null
@@ -226,11 +222,14 @@ Model:
     #       telescope into a CNN network head
     model: {module: 'single_tel', function: 'single_tel_model'}
 
-    # Parameters for training a classification model.
-    classification:
-        # List of class names in order of class label (0 to n-1).
-        # Required list of strings.
-        classes:
+    # Dictionary of labels where the keys are the label names.
+    # For a classification label, the value is a list of class names
+    # in order of class label (0 to n-1).
+    # For a regression label, the value is null.
+    # Optional dictionary with string keys and values either null or
+    # a list of strings. Default: {}
+    label_names:
+        class_label:
             - 'proton'
             - 'gamma'
 

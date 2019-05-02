@@ -18,7 +18,7 @@ def cnn_rnn_model(features, model_params, example_description, training):
         if name == 'trigger':
             telescope_triggers = tf.cast(f, tf.float32)
 
-    num_classes = len(model_params['classification']['classes'])
+    num_classes = len(model_params['label_names']['class_label'])
     
     # Transpose telescope_data from [batch_size,num_tel,length,width,channels]
     # to [num_tel,batch_size,length,width,channels].
