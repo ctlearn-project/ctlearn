@@ -121,6 +121,8 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                                        in reader.example_description]
     config['Input']['output_dtypes'] = tuple(tf.as_dtype(d['dtype']) for d
                                              in reader.example_description)
+    config['Input']['output_shapes'] = tuple(tf.TensorShape(d['shape']) for d
+                                             in reader.example_description)
 
     # Load either training or prediction options
     # and log information about the data set
@@ -142,7 +144,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                                  validation_split))
         num_validation_examples = math.ceil(validation_split * len(reader))
         num_training_examples = len(reader) - num_validation_examples
-        indices = range(len(reader))
+        indices = list(range(len(reader)))
         training_indices = indices[:num_training_examples]
         validation_indices = indices[num_training_examples:]
         
@@ -174,14 +176,14 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     group_by = config.get('Input', {}).get('label_names')
     logger.info("Number of examples by class: {}".format(
         reader.num_examples(group_by=group_by)))
-    
+
     # Define input function for TF Estimator
-    def input_fn(generator, output_names, output_dtypes, indices=None,
-                 label_names=None, shuffle=False, shuffle_args=None,
-                 batch=False, batch_args=None, prefetch=False,
-                 prefetch_args=None):
-        dataset = tf.data.Dataset.from_generator(generator, output_dtypes)#,
-                                                 #args=(indices,))
+    def input_fn(generator, output_names, output_dtypes, output_shapes,
+                 indices=None, label_names=None, shuffle=False,
+                 shuffle_args=None, batch=False, batch_args=None,
+                 prefetch=False, prefetch_args=None):
+        dataset = tf.data.Dataset.from_generator(generator, output_dtypes,
+                                                 output_shapes, args=(indices,))
         if shuffle:
             if shuffle_args is None: shuffle_args = {}
             dataset = dataset.shuffle(**shuffle_args)
