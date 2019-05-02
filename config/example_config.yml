@@ -22,11 +22,11 @@ Data:
     # Type of examples to load.
     # Optional string. Default: 'mono'
     # Valid options:
-    #   - 'mono': single images of one telescope type 
-    #   - 'stereo': events of one telescope type 
+    #   - 'mono': single images of one telescope type
+    #   - 'stereo': events of one telescope type
     #   - 'multi-stereo': events including multiple telescope types
     mode: 'mono'
-    
+
     # Telescope type or list thereof to load.
     # Optional string (mono or stereo) or list of strings (multi-stereo).
     # Default in mono or stereo mode: first telescope type in the dataset
@@ -52,7 +52,7 @@ Data:
     # telescopes of that telescope type if selected.
     selected_telescope_ids:
         'LST_LSTCam': [1, 2, 3, 4]
-        
+
     # PyTables cut condition to apply selection cuts to events.
     # Optional string. Default: don't apply any cuts
     # See https://www.pytables.org/usersguide/condition_syntax.html
@@ -90,12 +90,12 @@ Data:
     # 'FlashCam', 'HESS-I', 'HESS-II', 'LSTCam', 'MAGICCam', 'NectarCam',
     # 'SCTCam', and 'VERITAS'.
     mapping_settings:
-       
+
         # List of camera types to calculate mapping tables for.
         # Optional list of camera type strings.
         # Default: calculate mapping tables for all supported camera types
         camera_types: ['LSTCam']
-        
+
         # Algorithm to convert image vectors to rectangular arrays
         # Optional dictionary with string keys and string values.
         # Default: 'oversampling' for all camera types not in the dictionary
@@ -116,7 +116,7 @@ Data:
         #       cameras only)
         mapping_method:
             'LSTCam': 'bilinear_interpolation'
-        
+
         # Number of padding pixels to add around each edge of the mapped image.
         # A value of 1 will increase both the image height and width by 2, etc.
         # Optional dictionary with camera type string keys and integer values.
@@ -138,7 +138,7 @@ Data:
         # are lists of three integers: (<width>, <length>, <num_channels>)
         interpolation_image_shape:
             'LSTCam': [110, 110, 1]
-        
+
         # Explicitly set output grid points outside the camera to 0
         # when performing bilinear and bicubic interpolation.
         # Optional Boolean. Default: false
@@ -207,7 +207,7 @@ Model:
     # Optional string or null. Default if missing or null is to load
     # CTLearn default models directory: 'ctlearn/ctlearn/default_models/'
     # Path to directory containing model module.
-    model_directory: null #'/my/model/path/'
+    model_directory: null  # '/my/model/path/'
 
     # Required dictionary containing a module/function pair.
     # Module in model directory and function in module implementing the model.
@@ -358,7 +358,7 @@ Model Parameters:
         batchnorm_decay: 0.99
 
 Training:
-    
+
     # Optional float. Default: 0.1
     # Randomly chosen fraction of data to set aside for validation.
     validation_split: 0.1
