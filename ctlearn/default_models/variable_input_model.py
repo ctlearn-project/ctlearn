@@ -69,30 +69,24 @@ def combine_telescopes_as_feature_maps(telescope_outputs, telescope_aux_inputs,
 
     return array_features
 
-def variable_input_model(features, params, training):
+def variable_input_model(features, model_params, example_description, training):
    
     # Reshape inputs into proper dimensions
-    num_telescope_types = len(params['selected_telescope_types']) 
-    if not num_telescope_types == 1:
-        raise ValueError('Must use a single telescope type for Variable Input Model. Number used: {}'.format(num_telescope_types))
-    telescope_type = params['selected_telescope_types'][0]
-    camera_type = params['telescope_type_to_camera_type'][telescope_type]
-    image_width, image_length, image_depth = params['image_shapes'][camera_type]
-    num_telescopes = params['num_total_telescopes'][telescope_type]
-    num_aux_inputs = params['total_aux_params']
-    num_gamma_hadron_classes = params['num_classes']
-    
-    telescope_data = features['telescope_data']
-    telescope_data = tf.reshape(telescope_data, [-1, num_telescopes, 
-        image_width, image_length, image_depth], name="telescope_images")
-    
-    telescope_triggers = features['telescope_triggers']
-    telescope_triggers = tf.reshape(telescope_triggers, [-1, num_telescopes])
-    telescope_triggers = tf.cast(telescope_triggers, tf.float32, name="telescope_triggers")
-
-    telescope_aux_inputs = features['telescope_aux_inputs']
+    telescope_aux_inputs = []
+    for (name, f), d in zip(features.items(), example_description):
+        if name == 'image':
+            telescope_data = tf.reshape(f, [-1, *d['shape']])
+            num_telescopes = d['shape'][0]
+        if name == 'trigger':
+            telescope_triggers = tf.cast(f, tf.float32)
+        if name in ['x', 'y', 'z']:
+            telescope_aux_inputs.append(f)
     telescope_aux_inputs = tf.reshape(telescope_aux_inputs,
-            [-1, num_telescopes, num_aux_inputs], name="telescope_aux_inputs")
+                                      [-1, num_telescopes,
+                                       len(telescope_aux_inputs)],
+                                      name='telescope_aux_inputs')
+
+    num_classes = len(model_params['classification']['classes'])
     
     # Split data by telescope by switching the batch and telescope dimensions
     # leaving width, length, and channel depth unchanged
@@ -110,22 +104,22 @@ def variable_input_model(features, params, training):
     # logits are returned and fed into a classifier.
 
     # Load CNN block and network head models
-    sys.path.append(params['model_directory'])
+    sys.path.append(model_params['model_directory'])
     cnn_block_module = importlib.import_module(
-            params['variable_input_model']['cnn_block']['module'])
+            model_params['variable_input_model']['cnn_block']['module'])
     cnn_block = getattr(cnn_block_module,
-            params['variable_input_model']['cnn_block']['function'])
+            model_params['variable_input_model']['cnn_block']['function'])
     network_head_module = importlib.import_module(
-            params['variable_input_model']['network_head']['module'])
+            model_params['variable_input_model']['network_head']['module'])
     network_head = getattr(network_head_module,
-            params['variable_input_model']['network_head']['function'])
-    if params['variable_input_model']['telescope_combination'] == "vector":
+            model_params['variable_input_model']['network_head']['function'])
+    if model_params['variable_input_model']['telescope_combination'] == "vector":
         combine_telescopes = combine_telescopes_as_vectors
-    elif (params['variable_input_model']['telescope_combination'] ==
+    elif (model_params['variable_input_model']['telescope_combination'] ==
             "feature_maps"):
         combine_telescopes = combine_telescopes_as_feature_maps
     else:
-        raise ValueError("Invalid telescope combination: {}.".format(params['telescope_combination']))
+        raise ValueError("Invalid telescope combination: {}.".format(model_params['telescope_combination']))
     
     # Process the input for each telescope
     telescope_outputs = []
@@ -138,12 +132,12 @@ def variable_input_model(features, params, training):
         with tf.variable_scope("CNN_block", reuse=reuse):
             telescope_features = cnn_block(
                 tf.gather(telescope_data, telescope_index), 
-                params=params,
+                params=model_params,
                 training=training,
                 reuse=reuse)
 
-        if params['variable_input_model']['pretrained_weights']:
-            tf.contrib.framework.init_from_checkpoint(params['variable_input_model']['pretrained_weights'],{'CNN_block/':'CNN_block/'})
+        if model_params['variable_input_model']['pretrained_weights']:
+            tf.contrib.framework.init_from_checkpoint(model_params['variable_input_model']['pretrained_weights'],{'CNN_block/':'CNN_block/'})
 
         telescope_features = apply_trigger_dropout(telescope_features,
                 tf.gather(telescope_triggers, telescope_index, axis=1))
@@ -158,7 +152,9 @@ def variable_input_model(features, params, training):
    
     with tf.variable_scope("NetworkHead"):
         # Process the combined array features
-        logits = network_head(array_features, params=params,
+        out = network_head(array_features, params=model_params,
                 training=training)
+    
+    logits = tf.layers.dense(out, units=num_classes, name="logits")
 
     return logits
