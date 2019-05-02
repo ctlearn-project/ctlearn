@@ -460,7 +460,7 @@ Multiple Configurations Settings:
 #       selection and set to null for random selection.
 Multiple Configurations Values:
     learning_rate:
-        config: ['Training', 'Hyperparameters', 'base_learning_rate']
+        config: ['Training', 'base_learning_rate']
         value_type: 'range'
         values:
             lower_bound: 1.0e-6
@@ -469,21 +469,19 @@ Multiple Configurations Values:
             selection: 'random'
             num_values: null
     multiplicity_cut:
-        config: ['Data', 'Loading', 'min_num_tels']
+        config: ['Data', 'selection_string']
         value_type: 'list'
         values:
-            - 1
-            - 2
-            - 3
-            - 4
+            - 'mc_energy < 1.0'
+            - 'mc_energy >= 1.0'
     telescope_type:
-        config: ['Data', 'Loading', 'selected_tel_types']
+        config: ['Data', 'selected_telescope_type']
         value_type: 'grouped'
         values:
-            'LST:LSTCam': ['LST:LSTCam']
-            'MST:NectarCam': ['MST:NectarCam']
+            'LST:LSTCam': 'LST:LSTCam'
+            'MST:NectarCam': 'MST:NectarCam'
     selected_telescopes:
-        config: ['Data', 'Loading', 'selected_tel_ids']
+        config: ['Data', 'selected_telescope_ids']
         value_type: 'grouped'
         values:
             'LST:LSTCam': [1, 2, 3, 4]
@@ -499,8 +497,8 @@ Multiple Configurations Values:
                 module: 'variable_input_model'
                 function: 'variable_input_model'
     telescope_sorting:
-        config: ['Data', 'Processing', 'sorting']
+        config: ['Data', 'transforms']
         value_type: 'grouped'
         values:
-            CNN_RNN: 'size'
+            CNN_RNN: [{name: SortImages, args: {'order': 'size'}}]
             variable_input: null
