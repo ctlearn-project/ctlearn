@@ -191,35 +191,17 @@ Input:
     # Optional list. Default: []
     label_names: ['class_label']
 
-    # Whether to randomly shuffle the elements of the dataset.
-    # Optional Boolean. Default: false
-    shuffle: false
+    # Random seed for shuffling the dataset.
+    # Optional integer. Default: use default TensorFlow behavior
+    seed: null
 
-    # Arguments for shuffle.
-    # https://www.tensorflow.org/api_docs/python/tf/data/Dataset#shuffle
-    # Optional dictionary. Default: {}
-    shuffle_args:
-        buffer_size: 1000
+    # Number of consecutive examples to combine into a batch.
+    # Optional integer. Default: 1
+    batch_size: 32
 
-    # Whether to combine consecutive elements of the dataset into batches.
-    # Optional Boolean. Default: false
-    batch: false
-
-    # Arguments for batch.
-    # https://www.tensorflow.org/api_docs/python/tf/data/Dataset#batch
-    # Optional dictionary. Default: {}
-    batch_args:
-        batch_size: 64
-
-    # Whether to prefetch elements from this dataset.
-    # Optional Boolean. Default: false
-    prefetch: false
-
-    # Arguments for prefetch.
-    # https://www.tensorflow.org/api_docs/python/tf/data/Dataset#prefetch
-    # Optional dictionary. Default: {}
-    prefetch_args:
-        buffer_size: 8
+    # Maximum number of batches to be buffered when prefetching.
+    # Optional integer. Default: 1
+    prefetch_buffer_size: 8
 
 # Settings for the TensorFlow model. The options in this and the
 # Model Parameters section are passed to the Estimator model_fn

@@ -117,6 +117,8 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     params['example_description'] = reader.example_description
 
     # Define format for TensorFlow dataset
+    if 'Input' not in config:
+        config['Input'] = {}
     config['Input']['output_names'] = [d['name'] for d
                                        in reader.example_description]
     config['Input']['output_dtypes'] = tuple(tf.as_dtype(d['dtype']) for d
@@ -128,7 +130,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     # and log information about the data set
     batch_size = config['Input'].get('batch_args', {}).get('batch_size', 1)
     logger.info("Batch size: {}".format(batch_size))
-    
+
     if mode == 'train':
 
         params['training'] = config['Training']['Hyperparameters']
@@ -178,28 +180,28 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         reader.num_examples(group_by=group_by)))
 
     # Define input function for TF Estimator
-    def input_fn(generator, output_names, output_dtypes, output_shapes,
-                 indices=None, label_names=None, shuffle=False,
-                 shuffle_args=None, batch=False, batch_args=None,
-                 prefetch=False, prefetch_args=None):
+    def input_fn(reader, indices, output_names, output_dtypes, output_shapes,
+                 label_names=None, seed=None, batch_size=1,
+                 prefetch_buffer_size=1):
+
+        def generator(indices):
+            for idx in indices:
+                yield tuple(reader[idx])
+
         dataset = tf.data.Dataset.from_generator(generator, output_dtypes,
                                                  output_shapes, args=(indices,))
-        if shuffle:
-            if shuffle_args is None: shuffle_args = {}
-            dataset = dataset.shuffle(**shuffle_args)
-        if batch:
-            if batch_args is None: batch_args = {}
-            dataset = dataset.batch(**batch_args)
-        if prefetch:
-            if prefetch_args is None: prefetch_args = {}
-            dataset = dataset.prefetch(**prefetch_args)
+        dataset = dataset.shuffle(buffer_size=len(indices), seed=seed)
+        dataset = dataset.batch(batch_size)
+        dataset = dataset.prefetch(prefetch_buffer_size)
     
         iterator = dataset.make_one_shot_iterator()
 
         # Return a batch of features and labels
         example = iterator.get_next()
 
-        features, labels = {}, {}        
+        features, labels = {}, {}
+        if label_names is None:
+            label_names = []
         for tensor, name in zip(example, output_names):
             dic = labels if name in label_names else features
             dic[name] = tensor
@@ -338,19 +340,19 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         if not isinstance(hooks, list):
             hooks = []
         hooks.append(tf_debug.LocalCLIDebugHook())
-
+    
     if mode == 'train':
 
         # Train and evaluate the model
         num_validations_remaining = num_validations
         while train_forever or num_validations_remaining:
             estimator.train(
-                    lambda: input_fn(reader.generator,
-                        indices=training_indices, **config['Input']),
+                    lambda: input_fn(reader, training_indices,
+                                     **config['Input']),
                     steps=num_training_steps_per_validation, hooks=hooks)
             estimator.evaluate(
-                    lambda: input_fn(reader.generator,
-                        indices=validation_indices, **config['Input']),
+                    lambda: input_fn(reader, validation_indices,
+                                     **config['Input']),
                     hooks=hooks, name='validation')
             if not train_forever:
                 num_validations_remaining -= 1
@@ -361,7 +363,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
         # Generate predictions and add to output
         predictions = estimator.predict(
-                lambda: input_fn(reader.generator, **config['Input']),
+                lambda: input_fn(reader, indices, **config['Input']),
                 hooks=hooks)
         for event in predictions:
             for key, value in event.items():
