@@ -221,7 +221,9 @@ Input:
     prefetch_args:
         buffer_size: 8
 
-# Settings for the TensorFlow model.
+# Settings for the TensorFlow model. The options in this and the
+# Model Parameters section are passed to the Estimator model_fn
+# and the user's model function.
 Model:
 
     # Optional string or null. Default if missing or null is to load
@@ -242,129 +244,137 @@ Model:
     #       telescope into a CNN network head
     model: {module: 'single_tel', function: 'single_tel_model'}
 
-    # The options in this section are combined with the dataset metadata
-    # and passed as a dictionary called "params" to the model function.
-    # The config option 'model_directory' above is included in params as well.
-    # None of these options are accessed anywhere outside the model, so
-    # arbitrary options may be added here. This permits custom configuration
-    # of user-provided models.
-    # Below are listed the configuration options for the CTLearn included
-    # models, which are only accessed if using those models.
-    Model Parameters:
-        single_tel:
-            # Required dict with keys 'module' and 'function' & string values.
-            # Module and function for image classification network.
-            # Valid options:
-            #   - {module: 'basic', function: 'conv_block'}
-            network: {module: 'basic', function: 'conv_block'}
+    # Parameters for training a classification model.
+    classification:
+        # List of class names in order of class label (0 to n-1).
+        # Required list of strings.
+        classes:
+            - 'proton'
+            - 'gamma'
 
-            # Required string or null.
-            # Path to a checkpoint file or model directory from which to load
-            # pretrained network weights. If null, don't load any weights.
-            pretrained_weights: null
+# The options in this and the Model section are passed in a dictionary
+# called "params" to the model function.
+# The config option 'model_directory' above is included in params as well.
+# None of these options are accessed anywhere outside the model, so
+# arbitrary options may be added here. This permits custom configuration
+# of user-provided models.
+# Below are listed the configuration options for the CTLearn included
+# models, which are only accessed if using those models.
+Model Parameters:
+    single_tel:
+        # Required dict with keys 'module' and 'function' & string values.
+        # Module and function for image classification network.
+        # Valid options:
+        #   - {module: 'basic', function: 'conv_block'}
+        network: {module: 'basic', function: 'conv_block'}
 
-        cnn_rnn:
-            # Required dict with keys 'module' and 'function' & string values.
-            # Module and function for single telescope CNN.
-            # Valid options:
-            #   - {module: 'basic', function: 'conv_block'}
-            cnn_block: {module: 'basic', function: 'conv_block'}
+        # Required string or null.
+        # Path to a checkpoint file or model directory from which to load
+        # pretrained network weights. If null, don't load any weights.
+        pretrained_weights: null
 
-            # Required string or null.
-            # Path to a checkpoint file or model directory from which to load
-            # pretrained CNN block weights. If null, don't load any weights.
-            pretrained_weights: null
+    cnn_rnn:
+        # Required dict with keys 'module' and 'function' & string values.
+        # Module and function for single telescope CNN.
+        # Valid options:
+        #   - {module: 'basic', function: 'conv_block'}
+        cnn_block: {module: 'basic', function: 'conv_block'}
 
-            # Optional float. Default: 0.5
-            # Dropout rate of dropout layers.
-            dropout_rate: 0.5
+        # Required string or null.
+        # Path to a checkpoint file or model directory from which to load
+        # pretrained CNN block weights. If null, don't load any weights.
+        pretrained_weights: null
 
-        variable_input_model:
-            # Required dict with keys 'module' and 'function' & string values.
-            # Module and function for single telescope CNN.
-            # Valid options:
-            #   - {module: 'basic', function: 'conv_block'}
-            cnn_block: {module: 'basic', function: 'conv_block'}
+        # Optional float. Default: 0.5
+        # Dropout rate of dropout layers.
+        dropout_rate: 0.5
 
-            # Required string.
-            # Valid options:
-            #   - 'vector': Use for network heads expecting an input vector
-            #   - 'feature_maps': Use for networks heads expecting input as
-            #       a stack of feature maps as used for convolutional layers
-            telescope_combination: 'feature_maps'
+    variable_input_model:
+        # Required dict with keys 'module' and 'function' & string values.
+        # Module and function for single telescope CNN.
+        # Valid options:
+        #   - {module: 'basic', function: 'conv_block'}
+        cnn_block: {module: 'basic', function: 'conv_block'}
 
-            # Required dict with keys 'module' and 'function' & string values.
-            # Module and function for network head.
-            # Valid options:
-            #   - {module: 'basic', function: 'fc_head'}
-            #   - {module: 'basic', function: 'conv_head'}
-            network_head: {module: 'basic', function: 'conv_head'}
+        # Required string.
+        # Valid options:
+        #   - 'vector': Use for network heads expecting an input vector
+        #   - 'feature_maps': Use for networks heads expecting input as
+        #       a stack of feature maps as used for convolutional layers
+        telescope_combination: 'feature_maps'
 
-            # Required string or null.
-            # Path to a checkpoint file or model directory from which to load
-            # pretrained CNN block weights. If null, don't load any weights.
-            pretrained_weights: null
+        # Required dict with keys 'module' and 'function' & string values.
+        # Module and function for network head.
+        # Valid options:
+        #   - {module: 'basic', function: 'fc_head'}
+        #   - {module: 'basic', function: 'conv_head'}
+        network_head: {module: 'basic', function: 'conv_head'}
 
-        basic:
-            conv_block:
-                # Required list of dicts with keys 'filters' and 'kernel_size'
-                # with integer values.
-                # Filter dimension and kernel size for the CNN block
-                # convolutional layers.
-                layers:
-                    - {filters: 32, kernel_size: 3}
-                    - {filters: 64, kernel_size: 3}
-                    - {filters: 128, kernel_size: 3}
+        # Required string or null.
+        # Path to a checkpoint file or model directory from which to load
+        # pretrained CNN block weights. If null, don't load any weights.
+        pretrained_weights: null
 
-                # Required dictionary with keys 'size' and 'strides' and
-                # integer values, or null.
-                # Max pool size and strides. If null, don't perform any pooling.
-                max_pool: {size: 2, strides: 2}
+    basic:
+        conv_block:
+            # Required list of dicts with keys 'filters' and 'kernel_size'
+            # with integer values.
+            # Filter dimension and kernel size for the CNN block
+            # convolutional layers.
+            layers:
+                - {filters: 32, kernel_size: 3}
+                - {filters: 64, kernel_size: 3}
+                - {filters: 128, kernel_size: 3}
 
-                # Required integer or null.
-                # Number of output filters of a final 1x1 convolutional layer.
-                # If null, don't include this bottleneck layer.
-                bottleneck: null
+            # Required dictionary with keys 'size' and 'strides' and
+            # integer values, or null.
+            # Max pool size and strides. If null, don't perform any pooling.
+            max_pool: {size: 2, strides: 2}
 
-                # Optional Boolean. Default: false
-                # Whether to include a batch normalization layer after each
-                # convolutional layer. Exercise caution when using with
-                # array-level models.
-                batchnorm: false
+            # Required integer or null.
+            # Number of output filters of a final 1x1 convolutional layer.
+            # If null, don't include this bottleneck layer.
+            bottleneck: null
 
-            fc_head:
-                # Required list of integers.
-                # Number of units for each fully-connected head dense layer.
-                layers: [1024, 512, 256, 128, 64]
+            # Optional Boolean. Default: false
+            # Whether to include a batch normalization layer after each
+            # convolutional layer. Exercise caution when using with
+            # array-level models.
+            batchnorm: false
 
-                # Optional Boolean. Default: false
-                # Whether to include a batch normalization layer after each
-                # dense layer.
-                batchnorm: false
+        fc_head:
+            # Required list of integers.
+            # Number of units for each fully-connected head dense layer.
+            layers: [1024, 512, 256, 128, 64]
 
-            conv_head:
-                # Required list of dicts with keys 'filters' and 'kernel_size'
-                # with integer values.
-                # Filter dimension and kernel size for the convolutional
-                # network head layers.
-                layers:
-                    - {filters: 64, kernel_size: 3}
-                    - {filters: 128, kernel_size: 3}
-                    - {filters: 256, kernel_size: 3}
+            # Optional Boolean. Default: false
+            # Whether to include a batch normalization layer after each
+            # dense layer.
+            batchnorm: false
 
-                # Optional Boolean. Default: true
-                # Whether to perform average pooling over spatial dimensions
-                # of the convolutional output before calculating final output.
-                final_avg_pool: true
+        conv_head:
+            # Required list of dicts with keys 'filters' and 'kernel_size'
+            # with integer values.
+            # Filter dimension and kernel size for the convolutional
+            # network head layers.
+            layers:
+                - {filters: 64, kernel_size: 3}
+                - {filters: 128, kernel_size: 3}
+                - {filters: 256, kernel_size: 3}
 
-                # Optional Boolean. Default: false
-                # Whether to include a batch normalization layer after each
-                # convolutional layer.
-                batchnorm: false
+            # Optional Boolean. Default: true
+            # Whether to perform average pooling over spatial dimensions
+            # of the convolutional output before calculating final output.
+            final_avg_pool: true
 
-            # Optional float. Default: 0.99
-            # Decay parameter for batch normalization layers.
-            batchnorm_decay: 0.99
+            # Optional Boolean. Default: false
+            # Whether to include a batch normalization layer after each
+            # convolutional layer.
+            batchnorm: false
+
+        # Optional float. Default: 0.99
+        # Decay parameter for batch normalization layers.
+        batchnorm_decay: 0.99
 
 Training:
     

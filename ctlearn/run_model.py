@@ -78,9 +78,8 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     model_module = importlib.import_module(config['Model']['model']['module'])
     model = getattr(model_module, config['Model']['model']['function'])
     model_type = config['Data'].get('Loading', {}).get('example_type', 'array')
-    
-    params['model'] = config['Model'].get('Model Parameters', {})
-    params['model']['model_directory'] = model_directory
+
+    params['model'] = {**config['Model'], **config.get('Model Parameters', {})}
 
     # Parse file list
     if isinstance(config['Data']['file_list'], str):
@@ -212,7 +211,8 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         
         training = True if mode == tf.estimator.ModeKeys.TRAIN else False
        
-        logits = model(features, params['model'], training)
+        logits = model(features, params['model'],
+                       params['example_description'], training)
         
         # Collect predictions
         predictions = {}
@@ -220,9 +220,8 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         predicted_classes = tf.cast(tf.argmax(classifier_values, axis=1),
                 tf.int32, name="predicted_classes")
         predictions['predicted_class'] = predicted_classes
-        for i in range(params['model']['num_classes']):
-            class_name = params['model']['labels_to_class_names'][i]
-            predictions[class_name] = classifier_values[:,i]
+        for i, name in enumerate(params['model']['classification']['classes']):
+            predictions[name] = classifier_values[:,i]
         
         # For predict mode, we're done
         if mode == tf.estimator.ModeKeys.PREDICT:
@@ -233,23 +232,25 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         training_params = params['training']
 
         # Compute class-weighted softmax-cross-entropy        
-        true_classes = tf.cast(labels['gamma_hadron_label'], tf.int32,
+        true_classes = tf.cast(labels['class_label'], tf.int32,
                 name="true_classes")
 
         # Get class weights
-        if training_params['apply_class_weights']:
-            class_weights = tf.constant(training_params['class_weights'],
-                    dtype=tf.float32, name="class_weights") 
-            weights = tf.gather(class_weights, true_classes, name="weights")
-        else:
-            weights = 1.0
+        # TODO: Implement class weights using the DL1DH num_examples method
+        #if training_params['apply_class_weights']:
+        #    class_weights = tf.constant(training_params['class_weights'],
+        #            dtype=tf.float32, name="class_weights") 
+        #    weights = tf.gather(class_weights, true_classes, name="weights")
+        #else:
+        #    weights = 1.0
+        weights = 1.0
 
-        onehot_labels = tf.one_hot(indices=true_classes,
-                depth=training_params['num_classes'])
+        num_classes = len(params['model']['classification']['classes'])
+        onehot_labels = tf.one_hot(indices=true_classes, depth=num_classes)
 
         # compute cross-entropy loss
         loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels, 
-            logits=logits,weights=weights)
+                                               logits=logits, weights=weights)
     
         # add regularization loss
         regularization_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
@@ -313,11 +314,10 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                 }
         
         # add class-wise accuracies
-        for i in range(training_params['num_classes']):
-            weights = tf.cast(tf.equal(true_classes,tf.constant(i)),tf.int32)
-            eval_metric_ops['accuracy_{}'.format(
-                training_params['labels_to_class_names'][i])] = tf.metrics.accuracy(
-                        true_classes, predicted_classes, weights=weights)
+        for i, name in enumerate(params['model']['classification']['classes']):
+            weights = tf.cast(tf.equal(true_classes, tf.constant(i)), tf.int32)
+            eval_metric_ops['accuracy_' + name] = tf.metrics.accuracy(
+                    true_classes, predicted_classes, weights=weights)
 
         return tf.estimator.EstimatorSpec(
                 mode=mode,
