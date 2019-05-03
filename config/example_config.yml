@@ -401,14 +401,19 @@ Training:
     variables_to_train: null
 
 Prediction:
-    # Required Boolean if running in predict mode, ignored otherwise.
-    # Whether the data files contain the true classification
-    # values. Generally true for simulations and false for actual data.
-    true_labels_given: true
+    # Save the true labels along with the predictions.
+    # Optional Boolearn. Default: false
+    save_labels: false
+
+    # Save the example identifiers along with the predictions.
+    # Mono mode: obs_id, event_id, tel_id
+    # Stereo or multi-stereo mode: obs_id, event_id
+    # Optional Boolearn. Default: false
+    save_identifiers: false
 
     # Optional Boolean. Default: false
     # Whether to export predictions as a CSV file.
-    export_as_file: true
+    export_as_file: false
 
     # Required Boolean if running in predict mode and export_as_file is true,
     # ignored otherwise.

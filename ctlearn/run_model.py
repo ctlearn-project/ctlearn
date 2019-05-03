@@ -1,5 +1,4 @@
 import argparse
-from collections import OrderedDict
 import importlib
 import logging
 import math
@@ -8,6 +7,7 @@ from pprint import pformat
 import sys
 import time
 
+import numpy as np
 import pkg_resources
 import tensorflow as tf
 from tensorflow.python import debug as tf_debug
@@ -150,6 +150,22 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         config['Data']['mapping_settings']['interpolation_image_shape'] = {
             k: tuple(l) for k, l in config['Data']['mapping_settings']['interpolation_image_shape'].items()}
 
+    # Possibly add additional info to load if predicting to write later
+    if mode == 'predict':
+
+        if 'Prediction' not in config:
+            config['Prediction'] = {}
+        params['prediction'] = config['Prediction']
+
+        if config['Prediction'].get('save_identifiers', False):
+            if 'event_info' not in config['Data']:
+                config['Data']['event_info'] = []
+            config['Data']['event_info'].extend(['event_id', 'obs_id'])
+            if config['Data']['mode'] == 'mono':
+                if 'array_info' not in config['Data']:
+                    config['Data']['array_info'] = []
+                config['Data']['array_info'].append('id')
+
     # Create data reader
     reader = DL1DataReader(**config['Data'])
     params['example_description'] = reader.example_description
@@ -159,8 +175,14 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         config['Input'] = {}
     config['Input']['output_names'] = [d['name'] for d
                                        in reader.example_description]
-    config['Input']['output_dtypes'] = tuple(tf.as_dtype(d['dtype']) for d
-                                             in reader.example_description)
+    # TensorFlow does not support conversion for NumPy unsigned dtypes
+    # other than int8. Work around this by doing a manual conversion.
+    dtypes = [d['dtype'] for d in reader.example_description]
+    for i, dtype in enumerate(dtypes):
+        for utype, stype in [(np.uint16, np.int32), (np.uint32, np.int64)]:
+            if dtype == utype:
+                dtypes[i] = stype
+    config['Input']['output_dtypes'] = tuple(tf.as_dtype(d) for d in dtypes)
     config['Input']['output_shapes'] = tuple(tf.TensorShape(d['shape']) for d
                                              in reader.example_description)
     config['Input']['label_names'] = config['Model'].get('label_names', {})
@@ -188,7 +210,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         training_indices = indices[:num_training_examples]
         validation_indices = indices[num_training_examples:]
 
-        logger.info("Training and evaluating...")
         num_class_examples = log_examples(reader, training_indices,
                                           labels, 'training')
         log_examples(reader, validation_indices, labels, 'validation')
@@ -200,22 +221,13 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             class_weights = compute_class_weights(labels, num_class_examples)
             params['training']['class_weights'] = class_weights
 
-    elif mode == 'predict':
-
-        true_labels_given = config['Prediction']['true_labels_given']
-        export_prediction_file = config['Prediction'].get('export_as_file',
-                                                          False)
-        if export_prediction_file:
-            prediction_path = config['Prediction']['prediction_file_path']
-
-        logger.info("Predicting...")
-
     # Load options for TensorFlow
     run_tfdbg = config.get('TensorFlow', {}).get('run_TFDBG', False)
 
     # Define input function for TF Estimator
     def input_fn(reader, indices, output_names, output_dtypes, output_shapes,
-                 label_names, seed=None, batch_size=1, prefetch_buffer_size=1):
+                 label_names, seed=None, batch_size=1, prefetch_buffer_size=1,
+                 add_labels_to_features=False):
 
         def generator(indices):
             for idx in indices:
@@ -238,6 +250,9 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             dic = labels if name in label_names else features
             dic[name] = tensor
 
+        if add_labels_to_features:  # for predict mode
+            features['labels'] = labels
+
         return features, labels
 
     # Define model function with model, mode (train/predict),
@@ -259,8 +274,22 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         for i, name in enumerate(params['model']['label_names']['class_label']):
             predictions[name] = classifier_values[:, i]
 
-        # For predict mode, we're done
+        # In predict mode, finish up here
         if mode == tf.estimator.ModeKeys.PREDICT:
+
+            # Append the event identifiers to the predictions
+            if params['prediction'].get('save_identifiers', False):
+                for d in params['example_description']:
+                    if d['name'] in ['event_id', 'obs_id']:
+                        predictions[d['name']] = features[d['name']]
+                    if d['name'] == 'id':
+                        predictions['tel_id'] = tf.reshape(features[d['name']],
+                                                           [-1])
+            # Append the labels to the predictions
+            if params['prediction'].get('save_labels', False):
+                for key, value in features['labels'].items():
+                    predictions[key] = value
+
             return tf.estimator.EstimatorSpec(mode=mode,
                                               predictions=predictions)
 
@@ -377,6 +406,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     if mode == 'train':
 
         # Train and evaluate the model
+        logger.info("Training and evaluating...")
         num_validations = config['Training']['num_validations']
         steps = config['Training']['num_training_steps_per_validation']
         train_forever = False if num_validations != 0 else True
@@ -393,61 +423,39 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     elif mode == 'predict':
 
-        prediction_output = OrderedDict()
-
         # Generate predictions and add to output
+        logger.info("Predicting...")
+
+        if config['Prediction'].get('save_labels', False):
+            config['Input']['add_labels_to_features'] = True
+
         predictions = estimator.predict(
             lambda: input_fn(reader, indices, **config['Input']),
             hooks=hooks)
-        for event in predictions:
-            for key, value in event.items():
-                if key in prediction_output:
-                    prediction_output[key].append(value)
-                else:
-                    prediction_output[key] = [value]
-
-        # Get true labels and add to prediction output if available
-        if true_labels_given:
-            __, labels = input_fn(reader, **config['Input'])
-            with tf.Session() as sess:
-                while True:
-                    try:
-                        batch_labels = sess.run(labels)
-                        for label, batch_vals in batch_labels.items():
-                            if label in prediction_output:
-                                prediction_output[label].extend(batch_vals)
-                            else:
-                                prediction_output[label] = []
-                    except tf.errors.OutOfRangeError:
-                        break
-
-        # Get event ids of each example and add to prediction output
-        event_ids = ['run_number', 'event_number']
-        if config['Data']['mode'] == 'mono':
-            event_ids.append('tel_id')
-        for event_id in event_ids:
-            prediction_output[event_id] = []
-        for example in reader:
-            for i, event_id in enumerate(event_ids):
-                prediction_output[event_id].append(example[i])
 
         # Write predictions and other info given a dictionary of input, with
         # the key:value pairs of header name: list of the values for each event
-        def write_predictions(file_handle, prediction_output):
-            header = ",".join([key for key in prediction_output]) + '\n'
-            file_handle.write(header)
-            output_lists = [value for key, value in prediction_output.items()]
-            for output_values in zip(*output_lists):
-                row = ",".join('{}'.format(value) for value in output_values)
+        def write_predictions(file_handle, predictions):
+
+            def write(prediction):
+                row = ",".join('{}'.format(v) for v in prediction.values())
                 row += '\n'
                 file_handle.write(row)
 
+            prediction = next(predictions)
+            header = ",".join([key for key in prediction]) + '\n'
+            file_handle.write(header)
+            write(prediction)
+            for prediction in predictions:
+                write(prediction)
+
         # Write predictions to a csv file
-        if export_prediction_file:
+        if config['Prediction'].get('export_as_file', False):
+            prediction_path = config['Prediction']['prediction_file_path']
             with open(prediction_path, 'w') as predict_file:
-                write_predictions(predict_file, prediction_output)
+                write_predictions(predict_file, predictions)
         else:
-            write_predictions(sys.stdout, prediction_output)
+            write_predictions(sys.stdout, predictions)
 
 if __name__ == "__main__":
 
