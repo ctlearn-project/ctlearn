@@ -2,6 +2,7 @@
 name: ctlearn
 channels:
     - anaconda
+    - bryankim96
     - conda-forge
     - cta-observatory
 dependencies:
