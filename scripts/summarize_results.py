@@ -37,8 +37,8 @@ for folder in os.listdir('.'):
 		val_info = matches[-1]
 
 	# compile the info we need
-	input_type = config['Data']['Loading']['example_type']
-	tel_type = config['Data']['Loading']['selected_tel_type']
+	input_type = config['Data']['mode']
+	tel_type = config['Data']['selected_telescope_type']
 
 	auroc = float(re.findall(r"auc = [-+]?\d*\.*\d+", val_info)[0][6:])
 

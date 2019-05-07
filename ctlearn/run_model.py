@@ -196,7 +196,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     batch_size = config['Input'].get('batch_args', {}).get('batch_size', 1)
     logger.info("Batch size: {}".format(batch_size))
 
-    if mode == 'train':
+    if mode in ['train', 'load_only']:
 
         params['training'] = config['Training']
         params['training']['model_type'] = model_type
@@ -220,6 +220,10 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         if config['Training']['apply_class_weights']:
             class_weights = compute_class_weights(labels, num_class_examples)
             params['training']['class_weights'] = class_weights
+
+    # If only loading data, can end now that dataset logging is complete
+    if mode == "load_only":
+        return
 
     # Load options for TensorFlow
     run_tfdbg = config.get('TensorFlow', {}).get('run_TFDBG', False)
