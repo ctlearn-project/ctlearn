@@ -38,8 +38,8 @@ NOTE for developers: If you wish to fork/clone the respository and make changes 
 
 ### Dependencies
 
-- Python 3.6.5
-- TensorFlow 1.12.0
+- Python 3.7.3
+- TensorFlow 1.13.1
 - NumPy
 - AstroPy
 - OpenCV
