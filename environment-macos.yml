@@ -12,8 +12,8 @@ dependencies:
     - numpy
     - pandas
     - pip
-    # TensorFlow-CPU v1.12.0:
+    # TensorFlow-CPU v1.13.1:
     - pip:
-        - https://storage.googleapis.com/tensorflow/mac/cpu/tensorflow-1.12.0-py3-none-any.whl
+        - https://storage.googleapis.com/tensorflow/mac/cpu/tensorflow-1.13.1-py3-none-any.whl
     - pyyaml
     - scikit-learn

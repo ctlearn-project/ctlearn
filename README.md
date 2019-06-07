@@ -38,8 +38,8 @@ NOTE for developers: If you wish to fork/clone the repository and edit the code,
 
 ### Dependencies
 
-- Python 3.6.5
-- TensorFlow 1.12.0
+- Python 3.7.3
+- TensorFlow 1.13.1
 - DL1DataHandler
 - NumPy
 - PyYAML
