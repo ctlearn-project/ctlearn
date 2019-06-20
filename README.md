@@ -10,11 +10,14 @@ CTLearn is a package under active development to run deep learning models to ana
 
 ### Clone Repository with Git
 
-Clone the CTLearn repository:
+Clone the CTLearn and DL1-Data-Handler repositories:
 
 ```bash
-cd </installation/path>
+cd </ctlearn/installation/path>
 git clone https://github.com/ctlearn-project/ctlearn.git
+
+cd </dl1-data-handler/installation/path>
+git clone https://github.com/cta-observatory/dl1-data-handler.git
 ```
 
 ### Install Package with Anaconda
@@ -27,13 +30,20 @@ conda env create -f </installation/path>/ctlearn/environment-<MODE>.yml
 
 where `<MODE>` is either 'cpu' or 'gpu' (for linux systems) or 'macos' (for macOS systems), denoting the TensorFlow version to be installed. If installing the GPU version of TensorFlow, verify that your system fulfills all the requirements [here](https://www.tensorflow.org/install/install_linux#NVIDIARequirements). Note that there is no GPU-enabled TensorFlow version for macOS yet.
 
-Finally, install CTLearn into the new conda environment with pip:
+Finally, install DL1-Data-Handler and CTLearn into the new conda environment with pip:
 
 ```bash
 source activate ctlearn
-cd </installation/path>/ctlearn
+
+cd <dl1-data-handler/installation/path>/dl1-data-handler
+pip install --upgrade .
+
+cd <ctlearn/installation/path>/ctlearn
 pip install --upgrade .
 ```
+
+The following error message due to incompatibilities between dependencies is expected and can be ignored: "ERROR: ctapipe unknown has requirement eventio==0.11.0, but you'll have eventio 0.21.2 which is incompatible."
+
 NOTE for developers: If you wish to fork/clone the repository and edit the code, either install with `pip -e` or reinstall  after making changes for them to take effect.
 
 ### Dependencies
