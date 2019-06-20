@@ -2,18 +2,14 @@
 name: ctlearn
 channels:
     - anaconda
-    - bryankim96
-    - conda-forge
-    - cta-observatory
 dependencies:
     - python=3.7.3
-    - dl1_data_handler
     - matplotlib
     - numpy
     - pandas
     - pip
-    # TensorFlow-CPU v1.13.1:
-    - pip:
-        - https://storage.googleapis.com/tensorflow/mac/cpu/tensorflow-1.13.1-py3-none-any.whl
     - pyyaml
     - scikit-learn
+    - pip:
+        # TensorFlow-CPU v1.13.1
+        - https://storage.googleapis.com/tensorflow/mac/cpu/tensorflow-1.13.1-py3-none-any.whl
