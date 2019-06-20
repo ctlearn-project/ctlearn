@@ -167,6 +167,8 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                 config['Data']['array_info'].append('id')
 
     # Create data reader
+    logger.info("Loading data:")
+    logger.info("For a large dataset, this may take a while...")
     reader = DL1DataReader(**config['Data'])
     params['example_description'] = reader.example_description
 
@@ -191,9 +193,8 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     # and log information about the data set
     indices = list(range(len(reader)))
     labels = config['Model'].get('label_names', {})
-    log_examples(reader, indices, labels, 'total dataset')
 
-    batch_size = config['Input'].get('batch_args', {}).get('batch_size', 1)
+    batch_size = config['Input'].get('batch_size', 1)
     logger.info("Batch size: {}".format(batch_size))
 
     if mode in ['train', 'load_only']:
@@ -209,28 +210,32 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         num_training_examples = math.floor((1 - validation_split) * len(reader))
         training_indices = indices[:num_training_examples]
         validation_indices = indices[num_training_examples:]
-
-        num_class_examples = log_examples(reader, training_indices,
-                                          labels, 'training')
-        log_examples(reader, validation_indices, labels, 'validation')
         logger.info("Number of training steps per epoch: {}".format(
             int(num_training_examples / batch_size)))
         logger.info("Number of training steps between validations: {}".format(
             config['Training']['num_training_steps_per_validation']))
-        if config['Training']['apply_class_weights']:
-            class_weights = compute_class_weights(labels, num_class_examples)
-            params['training']['class_weights'] = class_weights
 
-    # If only loading data, can end now that dataset logging is complete
-    if mode == "load_only":
+    if mode == 'load_only':
+
+        log_examples(reader, indices, labels, 'total dataset')
+        log_examples(reader, training_indices, labels, 'training')
+        log_examples(reader, validation_indices, labels, 'validation')
+        # If only loading data, can end now that dataset logging is complete
         return
+
+    if mode == 'train' and config['Training']['apply_class_weights']:
+        num_class_examples = log_examples(reader, training_indices,
+                                          labels, 'training')
+        class_weights = compute_class_weights(labels, num_class_examples)
+        params['training']['class_weights'] = class_weights
 
     # Load options for TensorFlow
     run_tfdbg = config.get('TensorFlow', {}).get('run_TFDBG', False)
 
     # Define input function for TF Estimator
     def input_fn(reader, indices, output_names, output_dtypes, output_shapes,
-                 label_names, seed=None, batch_size=1, prefetch_buffer_size=1,
+                 label_names, seed=None, batch_size=1,
+                 shuffle_buffer_size=None, prefetch_buffer_size=1,
                  add_labels_to_features=False):
 
         def generator(indices):
@@ -240,7 +245,9 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         dataset = tf.data.Dataset.from_generator(generator, output_dtypes,
                                                  output_shapes=output_shapes,
                                                  args=(indices,))
-        dataset = dataset.shuffle(buffer_size=len(indices), seed=seed)
+        if shuffle_buffer_size is None:
+            shuffle_buffer_size = len(indices)
+        dataset = dataset.shuffle(buffer_size=shuffle_buffer_size, seed=seed)
         dataset = dataset.batch(batch_size)
         dataset = dataset.prefetch(prefetch_buffer_size)
 

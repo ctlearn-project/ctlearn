@@ -195,6 +195,14 @@ Input:
     # Optional integer. Default: 1
     batch_size: 32
 
+    # Number of examples to load into memory before shuffling.
+    # For valid results, either randomize the example order
+    # in the generator (i.e. set Data:shuffle = True) or set to
+    # greater than or equal to the number of examples in the dataset.
+    # For best performance, set to less than the total number of examples.
+    # Optional integer. Default: All examples in dataset
+    shuffle_buffer_size: 10000
+
     # Maximum number of batches to be buffered when prefetching.
     # Optional integer. Default: 1
     prefetch_buffer_size: 8
