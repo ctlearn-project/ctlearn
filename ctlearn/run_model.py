@@ -67,6 +67,14 @@ def compute_class_weights(labels, num_class_examples):
     logger.info("Class weights: {}".format(class_weights))
     return class_weights
 
+def load_from_module(name, module, path=None, args=None):
+    if path is not None and path not in sys.path:
+        sys.path.append(path)
+    mod = importlib.import_module(module)
+    fn = getattr(mod, name)
+    params = args if args is not None else {}
+    return fn, params
+
 def log_examples(reader, indices, labels, subset_name):
     logger = logging.getLogger()
     logger.info("Examples for " + subset_name + ':')
@@ -135,37 +143,26 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     # Parse list of event selection filters
     event_selection = {}
-    for s in config['Data']['event_selection']:
-        if 'path' in s and s['path'] not in sys.path:
-            sys.path.append(s['path'])
-        module_name = s.get('module', 'dl1_data_handler.utils')
-        module = importlib.import_module(module_name)
-        filter_fn = getattr(module, s['name'])
-        filter_params = s.get('args', {})
+    for s in config['Data'].get('event_selection', {}):
+        s = {'module': 'dl1_data_handler.utils', **s}
+        filter_fn, filter_params = load_from_module(**s)
         event_selection[filter_fn] = filter_params
     config['Data']['event_selection'] = event_selection
 
     # Parse list of image selection filters
     image_selection = {}
-    for s in config['Data']['image_selection']:
-        if 'path' in s and s['path'] not in sys.path:
-            sys.path.append(s['path'])
-        module_name = s.get('module', 'dl1_data_handler.utils')
-        module = importlib.import_module(module_name)
-        filter_fn = getattr(module, s['name'])
-        filter_params = s.get('args', {})
+    for s in config['Data'].get('image_selection', {}):
+        s = {'module': 'dl1_data_handler.utils', **s}
+        filter_fn, filter_params = load_from_module(**s)
         image_selection[filter_fn] = filter_params
     config['Data']['image_selection'] = image_selection
 
     # Parse list of Transforms
     transforms = []
-    for t in config['Data']['transforms']:
-        if 'path' in t and t['path'] not in sys.path:
-            sys.path.append(t['path'])
-        module_name = t.get('module', 'dl1_data_handler.transforms')
-        module = importlib.import_module(module_name)
-        transform = getattr(module, t['name'])(**t.get('args', {}))
-        transforms.append(transform)
+    for t in config['Data'].get('transforms', {}):
+        t = {'module': 'dl1_data_handler.transforms', **t}
+        transform, args = load_from_module(**t)
+        transforms.append(transform(**args))
     config['Data']['transforms'] = transforms
 
     # Convert interpolation image shapes from lists to tuples, if present
