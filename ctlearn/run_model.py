@@ -133,6 +133,30 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                          "Must be list or path to file".format(
                              config['Data']['file_list']))
 
+    # Parse list of event selection filters
+    event_selection = {}
+    for s in config['Data']['event_selection']:
+        if 'path' in s and s['path'] not in sys.path:
+            sys.path.append(s['path'])
+        module_name = s.get('module', 'dl1_data_handler.utils')
+        module = importlib.import_module(module_name)
+        filter_fn = getattr(module, s['name'])
+        filter_params = s.get('args', {})
+        event_selection[filter_fn] = filter_params
+    config['Data']['event_selection'] = event_selection
+
+    # Parse list of image selection filters
+    image_selection = {}
+    for s in config['Data']['image_selection']:
+        if 'path' in s and s['path'] not in sys.path:
+            sys.path.append(s['path'])
+        module_name = s.get('module', 'dl1_data_handler.utils')
+        module = importlib.import_module(module_name)
+        filter_fn = getattr(module, s['name'])
+        filter_params = s.get('args', {})
+        image_selection[filter_fn] = filter_params
+    config['Data']['image_selection'] = image_selection
+
     # Parse list of Transforms
     transforms = []
     for t in config['Data']['transforms']:
