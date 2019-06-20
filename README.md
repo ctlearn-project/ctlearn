@@ -4,7 +4,7 @@
 
 ![CTLearn Logo](images/CTLearnTextCTinBox_WhiteBkgd.png)
 
-CTLearn is a package under active development to run deep learning models to analyze data from all major current and future arrays of Imaging Atmospheric Cherenkov Telescopes (IACTs). CTLearn v0.3.0 can load data from [CTA](https://www.cta-observatory.org/) (Cherenkov Telescope Array), [FACT](https://www.isdc.unige.ch/fact/), [H.E.S.S.](https://www.mpi-hd.mpg.de/hfm/HESS/), [MAGIC](https://magic.mpp.mpg.de/), and [VERITAS](https://veritas.sao.arizona.edu/) telescopes processed using [DL1DataHandler v0.7.3+](https://github.com/cta-observatory/dl1-data-handler).
+CTLearn is a package under active development to run deep learning models to analyze data from all major current and future arrays of Imaging Atmospheric Cherenkov Telescopes (IACTs). CTLearn v0.3.0 can load data from [CTA](https://www.cta-observatory.org/) (Cherenkov Telescope Array), [FACT](https://www.isdc.unige.ch/fact/), [H.E.S.S.](https://www.mpi-hd.mpg.de/hfm/HESS/), [MAGIC](https://magic.mpp.mpg.de/), and [VERITAS](https://veritas.sao.arizona.edu/) telescopes processed using [DL1DataHandler v0.8.0](https://github.com/cta-observatory/dl1-data-handler).
 
 ## Install CTLearn
 

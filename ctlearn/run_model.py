@@ -138,7 +138,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     for t in config['Data']['transforms']:
         if 'path' in t and t['path'] not in sys.path:
             sys.path.append(t['path'])
-        module_name = t.get('module', 'dl1_data_handler.processor')
+        module_name = t.get('module', 'dl1_data_handler.transforms')
         module = importlib.import_module(module_name)
         transform = getattr(module, t['name'])(**t.get('args', {}))
         transforms.append(transform)
