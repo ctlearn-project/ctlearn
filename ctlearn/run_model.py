@@ -387,7 +387,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         eval_metric_ops = {
             'accuracy': tf.metrics.accuracy(true_classes,
                                             predicted_classes),
-            'auc': tf.metrics.auc(1 - true_classes, predictions['gamma'])
+            'auc': tf.metrics.auc(true_classes, predictions['gamma'])
             }
 
         # add class-wise accuracies
