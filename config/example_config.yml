@@ -524,14 +524,14 @@ Multiple Configurations Values:
         config: ['Data', 'selected_telescope_type']
         value_type: 'grouped'
         values:
-            'LST:LSTCam': 'LST:LSTCam'
-            'MST:NectarCam': 'MST:NectarCam'
+            'LST_LSTCam': 'LST_LSTCam'
+            'MST_NectarCam': 'MST_NectarCam'
     selected_telescopes:
         config: ['Data', 'selected_telescope_ids']
         value_type: 'grouped'
         values:
-            'LST:LSTCam': [1, 2, 3, 4]
-            'MST:NectarCam': [30, 31, 32, 33]
+            'LST_LSTCam': [1, 2, 3, 4]
+            'MST_NectarCam': [30, 31, 32, 33]
     network_type:
         config: ['Model', 'model']
         value_type: 'grouped'
@@ -542,6 +542,7 @@ Multiple Configurations Values:
             variable_input:
                 module: 'variable_input_model'
                 function: 'variable_input_model'
+    # Not yet implemented!
     telescope_sorting:
         config: ['Data', 'transforms']
         value_type: 'grouped'
