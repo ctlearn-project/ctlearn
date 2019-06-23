@@ -46,7 +46,6 @@ def conv_block(inputs, training, params, reuse=None):
 def fc_head(inputs, training, params):
 
     # Get standard hyperparameters
-    num_classes = params['num_classes']
     bn_momentum = params['basic'].get('batchnorm_decay', 0.99)
     
     # Get custom hyperparameters
@@ -62,14 +61,11 @@ def fc_head(inputs, training, params):
             x = tf.layers.batch_normalization(x, momentum=bn_momentum,
                     training=training)
 
-    logits = tf.layers.dense(x, units=num_classes, name="logits")
-
-    return logits
+    return x
 
 def conv_head(inputs, training, params):
 
     # Get standard hyperparameters
-    num_classes = params['num_classes']
     bn_momentum = params.get('batchnorm_decay', 0.99)
     
     # Get custom hyperparameters
@@ -96,7 +92,6 @@ def conv_head(inputs, training, params):
                 pool_size=x.get_shape().as_list()[1],
                 strides=1, name="global_avg_pool")
     
-    flatten = tf.layers.flatten(x)
-    logits = tf.layers.dense(flatten, units=num_classes, name="logits")
-
-    return logits
+    flat = tf.layers.flatten(x)
+    
+    return flat

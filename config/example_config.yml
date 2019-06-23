@@ -1,248 +1,256 @@
 # Example config file containing all possible options for CTLearn, whether
 # they're required or optional, their datatypes, and default arguments.
+#
+# For an explanation of the data format and valid column names for the
+# selection_string, array_info, and event_info Data config options, see
+# https://github.com/cta-observatory/dl1-data-handler/wiki/CTA-ML-Data-Format
+# or use ViTables http://vitables.org/ to examine the HDF5 files directly.
 ---
 
 Logging:
-    # Required string.
     # Path to directory to store TensorFlow model checkpoints and summaries.
     # A timestamped copy of the configuration file will also be put here.
+    # Required string.
     model_directory: '/tmp/logs/example/'
 
 Data:
-    # Required string.
-    # Valid options:
-    #   - 'HDF5': ImageExtractor v0.5.1 HDF5 format
-    # Data file format. Used to choose the right DataLoader subclass.
-    format: 'HDF5'
-
-    # Required string.
-    # Path to a file listing data file paths, one per line.
+    # Either a list of data file paths,
+    # or a path to a file listing data file paths, one per line.
+    # Required list or string.
     file_list: '/tmp/dataset/file_list.txt'
 
-    # Optional Boolean. Default: true
-    # Whether to apply processing to loaded data. If False, no DataProcessor
-    # is instantiated and Data:Processing settings are not used.
-    # Useful for quickly turning off all data processing, e.g., when debugging.
-    apply_processing: true
-
-    # Settings for instantiating the DataLoader.
-    Loading:
-        # Optional string. Default: 'array'
-        # Valid options:
-        #   - 'array': Examples are all images of a telescope type per event
-        #   - 'single_tel': Examples are single telescope images
-        # How to construct examples from the data.
-        example_type: 'array'
-
-        # Optional Boolean. Default: False
-        # If False, load only a channel of integrated energy pulse per pixel
-        # If True, load an additional channel indicating peak pulse arrival
-        # time per pixel
-        use_peak_times: False
-
-        # Optional list of tel_type strings or null. Default if null: ['LST:LSTCam']
-        # Valid tel_types:
-        #   - 'LST:LSTCam': LST Telescope and Camera
-        #   - 'MST:FlashCam': MST Telescope with FlashCAM Camera
-        #   - 'MST:NectarCam': MST Telescope with NectarCAM Camera
-        #   - 'SCT:SCTCam': SCT Telescope and Camera
-        #   - 'SST:DigiCam': SST-1M Telescope with DigiCam Camera
-        #   - 'SST:ASTRICam': SST-2M ASTRI Telescope and Camera
-        #   - 'SST:CHEC': SST-2M GCT Telescope with CHEC Camera
-        #   - 'MST:VERITAS': VERITAS Telescope and Camera
-        # List of telescope types to load.
-        selected_tel_types: ['LST:LSTCam']
-        
-            # Optional dictionary with string keys and list of integer values,
-        # or null. If null, default is an empty dictionary.
-        # Valid keys are the tel_types listed above, and the values should be
-        # the tel_ids of the telescopes to load of that tel_type.
-        # Default if tel_type not in dict: load all telescopes of the tel_type.
-        selected_tel_ids:
-            'LST:LSTCam': [1, 2, 3, 4]
-        
-        # Optional Boolean. Default: False
-        # In array mode, merge the data arrays (images, triggers, and
-        # auxiliary info) for each telescope type into three combined data
-        # arrays, instead of returning them as sublists grouped by tel type.
-        # Images must have the same dimensions (at least post-processing)!
-        merge_tel_types: true
-
-        # Optional int. Default: 1
-        # Minimum number of triggered telescopes among all selected
-        # telescopes (of all types) which must be present for an event to be
-        # loaded. Telescopes that aren't selected don't count.
-        min_num_tels: 1
-
-        # Optional string. Default: don't apply any cuts.
-        # PyTables cut condition to apply selection cuts to events.
-        # See https://www.pytables.org/usersguide/condition_syntax.html
-        # for explanation of syntax. Use ViTables http://vitables.org/ to
-        # examine HDF5 files to see valid attribute names.
-        cut_condition: '(mc_energy > 1.0) & (h_first_int < 20000)'
-
-        # Optional float. Default: 0.1
-        # Randomly chosen fraction of data to set aside for validation.
-        validation_split: 0.1
-
-        # Optional integer. Default: use default random initialization.
-        # Seed for randomly splitting data into training and validation sets.
-        seed: 1234
-
-    # Settings for instantiating the DataProcessor.
-    Processing:
-        # Optional Boolean. Default: false
-        # Whether to crop each telescope image by cleaning the image,
-        # calculating a bounding box about the cleaned image centroid, and
-        # returning the original or cleaned image cropped about the box.
-        crop: false
-
-        # Optional string or null. Default: 'twolevel'
-        # Valid options:
-        #   - 'twolevel': Use absolute two-level cleaning algorithm
-        #   - null: Don't apply any cleaning
-        # When cropping, type of image cleaning to apply when calculating
-        # the weighted centroid position of each telescope image.
-        image_cleaning: 'twolevel'
-
-        # Optional Boolean. Default: false
-        # When cropping, whether to return the cleaned instead of original
-        # cropped images.
-        return_cleaned_images: false
-
-        # Optional dictionary with string keys and integer values.
-        # See Data:Loading:selected_tel_type for valid keys.
-        # Default:
-        #   'SCTCam': 48
-        # When cropping, side length of the square cropped image.
-        bounding_box_sizes:
-            'SCTCam': 48
-
-        # Optional dictionary with string keys and list of two integers values.
-        # See Data:Loading:selected_tel_type for valid keys.
-        # Default:
-        #   SCTCam: [5.5, 1.0]
-        # When cropping and using two level cleaning method, absolute cleaning
-        # thresholds to use. The first value is the picture threshold,
-        # which passes all pixels in the image greater than it, and the
-        # second is the boundary threshold, which adds all pixels greater
-        # than it and adjacent to previously selected pixels.
-        thresholds:
-            'SCTCam':
-                - 5.5
-                - 1.0
-
-        # Optional string or null. Default: null
-        # Valid options:
-        #   - 'log': Log-normalize by subtracting from each pixel the minimum
-        #       value from all selected images, then taking the natural log
-        #   - null: Don't apply any normalization
-        # Normalization method to be applied pixel-wise to each image.
-        normalization: null
-
-        # Optional string or null. Default: null
-        # Valid options:
-        #   - 'trigger': Order by all triggered followed by all blank images
-        #   - 'size': Order by largest to smallest total sum of pixel values
-        #   - null: Keep DataLoader ordering (by telescope ID)
-        # How to sort telescope images when loading data in array mode.
-        sorting: null
-
-    # Settings for the TensorFlow Estimator input function.
-    Input:
-        # Required integer.
-        # Number of examples per batch for training/prediction.
-        batch_size: 64
-
-        # Required Boolean.
-        # Whether to prefetch examples in the TensorFlow Dataset.
-        prefetch: true
-
-        # Required integer.
-        # If prefetching, maximum number of examples to prefetch and store
-        # in buffer.
-        prefetch_buffer_size: 10
-
-        # Required Boolean.
-        # Whether to apply Dataset.map(). Must be true for HDF5 data.
-        map: true
-
-        # Required integer.
-        # Number of parallel threads to use when loading examples.
-        num_parallel_calls: 1
-
-        # Required Boolean.
-        # Whether to shuffle examples when creating the TensorFlow Dataset.
-        shuffle: true
-
-        # Required integer.
-        # Number of examples to shuffle at once. Larger buffer sizes
-        # give a more uniform shuffle at the cost of a longer time to shuffle.
-        shuffle_buffer_size: 10000
-
-# Settings for mapping 1D pixel vectors to 2D images.
-Image Mapping:
-    # Optional list of tel_type strings or null. Default if null: ['LSTCam']
-    # Only the mapping tables of this list will be calculated.
-    camera_types: ['LSTCam']
-
-    # Optional dictionary with string keys and string values. Default: 'oversampling'
+    # Type of examples to load.
+    # Optional string. Default: 'mono'
     # Valid options:
-    #   - 'oversampling': Convert each hexagonal pixel to four square
-    #       pixels and reweight the charge to realign to a square grid
-    #   - 'rebinning': Interpret the intensity as a histogram and rebin
-    #       the hexagonal histogram into a square one.
-    #   - 'nearest_interpolation': Perform nearest neighbor
-    #   - 'bilinear_interpolation': Draw Delaunay triangulation and
-    #       perform bilinear interpolation
-    #   - 'bicubic_interpolation': Draw Delaunay triangulation and
-    #       perform bicubic interpolation
-    #   - 'image_shifting': Shift pixels of alternate rows (hexagonal cameras
-    #       only)
-    #   - 'axial_addressing': Warp images by relabeling axes (hexagonal
-    #       cameras only)
-    # Algorithm to convert images with hexagonal pixel grids to square grids
-    hex_conversion_algorithm:
-        'LSTCam': 'oversampling'
-        'FlashCam': 'nearest_interpolation'
-        'NectarCam': 'rebinning'
-        'SCTCam': 'oversampling'
-        'DigiCam': 'bilinear_interpolation'
-        'ASTRICam': 'bicubic_interpolation'
-        'CHEC': 'bilinear_interpolation'
-        'VERITAS': 'nearest_interpolation'
+    #   - 'mono': single images of one telescope type
+    #   - 'stereo': events of one telescope type
+    #   - 'multi-stereo': events including multiple telescope types
+    mode: 'mono'
 
-    # Optional dictionary with string keys and integer values.
-    # See Data:Loading:selected_tel_type for valid keys.
-    # Default: 0 for every valid key.
-    # Number of pixels of padding to add around the edge of the mapped image.
-    # A value of 1 will increase both the image height and width by 2, etc.
-    padding:
-        'LSTCam': 2
-        'FlashCam': 1
-        'NectarCam': 2
-        'SCTCam': 4
-        'DigiCam': 1
-        'ASTRICam': 0
-        'CHEC': 0
-        'VERITAS': 1
+    # Telescope type or list thereof to load.
+    # Optional string (mono or stereo) or list of strings (multi-stereo).
+    # Default in mono or stereo mode: first telescope type in the dataset
+    # Default in multi-stereo mode: all telescope types in the dataset
+    # Valid telescope types:
+    #   - 'LST_LSTCam': LST Telescope and Camera
+    #   - 'MST_FlashCam': MST Telescope with FlashCAM Camera
+    #   - 'MST_NectarCam': MST Telescope with NectarCAM Camera
+    #   - 'SCT_SCTCam': SCT Telescope and Camera
+    #   - 'SST1M_DigiCam': SST-1M Telescope with DigiCam Camera
+    #   - 'SSTASTRI_ASTRICam': SST-2M ASTRI Telescope and Camera
+    #   - 'SSTGCT_CHEC': SST-2M GCT Telescope with CHEC Camera
+    # Camera images from the following telescopes can be read, but writers
+    # for the data are not yet available:
+    #   - FACT, HESS-I, HESS-II, MAGIC, VERITAS
+    selected_telescope_type: 'LST_LSTCam'
 
-    # Optional Boolean.
-    # Mask interpolation is available for bilinear and bicubic interpolation.
-    # Performing nearest neighbor with the output grid on the hexgaonal grid
-    # to find the output grid points, which are located inside the camera.
-    # The outside points will set to zero, which implies a mask.
-    mask_interpolation: false
+    # Subset of telescope IDs to include of the selected telescope types.
+    # Optional dictionary with string keys and list of integer values.
+    # Valid keys are the telescope types listed above, and valid values are
+    # are the tel_ids of the telescopes to load of that telescope type.
+    # Default if not provided or telescope type not in dict: load all
+    # telescopes of that telescope type if selected.
+    selected_telescope_ids:
+        'LST_LSTCam': [1, 2, 3, 4]
 
-# Settings for the TensorFlow model.
+    # PyTables cut condition to apply selection cuts to events.
+    # Optional string. Default: don't apply any cuts
+    # See https://www.pytables.org/usersguide/condition_syntax.html
+    # for explanation of syntax.
+    selection_string: '(mc_energy > 1.0) & (h_first_int < 20000)'
+
+    # Event selection filters to apply to each data file.
+    # Optional list of dictionaries with the following key/value pairs:
+    #   - 'path': Optional string. Path to module containing filter.
+    #             Default: path to DL1DataHandler
+    #   - 'module': Optional string. Name of module containing filter.
+    #               Default: 'utils'
+    #   - 'name': Required string. Name of filter.
+    #   - 'args': Optional dictionary. Arguments to pass to filter using
+    #             filter(file, **args). Default: {}
+    # Valid filter names are those defined in DL1DataHandler or any defined
+    # in the specified path and module.
+    event_selection:
+        -
+            name: 'event_intensity_filter'
+            args: {i_min: 100, i_max: 316}
+#       -
+#           path: '/path/to/my/module/'
+#           module: 'my_filter'
+#           name: 'filter_fn'
+#           args: {'arg1': 'foo', 'arg2': 3.14}
+
+    # Image selection filters to apply to each image (mono mode only).
+    # Optional list of dictionaries with the following key/value pairs:
+    #   - 'path': Optional string. Path to module containing filter.
+    #             Default: path to DL1DataHandler
+    #   - 'module': Optional string. Name of module containing filter.
+    #               Default: 'utils'
+    #   - 'name': Required string. Name of filter.
+    #   - 'args': Optional dictionary. Arguments to pass to filter using
+    #             filter(file, **args). Default: {}
+    # Valid filter names are those defined in DL1DataHandler or any defined
+    # in the specified path and module.
+    image_selection:
+        -
+            name: 'image_intensity_filter'
+            args: {i_min: 10, i_max: 31.6}
+#       -
+#           path: '/path/to/my/module/'
+#           module: 'my_filter'
+#           name: 'filter_fn'
+#           args: {'arg1': 'foo', 'arg2': 3.14}
+
+    # Whether to shuffle the examples.
+    # Optional Boolean. Default: False
+    shuffle: false
+
+    # Seed for shuffling the examples. Only used if shuffle is true.
+    # Optional integer. Default: use default random initialization.
+    seed: 1234
+
+    # Image channels to load.
+    # Optional list of strings. Default: ['charge']
+    # Valid options are 'charge' and 'peakpos', or whichever columns are in
+    # the telescope tables of your data files.
+    image_channels: ['charge']
+
+    # Settings passed directly as arguments to ImageMapper.
+    # Optional dictionary. Default: {}
+    #
+    # The camera types supported by ImageMapper that can be used in
+    # the settings below are 'ASTRICam', 'CHEC', 'DigiCam', 'FACT',
+    # 'FlashCam', 'HESS-I', 'HESS-II', 'LSTCam', 'MAGICCam', 'NectarCam',
+    # 'SCTCam', and 'VERITAS'.
+    mapping_settings:
+
+        # List of camera types to calculate mapping tables for.
+        # Optional list of camera type strings.
+        # Default: calculate mapping tables for all supported camera types
+        camera_types: ['LSTCam']
+
+        # Algorithm to convert image vectors to rectangular arrays
+        # Optional dictionary with string keys and string values.
+        # Default: 'oversampling' for all camera types not in the dictionary
+        # Valid keys are any camera types supported by ImageMapper.
+        # Valid mapping method options (values):
+        #   - 'oversampling': Convert each hexagonal pixel to four square
+        #       pixels and reweight the charge to realign to a square grid
+        #   - 'rebinning': Interpret the intensity as a histogram and rebin
+        #       the hexagonal histogram into a square one.
+        #   - 'nearest_interpolation': Perform nearest neighbor
+        #   - 'bilinear_interpolation': Draw Delaunay triangulation and
+        #       perform bilinear interpolation
+        #   - 'bicubic_interpolation': Draw Delaunay triangulation and
+        #       perform bicubic interpolation
+        #   - 'image_shifting': Shift pixels of alternate rows (hexagonal
+        #       cameras only)
+        #   - 'axial_addressing': Warp images by relabeling axes (hexagonal
+        #       cameras only)
+        mapping_method:
+            'LSTCam': 'bilinear_interpolation'
+
+        # Number of padding pixels to add around each edge of the mapped image.
+        # A value of 1 will increase both the image height and width by 2, etc.
+        # Optional dictionary with camera type string keys and integer values.
+        # Default: 0 for any camera type not specified
+        padding:
+            'LSTCam': 2
+            'FlashCam': 1
+            'NectarCam': 2
+            'SCTCam': 4
+            'DigiCam': 1
+            'ASTRICam': 0
+            'CHEC': 0
+            'VERITAS': 1
+
+        # Shape of mapped image to return. Used only for mapping methods
+        # without a fixed output shape: rebinning, nearest interpolation,
+        # bilinear interpolation, bicubic interpolation
+        # Optional dictionary with camera type string keys and values that
+        # are lists of three integers: (<width>, <length>, <num_channels>)
+        interpolation_image_shape:
+            'LSTCam': [110, 110, 1]
+
+        # Explicitly set output grid points outside the camera to 0
+        # when performing bilinear and bicubic interpolation.
+        # Optional Boolean. Default: false
+        mask_interpolation: false
+
+    # Auxiliary information to return from the Array Information table.
+    # Optional list of strings. Default: return no array info
+    # Valid options are columns in the Array_Information table.
+    array_info: ['x', 'y', 'z']
+
+    # Auxiliary information to return from the Events table.
+    # Optional list of strings. Default: return no event info
+    # Valid options are columns in the Events table.
+    event_info: ['shower_primary_id', 'mc_energy']
+
+    # Transforms to apply to the data, in order.
+    # Optional list of dictionaries with the following key/value pairs:
+    #   - 'path': Optional string. Path to module containing Transform.
+    #             Default: path to DL1DataHandler
+    #   - 'module': Optional string. Name of module containing Transform.
+    #               Default: 'processor'
+    #   - 'name': Required string. Name of Transform.
+    #   - 'args': Optional dictionary. Arguments to pass to transform using
+    #             Transform(**args). Default: {}
+    # Valid transform names are those defined in DL1DataHandler or any defined
+    # in the specified path and module.
+    transforms:
+        -
+            name: 'ConvertShowerPrimaryIDToClassLabel'
+        -
+            name: 'NormalizeTelescopePositions'
+            args: {'norm_x': 1.0, 'norm_y': 1.0, 'norm_z': 1.0}
+#       -
+#           path: '/path/to/my/module/'
+#           module: 'my_transform'
+#           name: 'MyTransform'
+#           args: {'arg1': 'foo', 'arg2': 3.14}
+
+    # Whether to validate that the shape and dtype of the processed data
+    # matches the example description.
+    # Recommended setting is True while developing the network and False
+    # during production.
+    # Optional Boolean. Default: False
+    validate_processor: False
+
+# Settings for the TensorFlow Estimator input_fn.
+Input:
+
+    # Random seed for shuffling the dataset.
+    # Optional integer. Default: use default TensorFlow behavior
+    seed: null
+
+    # Number of consecutive examples to combine into a batch.
+    # Optional integer. Default: 1
+    batch_size: 32
+
+    # Number of examples to load into memory before shuffling.
+    # For valid results, either randomize the example order
+    # in the generator (i.e. set Data:shuffle = True) or set to
+    # greater than or equal to the number of examples in the dataset.
+    # For best performance, set to less than the total number of examples.
+    # Optional integer. Default: All examples in dataset
+    shuffle_buffer_size: 10000
+
+    # Maximum number of batches to be buffered when prefetching.
+    # Optional integer. Default: 1
+    prefetch_buffer_size: 8
+
+# Settings for the TensorFlow model. The options in this and the
+# Model Parameters section are passed to the Estimator model_fn
+# and the user's model function.
 Model:
 
     # Optional string or null. Default if missing or null is to load
     # CTLearn default models directory: 'ctlearn/ctlearn/default_models/'
     # Path to directory containing model module.
-    model_directory: null #'/my/model/path/'
+    model_directory: null  # '/my/model/path/'
 
-    # Required list of two strings.
+    # Required dictionary containing a module/function pair.
     # Module in model directory and function in module implementing the model.
     # Module and function pairs included with CTLearn:
     #   - {module: 'single_tel', function: 'single_tel_model'}: single
@@ -253,133 +261,148 @@ Model:
     #   - {module: 'variable_input_model', function: 'variable_input_model'}:
     #       array model feeding combined outputs of a CNN for each
     #       telescope into a CNN network head
-    model: {module: 'cnn_rnn', function: 'cnn_rnn_model'}
+    model: {module: 'single_tel', function: 'single_tel_model'}
 
-    # The options in this section are combined with the dataset metadata
-    # and passed as a dictionary called "params" to the model function.
-    # The config option 'model_directory' above is included in params as well.
-    # None of these options are accessed anywhere outside the model, so
-    # arbitrary options may be added here. This permits custom configuration
-    # of user-provided models.
-    # Below are listed the configuration options for the CTLearn included
-    # models, which are only accessed if using those models.
-    Model Parameters:
-        single_tel:
-            # Required dict with keys 'module' and 'function' & string values.
-            # Module and function for image classification network.
-            # Valid options:
-            #   - {module: 'basic', function: 'conv_block'}
-            network: {module: 'basic', function: 'conv_block'}
+    # Dictionary of labels where the keys are the label names.
+    # For a classification label, the value is a list of class names
+    # in order of class label (0 to n-1).
+    # For a regression label, the value is null.
+    # Optional dictionary with string keys and values either null or
+    # a list of strings. Default: {}
+    label_names:
+        class_label:
+            - 'proton'
+            - 'gamma'
 
-            # Required string or null.
-            # Path to a checkpoint file or model directory from which to load
-            # pretrained network weights. If null, don't load any weights.
-            pretrained_weights: null
+# The options in this and the Model section are passed in a dictionary
+# called "params" to the model function.
+# The config option 'model_directory' above is included in params as well.
+# None of these options are accessed anywhere outside the model, so
+# arbitrary options may be added here. This permits custom configuration
+# of user-provided models.
+# Below are listed the configuration options for the CTLearn included
+# models, which are only accessed if using those models.
+Model Parameters:
+    single_tel:
+        # Required dict with keys 'module' and 'function' & string values.
+        # Module and function for image classification network.
+        # Valid options:
+        #   - {module: 'basic', function: 'conv_block'}
+        network: {module: 'basic', function: 'conv_block'}
 
-        cnn_rnn:
-            # Required dict with keys 'module' and 'function' & string values.
-            # Module and function for single telescope CNN.
-            # Valid options:
-            #   - {module: 'basic', function: 'conv_block'}
-            cnn_block: {module: 'basic', function: 'conv_block'}
+        # Required string or null.
+        # Path to a checkpoint file or model directory from which to load
+        # pretrained network weights. If null, don't load any weights.
+        pretrained_weights: null
 
-            # Required string or null.
-            # Path to a checkpoint file or model directory from which to load
-            # pretrained CNN block weights. If null, don't load any weights.
-            pretrained_weights: null
+    cnn_rnn:
+        # Required dict with keys 'module' and 'function' & string values.
+        # Module and function for single telescope CNN.
+        # Valid options:
+        #   - {module: 'basic', function: 'conv_block'}
+        cnn_block: {module: 'basic', function: 'conv_block'}
 
-            # Optional float. Default: 0.5
-            # Dropout rate of dropout layers.
-            dropout_rate: 0.5
+        # Required string or null.
+        # Path to a checkpoint file or model directory from which to load
+        # pretrained CNN block weights. If null, don't load any weights.
+        pretrained_weights: null
 
-        variable_input_model:
-            # Required dict with keys 'module' and 'function' & string values.
-            # Module and function for single telescope CNN.
-            # Valid options:
-            #   - {module: 'basic', function: 'conv_block'}
-            cnn_block: {module: 'basic', function: 'conv_block'}
+        # Optional float. Default: 0.5
+        # Dropout rate of dropout layers.
+        dropout_rate: 0.5
 
-            # Required string.
-            # Valid options:
-            #   - 'vector': Use for network heads expecting an input vector
-            #   - 'feature_maps': Use for networks heads expecting input as
-            #       a stack of feature maps as used for convolutional layers
-            telescope_combination: 'feature_maps'
+    variable_input_model:
+        # Required dict with keys 'module' and 'function' & string values.
+        # Module and function for single telescope CNN.
+        # Valid options:
+        #   - {module: 'basic', function: 'conv_block'}
+        cnn_block: {module: 'basic', function: 'conv_block'}
 
-            # Required dict with keys 'module' and 'function' & string values.
-            # Module and function for network head.
-            # Valid options:
-            #   - {module: 'basic', function: 'fc_head'}
-            #   - {module: 'basic', function: 'conv_head'}
-            network_head: {module: 'basic', function: 'conv_head'}
+        # Required string.
+        # Valid options:
+        #   - 'vector': Use for network heads expecting an input vector
+        #   - 'feature_maps': Use for networks heads expecting input as
+        #       a stack of feature maps as used for convolutional layers
+        telescope_combination: 'feature_maps'
 
-            # Required string or null.
-            # Path to a checkpoint file or model directory from which to load
-            # pretrained CNN block weights. If null, don't load any weights.
-            pretrained_weights: null
+        # Required dict with keys 'module' and 'function' & string values.
+        # Module and function for network head.
+        # Valid options:
+        #   - {module: 'basic', function: 'fc_head'}
+        #   - {module: 'basic', function: 'conv_head'}
+        network_head: {module: 'basic', function: 'conv_head'}
 
-        basic:
-            conv_block:
-                # Required list of dicts with keys 'filters' and 'kernel_size'
-                # with integer values.
-                # Filter dimension and kernel size for the CNN block
-                # convolutional layers.
-                layers:
-                    - {filters: 32, kernel_size: 3}
-                    - {filters: 64, kernel_size: 3}
-                    - {filters: 128, kernel_size: 3}
+        # Required string or null.
+        # Path to a checkpoint file or model directory from which to load
+        # pretrained CNN block weights. If null, don't load any weights.
+        pretrained_weights: null
 
-                # Required dictionary with keys 'size' and 'strides' and
-                # integer values, or null.
-                # Max pool size and strides. If null, don't perform any pooling.
-                max_pool: {size: 2, strides: 2}
+    basic:
+        conv_block:
+            # Required list of dicts with keys 'filters' and 'kernel_size'
+            # with integer values.
+            # Filter dimension and kernel size for the CNN block
+            # convolutional layers.
+            layers:
+                - {filters: 32, kernel_size: 3}
+                - {filters: 64, kernel_size: 3}
+                - {filters: 128, kernel_size: 3}
 
-                # Required integer or null.
-                # Number of output filters of a final 1x1 convolutional layer.
-                # If null, don't include this bottleneck layer.
-                bottleneck: null
+            # Required dictionary with keys 'size' and 'strides' and
+            # integer values, or null.
+            # Max pool size and strides. If null, don't perform any pooling.
+            max_pool: {size: 2, strides: 2}
 
-                # Optional Boolean. Default: false
-                # Whether to include a batch normalization layer after each
-                # convolutional layer. Exercise caution when using with
-                # array-level models.
-                batchnorm: false
+            # Required integer or null.
+            # Number of output filters of a final 1x1 convolutional layer.
+            # If null, don't include this bottleneck layer.
+            bottleneck: null
 
-            fc_head:
-                # Required list of integers.
-                # Number of units for each fully-connected head dense layer.
-                layers: [1024, 512, 256, 128, 64]
+            # Optional Boolean. Default: false
+            # Whether to include a batch normalization layer after each
+            # convolutional layer. Exercise caution when using with
+            # array-level models.
+            batchnorm: false
 
-                # Optional Boolean. Default: false
-                # Whether to include a batch normalization layer after each
-                # dense layer.
-                batchnorm: false
+        fc_head:
+            # Required list of integers.
+            # Number of units for each fully-connected head dense layer.
+            layers: [1024, 512, 256, 128, 64]
 
-            conv_head:
-                # Required list of dicts with keys 'filters' and 'kernel_size'
-                # with integer values.
-                # Filter dimension and kernel size for the convolutional
-                # network head layers.
-                layers:
-                    - {filters: 64, kernel_size: 3}
-                    - {filters: 128, kernel_size: 3}
-                    - {filters: 256, kernel_size: 3}
+            # Optional Boolean. Default: false
+            # Whether to include a batch normalization layer after each
+            # dense layer.
+            batchnorm: false
 
-                # Optional Boolean. Default: true
-                # Whether to perform average pooling over spatial dimensions
-                # of the convolutional output before calculating final output.
-                final_avg_pool: true
+        conv_head:
+            # Required list of dicts with keys 'filters' and 'kernel_size'
+            # with integer values.
+            # Filter dimension and kernel size for the convolutional
+            # network head layers.
+            layers:
+                - {filters: 64, kernel_size: 3}
+                - {filters: 128, kernel_size: 3}
+                - {filters: 256, kernel_size: 3}
 
-                # Optional Boolean. Default: false
-                # Whether to include a batch normalization layer after each
-                # convolutional layer.
-                batchnorm: false
+            # Optional Boolean. Default: true
+            # Whether to perform average pooling over spatial dimensions
+            # of the convolutional output before calculating final output.
+            final_avg_pool: true
 
-            # Optional float. Default: 0.99
-            # Decay parameter for batch normalization layers.
-            batchnorm_decay: 0.99
+            # Optional Boolean. Default: false
+            # Whether to include a batch normalization layer after each
+            # convolutional layer.
+            batchnorm: false
+
+        # Optional float. Default: 0.99
+        # Decay parameter for batch normalization layers.
+        batchnorm_decay: 0.99
 
 Training:
+
+    # Optional float. Default: 0.1
+    # Randomly chosen fraction of data to set aside for validation.
+    validation_split: 0.1
 
     # Required integer.
     # Number of validations made before finishing training. If 0, run forever.
@@ -390,44 +413,48 @@ Training:
     # on the validation set.
     num_training_steps_per_validation: 1000
 
-    Hyperparameters:
-        # Required string.
-        # Valid options: ['Adadelta', 'Adam', 'RMSProp', 'SGD']
-        # Optimizer function for training.
-        optimizer: 'Adam'
+    # Required string.
+    # Valid options: ['Adadelta', 'Adam', 'RMSProp', 'SGD']
+    # Optimizer function for training.
+    optimizer: 'Adam'
 
-        # Optional float. Required if optimizer is 'Adam', ignored otherwise.
-        # Epsilon parameter for the Adam optimizer.
-        adam_epsilon: 1.0e-8
+    # Optional float. Required if optimizer is 'Adam', ignored otherwise.
+    # Epsilon parameter for the Adam optimizer.
+    adam_epsilon: 1.0e-8
 
-        # Required integer.
-        # Base learning rate before scaling or annealing.
-        base_learning_rate: 0.001
+    # Required integer.
+    # Base learning rate before scaling or annealing.
+    base_learning_rate: 0.001
 
-        # Required Boolean.
-        # Whether to scale the learning rate inversely proportional to the
-        # number of triggered telescopes. Not used for single tel models.
-        scale_learning_rate: false
+    # Required Boolean.
+    # Whether to scale the learning rate inversely proportional to the
+    # number of triggered telescopes. Not used for single tel models.
+    scale_learning_rate: false
 
-        # Required Boolean.
-        # Whether to weight the loss to rebalance unequal classes.
-        apply_class_weights: false
+    # Required Boolean.
+    # Whether to weight the loss to rebalance unequal classes.
+    apply_class_weights: false
 
-        # Required string or null. If provided, train on only variables
-        # within the scope matching this name, freezing all others. This is
-        # useful when loading pretrained weights. If null, train on all
-        # trainable variables.
-        variables_to_train: null
+    # Required string or null. If provided, train on only variables
+    # within the scope matching this name, freezing all others. This is
+    # useful when loading pretrained weights. If null, train on all
+    # trainable variables.
+    variables_to_train: null
 
 Prediction:
-    # Required Boolean if running in predict mode, ignored otherwise.
-    # Whether the data files contain the true classification
-    # values. Generally true for simulations and false for actual data.
-    true_labels_given: true
+    # Save the true labels along with the predictions.
+    # Optional Boolearn. Default: false
+    save_labels: false
+
+    # Save the example identifiers along with the predictions.
+    # Mono mode: obs_id, event_id, tel_id
+    # Stereo or multi-stereo mode: obs_id, event_id
+    # Optional Boolearn. Default: false
+    save_identifiers: false
 
     # Optional Boolean. Default: false
     # Whether to export predictions as a CSV file.
-    export_as_file: true
+    export_as_file: false
 
     # Required Boolean if running in predict mode and export_as_file is true,
     # ignored otherwise.
@@ -479,7 +506,7 @@ Multiple Configurations Settings:
 #       selection and set to null for random selection.
 Multiple Configurations Values:
     learning_rate:
-        config: ['Training', 'Hyperparameters', 'base_learning_rate']
+        config: ['Training', 'base_learning_rate']
         value_type: 'range'
         values:
             lower_bound: 1.0e-6
@@ -488,25 +515,23 @@ Multiple Configurations Values:
             selection: 'random'
             num_values: null
     multiplicity_cut:
-        config: ['Data', 'Loading', 'min_num_tels']
+        config: ['Data', 'selection_string']
         value_type: 'list'
         values:
-            - 1
-            - 2
-            - 3
-            - 4
+            - 'mc_energy < 1.0'
+            - 'mc_energy >= 1.0'
     telescope_type:
-        config: ['Data', 'Loading', 'selected_tel_types']
+        config: ['Data', 'selected_telescope_type']
         value_type: 'grouped'
         values:
-            'LST:LSTCam': ['LST:LSTCam']
-            'MST:NectarCam': ['MST:NectarCam']
+            'LST_LSTCam': 'LST_LSTCam'
+            'MST_NectarCam': 'MST_NectarCam'
     selected_telescopes:
-        config: ['Data', 'Loading', 'selected_tel_ids']
+        config: ['Data', 'selected_telescope_ids']
         value_type: 'grouped'
         values:
-            'LST:LSTCam': [1, 2, 3, 4]
-            'MST:NectarCam': [30, 31, 32, 33]
+            'LST_LSTCam': [1, 2, 3, 4]
+            'MST_NectarCam': [30, 31, 32, 33]
     network_type:
         config: ['Model', 'model']
         value_type: 'grouped'
@@ -517,9 +542,10 @@ Multiple Configurations Values:
             variable_input:
                 module: 'variable_input_model'
                 function: 'variable_input_model'
+    # Not yet implemented!
     telescope_sorting:
-        config: ['Data', 'Processing', 'sorting']
+        config: ['Data', 'transforms']
         value_type: 'grouped'
         values:
-            CNN_RNN: 'size'
+            CNN_RNN: [{name: SortImages, args: {'order': 'size'}}]
             variable_input: null

@@ -1,20 +1,15 @@
 # conda env create -f environment-macos.yml
 name: ctlearn
 channels:
-    - conda-forge
-    - menpo
+    - anaconda
 dependencies:
     - python=3.7.3
     - matplotlib
     - numpy
-    - astropy
-    - opencv
-    - pillow
+    - pandas
     - pip
-    # TensorFlow-CPU v1.13.1:
-    - pip:
-        - https://storage.googleapis.com/tensorflow/mac/cpu/tensorflow-1.13.1-py3-none-any.whl
-    - pytables
     - pyyaml
     - scikit-learn
-    - scipy
+    - pip:
+        # TensorFlow-CPU v1.13.1
+        - https://storage.googleapis.com/tensorflow/mac/cpu/tensorflow-1.13.1-py3-none-any.whl
