@@ -89,7 +89,7 @@ CTLearn works with any TensorFlow model obeying the signature `logits = model(fe
 
 To use a custom model, provide in this section the directory containing a Python file that implements the model and the module name (that is, the file name minus the .py extension) and name of the model function within the module.
 
-In addition, CTLearn includes three [models](models) for gamma/hadron classification. CNN-RNN and Variable Input Network perform array-level classification by feeding the output of a CNN for each telescope into either a recurrent network, or a convolutional or fully-connected network head, respectively. Single Tel classifies single telescope images using a convolutional network. All three models are built on a simple, configurable convolutional network called Basic.
+In addition, CTLearn includes four [models](models) for gamma/hadron classification. CNN-RNN, attention and Variable Input Network perform array-level classification by feeding the output of a CNN for each telescope into either a recurrent network, or a convolutional or fully-connected network head, respectively. Single Tel classifies single telescope images using a convolutional network. All models are built on a simple, configurable convolutional network called Basic.
 
 The values in the data to be used as labels and lists of class names where applicable are also provided in this section.
 

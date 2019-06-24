@@ -311,6 +311,22 @@ Model Parameters:
         # Dropout rate of dropout layers.
         dropout_rate: 0.5
 
+    attention:
+        # Required dict with keys 'module' and 'function' & string values.
+        # Module and function for single telescope CNN.
+        # Valid options:
+        #   - {module: 'basic', function: 'conv_block'}
+        cnn_block: {module: 'basic', function: 'conv_block'}
+
+        # Required string or null.
+        # Path to a checkpoint file or model directory from which to load
+        # pretrained CNN block weights. If null, don't load any weights.
+        pretrained_weights: null
+
+        # Optional float. Default: 0.5
+        # Dropout rate of dropout layers.
+        dropout_rate: 0.5
+
     variable_input_model:
         # Required dict with keys 'module' and 'function' & string values.
         # Module and function for single telescope CNN.
