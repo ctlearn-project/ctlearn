@@ -232,3 +232,34 @@ Multiple Configurations Values:
             'LST_LSTCam': 'LST'
             'MST_FlashCam': 'MSTF'
             'SST1M_DigiCam': 'SST1'
+    camera_types:
+        config: ['Data', 'mapping_settings', 'camera_types']
+        value_type: 'grouped'
+        values:
+            'LST_LSTCam': ['LSTCam']
+            'MST_FlashCam': ['FlashCam']
+            'SST1M_DigiCam': ['DigiCam']
+    mapping_method:
+        config: ['Data', 'mapping_settings', 'mapping_method']
+        value_type: 'grouped'
+        values:
+            oversampling:
+                'LSTCam': 'oversampling'
+                'FlashCam': 'oversampling'
+                'DigiCam': 'oversampling'
+            rebinning:
+                'LSTCam': 'rebinning'
+                'FlashCam': 'rebinning'
+                'DigiCam': 'rebinning'
+            nearest_interpolation:
+                'LSTCam': 'nearest_interpolation'
+                'FlashCam': 'nearest_interpolation'
+                'DigiCam': 'nearest_interpolation'
+            bilinear_interpolation:
+                'LSTCam': 'bilinear_interpolation'
+                'FlashCam': 'bilinear_interpolation'
+                'DigiCam': 'bilinear_interpolation'
+            bicubic_interpolation:
+                'LSTCam': 'bicubic_interpolation'
+                'FlashCam': 'bicubic_interpolation'
+                'DigiCam': 'bicubic_interpolation'
