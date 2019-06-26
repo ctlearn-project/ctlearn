@@ -13,7 +13,7 @@ import tensorflow as tf
 from tensorflow.python import debug as tf_debug
 import yaml
 
-from dl1_data_handler.reader import DL1DataReader
+from dl1_data_handler.reader_legacy import DL1DataReader
 
 # Disable Tensorflow info and warning messages (not error messages)
 #os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
