@@ -7,7 +7,8 @@ Data:
   - image_charge
   mapping_settings:
     camera_types: ['FlashCam']
-    mapping_method: 'FlashCam': 'oversampling'
+    mapping_method: 
+      'FlashCam': 'oversampling'
     padding:
       ASTRICam: 0
       CHEC: 0

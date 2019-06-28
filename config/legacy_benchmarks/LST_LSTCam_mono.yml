@@ -7,7 +7,8 @@ Data:
   - image_charge
   mapping_settings:
     camera_types: ['LSTCam']
-    mapping_method: 'LSTCam': 'oversampling'
+    mapping_method: 
+      'LSTCam': 'oversampling'
     padding:
       ASTRICam: 0
       CHEC: 0
