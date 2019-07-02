@@ -41,11 +41,40 @@ Data:
             'LSTCam': 'bilinear_interpolation'
             'FlashCam': 'bilinear_interpolation'
             'NectarCam': 'bilinear_interpolation'
-            'SCTCam': 'bilinear_interpolation'
+            'SCTCam': 'oversampling'
             'DigiCam': 'bilinear_interpolation'
-            'ASTRICam': 'bilinear_interpolation'
-            'CHEC': 'bilinear_interpolation'
+            'ASTRICam': 'oversampling'
+            'CHEC': 'oversampling'
             'VERITAS': 'bilinear_interpolation'
+        interpolation_image_shape:
+            'LSTCam':
+                - 55
+                - 55
+                - 1
+            'FlashCam':
+                - 56
+                - 56
+                - 1
+            'NectarCam':
+                - 55
+                - 55
+                - 1
+            'SCTCam':
+                - 120
+                - 120
+                - 1
+            'DigiCam':
+                - 48
+                - 48
+                - 1
+            'ASTRICam':
+                - 56
+                - 56
+                - 1
+            'CHEC':
+                - 48
+                - 48
+                - 1
         padding:
             'LSTCam': 2
             'FlashCam': 1
@@ -238,6 +267,9 @@ Multiple Configurations Values:
         config: ['Data', 'selected_telescope_type']
         value_type: 'grouped'
         values:
+            'LST_LSTCam': 'LST'
+            'MST_FlashCam': 'MSTF'
+            'SST1M_DigiCam': 'SST1'
             'MST_NectarCam': MSTN
             'MST-SCT_SCTCam': MSTS
             'SST_ASTRICam': SSTA
@@ -246,6 +278,9 @@ Multiple Configurations Values:
         config: ['Data', 'mapping_settings', 'camera_types']
         value_type: 'grouped'
         values:
+            'LST_LSTCam': ['LSTCam']
+            'MST_FlashCam': ['FlashCam']
+            'SST1M_DigiCam': ['DigiCam']
             'MST_NectarCam': ['NectarCam']
             'MST-SCT_SCTCam': ['SCTCam']
             'SST_ASTRICam': ['ASTRICam']
