@@ -181,11 +181,11 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         if config['Prediction'].get('save_identifiers', False):
             if 'event_info' not in config['Data']:
                 config['Data']['event_info'] = []
-            config['Data']['event_info'].extend(['event_id', 'obs_id'])
+            config['Data']['event_info'].extend(['event_number', 'run_number'])
             if config['Data']['mode'] == 'mono':
                 if 'array_info' not in config['Data']:
                     config['Data']['array_info'] = []
-                config['Data']['array_info'].append('id')
+                config['Data']['array_info'].append('tel_id')
 
     # Create data reader
     logger.info("Loading data:")
@@ -312,9 +312,9 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             # Append the event identifiers to the predictions
             if params['prediction'].get('save_identifiers', False):
                 for d in params['example_description']:
-                    if d['name'] in ['event_id', 'obs_id']:
+                    if d['name'] in ['event_number', 'run_number']:
                         predictions[d['name']] = features[d['name']]
-                    if d['name'] == 'id':
+                    if d['name'] == 'tel_id':
                         predictions['tel_id'] = tf.reshape(features[d['name']],
                                                            [-1])
             # Append the labels to the predictions
