@@ -2,13 +2,13 @@ Logging:
     # Path to directory to store TensorFlow model checkpoints and summaries.
     # A timestamped copy of the configuration file will also be put here.
     # Required string.
-    model_directory: '/data0/logs/icrc2019/190625_legacy_benchmark'
+    model_directory: '/update/this/path'
 
 Data:
     # Either a list of data file paths,
     # or a path to a file listing data file paths, one per line.
     # Required list or string.
-    file_list: '/home/shevek/datasets/prototype/prototype_files_class_balanced.txt'
+    file_list: '/update/this/path/files.txt'
 
     # Type of examples to load.
     # Optional string. Default: 'mono'
@@ -46,26 +46,14 @@ Data:
             'ASTRICam': 'oversampling'
             'CHEC': 'oversampling'
             'VERITAS': 'bilinear_interpolation'
-        interpolation_image_shape:
-            'LSTCam':
-                - 55
-                - 55
-                - 1
-            'FlashCam':
-                - 56
-                - 56
-                - 1
-            'NectarCam':
-                - 55
-                - 55
-                - 1
-            'SCTCam':
+	interpolation_image_shape:
+	    'SCTCam':
                 - 120
                 - 120
                 - 1
             'DigiCam':
-                - 48
-                - 48
+                - 50
+                - 50
                 - 1
             'ASTRICam':
                 - 56
@@ -79,7 +67,7 @@ Data:
             'LSTCam': 2
             'FlashCam': 1
             'NectarCam': 2
-            'SCTCam': 4
+            'SCTCam': 0
             'DigiCam': 1
             'ASTRICam': 0
             'CHEC': 0
