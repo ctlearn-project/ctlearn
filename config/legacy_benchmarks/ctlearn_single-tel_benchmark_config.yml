@@ -46,23 +46,6 @@ Data:
             'ASTRICam': 'oversampling'
             'CHEC': 'oversampling'
             'VERITAS': 'bilinear_interpolation'
-	interpolation_image_shape:
-	    'SCTCam':
-                - 120
-                - 120
-                - 1
-            'DigiCam':
-                - 50
-                - 50
-                - 1
-            'ASTRICam':
-                - 56
-                - 56
-                - 1
-            'CHEC':
-                - 48
-                - 48
-                - 1
         padding:
             'LSTCam': 2
             'FlashCam': 1
