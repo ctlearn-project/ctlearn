@@ -1,0 +1,259 @@
+Logging:
+    # Path to directory to store TensorFlow model checkpoints and summaries.
+    # A timestamped copy of the configuration file will also be put here.
+    # Required string.
+    model_directory: '/update/this/path'
+
+Data:
+    # Either a list of data file paths,
+    # or a path to a file listing data file paths, one per line.
+    # Required list or string.
+    file_list: '/update/this/path/files.txt'
+
+    # Type of examples to load.
+    # Optional string. Default: 'mono'
+    # Valid options:
+    #   - 'mono': single images of one telescope type 
+    #   - 'stereo': events of one telescope type 
+    #   - 'multi-stereo': events including multiple telescope types
+    mode: 'stereo'
+    
+    # Whether to shuffle the examples.
+    # Optional Boolean. Default: False
+    shuffle: true
+
+    # Seed for shuffling the examples. Only used if shuffle is true.
+    # Optional integer. Default: use default random initialization.
+    seed: 1111
+
+    # Image channels to load.
+    # Optional list of strings. Default: ['charge']
+    # Valid options are 'charge' and 'peakpos', or whichever columns are in
+    # the telescope tables of your data files.
+    image_channels: ['image_charge']
+
+    mapping_settings:
+        # Number of padding pixels to add around each edge of the mapped image.
+        # A value of 1 will increase both the image height and width by 2, etc.
+        # Optional dictionary with camera type string keys and integer values.
+        # Default: 0 for any camera type not specified
+        mapping_method:
+            'LSTCam': 'bilinear_interpolation'
+            'FlashCam': 'bilinear_interpolation'
+            'NectarCam': 'bilinear_interpolation'
+            'SCTCam': 'oversampling'
+            'DigiCam': 'bilinear_interpolation'
+            'ASTRICam': 'oversampling'
+            'CHEC': 'oversampling'
+            'VERITAS': 'bilinear_interpolation'
+        padding:
+            'LSTCam': 2
+            'FlashCam': 1
+            'NectarCam': 2
+            'SCTCam': 0
+            'DigiCam': 1
+            'ASTRICam': 0
+            'CHEC': 0
+            'VERITAS': 1
+    # Auxiliary information to return from the Events table.
+    # Optional list of strings. Default: return no event info
+    # Valid options are columns in the Events table.
+    event_info: ['particle_id']
+    
+    event_selection:
+        -
+            name: 'event_intensity_filter'
+            args: {i_min: 0}
+
+    # Transforms to apply to the data, in order.
+    # Optional list of dictionaries with the following key/value pairs:
+    #   - 'path': Optional string. Path to module containing Transform.
+    #             Default: path to DL1DataHandler
+    #   - 'module': Optional string. Name of module containing Transform.
+    #               Default: 'processor'
+    #   - 'name': Required string. Name of Transform.
+    #   - 'args': Optional dictionary. Arguments to pass to transform using
+    #             Transform(**args). Default: {}
+    # Valid transform names are those defined in DL1DataHandler or any defined
+    # in the specified path and module.
+    transforms:
+        -
+            name: 'ConvertShowerPrimaryIDToClassLabel'
+        -
+            name: 'SortTelescopes'
+            args: {'sorting': 'size'}
+
+# Settings for the TensorFlow Estimator input_fn.
+Input:
+
+    # Random seed for shuffling the dataset.
+    # Optional integer. Default: use default TensorFlow behavior
+    seed: 1234
+
+    # Number of consecutive examples to combine into a batch.
+    # Optional integer. Default: 1
+    batch_size: 16
+
+    shuffle_buffer_size: 10000
+    
+    # Maximum number of batches to be buffered when prefetching.
+    # Optional integer. Default: 1
+    prefetch_buffer_size: 2
+
+# Settings for the TensorFlow model. The options in this and the
+# Model Parameters section are passed to the Estimator model_fn
+# and the user's model function.
+Model:
+
+    model_directory: null
+
+    model: {module: 'cnn_rnn', function: 'cnn_rnn_model'}
+   
+    # Dictionary of labels where the keys are the label names.
+    # For a classification label, the value is a list of class names
+    # in order of class label (0 to n-1).
+    # For a regression label, the value is null.
+    # Optional dictionary with string keys and values either null or
+    # a list of strings. Default: {}
+    label_names:
+        class_label:
+            - 'proton'
+            - 'gamma'
+
+# The options in this and the Model section are passed in a dictionary
+# called "params" to the model function.
+# The config option 'model_directory' above is included in params as well.
+# None of these options are accessed anywhere outside the model, so
+# arbitrary options may be added here. This permits custom configuration
+# of user-provided models.
+# Below are listed the configuration options for the CTLearn included
+# models, which are only accessed if using those models.
+Model Parameters:
+   
+    cnn_rnn:
+        cnn_block: {module: 'basic', function: 'conv_block'}
+        dropout_rate: 0.5
+        pretrained_weights: null
+    
+    basic:
+        conv_block:
+            # Required list of dicts with keys 'filters' and 'kernel_size'
+            # with integer values.
+            # Filter dimension and kernel size for the CNN block
+            # convolutional layers.
+            layers:
+                - {filters: 32, kernel_size: 3}
+                - {filters: 32, kernel_size: 3}
+                - {filters: 64, kernel_size: 3}
+                - {filters: 128, kernel_size: 3}
+
+            # Required dictionary with keys 'size' and 'strides' and
+            # integer values, or null.
+            # Max pool size and strides. If null, don't perform any pooling.
+            max_pool: {size: 2, strides: 2}
+
+            # Required integer or null.
+            # Number of output filters of a final 1x1 convolutional layer.
+            # If null, don't include this bottleneck layer.
+            bottleneck: null
+
+            # Optional Boolean. Default: false
+            # Whether to include a batch normalization layer after each
+            # convolutional layer. Exercise caution when using with
+            # array-level models.
+            batchnorm: false
+        
+Training:
+    
+    validation_split: 0.1
+
+    # 50000 total steps of 64 images each
+    # LST_LSTCam: 19.8 epochs (179591 total images)
+    # MST_FlashCam: 4.8 epochs (740320 total images)
+    # SST1M_DigiCam: 8.4 epochs (421791 total images)
+    # Note: total images includes the training set + validation set,
+    # but the calculation of epochs refers to the training set only.
+    num_validations: 16
+    num_training_steps_per_validation: 2500
+
+    # Required string.
+    # Valid options: ['Adadelta', 'Adam', 'RMSProp', 'SGD']
+    # Optimizer function for training.
+    optimizer: 'Adam'
+
+    # Optional float. Required if optimizer is 'Adam', ignored otherwise.
+    # Epsilon parameter for the Adam optimizer.
+    adam_epsilon: 1.0e-8
+
+    # Required integer.
+    # Base learning rate before scaling or annealing.
+    base_learning_rate: 0.0001
+
+    # Required Boolean.
+    # Whether to scale the learning rate inversely proportional to the
+    # number of triggered telescopes. Not used for single tel models.
+    scale_learning_rate: false
+
+    # Required Boolean.
+    # Whether to weight the loss to rebalance unequal classes.
+    apply_class_weights: false
+
+    # Required string or null. If provided, train on only variables
+    # within the scope matching this name, freezing all others. This is
+    # useful when loading pretrained weights. If null, train on all
+    # trainable variables.
+    variables_to_train: null
+
+Prediction:
+    # Save the true labels along with the predictions.
+    # Optional Boolearn. Default: false
+    save_labels: true
+
+    # Save the example identifiers along with the predictions.
+    # Mono mode: obs_id, event_id, tel_id
+    # Stereo or multi-stereo mode: obs_id, event_id
+    # Optional Boolearn. Default: false
+    save_identifiers: true
+
+    # Optional Boolean. Default: false
+    # Whether to export predictions as a CSV file.
+    export_as_file: true
+
+    # Required Boolean if running in predict mode and export_as_file is true,
+    # ignored otherwise.
+    # Path to file to save predictions.
+    prediction_file_path: '/tmp/mypredictions.csv'
+
+TensorFlow:
+    # Optional Boolean. Default: false
+    # Whether to run TensorFlow debugger.
+    run_TFDBG: false
+
+Multiple Configurations Settings:
+    # Required string.
+    # Path to file to save configuration combination for each run for reference.
+    run_combinations_path: '/data0/logs/icrc2019/run_combinations.yml'
+
+Multiple Configurations Values:
+    telescope_type:
+        config: ['Data', 'selected_telescope_type']
+        value_type: 'grouped'
+        values:
+            'LST_LSTCam': 'LST'
+            'MST_FlashCam': 'MSTF'
+            'SST1M_DigiCam': 'SST1'
+            'MST_NectarCam': 'MSTN'
+            'MSTSCT_SCTCam': 'MSTS'
+            'SST_ASTRICam': 'SSTA'
+            'SST_CHEC': 'SSTC'
+    camera_types:
+        config: ['Data', 'mapping_settings', 'camera_types']
+        value_type: 'grouped'
+        values:
+            'LST_LSTCam': ['LSTCam']
+            'MST_FlashCam': ['FlashCam']
+            'SST1M_DigiCam': ['DigiCam']
+            'MST_NectarCam': ['NectarCam']
+            'MSTSCT_SCTCam': ['SCTCam']
+            'SST_ASTRICam': ['ASTRICam']
+            'SST_CHEC': ['CHEC']
