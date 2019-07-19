@@ -1,0 +1,44 @@
+{
+    "license": "other-open", 
+    "contributors": [
+        {
+            "affiliation": "Facultad de Ingenier\u00eda Inform\u00e1tica, Universidad Complutense de Madrid, Madrid, Spain", 
+            "type": "Researcher", 
+            "name": "Jaime Sevilla"
+        }
+    ], 
+    "language": "eng", 
+    "title": "CTLearn: Deep learning for imaging atmospheric Cherenkov telescopes event reconstruction", 
+    "upload_type": "software", 
+    "keywords": [
+        "Imaging atmospheric Cherenkov telescopes", 
+        "Deep learning", 
+        "High energy physics", 
+        "Event reconstruction"
+    ], 
+    "creators": [
+        {
+            "affiliation": "Columbia University, Department of Physics, New York, NY, USA", 
+            "name": "Ari Brill"
+        }, 
+        {
+            "affiliation": "University of California Los Angeles, Division of Astronomy and Astrophysics, Los Angeles, CA, USA", 
+            "name": "Bryan Kim"
+        }, 
+        {
+            "orcid": "0000-0003-3343-0755", 
+            "affiliation": "Instituto de F\u00edsica de Part\u00edculas y del Cosmos and Departamento de EMFTEL, Universidad Complutense de Madrid, Madrid, Spain", 
+            "name": "Daniel Nieto"
+        }, 
+        {
+            "affiliation": "Instituto de F\u00edsica de Part\u00edculas y del Cosmos and Departamento de EMFTEL, Universidad Complutense de Madrid, Madrid, Spain", 
+            "name": "Tjark Miener"
+        }, 
+        {
+            "affiliation": "Columbia University, Department of Physics, New York, NY, USA", 
+            "name": "Qi Feng"
+        }
+    ], 
+    "access_right": "open", 
+    "description": "<p>CTLearn is a high-level Python package providing a backend for training deep learning models for the reconstruction of imaging atmospheric Cherenkov telescope events using TensorFlow.</p>"
+}
