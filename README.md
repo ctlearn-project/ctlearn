@@ -3,8 +3,6 @@
 
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3342952.svg)](https://doi.org/10.5281/zenodo.3342952)
-
-
 [![Build Status](https://travis-ci.com/ctlearn-project/ctlearn.svg?branch=master)](https://travis-ci.com/ctlearn-project/ctlearn)
 
 ![CTLearn Logo](images/CTLearnTextCTinBox_WhiteBkgd.png)
