@@ -123,7 +123,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     sys.path.append(model_directory)
     model_module = importlib.import_module(config['Model']['model']['module'])
     model = getattr(model_module, config['Model']['model']['function'])
-    model_type = config['Data'].get('Loading', {}).get('example_type', 'array')
 
     params['model'] = {**config['Model'], **config.get('Model Parameters', {})}
 
@@ -221,7 +220,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     if mode in ['train', 'load_only']:
 
         params['training'] = config['Training']
-        params['training']['model_type'] = model_type
 
         validation_split = config['Training']['validation_split']
         if not 0.0 < validation_split < 1.0:
@@ -361,7 +359,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         # telescopes don't have smaller gradients
         # Only apply learning rate scaling for array-level models
         if (training_params['scale_learning_rate'] and
-                model_type == 'array'):
+                 params['model']['model']['function'] in ['cnn_rnn_model', 'variable_input_model']):
             trigger_rate = tf.reduce_mean(tf.cast(
                 features['telescope_triggers'], tf.float32),
                                           name="trigger_rate")
