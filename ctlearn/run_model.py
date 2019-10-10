@@ -186,6 +186,31 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                     config['Data']['array_info'] = []
                 config['Data']['array_info'].append('id')
 
+    # Load learning tasks
+    learning_tasks = params['model']['learning_tasks']
+    learning_task_labels = {}
+    if 'gammahadron_classification' in learning_tasks:
+        if 'event_info' not in config['Data']:
+            config['Data']['event_info'] = []
+        if 'shower_primary_id' not in config['Data']['event_info']:
+            config['Data']['event_info'].extend(['shower_primary_id'])
+        learning_task_labels['class_label'] = params['model']['label_names']['class_label']
+    if 'energy_regression' in learning_tasks:
+        if 'event_info' not in config['Data']:
+            config['Data']['event_info'] = []
+        if 'mc_energy' not in config['Data']['event_info']:
+            config['Data']['event_info'].extend(['mc_energy'])
+        learning_task_labels['mc_energy'] = 'Simulated (MC) Primary Particle Energy'
+    if 'direction_regression' in learning_tasks:
+        if 'event_info' not in config['Data']:
+            config['Data']['event_info'] = []
+        if 'alt' not in config['Data']['event_info']:
+            config['Data']['event_info'].extend(['alt'])
+        learning_task_labels['alt'] = 'Zenith Angle'
+        if 'az' not in config['Data']['event_info']:
+            config['Data']['event_info'].extend(['az'])
+        learning_task_labels['az'] = 'Azimuth Angle'
+
     # Create data reader
     logger.info("Loading data:")
     logger.info("For a large dataset, this may take a while...")
@@ -208,7 +233,8 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     config['Input']['output_shapes'] = tuple(tf.TensorShape(d['shape']) for d
                                              in reader.example_description)
     config['Input']['label_names'] = config['Model'].get('label_names', {})
-
+    config['Input']['label_names'].update(learning_task_labels)
+    
     # Load either training or prediction options
     # and log information about the data set
     indices = list(range(len(reader)))
@@ -324,7 +350,8 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                                               predictions=predictions)
 
         training_params = params['training']
-
+       
+        print(labels)
         # Compute class-weighted softmax-cross-entropy
         true_classes = tf.cast(labels['class_label'], tf.int32,
                                name="true_classes")
