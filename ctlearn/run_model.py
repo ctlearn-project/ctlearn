@@ -317,45 +317,19 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     def model_fn(features, labels, mode, params):
 
         training = True if mode == tf.estimator.ModeKeys.TRAIN else False
+        training_params = params['training']
 
-        logits = model(features, params['model'],
+        output_flattened = model(features, params['model'],
                        params['example_description'], training)
 
-        # Collect predictions
-        predictions = {}
-        classifier_values = tf.nn.softmax(logits)
-        predicted_classes = tf.cast(tf.argmax(classifier_values, axis=1),
-                                    tf.int32, name="predicted_classes")
-        predictions['predicted_class'] = predicted_classes
-        for i, name in enumerate(params['model']['label_names']['class_label']):
-            predictions[name] = classifier_values[:, i]
-
-        # In predict mode, finish up here
-        if mode == tf.estimator.ModeKeys.PREDICT:
-
-            # Append the event identifiers to the predictions
-            if params['prediction'].get('save_identifiers', False):
-                for d in params['example_description']:
-                    if d['name'] in ['event_id', 'obs_id']:
-                        predictions[d['name']] = features[d['name']]
-                    if d['name'] == 'id':
-                        predictions['tel_id'] = tf.reshape(features[d['name']],
-                                                           [-1])
-            # Append the labels to the predictions
-            if params['prediction'].get('save_labels', False):
-                for key, value in features['labels'].items():
-                    predictions[key] = value
-
-            return tf.estimator.EstimatorSpec(mode=mode,
-                                              predictions=predictions)
-
-        training_params = params['training']
-       
-        print(labels)
+        num_classes = len(params['model']['label_names']['class_label'])
+        
+        logit_units = 1 if num_classes == 2 else num_classes
+        logits = tf.layers.dense(output_flattened, units=logit_units)
+        
         # Compute class-weighted softmax-cross-entropy
         true_classes = tf.cast(labels['class_label'], tf.int32,
                                name="true_classes")
-
         # Get class weights
         if training_params['apply_class_weights']:
             class_weights = tf.constant(training_params['class_weights'],
@@ -363,30 +337,13 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             weights = tf.gather(class_weights, true_classes, name="weights")
         else:
             weights = 1.0
-
-        num_classes = len(params['model']['label_names']['class_label'])
-        onehot_labels = tf.one_hot(indices=true_classes, depth=num_classes)
-
-        # compute cross-entropy loss
-        loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels,
-                                               logits=logits, weights=weights)
-
-        # add regularization loss
-        regularization_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
-        loss = tf.add_n([loss] + regularization_losses, name="loss")
-
-        # Compute accuracy
-        training_accuracy = tf.reduce_mean(tf.cast(tf.equal(true_classes,
-                                                            predicted_classes),
-                                                   tf.float32),
-                                           name="training_accuracy")
-        tf.summary.scalar("accuracy", training_accuracy)
-
+        
+        labels_dict = {'class_label': tf.equal(true_classes,1)}
+        
         # Scale the learning rate so batches with fewer triggered
         # telescopes don't have smaller gradients
         # Only apply learning rate scaling for array-level models
-        if (training_params['scale_learning_rate'] and
-                 params['model']['model']['function'] in ['cnn_rnn_model', 'variable_input_model']):
+        if (training_params['scale_learning_rate'] and model_params['model']['function'] in ['cnn_rnn_model', 'variable_input_model']):
             trigger_rate = tf.reduce_mean(tf.cast(
                 features['telescope_triggers'], tf.float32),
                                           name="trigger_rate")
@@ -397,9 +354,9 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                                         name="learning_rate")
         else:
             learning_rate = training_params['base_learning_rate']
-
+            
         # Select optimizer with appropriate arguments
-
+        
         # Dict of optimizer_name: (optimizer_fn, optimizer_args)
         optimizers = {
             'Adadelta': (tf.train.AdadeltaOptimizer,
@@ -416,37 +373,12 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         optimizer_fn, optimizer_args = optimizers[training_params['optimizer']]
         optimizer = optimizer_fn(**optimizer_args)
 
-        var_list = None
-        if training_params['variables_to_train'] is not None:
-            var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
-                                         training_params['variables_to_train'])
-
-        # Define train op with update ops dependency for batch norm
-        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-        with tf.control_dependencies(update_ops):
-            train_op = optimizer.minimize(
-                loss,
-                global_step=tf.train.get_global_step(),
-                var_list=var_list)
-
-        # Define the evaluation metrics
-        eval_metric_ops = {
-            'accuracy': tf.metrics.accuracy(true_classes,
-                                            predicted_classes),
-            'auc': tf.metrics.auc(true_classes, predictions['gamma'])
-            }
-
-        # add class-wise accuracies
-        for i, name in enumerate(params['model']['label_names']['class_label']):
-            weights = tf.cast(tf.equal(true_classes, tf.constant(i)), tf.int32)
-            eval_metric_ops['accuracy_' + name] = tf.metrics.accuracy(
-                true_classes, predicted_classes, weights=weights)
-
-        return tf.estimator.EstimatorSpec(
-            mode=mode,
-            loss=loss,
-            train_op=train_op,
-            eval_metric_ops=eval_metric_ops)
+        if num_classes == 2:
+            classification_head = tf.contrib.estimator.binary_classification_head(name='class_label')
+        else:
+            classification_head = tf.contrib.estimator.multi_class_head(name='class_label', n_classes=num_classes)
+            
+        return classification_head.create_estimator_spec(features, mode, logits, labels_dict['class_label'], optimizer)
 
     estimator = tf.estimator.Estimator(
         model_fn,
