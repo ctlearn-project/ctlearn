@@ -250,28 +250,41 @@ Model:
     # Path to directory containing model module.
     model_directory: '/home/tjark/multitask/ctlearn/ctlearn/default_models/'
     
-    # Required array of strings. If the array has more than one element
-    # 'Multitask Learning' (MTL) is performed. Otherwise the network is
-    # learning a single task.
+    # Required dictionary containing a module/function pair.
+    # Module in model directory and function in module implementing the model.
+    # Module and function pairs included with CTLearn:
+    #   - {module: 'vanilla_classification', function: 'vanilla_classification_model'}:
+    #       This model is implemented for a cross check. We want/need to reproduce
+    #       the CTLearn v0.4.0 results. After the cross check this can be deleted,
+    #       because the 'vanilla' model should give the same results, when selecting
+    #       only 'gammahadron_classification' in 'learning_tasks'. I need to check, if
+    #       we can only pass in one head in the multi_head class!
+    #   - {module: 'vanilla', function: 'vanilla_model'}:
+    #       The 'vanilla' model is calling the single_tel submodel to create the CNN block.
+    #       After the CNN block the output is flatten and feed to several dense layers,
+    #       depending on the selected learning tasks.
+    #   - {module: 'gamma_PhysNet', function: 'gamma_PhysNet_model'}:
+    #       TODO: Implement this model
+    #   - {module: 'gamma_PhysNet2', function: 'gamma_PhysNet2_model'}:
+    #       TODO: Implement this model
+    #   - {module: 'gamma_PhysNetS', function: 'gamma_PhysNetS_model'}:
+    #       TODO: Implement this model
+    #   - {module: 'gamma_PhysNet2S', function: 'gamma_PhysNet2S_model'}:
+    #       TODO: Implement this model
+    #
+    model: {module: 'vanilla', function: 'vanilla_model'}
+    
+    # Optional array of strings.
+    # This array is only used, if the 'vanilla' model is selected.
+    # If the array has more than one element 'Multitask Learning' (MTL)
+    # is performed. Otherwise the network is learning a single task.
     # Valid options:
     #   - 'gammahadron_classification': Include gamma/hadron classification
     #       in the network
     #   - 'energy_regression': Include energy estimation in the network
+    #   !!!Currently not working due to shape error!!!
     #   - 'direction_regression': Include direction estimation in the network
-    learning_tasks: ['gammahadron_classification', 'energy_regression', 'direction_regression']
-
-    # Required dictionary containing a module/function pair.
-    # Module in model directory and function in module implementing the model.
-    # Module and function pairs included with CTLearn:
-    #   - {module: 'single_tel', function: 'single_tel_model'}: single
-    #       tel model using a basic convolutional neural network (CNN)
-    #   - {module: 'cnn_rnn', function: 'cnn_rnn_model'}: array model
-    #       feeding output of a basic CNN for each  telescope into a
-    #       recurrent neural network (RNN)
-    #   - {module: 'variable_input_model', function: 'variable_input_model'}:
-    #       array model feeding combined outputs of a CNN for each
-    #       telescope into a CNN network head
-    model: {module: 'single_tel', function: 'single_tel_model'}
+    learning_tasks: ['gammahadron_classification', 'energy_regression']
 
     # Dictionary of labels where the keys are the label names.
     # For a classification label, the value is a list of class names

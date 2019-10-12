@@ -186,8 +186,23 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                     config['Data']['array_info'] = []
                 config['Data']['array_info'].append('id')
 
-    # Load learning tasks
-    learning_tasks = params['model']['learning_tasks']
+    # Load learning tasks according to the selected model
+    if params['model']['model']['function'] == 'vanilla_classification_model':
+        learning_tasks = ['gammahadron_classification']
+    elif params['model']['model']['function'] == 'vanilla_model':
+        learning_tasks = params['model']['learning_tasks']
+    elif params['model']['model']['function'] == 'gamma_PhysNet_model':
+        learning_tasks = ['gammahadron_classification', 'energy_regression', 'direction_regression']
+    elif params['model']['model']['function'] == 'gamma_PhysNet2_model':
+        learning_tasks = ['gammahadron_classification', 'energy_regression', 'direction_regression']
+    elif params['model']['model']['function'] == 'gamma_PhysNetS_model':
+        learning_tasks = ['gammahadron_classification', 'energy_regression', 'direction_regression']
+    elif params['model']['model']['function'] == 'gamma_PhysNet2S_model':
+        learning_tasks = ['gammahadron_classification', 'energy_regression', 'direction_regression']
+    else:
+        raise ValueError("Invalid model selection '{}'. Valid options: 'vanilla_classification',"
+                "'vanilla', 'gamma_PhysNet', 'gamma_PhysNet2', 'gamma_PhysNetS', 'gamma_PhysNet2S'".format(params['model']['model']['module']))
+
     learning_task_labels = {}
     if 'gammahadron_classification' in learning_tasks:
         if 'event_info' not in config['Data']:
@@ -315,71 +330,8 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     # metrics, optimizer, learning rate, etc.
     # to pass into TF Estimator
     def model_fn(features, labels, mode, params):
-
-        training = True if mode == tf.estimator.ModeKeys.TRAIN else False
-        training_params = params['training']
-
-        output_flattened = model(features, params['model'],
-                       params['example_description'], training)
-
-        num_classes = len(params['model']['label_names']['class_label'])
-        
-        logit_units = 1 if num_classes == 2 else num_classes
-        logits = tf.layers.dense(output_flattened, units=logit_units)
-        
-        # Compute class-weighted softmax-cross-entropy
-        true_classes = tf.cast(labels['class_label'], tf.int32,
-                               name="true_classes")
-        # Get class weights
-        if training_params['apply_class_weights']:
-            class_weights = tf.constant(training_params['class_weights'],
-                                        dtype=tf.float32, name="class_weights")
-            weights = tf.gather(class_weights, true_classes, name="weights")
-        else:
-            weights = 1.0
-        
-        labels_dict = {'class_label': tf.equal(true_classes,1)}
-        
-        # Scale the learning rate so batches with fewer triggered
-        # telescopes don't have smaller gradients
-        # Only apply learning rate scaling for array-level models
-        if (training_params['scale_learning_rate'] and model_params['model']['function'] in ['cnn_rnn_model', 'variable_input_model']):
-            trigger_rate = tf.reduce_mean(tf.cast(
-                features['telescope_triggers'], tf.float32),
-                                          name="trigger_rate")
-            trigger_rate = tf.maximum(trigger_rate, 0.1) # Avoid division by 0
-            scaling_factor = tf.reciprocal(trigger_rate, name="scaling_factor")
-            learning_rate = tf.multiply(scaling_factor,
-                                        training_params['base_learning_rate'],
-                                        name="learning_rate")
-        else:
-            learning_rate = training_params['base_learning_rate']
-            
-        # Select optimizer with appropriate arguments
-        
-        # Dict of optimizer_name: (optimizer_fn, optimizer_args)
-        optimizers = {
-            'Adadelta': (tf.train.AdadeltaOptimizer,
-                         dict(learning_rate=learning_rate)),
-            'Adam': (tf.train.AdamOptimizer,
-                     dict(learning_rate=learning_rate,
-                          epsilon=training_params['adam_epsilon'])),
-            'RMSProp': (tf.train.RMSPropOptimizer,
-                        dict(learning_rate=learning_rate)),
-            'SGD': (tf.train.GradientDescentOptimizer,
-                    dict(learning_rate=learning_rate))
-            }
-
-        optimizer_fn, optimizer_args = optimizers[training_params['optimizer']]
-        optimizer = optimizer_fn(**optimizer_args)
-
-        if num_classes == 2:
-            classification_head = tf.contrib.estimator.binary_classification_head(name='class_label')
-        else:
-            classification_head = tf.contrib.estimator.multi_class_head(name='class_label', n_classes=num_classes)
-            
-        return classification_head.create_estimator_spec(features, mode, logits, labels_dict['class_label'], optimizer)
-
+        return model(features, labels, mode, params)
+    
     estimator = tf.estimator.Estimator(
         model_fn,
         model_dir=model_dir,
