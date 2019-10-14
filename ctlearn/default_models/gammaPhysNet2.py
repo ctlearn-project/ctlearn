@@ -34,7 +34,8 @@ def gammaPhysNet2_model(features, labels, mode, params):
         gammahadron_classification_head = tf.contrib.estimator.binary_classification_head(name='particle_type')
     else:
         gammahadron_classification_head = tf.contrib.estimator.multi_class_head(name='particle_type', n_classes=num_classes)
-                
+         
+    # Arrival direction, impact parameter and x max estimation
     direction_impact_xmax_logit_units = 60
     direction_impact_xmax_output = tf.layers.dense(output_flattened, units=direction_impact_xmax_logit_units)
 
