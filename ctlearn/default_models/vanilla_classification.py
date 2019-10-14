@@ -9,8 +9,9 @@ def vanilla_classification_model(features, labels, mode, params):
     training = True if mode == tf.estimator.ModeKeys.TRAIN else False
     training_params = params['training']
 
-    output_flattened = single_tel_model(features, params['model'],
+    output = single_tel_model(features, params['model'],
                    params['example_description'], training)
+    output_flattened = tf.layers.flatten(output)
 
     num_classes = len(params['model']['label_names']['class_label'])
     

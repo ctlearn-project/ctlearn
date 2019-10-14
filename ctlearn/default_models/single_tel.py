@@ -22,6 +22,4 @@ def single_tel_model(features, model_params, example_description, training):
     if model_params['single_tel']['pretrained_weights']:
         tf.contrib.framework.init_from_checkpoint(model_params['single_tel']['pretrained_weights'],{'Network/':'Network/'})
 
-    output_flattened = tf.layers.flatten(output)
-
-    return output_flattened
+    return output

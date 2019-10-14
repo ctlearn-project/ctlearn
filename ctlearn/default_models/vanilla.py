@@ -10,8 +10,9 @@ def vanilla_model(features, labels, mode, params):
     training_params = params['training']
     learning_tasks = params['model']['learning_tasks']
 
-    output_flattened = single_tel_model(features, params['model'],
+    output = single_tel_model(features, params['model'],
                    params['example_description'], training)
+    output_flattened = tf.layers.flatten(output)
 
     labels_dict = {}
     logits_dict = {}
