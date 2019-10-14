@@ -52,7 +52,7 @@ def vanilla_model(features, labels, mode, params):
         prediction_direction_regression = tf.layers.dense(output_flattened, units=logit_units)
         
         logits_dict.update({'arrival_direction': prediction_direction_regression})
-        labels_dict.update({'arrival_direction': [labels['alt'],labels['az']]})
+        labels_dict.update({'arrival_direction': tf.reshape([labels['alt'],labels['az']],[-1,2])})
         
         direction_regression_head = tf.contrib.estimator.regression_head(name='arrival_direction',label_dimension=logit_units)
         

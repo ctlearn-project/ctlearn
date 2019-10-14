@@ -282,9 +282,8 @@ Model:
     #   - 'gammahadron_classification': Include gamma/hadron classification
     #       in the network
     #   - 'energy_regression': Include energy estimation in the network
-    #   !!!Currently not working due to shape error!!!
     #   - 'direction_regression': Include direction estimation in the network
-    learning_tasks: ['gammahadron_classification', 'energy_regression']
+    learning_tasks: ['gammahadron_classification', 'energy_regression', 'direction_regression']
 
     # Dictionary of labels where the keys are the label names.
     # For a classification label, the value is a list of class names
