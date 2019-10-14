@@ -191,17 +191,17 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         learning_tasks = ['gammahadron_classification']
     elif params['model']['model']['function'] == 'vanilla_model':
         learning_tasks = params['model']['learning_tasks']
-    elif params['model']['model']['function'] == 'gamma_PhysNet_model':
+    elif params['model']['model']['function'] == 'gammaPhysNet_model':
         learning_tasks = ['gammahadron_classification', 'energy_regression', 'direction_regression', 'impact_regression']
-    elif params['model']['model']['function'] == 'gamma_PhysNet2_model':
+    elif params['model']['model']['function'] == 'gammaPhysNet2_model':
         learning_tasks = ['gammahadron_classification', 'energy_regression', 'direction_regression', 'impact_regression', 'showermaximum_regression']
-    elif params['model']['model']['function'] == 'gamma_PhysNetS_model':
+    elif params['model']['model']['function'] == 'gammaPhysNetS_model':
         learning_tasks = ['gammahadron_classification', 'energy_regression', 'direction_regression', 'impact_regression']
-    elif params['model']['model']['function'] == 'gamma_PhysNet2S_model':
+    elif params['model']['model']['function'] == 'gammaPhysNet2S_model':
         learning_tasks = ['gammahadron_classification', 'energy_regression', 'direction_regression', 'impact_regression', 'showermaximum_regression']
     else:
         raise ValueError("Invalid model selection '{}'. Valid options: 'vanilla_classification',"
-                "'vanilla', 'gamma_PhysNet', 'gamma_PhysNet2', 'gamma_PhysNetS', 'gamma_PhysNet2S'".format(params['model']['model']['module']))
+                "'vanilla', 'gammaPhysNet', 'gammaPhysNet2', 'gammaPhysNetS', 'gammaPhysNet2S'".format(params['model']['model']['module']))
 
     learning_task_labels = {}
     if 'gammahadron_classification' in learning_tasks:

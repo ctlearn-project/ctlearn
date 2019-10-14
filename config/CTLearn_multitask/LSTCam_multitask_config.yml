@@ -185,7 +185,7 @@ Data:
     # Auxiliary information to return from the Events table.
     # Optional list of strings. Default: return no event info
     # Valid options are columns in the Events table.
-    event_info: ['shower_primary_id', 'mc_energy', 'alt', 'az']
+    event_info: ['shower_primary_id', 'mc_energy', 'alt', 'az', 'core_x', 'core_y', 'x_max']
 
     # Transforms to apply to the data, in order.
     # Optional list of dictionaries with the following key/value pairs:
@@ -263,13 +263,13 @@ Model:
     #       The 'vanilla' model is calling the single_tel submodel to create the CNN block.
     #       After the CNN block the output is flatten and feed to several dense layers,
     #       depending on the selected learning tasks.
-    #   - {module: 'gamma_PhysNet', function: 'gamma_PhysNet_model'}:
+    #   - {module: 'gammaPhysNet', function: 'gammaPhysNet_model'}:
     #       TODO: Implement this model
-    #   - {module: 'gamma_PhysNet2', function: 'gamma_PhysNet2_model'}:
+    #   - {module: 'gammaPhysNet2', function: 'gammaPhysNet2_model'}:
     #       TODO: Implement this model
-    #   - {module: 'gamma_PhysNetS', function: 'gamma_PhysNetS_model'}:
+    #   - {module: 'gammaPhysNetS', function: 'gammaPhysNetS_model'}:
     #       TODO: Implement this model
-    #   - {module: 'gamma_PhysNet2S', function: 'gamma_PhysNet2S_model'}:
+    #   - {module: 'gammaPhysNet2S', function: 'gammaPhysNet2S_model'}:
     #       TODO: Implement this model
     #
     model: {module: 'vanilla', function: 'vanilla_model'}
