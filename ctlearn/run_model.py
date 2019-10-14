@@ -192,13 +192,13 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     elif params['model']['model']['function'] == 'vanilla_model':
         learning_tasks = params['model']['learning_tasks']
     elif params['model']['model']['function'] == 'gamma_PhysNet_model':
-        learning_tasks = ['gammahadron_classification', 'energy_regression', 'direction_regression']
+        learning_tasks = ['gammahadron_classification', 'energy_regression', 'direction_regression', 'impact_regression']
     elif params['model']['model']['function'] == 'gamma_PhysNet2_model':
-        learning_tasks = ['gammahadron_classification', 'energy_regression', 'direction_regression']
+        learning_tasks = ['gammahadron_classification', 'energy_regression', 'direction_regression', 'impact_regression', 'showermaximum_regression']
     elif params['model']['model']['function'] == 'gamma_PhysNetS_model':
-        learning_tasks = ['gammahadron_classification', 'energy_regression', 'direction_regression']
+        learning_tasks = ['gammahadron_classification', 'energy_regression', 'direction_regression', 'impact_regression']
     elif params['model']['model']['function'] == 'gamma_PhysNet2S_model':
-        learning_tasks = ['gammahadron_classification', 'energy_regression', 'direction_regression']
+        learning_tasks = ['gammahadron_classification', 'energy_regression', 'direction_regression', 'impact_regression', 'showermaximum_regression']
     else:
         raise ValueError("Invalid model selection '{}'. Valid options: 'vanilla_classification',"
                 "'vanilla', 'gamma_PhysNet', 'gamma_PhysNet2', 'gamma_PhysNetS', 'gamma_PhysNet2S'".format(params['model']['model']['module']))
@@ -225,7 +225,22 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         if 'az' not in config['Data']['event_info']:
             config['Data']['event_info'].extend(['az'])
         learning_task_labels['az'] = 'Azimuth Angle'
-
+    if 'impact_regression' in learning_tasks:
+        if 'event_info' not in config['Data']:
+            config['Data']['event_info'] = []
+        if 'core_x' not in config['Data']['event_info']:
+            config['Data']['event_info'].extend(['core_x'])
+        learning_task_labels['core_x'] = 'Shower core x-position'
+        if 'core_y' not in config['Data']['event_info']:
+            config['Data']['event_info'].extend(['core_y'])
+        learning_task_labels['core_y'] = 'Shower core y-position'
+    if 'showermaximum_regression' in learning_tasks:
+        if 'event_info' not in config['Data']:
+            config['Data']['event_info'] = []
+        if 'x_max' not in config['Data']['event_info']:
+            config['Data']['event_info'].extend(['x_max'])
+        learning_task_labels['x_max'] = 'Location of shower maximum'
+    
     # Create data reader
     logger.info("Loading data:")
     logger.info("For a large dataset, this may take a while...")

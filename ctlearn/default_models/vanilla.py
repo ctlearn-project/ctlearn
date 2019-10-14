@@ -22,17 +22,17 @@ def vanilla_model(features, labels, mode, params):
         logit_units = 1 if num_classes == 2 else num_classes
         prediction_gammahadron_classification = tf.layers.dense(output_flattened, units=logit_units)
         
-        logits_dict.update({'class_label': prediction_gammahadron_classification})
+        logits_dict.update({'particle_type': prediction_gammahadron_classification})
         # Compute class-weighted softmax-cross-entropy
         true_classes = tf.cast(labels['class_label'], tf.int32,
                                   name="true_classes")
            
-        labels_dict.update({'class_label': tf.equal(true_classes,1)})
+        labels_dict.update({'particle_type': tf.equal(true_classes,1)})
         
         if num_classes == 2:
-            gammahadron_classification_head = tf.contrib.estimator.binary_classification_head(name='class_label')
+            gammahadron_classification_head = tf.contrib.estimator.binary_classification_head(name='particle_type')
         else:
-            gammahadron_classification_head = tf.contrib.estimator.multi_class_head(name='class_label', n_classes=num_classes)
+            gammahadron_classification_head = tf.contrib.estimator.multi_class_head(name='particle_type', n_classes=num_classes)
             
         multihead_array.append(gammahadron_classification_head)
         
@@ -40,10 +40,10 @@ def vanilla_model(features, labels, mode, params):
         logit_units = 1
         prediction_energy_regression = tf.layers.dense(output_flattened, units=logit_units)
         
-        logits_dict.update({'mc_energy': prediction_energy_regression})
-        labels_dict.update({'mc_energy': labels['mc_energy']})
+        logits_dict.update({'energy': prediction_energy_regression})
+        labels_dict.update({'energy': labels['mc_energy']})
         
-        energy_regression_head = tf.contrib.estimator.regression_head(name='mc_energy',label_dimension=logit_units)
+        energy_regression_head = tf.contrib.estimator.regression_head(name='energy',label_dimension=logit_units)
         
         multihead_array.append(energy_regression_head)
         
@@ -51,12 +51,34 @@ def vanilla_model(features, labels, mode, params):
         logit_units = 2
         prediction_direction_regression = tf.layers.dense(output_flattened, units=logit_units)
         
-        logits_dict.update({'arrival_direction': prediction_direction_regression})
-        labels_dict.update({'arrival_direction': tf.reshape([labels['alt'],labels['az']],[-1,2])})
+        logits_dict.update({'direction': prediction_direction_regression})
+        labels_dict.update({'direction': tf.reshape([labels['alt'],labels['az']],[-1,2])})
         
-        direction_regression_head = tf.contrib.estimator.regression_head(name='arrival_direction',label_dimension=logit_units)
+        direction_regression_head = tf.contrib.estimator.regression_head(name='direction',label_dimension=logit_units)
         
         multihead_array.append(direction_regression_head)
+    
+    if 'impact_regression' in learning_tasks:
+        logit_units = 2
+        prediction_impact_regression = tf.layers.dense(output_flattened, units=logit_units)
+        
+        logits_dict.update({'impact': prediction_impact_regression})
+        labels_dict.update({'impact': tf.reshape([labels['core_x'],labels['core_y']],[-1,2])})
+        
+        impact_regression_head = tf.contrib.estimator.regression_head(name='impact',label_dimension=logit_units)
+        
+        multihead_array.append(impact_regression_head)
+        
+    if 'showermaximum_regression' in learning_tasks:
+        logit_units = 1
+        prediction_xmax_regression = tf.layers.dense(output_flattened, units=logit_units)
+    
+        logits_dict.update({'x_max': prediction_xmax_regression})
+        labels_dict.update({'x_max': labels['x_max']})
+    
+        xmax_regression_head = tf.contrib.estimator.regression_head(name='x_max',label_dimension=logit_units)
+        
+        multihead_array.append(xmax_regression_head)
     
     # Scale the learning rate so batches with fewer triggered
     # telescopes don't have smaller gradients
