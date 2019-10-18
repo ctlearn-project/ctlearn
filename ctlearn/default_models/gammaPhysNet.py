@@ -20,15 +20,11 @@ def gammaPhysNet_model(features, labels, mode, params):
 
     # Particle type classififcation
     num_classes = len(params['model']['label_names']['class_label'])
-    print(num_classes)
     particletype_logit_units = 1 if num_classes == 2 else num_classes
     prediction_gammahadron_classification = tf.layers.dense(output_flattened, units=particletype_logit_units)
         
     logits_dict.update({'particle_type': prediction_gammahadron_classification})
-    # Compute class-weighted softmax-cross-entropy
-    true_classes = tf.cast(labels['class_label'], tf.int32,
-                                  name="true_classes")
-    labels_dict.update({'particle_type': tf.equal(true_classes,1)})
+    labels_dict.update({'particle_type': labels['class_label']})
         
     if num_classes == 2:
         gammahadron_classification_head = tf.contrib.estimator.binary_classification_head(name='particle_type')
@@ -37,7 +33,7 @@ def gammaPhysNet_model(features, labels, mode, params):
                 
     # Arrival direction and impact parameter estimation
     direction_impact_logit_units = 60
-    direction_impact_output = tf.layers.dense(output_flattened, units=direction_impact_logit_units)
+    direction_impact_output = tf.layers.dense(output_flattened, units=direction_impact_logit_units, activation=tf.nn.relu)
 
     prediction_direction_regression = tf.layers.dense(direction_impact_output, units=2)
     prediction_impact_regression = tf.layers.dense(direction_impact_output, units=2)
@@ -53,7 +49,7 @@ def gammaPhysNet_model(features, labels, mode, params):
     
     # Energy estimation
     energy_logit_units = 60
-    energy_output = tf.layers.dense(output_gobalpooled, units=energy_logit_units)
+    energy_output = tf.layers.dense(output_gobalpooled, units=energy_logit_units, activation=tf.nn.relu)
     prediction_energy_regression = tf.layers.dense(energy_output, units=1)
         
     logits_dict.update({'energy': prediction_energy_regression})

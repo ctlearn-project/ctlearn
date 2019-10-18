@@ -24,11 +24,7 @@ def vanilla_model(features, labels, mode, params):
         prediction_gammahadron_classification = tf.layers.dense(output_flattened, units=logit_units)
         
         logits_dict.update({'particle_type': prediction_gammahadron_classification})
-        # Compute class-weighted softmax-cross-entropy
-        true_classes = tf.cast(labels['class_label'], tf.int32,
-                                  name="true_classes")
-           
-        labels_dict.update({'particle_type': tf.equal(true_classes,1)})
+        labels_dict.update({'particle_type': labels['class_label']})
         
         if num_classes == 2:
             gammahadron_classification_head = tf.contrib.estimator.binary_classification_head(name='particle_type')
@@ -42,7 +38,7 @@ def vanilla_model(features, labels, mode, params):
         prediction_energy_regression = tf.layers.dense(output_flattened, units=logit_units)
         
         logits_dict.update({'energy': prediction_energy_regression})
-        labels_dict.update({'energy': labels['mc_energy']})
+        labels_dict.update({'energy': tf.math.log(labels['mc_energy'])})
         
         energy_regression_head = tf.contrib.estimator.regression_head(name='energy',label_dimension=logit_units)
         

@@ -11,13 +11,13 @@ Logging:
     # Path to directory to store TensorFlow model checkpoints and summaries.
     # A timestamped copy of the configuration file will also be put here.
     # Required string.
-    model_directory: '/home/tjark/multitask/testrun'
+    model_directory: '/tmp/logs/example/'
 
 Data:
     # Either a list of data file paths,
     # or a path to a file listing data file paths, one per line.
     # Required list or string.
-    file_list: '/home/tjark/multitask/new_data.txt'
+    file_list: '/tmp/dataset/file_list.txt'
 
     # Type of examples to load.
     # Optional string. Default: 'mono'
@@ -103,11 +103,11 @@ Data:
 
     # Whether to shuffle the examples.
     # Optional Boolean. Default: False
-    shuffle: false
+    shuffle: true
 
     # Seed for shuffling the examples. Only used if shuffle is true.
     # Optional integer. Default: use default random initialization.
-    seed: 1234
+    seed: 1111
 
     # Image channels to load.
     # Optional list of strings. Default: ['charge']
@@ -222,11 +222,11 @@ Input:
 
     # Random seed for shuffling the dataset.
     # Optional integer. Default: use default TensorFlow behavior
-    seed: null
+    seed: 1234
 
     # Number of consecutive examples to combine into a batch.
     # Optional integer. Default: 1
-    batch_size: 32
+    batch_size: 64
 
     # Number of examples to load into memory before shuffling.
     # For valid results, either randomize the example order
@@ -238,7 +238,7 @@ Input:
 
     # Maximum number of batches to be buffered when prefetching.
     # Optional integer. Default: 1
-    prefetch_buffer_size: 8
+    prefetch_buffer_size: 2
 
 # Settings for the TensorFlow model. The options in this and the
 # Model Parameters section are passed to the Estimator model_fn
@@ -248,29 +248,31 @@ Model:
     # Optional string or null. Default if missing or null is to load
     # CTLearn default models directory: 'ctlearn/ctlearn/default_models/'
     # Path to directory containing model module.
-    model_directory: '/home/tjark/multitask/ctlearn/ctlearn/default_models/'
+    model_directory: null  # '/my/model/path/'
     
     # Required dictionary containing a module/function pair.
     # Module in model directory and function in module implementing the model.
     # Module and function pairs included with CTLearn:
-    #   - {module: 'vanilla_classification', function: 'vanilla_classification_model'}:
-    #       This model is implemented for a cross check. We want/need to reproduce
-    #       the CTLearn v0.4.0 results. After the cross check this can be deleted,
-    #       because the 'vanilla' model should give the same results, when selecting
-    #       only 'gammahadron_classification' in 'learning_tasks'. I need to check, if
-    #       we can only pass in one head in the multi_head class!
     #   - {module: 'vanilla', function: 'vanilla_model'}:
-    #       The 'vanilla' model is calling the single_tel submodel to create the CNN block.
-    #       After the CNN block the output is flatten and feed to several dense layers,
-    #       depending on the selected learning tasks.
+    #       The 'vanilla' model is calling the single_tel submodel to create
+    #       the CNN block. After the CNN block the output is flatten and
+    #       feed to several dense layers, depending on the selected learning tasks.
     #   - {module: 'gammaPhysNet', function: 'gammaPhysNet_model'}:
-    #       TODO: Implement this model
+    #       The 'gammaPhysNet' model is calling the single_tel submodel to create
+    #       the CNN block. After the CNN block the output is flatten/global pooled
+    #       and feed to a multitask head designed by M. Jacquemont & T. Vuillaume (LAPP).
+    #       This multitask head design is a physically guided architecture.
     #   - {module: 'gammaPhysNet2', function: 'gammaPhysNet2_model'}:
-    #       TODO: Implement this model
+    #       The 'gammaPhysNet2' model is calling the single_tel submodel to create
+    #       the CNN block. After the CNN block the output is flatten/global pooled
+    #       and feed to a multitask head designed by M. Jacquemont & T. Vuillaume (LAPP).
+    #       This multitask head design is a physically guided architecture.
     #   - {module: 'gammaPhysNetS', function: 'gammaPhysNetS_model'}:
-    #       TODO: Implement this model
+    #       TODO: Implement this stereo model
+    #       This model should call the cnn_rnn submodel.
     #   - {module: 'gammaPhysNet2S', function: 'gammaPhysNet2S_model'}:
-    #       TODO: Implement this model
+    #       TODO: Implement this stereo model
+    #       This model should call the cnn_rnn submodel.
     #
     model: {module: 'vanilla', function: 'vanilla_model'}
     
@@ -433,12 +435,12 @@ Training:
 
     # Required integer.
     # Number of validations made before finishing training. If 0, run forever.
-    num_validations: 0
+    num_validations: 20
 
     # Required integer.
     # Number of training steps to run before each evaluation
     # on the validation set.
-    num_training_steps_per_validation: 1000
+    num_training_steps_per_validation: 2500
 
     # Required string.
     # Valid options: ['Adadelta', 'Adam', 'RMSProp', 'SGD']
@@ -451,7 +453,7 @@ Training:
 
     # Required integer.
     # Base learning rate before scaling or annealing.
-    base_learning_rate: 0.001
+    base_learning_rate: 5.0e-05
 
     # Required Boolean.
     # Whether to scale the learning rate inversely proportional to the
@@ -486,7 +488,7 @@ Prediction:
     # Required Boolean if running in predict mode and export_as_file is true,
     # ignored otherwise.
     # Path to file to save predictions.
-    prediction_file_path: '/home/tjark/multitask/testpredictions.csv'
+    prediction_file_path: '/tmp/mypredictions.csv'
 
 TensorFlow:
     # Optional Boolean. Default: false
