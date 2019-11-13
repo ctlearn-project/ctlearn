@@ -1,0 +1,98 @@
+Logging:
+    model_directory: '/home/tjark/multitask/LSTCam_legacyrun3'
+Data:
+    file_list: '/home/tjark/prototype_files_class_balanced.txt'
+    mode: 'mono'
+    selected_telescope_type: 'LST'
+    shuffle: true
+    seed: 1111
+    image_channels: ['image_charge']
+    mapping_settings:
+        camera_types: ['LSTCam']
+        mapping_method:
+            'LSTCam': 'bilinear_interpolation'
+        padding:
+            'LSTCam': 2
+            'FlashCam': 1
+            'NectarCam': 2
+            'SCTCam': 4
+            'DigiCam': 1
+            'ASTRICam': 0
+            'CHEC': 0
+            'VERITAS': 1
+        mask_interpolation: false
+    event_info:
+        - 'particle_id'
+    transforms:
+        -
+            name: 'ConvertShowerPrimaryIDToClassLabel'
+Input:
+    seed: 1234
+    batch_size: 64
+    shuffle_buffer_size: 10000
+    prefetch_buffer_size: 2
+Model:
+    model_directory: '/home/tjark/multitask/ctlearn/ctlearn/default_models/'
+    model: {module: 'vanilla', function: 'vanilla_model'}
+    learning_tasks: ['gammahadron_classification', 'energy_regression', 'direction_regression', 'impact_regression']
+    #learning_tasks: ['gammahadron_classification', 'energy_regression', 'direction_regression', 'impact_regression', 'showermaximum_regression']
+    label_names:
+        class_label:
+            - 'proton'
+            - 'gamma'
+Model Parameters:
+    single_tel:
+        network: {module: 'basic', function: 'conv_block'}
+        pretrained_weights: null
+    cnn_rnn:
+        cnn_block: {module: 'basic', function: 'conv_block'}
+        pretrained_weights: null
+        dropout_rate: 0.5
+    variable_input_model:
+        cnn_block: {module: 'basic', function: 'conv_block'}
+        telescope_combination: 'feature_maps'
+        network_head: {module: 'basic', function: 'conv_head'}
+        pretrained_weights: null
+    basic:
+        conv_block:
+            layers:
+                - {filters: 32, kernel_size: 3}
+                - {filters: 32, kernel_size: 3}
+                - {filters: 64, kernel_size: 3}
+                - {filters: 128, kernel_size: 3}
+            max_pool: {size: 2, strides: 2}
+            bottleneck: null
+            batchnorm: false
+        fc_head:
+            layers: [1024, 512, 256, 128, 64]
+            batchnorm: false
+        conv_head:
+            layers:
+                - {filters: 64, kernel_size: 3}
+                - {filters: 128, kernel_size: 3}
+                - {filters: 256, kernel_size: 3}
+            final_avg_pool: true
+            batchnorm: false
+        batchnorm_decay: 0.99
+Training:
+    validation_split: 0.1
+    num_validations: 20
+    num_training_steps_per_validation: 2500
+    optimizer: 'Adam'
+    adam_epsilon: 1.0e-8
+    base_learning_rate: 5.0e-04
+    scale_learning_rate: false
+    apply_class_weights: false
+    variables_to_train: null
+Evaluation:
+    default_tensorflow: true
+    custom_ctaplot: true
+    format: 'GammaBoard'
+    evaluation_file: '/home/tjark/multitask/LSTCam_legacyrun3/evaluation.h5'
+Prediction:
+    prediction_file_list: '/home/tjark/prototype_files_class_balanced.txt'
+    save_labels: true
+    save_identifiers: true
+    prediction_file_path: '/home/tjark/multitask/LSTCam_legacyrun3/predictions.csv'
+TensorFlow:
+    run_TFDBG: false

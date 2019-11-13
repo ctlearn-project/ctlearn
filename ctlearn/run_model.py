@@ -8,12 +8,13 @@ import sys
 import time
 
 import numpy as np
+import tables
 import pkg_resources
 import tensorflow as tf
 from tensorflow.python import debug as tf_debug
 import yaml
 
-from dl1_data_handler.reader import DL1DataReader
+from dl1_data_handler.reader_legacy import DL1DataReader
 
 # Disable Tensorflow info and warning messages (not error messages)
 #os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -170,6 +171,9 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         config['Data']['mapping_settings']['interpolation_image_shape'] = {
             k: tuple(l) for k, l in config['Data']['mapping_settings']['interpolation_image_shape'].items()}
 
+    config['Data']['event_info'] = ['particle_id', 'mc_energy', 'alt', 'az', 'core_x', 'core_y']
+    #config['Data']['event_info'] = ['particle_id', 'mc_energy', 'alt', 'az', 'core_x', 'core_y', 'x_max']
+    
     # Possibly add additional info to load if predicting to write later
     if mode == 'predict':
 
@@ -187,9 +191,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                 config['Data']['array_info'].append('id')
 
     # Load learning tasks according to the selected model
-    if params['model']['model']['function'] == 'vanilla_classification_model':
-        learning_tasks = ['gammahadron_classification']
-    elif params['model']['model']['function'] == 'vanilla_model':
+    if params['model']['model']['function'] == 'vanilla_model':
         learning_tasks = params['model']['learning_tasks']
     elif params['model']['model']['function'] == 'gammaPhysNet_model':
         learning_tasks = ['gammahadron_classification', 'energy_regression', 'direction_regression', 'impact_regression']
@@ -205,40 +207,16 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     learning_task_labels = {}
     if 'gammahadron_classification' in learning_tasks:
-        if 'event_info' not in config['Data']:
-            config['Data']['event_info'] = []
-        if 'shower_primary_id' not in config['Data']['event_info']:
-            config['Data']['event_info'].extend(['shower_primary_id'])
         learning_task_labels['class_label'] = params['model']['label_names']['class_label']
     if 'energy_regression' in learning_tasks:
-        if 'event_info' not in config['Data']:
-            config['Data']['event_info'] = []
-        if 'mc_energy' not in config['Data']['event_info']:
-            config['Data']['event_info'].extend(['mc_energy'])
         learning_task_labels['mc_energy'] = 'Simulated (MC) Primary Particle Energy'
     if 'direction_regression' in learning_tasks:
-        if 'event_info' not in config['Data']:
-            config['Data']['event_info'] = []
-        if 'alt' not in config['Data']['event_info']:
-            config['Data']['event_info'].extend(['alt'])
         learning_task_labels['alt'] = 'Zenith Angle'
-        if 'az' not in config['Data']['event_info']:
-            config['Data']['event_info'].extend(['az'])
         learning_task_labels['az'] = 'Azimuth Angle'
     if 'impact_regression' in learning_tasks:
-        if 'event_info' not in config['Data']:
-            config['Data']['event_info'] = []
-        if 'core_x' not in config['Data']['event_info']:
-            config['Data']['event_info'].extend(['core_x'])
         learning_task_labels['core_x'] = 'Shower core x-position'
-        if 'core_y' not in config['Data']['event_info']:
-            config['Data']['event_info'].extend(['core_y'])
         learning_task_labels['core_y'] = 'Shower core y-position'
     if 'showermaximum_regression' in learning_tasks:
-        if 'event_info' not in config['Data']:
-            config['Data']['event_info'] = []
-        if 'x_max' not in config['Data']['event_info']:
-            config['Data']['event_info'].extend(['x_max'])
         learning_task_labels['x_max'] = 'Location of shower maximum'
     
     # Create data reader
@@ -273,6 +251,9 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     batch_size = config['Input'].get('batch_size', 1)
     logger.info("Batch size: {}".format(batch_size))
 
+    # Write the evaluation configuration in the params dict
+    params['evaluation'] = config['Evaluation']
+    
     if mode in ['train', 'load_only']:
 
         params['training'] = config['Training']
@@ -309,7 +290,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     # Define input function for TF Estimator
     def input_fn(reader, indices, output_names, output_dtypes, output_shapes,
-                 label_names, seed=None, batch_size=1,
+                 label_names, mode='train', seed=None, batch_size=1,
                  shuffle_buffer_size=None, prefetch_buffer_size=1,
                  add_labels_to_features=False):
 
@@ -320,9 +301,12 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         dataset = tf.data.Dataset.from_generator(generator, output_dtypes,
                                                  output_shapes=output_shapes,
                                                  args=(indices,))
-        if shuffle_buffer_size is None:
-            shuffle_buffer_size = len(indices)
-        dataset = dataset.shuffle(buffer_size=shuffle_buffer_size, seed=seed)
+       
+        # Only shuffle the data, when train mode is selected.
+        if mode == 'train':
+            if shuffle_buffer_size is None:
+                shuffle_buffer_size = len(indices)
+            dataset = dataset.shuffle(buffer_size=shuffle_buffer_size, seed=seed)
         dataset = dataset.batch(batch_size)
         dataset = dataset.prefetch(prefetch_buffer_size)
 
@@ -335,9 +319,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         for tensor, name in zip(example, output_names):
             dic = labels if name in label_names else features
             dic[name] = tensor
-
-        if add_labels_to_features:  # for predict mode
-            features['labels'] = labels
 
         return features, labels
 
@@ -368,12 +349,79 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         train_forever = False if num_validations != 0 else True
         num_validations_remaining = num_validations
         while train_forever or num_validations_remaining:
+            epoch = num_validations-num_validations_remaining+1
             estimator.train(
-                lambda: input_fn(reader, training_indices, **config['Input']),
+                lambda: input_fn(reader, training_indices, mode='train', **config['Input']),
                 steps=steps, hooks=hooks)
-            estimator.evaluate(
-                lambda: input_fn(reader, validation_indices, **config['Input']),
-                hooks=hooks, name='validation')
+            if params['evaluation']['default_tensorflow']:
+                logger.info("Evaluate with the default TensorFlow evaluation...")
+                estimator.evaluate(
+                    lambda: input_fn(reader, validation_indices, mode='eval', **config['Input']),
+                    hooks=hooks, name='validation')
+            if params['evaluation']['custom_ctaplot']:
+                logger.info("Evaluate with the custom ctaplot evaluation...")
+                evaluations = estimator.predict(
+                    lambda: input_fn(reader, validation_indices, mode='predict', **config['Input']),
+                    hooks=hooks)
+
+                evaluation = list(evaluations)
+
+                if params['evaluation']['format'] == 'GammaBoard':
+                    # Open the the h5 to dump the evaluation information in the selected format
+                    try:
+                        eval_file = params['evaluation']['evaluation_file']
+                        if eval_file is None:
+                            raise KeyError
+                    except KeyError:
+                        eval_file = os.path.abspath(os.path.join(os.path.dirname(__file__), model_dir+"/evaluation.h5"))
+                
+                    # Open the hdf5 evaluation file.
+                    h5 = tables.open_file(eval_file, mode="a", title="Evaluation")
+                
+                    # Create the table structure for the hdf5 eval file.
+                    columns_dict={"mc_energy":tables.Float32Col(pos=0),
+                                  "reco_energy":tables.Float32Col(pos=1),
+                                  "mc_impact_x":tables.Float32Col(pos=2),
+                                  "mc_impact_y":tables.Float32Col(pos=3),
+                                  "reco_impact_x":tables.Float32Col(pos=4),
+                                  "reco_impact_y":tables.Float32Col(pos=5),
+                                  "mc_altitude":tables.Float32Col(pos=6),
+                                  "mc_azimuth":tables.Float32Col(pos=7),
+                                  "reco_altitude":tables.Float32Col(pos=8),
+                                  "reco_azimuth":tables.Float32Col(pos=9),
+                                  "mc_particle":tables.Int32Col(pos=10),
+                                  "reco_particle":tables.Int32Col(pos=11),
+                                  "reco_hadroness":tables.Float32Col(pos=12)}
+                    description = type("description", (tables.IsDescription,), columns_dict)
+                                
+                    # Create the table mass vs sigmav for each source and for each channel.
+                    table_name = "Evaluation_Epoch_{}".format(epoch)
+                    table = h5.create_table(eval("h5.root"),table_name,description,"EvaluationTable of the epoch {}.".format(epoch))
+                    
+                    # Fill the data of the evaluation into the table of the hdf5 file.
+                    i = 0
+                    for idx in validation_indices:
+                        table = eval("h5.root.Evaluation_Epoch_{}".format(epoch))
+                        row = table.row
+                        row['mc_energy'] = np.log(reader[idx][2])
+                        row['reco_energy'] = evaluation[i][('energy', 'predictions')] if 'energy_regression' in learning_tasks else np.nan
+                        row['mc_impact_x'] = 0.001*reader[idx][5]
+                        row['reco_impact_x'] = evaluation[i][('impact', 'predictions')][0] if 'impact_regression' in learning_tasks else np.nan
+                        row['mc_impact_y'] = 0.001*reader[idx][6]
+                        row['reco_impact_y'] = evaluation[i][('impact', 'predictions')][1] if 'impact_regression' in learning_tasks else np.nan
+                        row['mc_altitude'] = reader[idx][3]
+                        row['reco_altitude'] = evaluation[i][('direction', 'predictions')][0] if 'direction_regression' in learning_tasks else np.nan
+                        row['mc_azimuth'] = reader[idx][4]
+                        row['reco_azimuth'] = evaluation[i][('direction', 'predictions')][1] if 'direction_regression' in learning_tasks else np.nan
+                        row['mc_particle'] = reader[idx][1]
+                        row['reco_particle'] = evaluation[i][('particle_type', 'class_ids')][0] if 'gammahadron_classification' in learning_tasks else np.nan
+                        row['reco_hadroness'] = evaluation[i][('particle_type', 'probabilities')][0] if 'gammahadron_classification' in learning_tasks else np.nan
+                        row.append()
+                        table.flush()
+                        i += 1
+                    # Close hdf5 eval file.
+                    h5.close()
+            
             if not train_forever:
                 num_validations_remaining -= 1
 

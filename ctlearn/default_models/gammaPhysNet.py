@@ -7,6 +7,8 @@ from single_tel import single_tel_model
 def gammaPhysNet_model(features, labels, mode, params):
     
     training = True if mode == tf.estimator.ModeKeys.TRAIN else False
+    evaluation = True if mode == tf.estimator.ModeKeys.EVAL else False
+
     training_params = params['training']
     learning_tasks = params['model']['learning_tasks']
 
@@ -24,7 +26,8 @@ def gammaPhysNet_model(features, labels, mode, params):
     prediction_gammahadron_classification = tf.layers.dense(output_flattened, units=particletype_logit_units)
         
     logits_dict.update({'particle_type': prediction_gammahadron_classification})
-    labels_dict.update({'particle_type': labels['class_label']})
+    if training or evaluation:
+        labels_dict.update({'particle_type': labels['class_label']})
         
     if num_classes == 2:
         gammahadron_classification_head = tf.contrib.estimator.binary_classification_head(name='particle_type')
@@ -32,7 +35,7 @@ def gammaPhysNet_model(features, labels, mode, params):
         gammahadron_classification_head = tf.contrib.estimator.multi_class_head(name='particle_type', n_classes=num_classes)
                 
     # Arrival direction and impact parameter estimation
-    direction_impact_logit_units = 60
+    direction_impact_logit_units = 256
     direction_impact_output = tf.layers.dense(output_flattened, units=direction_impact_logit_units, activation=tf.nn.relu)
 
     prediction_direction_regression = tf.layers.dense(direction_impact_output, units=2)
@@ -41,22 +44,27 @@ def gammaPhysNet_model(features, labels, mode, params):
     logits_dict.update({'direction': prediction_direction_regression})
     logits_dict.update({'impact': prediction_impact_regression})
 
-    labels_dict.update({'direction': tf.reshape([labels['alt'],labels['az']],[-1,2])})
-    labels_dict.update({'impact': tf.reshape([labels['core_x'],labels['core_y']],[-1,2])})
+    if training or evaluation:
+        labels_dict.update({'direction': tf.reshape([labels['alt'],labels['az']],[-1,2])})
+        labels_dict.update({'impact': tf.reshape([labels['core_x']*0.001,labels['core_y']*0.001],[-1,2])})
 
     direction_regression_head = tf.contrib.estimator.regression_head(name='direction',label_dimension=2)
     impact_regression_head = tf.contrib.estimator.regression_head(name='impact',label_dimension=2)
     
     # Energy estimation
-    energy_logit_units = 60
+    energy_logit_units = 256
     energy_output = tf.layers.dense(output_gobalpooled, units=energy_logit_units, activation=tf.nn.relu)
     prediction_energy_regression = tf.layers.dense(energy_output, units=1)
         
     logits_dict.update({'energy': prediction_energy_regression})
-    labels_dict.update({'energy': labels['mc_energy']})
+    if training or evaluation:
+        labels_dict.update({'energy': tf.math.log(labels['mc_energy'])})
         
     energy_regression_head = tf.contrib.estimator.regression_head(name='energy',label_dimension=1)
         
+    # Combine the several heads in the multi_head class
+    multi_head = tf.contrib.estimator.multi_head([gammahadron_classification_head, direction_regression_head, impact_regression_head, energy_regression_head])
+    
     # Scale the learning rate so batches with fewer triggered
     # telescopes don't have smaller gradients
     # Only apply learning rate scaling for array-level models
@@ -90,7 +98,4 @@ def gammaPhysNet_model(features, labels, mode, params):
     optimizer_fn, optimizer_args = optimizers[training_params['optimizer']]
     optimizer = optimizer_fn(**optimizer_args)
 
-    # Combine the several heads in the multi_head class
-    multi_head = tf.contrib.estimator.multi_head([gammahadron_classification_head, direction_regression_head, impact_regression_head, energy_regression_head])
-
-    return multi_head.create_estimator_spec(features, mode, logits_dict, labels_dict, optimizer)
+    return multi_head.create_estimator_spec(features=features, mode=mode, logits=logits_dict, labels=labels_dict, optimizer=optimizer)
