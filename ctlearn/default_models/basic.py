@@ -2,7 +2,7 @@ import tensorflow as tf
 
 from tensorflow.layers import conv2d,max_pooling2d
 from indexedconv.engine.tf.masked import masked_conv2d,masked_avgpool2d
-from indexedconv.engine.tf.masked import indexed_conv2d,indexed_avgpool2d
+from indexedconv.engine.tf.indexed import indexed_conv2d,indexed_avgpool2d
 
 def conv_block(inputs, training, params, reuse=None):
 
