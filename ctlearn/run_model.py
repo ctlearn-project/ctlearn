@@ -250,12 +250,10 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     batch_size = config['Input'].get('batch_size', 1)
     logger.info("Batch size: {}".format(batch_size))
-
-    # Write the evaluation configuration in the params dict
-    params['evaluation'] = config['Evaluation']
     
     if mode in ['train', 'load_only']:
 
+        # Write the training configuration in the params dict
         params['training'] = config['Training']
 
         validation_split = config['Training']['validation_split']
@@ -270,6 +268,56 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             int(num_training_examples / batch_size)))
         logger.info("Number of training steps between validations: {}".format(
             config['Training']['num_training_steps_per_validation']))
+                    
+        # Write the evaluation configuration in the params dict
+        params['evaluation'] = config['Evaluation']
+        # Write the true labels to the hdf5 evaluation file
+        if params['evaluation']['custom_ctlearn']['evaluation_per_epoch']:
+            logger.info("Write the true labels to the hdf5 evaluation file...")
+            if params['evaluation']['custom_ctlearn']['evaluation_format'] == 'CTLearn_standard':
+                # Open the the h5 to dump the evaluation information in the selected format
+                try:
+                    eval_file = params['evaluation']['custom_ctlearn']['evaluation_file']
+                    if eval_file is None:
+                        raise KeyError
+                except KeyError:
+                    eval_file = os.path.abspath(os.path.join(os.path.dirname(__file__), model_dir+"/ctlearn_evaluation.h5"))
+            
+                # Open the hdf5 evaluation file.
+                h5 = tables.open_file(eval_file, mode="a", title="Evaluation per epoch")
+                
+                # Create the group to wrap up the information about the validation set
+                h5.create_group(eval("h5.root"), "validation_set", "Further information about the validation set")
+                # Create the group to wrap up the information about the evaluation per epoch
+                h5.create_group(eval("h5.root.validation_set"), "evaluation", "Further information about the evaluation")
+                
+                # Create the table structure for the hdf5 evaluation file.
+                columns_dict={"mc_particle":tables.Int32Col(pos=0),
+                              "mc_energy":tables.Float32Col(pos=1),
+                              "mc_direction":tables.Float32Col(shape=(2,), pos=2),
+                              "mc_impact":tables.Float32Col(shape=(2,), pos=3)}
+                description = type("description", (tables.IsDescription,), columns_dict)
+                            
+                # Create the table for the evaluation of the epoch.
+                table_name = "simu_values"
+                table = h5.create_table(eval("h5.root.validation_set"),table_name,description,"(Table of true labels)")
+                
+                # Fill the data of the final evaluation into the table of the hdf5 file.
+                i = 0
+                for idx in validation_indices:
+                    table = eval("h5.root.validation_set.{}".format(table_name))
+                    row = table.row
+                    row['mc_particle'] = reader[idx][1]
+                    row['mc_energy'] = np.log(reader[idx][2])
+                    row['mc_direction'] = [reader[idx][3], reader[idx][4]]
+                    row['mc_impact'] = [0.001*reader[idx][5], 0.001*reader[idx][6]]
+                    row.append()
+                    table.flush()
+                    i += 1
+                # Close hdf5 eval file.
+                h5.close()
+            else:
+                raise ValueError("Invalid evulation format selection '{}'. Valid option: 'CTLearn_standard'".format(params['evaluation']['custom_ctlearn']['evaluation_format']))
 
     if mode == 'load_only':
 
@@ -358,27 +406,28 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                 estimator.evaluate(
                     lambda: input_fn(reader, validation_indices, mode='eval', **config['Input']),
                     hooks=hooks, name='validation')
-            if params['evaluation']['custom_ctaplot']:
-                logger.info("Evaluate with the custom ctaplot evaluation...")
+
+            if params['evaluation']['custom_ctlearn']['final_evaluation'] and num_validations_remaining == 1:
+                logger.info("Evaluate with the custom CTLearn evaluation...")
                 evaluations = estimator.predict(
                     lambda: input_fn(reader, validation_indices, mode='predict', **config['Input']),
                     hooks=hooks)
 
                 evaluation = list(evaluations)
-
-                if params['evaluation']['format'] == 'GammaBoard':
-                    # Open the the h5 to dump the evaluation information in the selected format
+                
+                if params['evaluation']['custom_ctlearn']['final_evaluation_format'] == 'GammaBoard':
+                    # Open the the h5 to dump the final evaluation information in the selected format
                     try:
-                        eval_file = params['evaluation']['evaluation_file']
-                        if eval_file is None:
+                        final_eval_file = params['evaluation']['custom_ctlearn']['final_evaluation_file']
+                        if final_eval_file is None:
                             raise KeyError
                     except KeyError:
-                        eval_file = os.path.abspath(os.path.join(os.path.dirname(__file__), model_dir+"/evaluation.h5"))
-                
-                    # Open the hdf5 evaluation file.
-                    h5 = tables.open_file(eval_file, mode="a", title="Evaluation")
-                
-                    # Create the table structure for the hdf5 eval file.
+                        final_eval_file = os.path.abspath(os.path.join(os.path.dirname(__file__), model_dir+"/experiment.h5"))
+            
+                    # Open the hdf5 final evaluation file.
+                    h5 = tables.open_file(final_eval_file, mode="a", title="Final evaluation")
+            
+                    # Create the table structure for the hdf5 final evaluation file.
                     columns_dict={"mc_energy":tables.Float32Col(pos=0),
                                   "reco_energy":tables.Float32Col(pos=1),
                                   "mc_impact_x":tables.Float32Col(pos=2),
@@ -393,15 +442,15 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                                   "reco_particle":tables.Int32Col(pos=11),
                                   "reco_hadroness":tables.Float32Col(pos=12)}
                     description = type("description", (tables.IsDescription,), columns_dict)
-                                
-                    # Create the table mass vs sigmav for each source and for each channel.
-                    table_name = "Evaluation_Epoch_{}".format(epoch)
-                    table = h5.create_table(eval("h5.root"),table_name,description,"EvaluationTable of the epoch {}.".format(epoch))
-                    
-                    # Fill the data of the evaluation into the table of the hdf5 file.
+                            
+                    # Create the table for the evaluation of the final epoch.
+                    table_name = "experiment"
+                    table = h5.create_table(eval("h5.root"),table_name,description,"(EvaluationTable of the final epoch)")
+                
+                    # Fill the data of the final evaluation into the table of the hdf5 file.
                     i = 0
                     for idx in validation_indices:
-                        table = eval("h5.root.Evaluation_Epoch_{}".format(epoch))
+                        table = eval("h5.root.{}".format(table_name))
                         row = table.row
                         row['mc_energy'] = np.log(reader[idx][2])
                         row['reco_energy'] = evaluation[i][('energy', 'predictions')] if 'energy_regression' in learning_tasks else np.nan
@@ -421,7 +470,51 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                         i += 1
                     # Close hdf5 eval file.
                     h5.close()
+                else:
+                    raise ValueError("Invalid evulation format selection '{}'. Valid option: 'GammaBoard'".format(params['evaluation']['custom_ctlearn']['final_evaluation_format']))
             
+            if params['evaluation']['custom_ctlearn']['evaluation_per_epoch']:
+                logger.info("Evaluate with the custom CTLearn evaluation...")
+                evaluations = estimator.predict(
+                    lambda: input_fn(reader, validation_indices, mode='predict', **config['Input']),
+                    hooks=hooks)
+
+                evaluation = list(evaluations)
+
+                if params['evaluation']['custom_ctlearn']['evaluation_format'] == 'CTLearn_standard':
+                    # Open the hdf5 evaluation file.
+                    h5 = tables.open_file(eval_file, mode="a", title="Evaluation per epoch")
+                                        
+                    # Create the table structure for the hdf5 evaluation file.
+                    columns_dict={"reco_particle":tables.Int32Col(pos=0),
+                                  "reco_hadroness":tables.Float32Col(pos=1),
+                                  "reco_energy":tables.Float32Col(pos=2),
+                                  "reco_direction":tables.Float32Col(shape=(2,), pos=3),
+                                  "reco_impact":tables.Float32Col(shape=(2,), pos=4)}
+                    description = type("description", (tables.IsDescription,), columns_dict)
+                                    
+                    # Create the table for the evaluation of the epoch.
+                    table_name = "reco_values_epoch_{}".format(epoch)
+                    table = h5.create_table(eval("h5.root.validation_set.evaluation"),table_name,description,"(EvaluationTable of the epoch {})".format(epoch))
+                        
+                    # Fill the data of the final evaluation into the table of the hdf5 file.
+                    i = 0
+                    for idx in validation_indices:
+                        table = eval("h5.root.validation_set.evaluation.{}".format(table_name))
+                        row = table.row
+                        row['reco_particle'] = evaluation[i][('particle_type', 'class_ids')][0] if 'gammahadron_classification' in learning_tasks else np.nan
+                        row['reco_hadroness'] = evaluation[i][('particle_type', 'probabilities')][0] if 'gammahadron_classification' in learning_tasks else np.nan
+                        row['reco_energy'] = evaluation[i][('energy', 'predictions')] if 'energy_regression' in learning_tasks else np.nan
+                        row['reco_direction'] = evaluation[i][('direction', 'predictions')] if 'direction_regression' in learning_tasks else [np.nan, np.nan]
+                        row['reco_impact'] = evaluation[i][('impact', 'predictions')] if 'impact_regression' in learning_tasks else [np.nan, np.nan]
+                        row.append()
+                        table.flush()
+                        i += 1
+                    # Close hdf5 eval file.
+                    h5.close()
+                else:
+                    raise ValueError("Invalid evulation format selection '{}'. Valid option: 'CTLearn_standard'".format(params['evaluation']['custom_ctlearn']['evaluation_format']))
+                
             if not train_forever:
                 num_validations_remaining -= 1
 

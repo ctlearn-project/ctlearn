@@ -1,5 +1,5 @@
 Logging:
-    model_directory: '/home/tjark/multitask/LSTCam_legacyrun3'
+    model_directory: '/home/tjark/multitask/LSTCam_legacyrun5'
 Data:
     file_list: '/home/tjark/prototype_files_class_balanced.txt'
     mode: 'mono'
@@ -76,7 +76,7 @@ Model Parameters:
         batchnorm_decay: 0.99
 Training:
     validation_split: 0.1
-    num_validations: 20
+    num_validations: 5
     num_training_steps_per_validation: 2500
     optimizer: 'Adam'
     adam_epsilon: 1.0e-8
@@ -86,13 +86,18 @@ Training:
     variables_to_train: null
 Evaluation:
     default_tensorflow: true
-    custom_ctaplot: true
-    format: 'GammaBoard'
-    evaluation_file: '/home/tjark/multitask/LSTCam_legacyrun3/evaluation.h5'
+    custom_ctlearn:
+        evaluation_per_epoch: true
+        evaluation_file: '/home/tjark/multitask/LSTCam_legacyrun5/ctlearn_evaluation.h5'
+        evaluation_format: 'CTLearn_standard'
+        final_evaluation: true
+        final_evaluation_file: '/home/tjark/multitask/LSTCam_legacyrun5/experiment.h5'
+        final_evaluation_format: 'GammaBoard'
 Prediction:
     prediction_file_list: '/home/tjark/prototype_files_class_balanced.txt'
     save_labels: true
     save_identifiers: true
-    prediction_file_path: '/home/tjark/multitask/LSTCam_legacyrun3/predictions.csv'
+    prediction_file: '/home/tjark/multitask/LSTCam_legacyrun5/ctlearn_prediction.h5'
+    prediction_format: 'GammaBoard'
 TensorFlow:
     run_TFDBG: false
