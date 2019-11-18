@@ -590,6 +590,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             hooks=hooks)
         prediction = list(predictions)
         write_output(h5file=predict_file, reader=reader, indices=indices, learning_tasks=learning_tasks, predictions=prediction, mode='predict', format='GammaBoard')
+    return
     
 if __name__ == "__main__":
 
@@ -598,7 +599,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--mode',
         default="train",
-        help="Mode to run in (train/predict)")
+        help="Mode to run in (train/predict/trainandpredict)")
     parser.add_argument(
         'config_file',
         help="path to YAML configuration file with training options")
@@ -616,4 +617,10 @@ if __name__ == "__main__":
     with open(args.config_file, 'r') as config_file:
         config = yaml.safe_load(config_file)
 
-    run_model(config, mode=args.mode, debug=args.debug, log_to_file=args.log_to_file)
+    if args.mode in ['train', 'predict']:
+        run_model(config, mode=args.mode, debug=args.debug, log_to_file=args.log_to_file)
+    else:
+        run_model(config, mode='train', debug=args.debug, log_to_file=args.log_to_file)
+        with open(args.config_file, 'r') as config_file:
+            config = yaml.safe_load(config_file)
+        run_model(config, mode='predict', debug=args.debug, log_to_file=args.log_to_file)
