@@ -15,6 +15,7 @@ from tensorflow.python import debug as tf_debug
 import yaml
 
 from dl1_data_handler.reader_legacy import DL1DataReader
+#from dl1_data_handler.reader import DL1DataReader
 
 # Disable Tensorflow info and warning messages (not error messages)
 #os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -93,6 +94,155 @@ def log_examples(reader, indices, labels, subset_name):
         logger.info("    " + ', '.join(names) + ": {}".format(num))
     logger.info('')
     return num_class_examples
+    
+def write_output(h5file, reader, indices, learning_tasks, epoch=None, predictions=None, mode='train', format='GammaBoard'):
+    if format == 'GammaBoard':
+        # Open the hdf5 file and create the table structure for the hdf5 file.
+        if mode == 'train':
+            h5 = tables.open_file(h5file, mode="a", title="Final evaluation")
+            columns_dict={"mc_particle":tables.Int32Col(pos=0),
+                          "reco_particle":tables.Int32Col(pos=1),
+                          "reco_gammaness":tables.Float32Col(pos=2),
+                          "mc_energy":tables.Float32Col(pos=3),
+                          "reco_energy":tables.Float32Col(pos=4),
+                          "mc_impact_x":tables.Float32Col(pos=5),
+                          "mc_impact_y":tables.Float32Col(pos=6),
+                          "reco_impact_x":tables.Float32Col(pos=7),
+                          "reco_impact_y":tables.Float32Col(pos=8),
+                          "mc_altitude":tables.Float32Col(pos=9),
+                          "mc_azimuth":tables.Float32Col(pos=10),
+                          "reco_altitude":tables.Float32Col(pos=11),
+                          "reco_azimuth":tables.Float32Col(pos=12)}
+        elif mode == 'predict':
+            h5 = tables.open_file(h5file, mode="a", title="Prediction")
+            columns_dict={"event_id":tables.Int32Col(pos=0),
+                          "obs_id":tables.Int32Col(pos=1),
+                          "tel_id":tables.Int32Col(pos=2),
+                          "mc_particle":tables.Int32Col(pos=3),
+                          "reco_particle":tables.Int32Col(pos=4),
+                          "reco_gammaness":tables.Float32Col(pos=5),
+                          "mc_energy":tables.Float32Col(pos=6),
+                          "reco_energy":tables.Float32Col(pos=7),
+                          "mc_impact_x":tables.Float32Col(pos=8),
+                          "mc_impact_y":tables.Float32Col(pos=9),
+                          "reco_impact_x":tables.Float32Col(pos=10),
+                          "reco_impact_y":tables.Float32Col(pos=11),
+                          "mc_altitude":tables.Float32Col(pos=12),
+                          "mc_azimuth":tables.Float32Col(pos=13),
+                          "reco_altitude":tables.Float32Col(pos=14),
+                          "reco_azimuth":tables.Float32Col(pos=15)}
+        description = type("description", (tables.IsDescription,), columns_dict)
+                    
+        # Create the table.
+        table_name = "experiment"
+        if "/{}".format(table_name) not in h5:
+            table = h5.create_table(eval("h5.root"),table_name,description)
+        else:
+            eval("h5.root.{}".format(table_name)).remove_rows()
+
+        # Fill the data into the table of the hdf5 file.
+        i = 0
+        for idx in indices:
+            table = eval("h5.root.{}".format(table_name))
+            row = table.row
+            if mode == 'train':
+                row['mc_energy'] = np.log(reader[idx][2])
+                row['reco_energy'] = predictions[i][('energy', 'predictions')] if 'energy_regression' in learning_tasks else np.nan
+                row['mc_impact_x'] = 0.001*reader[idx][5]
+                row['reco_impact_x'] = predictions[i][('impact', 'predictions')][0] if 'impact_regression' in learning_tasks else np.nan
+                row['mc_impact_y'] = 0.001*reader[idx][6]
+                row['reco_impact_y'] = predictions[i][('impact', 'predictions')][1] if 'impact_regression' in learning_tasks else np.nan
+                row['mc_altitude'] = reader[idx][3]
+                row['reco_altitude'] = predictions[i][('direction', 'predictions')][0] if 'direction_regression' in learning_tasks else np.nan
+                row['mc_azimuth'] = reader[idx][4]
+                row['reco_azimuth'] = predictions[i][('direction', 'predictions')][1] if 'direction_regression' in learning_tasks else np.nan
+                row['mc_particle'] = reader[idx][1]
+                row['reco_particle'] = predictions[i][('particle_type', 'class_ids')][0] if 'gammahadron_classification' in learning_tasks else np.nan
+                row['reco_gammaness'] = predictions[i][('particle_type', 'probabilities')][1] if 'gammahadron_classification' in learning_tasks else np.nan
+            elif mode == 'predict':
+                row['event_id'] = reader[idx][8]
+                row['obs_id'] = reader[idx][9]
+                row['tel_id'] = reader[idx][1]
+                row['mc_energy'] = np.log(reader[idx][3])
+                row['reco_energy'] = predictions[i][('energy', 'predictions')] if 'energy_regression' in learning_tasks else np.nan
+                row['mc_impact_x'] = 0.001*reader[idx][6]
+                row['reco_impact_x'] = predictions[i][('impact', 'predictions')][0] if 'impact_regression' in learning_tasks else np.nan
+                row['mc_impact_y'] = 0.001*reader[idx][7]
+                row['reco_impact_y'] = predictions[i][('impact', 'predictions')][1] if 'impact_regression' in learning_tasks else np.nan
+                row['mc_altitude'] = reader[idx][4]
+                row['reco_altitude'] = predictions[i][('direction', 'predictions')][0] if 'direction_regression' in learning_tasks else np.nan
+                row['mc_azimuth'] = reader[idx][5]
+                row['reco_azimuth'] = predictions[i][('direction', 'predictions')][1] if 'direction_regression' in learning_tasks else np.nan
+                row['mc_particle'] = reader[idx][2]
+                row['reco_particle'] = predictions[i][('particle_type', 'class_ids')][0] if 'gammahadron_classification' in learning_tasks else np.nan
+                row['reco_gammaness'] = predictions[i][('particle_type', 'probabilities')][1] if 'gammahadron_classification' in learning_tasks else np.nan
+            row.append()
+            table.flush()
+            i += 1
+        # Close hdf5 file.
+        h5.close()
+        
+    elif format == 'CTLearn_standard':
+        # Open the hdf5 evaluation file.
+        h5 = tables.open_file(h5file, mode="a", title="Evaluation per epoch")
+        if predictions == None:
+            # Create the table structure for the hdf5 evaluation file.
+            columns_dict={"mc_particle":tables.Int32Col(pos=0),
+                          "mc_energy":tables.Float32Col(pos=1),
+                          "mc_direction":tables.Float32Col(shape=(2,), pos=2),
+                          "mc_impact":tables.Float32Col(shape=(2,), pos=3)}
+            description = type("description", (tables.IsDescription,), columns_dict)
+                        
+            # Create the table for the evaluation of the epoch.
+            table_name = "simu_values"
+            if "/{}".format(table_name) not in h5:
+                table = h5.create_table(eval("h5.root"),table_name,description)
+            else:
+                eval("h5.root.{}".format(table_name)).remove_rows()
+
+            # Fill the data of the final evaluation into the table of the hdf5 file.
+            i = 0
+            for idx in indices:
+                table = eval("h5.root.{}".format(table_name))
+                row = table.row
+                row['mc_particle'] = reader[idx][1]
+                row['mc_energy'] = np.log(reader[idx][2])
+                row['mc_direction'] = [reader[idx][3], reader[idx][4]]
+                row['mc_impact'] = [0.001*reader[idx][5], 0.001*reader[idx][6]]
+                row.append()
+                table.flush()
+                i += 1
+        else:
+            # Create the table structure for the hdf5 evaluation file.
+            columns_dict={"reco_particle":tables.Int32Col(pos=0),
+                          "reco_gammaness":tables.Float32Col(pos=1),
+                          "reco_energy":tables.Float32Col(pos=2),
+                          "reco_direction":tables.Float32Col(shape=(2,), pos=3),
+                          "reco_impact":tables.Float32Col(shape=(2,), pos=4)}
+            description = type("description", (tables.IsDescription,), columns_dict)
+                            
+            # Create the table for the evaluation of the epoch.
+            table_name = "reco_values_epoch_{}".format(epoch)
+            if "/{}".format(table_name) not in h5:
+                table = h5.create_table(eval("h5.root"),table_name,description)
+            else:
+                eval("h5.root.{}".format(table_name)).remove_rows()
+
+            # Fill the data of the final evaluation into the table of the hdf5 file.
+            i = 0
+            for idx in indices:
+                table = eval("h5.root.{}".format(table_name))
+                row = table.row
+                row['reco_particle'] = predictions[i][('particle_type', 'class_ids')][0] if 'gammahadron_classification' in learning_tasks else np.nan
+                row['reco_gammaness'] = predictions[i][('particle_type', 'probabilities')][1] if 'gammahadron_classification' in learning_tasks else np.nan
+                row['reco_energy'] = predictions[i][('energy', 'predictions')] if 'energy_regression' in learning_tasks else np.nan
+                row['reco_direction'] = predictions[i][('direction', 'predictions')] if 'direction_regression' in learning_tasks else [np.nan, np.nan]
+                row['reco_impact'] = predictions[i][('impact', 'predictions')] if 'impact_regression' in learning_tasks else [np.nan, np.nan]
+                row.append()
+                table.flush()
+                i += 1
+        # Close hdf5 eval file.
+        h5.close()
 
 def run_model(config, mode="train", debug=False, log_to_file=False):
 
@@ -127,20 +277,32 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     params['model'] = {**config['Model'], **config.get('Model Parameters', {})}
 
-    # Parse file list
-    if isinstance(config['Data']['file_list'], str):
-        data_files = []
-        with open(config['Data']['file_list']) as f:
-            for line in f:
-                line = line.strip()
-                if line and line[0] != "#":
-                    data_files.append(line)
-        config['Data']['file_list'] = data_files
-    if not isinstance(config['Data']['file_list'], list):
-        raise ValueError("Invalid file list '{}'. "
-                         "Must be list or path to file".format(
-                             config['Data']['file_list']))
-
+    # Parse file list or prediction file list
+    if mode == 'train':
+        if isinstance(config['Data']['file_list'], str):
+            data_files = []
+            with open(config['Data']['file_list']) as f:
+                for line in f:
+                    line = line.strip()
+                    if line and line[0] != "#":
+                        data_files.append(line)
+            config['Data']['file_list'] = data_files
+        if not isinstance(config['Data']['file_list'], list):
+            raise ValueError("Invalid file list '{}'. "
+                             "Must be list or path to file".format(config['Data']['file_list']))
+    else:
+        if isinstance(config['Prediction']['prediction_file_list'], str):
+            data_files = []
+            with open(config['Prediction']['prediction_file_list']) as f:
+                for line in f:
+                    line = line.strip()
+                    if line and line[0] != "#":
+                        data_files.append(line)
+            config['Data']['file_list'] = data_files
+        if not isinstance(config['Data']['file_list'], list):
+            raise ValueError("Invalid prediction file list '{}'. "
+                             "Must be list or path to file".format(config['Prediction']['prediction_file_list']))
+                             
     # Parse list of event selection filters
     event_selection = {}
     for s in config['Data'].get('event_selection', {}):
@@ -184,11 +346,16 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         if config['Prediction'].get('save_identifiers', False):
             if 'event_info' not in config['Data']:
                 config['Data']['event_info'] = []
-            config['Data']['event_info'].extend(['event_id', 'obs_id'])
+            config['Data']['event_info'].extend(['event_number', 'run_number'])
             if config['Data']['mode'] == 'mono':
                 if 'array_info' not in config['Data']:
                     config['Data']['array_info'] = []
-                config['Data']['array_info'].append('id')
+                config['Data']['array_info'].append('tel_id')
+            #config['Data']['event_info'].extend(['event_id', 'obs_id'])
+            #if config['Data']['mode'] == 'mono':
+            #    if 'array_info' not in config['Data']:
+            #        config['Data']['array_info'] = []
+            #    config['Data']['array_info'].append('id')
 
     # Load learning tasks according to the selected model
     if params['model']['model']['function'] == 'vanilla_model':
@@ -274,50 +441,15 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         # Write the true labels to the hdf5 evaluation file
         if params['evaluation']['custom_ctlearn']['evaluation_per_epoch']:
             logger.info("Write the true labels to the hdf5 evaluation file...")
-            if params['evaluation']['custom_ctlearn']['evaluation_format'] == 'CTLearn_standard':
-                # Open the the h5 to dump the evaluation information in the selected format
-                try:
-                    eval_file = params['evaluation']['custom_ctlearn']['evaluation_file']
-                    if eval_file is None:
-                        raise KeyError
-                except KeyError:
-                    eval_file = os.path.abspath(os.path.join(os.path.dirname(__file__), model_dir+"/ctlearn_evaluation.h5"))
+            # Open the the h5 to dump the evaluation information in the selected format
+            try:
+                eval_file = params['evaluation']['custom_ctlearn']['evaluation_file']
+                if eval_file is None:
+                    raise KeyError
+            except KeyError:
+                eval_file = os.path.abspath(os.path.join(os.path.dirname(__file__), model_dir+"/ctlearn_evaluation.h5"))
             
-                # Open the hdf5 evaluation file.
-                h5 = tables.open_file(eval_file, mode="a", title="Evaluation per epoch")
-                
-                # Create the group to wrap up the information about the validation set
-                h5.create_group(eval("h5.root"), "validation_set", "Further information about the validation set")
-                # Create the group to wrap up the information about the evaluation per epoch
-                h5.create_group(eval("h5.root.validation_set"), "evaluation", "Further information about the evaluation")
-                
-                # Create the table structure for the hdf5 evaluation file.
-                columns_dict={"mc_particle":tables.Int32Col(pos=0),
-                              "mc_energy":tables.Float32Col(pos=1),
-                              "mc_direction":tables.Float32Col(shape=(2,), pos=2),
-                              "mc_impact":tables.Float32Col(shape=(2,), pos=3)}
-                description = type("description", (tables.IsDescription,), columns_dict)
-                            
-                # Create the table for the evaluation of the epoch.
-                table_name = "simu_values"
-                table = h5.create_table(eval("h5.root.validation_set"),table_name,description,"(Table of true labels)")
-                
-                # Fill the data of the final evaluation into the table of the hdf5 file.
-                i = 0
-                for idx in validation_indices:
-                    table = eval("h5.root.validation_set.{}".format(table_name))
-                    row = table.row
-                    row['mc_particle'] = reader[idx][1]
-                    row['mc_energy'] = np.log(reader[idx][2])
-                    row['mc_direction'] = [reader[idx][3], reader[idx][4]]
-                    row['mc_impact'] = [0.001*reader[idx][5], 0.001*reader[idx][6]]
-                    row.append()
-                    table.flush()
-                    i += 1
-                # Close hdf5 eval file.
-                h5.close()
-            else:
-                raise ValueError("Invalid evulation format selection '{}'. Valid option: 'CTLearn_standard'".format(params['evaluation']['custom_ctlearn']['evaluation_format']))
+            write_output(h5file=eval_file, reader=reader, indices=validation_indices, learning_tasks=learning_tasks, format='CTLearn_standard')
 
     if mode == 'load_only':
 
@@ -415,63 +547,15 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
                 evaluation = list(evaluations)
                 
-                if params['evaluation']['custom_ctlearn']['final_evaluation_format'] == 'GammaBoard':
-                    # Open the the h5 to dump the final evaluation information in the selected format
-                    try:
-                        final_eval_file = params['evaluation']['custom_ctlearn']['final_evaluation_file']
-                        if final_eval_file is None:
-                            raise KeyError
-                    except KeyError:
-                        final_eval_file = os.path.abspath(os.path.join(os.path.dirname(__file__), model_dir+"/experiment.h5"))
-            
-                    # Open the hdf5 final evaluation file.
-                    h5 = tables.open_file(final_eval_file, mode="a", title="Final evaluation")
-            
-                    # Create the table structure for the hdf5 final evaluation file.
-                    columns_dict={"mc_energy":tables.Float32Col(pos=0),
-                                  "reco_energy":tables.Float32Col(pos=1),
-                                  "mc_impact_x":tables.Float32Col(pos=2),
-                                  "mc_impact_y":tables.Float32Col(pos=3),
-                                  "reco_impact_x":tables.Float32Col(pos=4),
-                                  "reco_impact_y":tables.Float32Col(pos=5),
-                                  "mc_altitude":tables.Float32Col(pos=6),
-                                  "mc_azimuth":tables.Float32Col(pos=7),
-                                  "reco_altitude":tables.Float32Col(pos=8),
-                                  "reco_azimuth":tables.Float32Col(pos=9),
-                                  "mc_particle":tables.Int32Col(pos=10),
-                                  "reco_particle":tables.Int32Col(pos=11),
-                                  "reco_hadroness":tables.Float32Col(pos=12)}
-                    description = type("description", (tables.IsDescription,), columns_dict)
-                            
-                    # Create the table for the evaluation of the final epoch.
-                    table_name = "experiment"
-                    table = h5.create_table(eval("h5.root"),table_name,description,"(EvaluationTable of the final epoch)")
-                
-                    # Fill the data of the final evaluation into the table of the hdf5 file.
-                    i = 0
-                    for idx in validation_indices:
-                        table = eval("h5.root.{}".format(table_name))
-                        row = table.row
-                        row['mc_energy'] = np.log(reader[idx][2])
-                        row['reco_energy'] = evaluation[i][('energy', 'predictions')] if 'energy_regression' in learning_tasks else np.nan
-                        row['mc_impact_x'] = 0.001*reader[idx][5]
-                        row['reco_impact_x'] = evaluation[i][('impact', 'predictions')][0] if 'impact_regression' in learning_tasks else np.nan
-                        row['mc_impact_y'] = 0.001*reader[idx][6]
-                        row['reco_impact_y'] = evaluation[i][('impact', 'predictions')][1] if 'impact_regression' in learning_tasks else np.nan
-                        row['mc_altitude'] = reader[idx][3]
-                        row['reco_altitude'] = evaluation[i][('direction', 'predictions')][0] if 'direction_regression' in learning_tasks else np.nan
-                        row['mc_azimuth'] = reader[idx][4]
-                        row['reco_azimuth'] = evaluation[i][('direction', 'predictions')][1] if 'direction_regression' in learning_tasks else np.nan
-                        row['mc_particle'] = reader[idx][1]
-                        row['reco_particle'] = evaluation[i][('particle_type', 'class_ids')][0] if 'gammahadron_classification' in learning_tasks else np.nan
-                        row['reco_hadroness'] = evaluation[i][('particle_type', 'probabilities')][0] if 'gammahadron_classification' in learning_tasks else np.nan
-                        row.append()
-                        table.flush()
-                        i += 1
-                    # Close hdf5 eval file.
-                    h5.close()
-                else:
-                    raise ValueError("Invalid evulation format selection '{}'. Valid option: 'GammaBoard'".format(params['evaluation']['custom_ctlearn']['final_evaluation_format']))
+                # Open the the h5 to dump the final evaluation information in the selected format
+                try:
+                    final_eval_file = params['evaluation']['custom_ctlearn']['final_evaluation_file']
+                    if final_eval_file is None:
+                        raise KeyError
+                except KeyError:
+                    final_eval_file = os.path.abspath(os.path.join(os.path.dirname(__file__), model_dir+"/experiment.h5"))
+                        
+                write_output(h5file=final_eval_file, reader=reader, indices=validation_indices, learning_tasks=learning_tasks, predictions=evaluation)
             
             if params['evaluation']['custom_ctlearn']['evaluation_per_epoch']:
                 logger.info("Evaluate with the custom CTLearn evaluation...")
@@ -480,41 +564,8 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                     hooks=hooks)
 
                 evaluation = list(evaluations)
+                write_output(h5file=eval_file, reader=reader, indices=validation_indices, learning_tasks=learning_tasks, epoch=epoch, predictions=evaluation, format='CTLearn_standard')
 
-                if params['evaluation']['custom_ctlearn']['evaluation_format'] == 'CTLearn_standard':
-                    # Open the hdf5 evaluation file.
-                    h5 = tables.open_file(eval_file, mode="a", title="Evaluation per epoch")
-                                        
-                    # Create the table structure for the hdf5 evaluation file.
-                    columns_dict={"reco_particle":tables.Int32Col(pos=0),
-                                  "reco_hadroness":tables.Float32Col(pos=1),
-                                  "reco_energy":tables.Float32Col(pos=2),
-                                  "reco_direction":tables.Float32Col(shape=(2,), pos=3),
-                                  "reco_impact":tables.Float32Col(shape=(2,), pos=4)}
-                    description = type("description", (tables.IsDescription,), columns_dict)
-                                    
-                    # Create the table for the evaluation of the epoch.
-                    table_name = "reco_values_epoch_{}".format(epoch)
-                    table = h5.create_table(eval("h5.root.validation_set.evaluation"),table_name,description,"(EvaluationTable of the epoch {})".format(epoch))
-                        
-                    # Fill the data of the final evaluation into the table of the hdf5 file.
-                    i = 0
-                    for idx in validation_indices:
-                        table = eval("h5.root.validation_set.evaluation.{}".format(table_name))
-                        row = table.row
-                        row['reco_particle'] = evaluation[i][('particle_type', 'class_ids')][0] if 'gammahadron_classification' in learning_tasks else np.nan
-                        row['reco_hadroness'] = evaluation[i][('particle_type', 'probabilities')][0] if 'gammahadron_classification' in learning_tasks else np.nan
-                        row['reco_energy'] = evaluation[i][('energy', 'predictions')] if 'energy_regression' in learning_tasks else np.nan
-                        row['reco_direction'] = evaluation[i][('direction', 'predictions')] if 'direction_regression' in learning_tasks else [np.nan, np.nan]
-                        row['reco_impact'] = evaluation[i][('impact', 'predictions')] if 'impact_regression' in learning_tasks else [np.nan, np.nan]
-                        row.append()
-                        table.flush()
-                        i += 1
-                    # Close hdf5 eval file.
-                    h5.close()
-                else:
-                    raise ValueError("Invalid evulation format selection '{}'. Valid option: 'CTLearn_standard'".format(params['evaluation']['custom_ctlearn']['evaluation_format']))
-                
             if not train_forever:
                 num_validations_remaining -= 1
 
@@ -522,38 +573,21 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
         # Generate predictions and add to output
         logger.info("Predicting...")
-
-        if config['Prediction'].get('save_labels', False):
-            config['Input']['add_labels_to_features'] = True
-
+        
+        # Open the the h5 to dump the final evaluation information in the selected format
+        try:
+            predict_file = params['evaluation']['custom_ctlearn']['prediction_file']
+            if predict_file is None:
+                raise KeyError
+        except KeyError:
+            predict_file = os.path.abspath(os.path.join(os.path.dirname(__file__), model_dir+"/ctlearn_prediction.h5"))
+        
         predictions = estimator.predict(
-            lambda: input_fn(reader, indices, **config['Input']),
+            lambda: input_fn(reader, indices, mode='predict', **config['Input']),
             hooks=hooks)
-
-        # Write predictions and other info given a dictionary of input, with
-        # the key:value pairs of header name: list of the values for each event
-        def write_predictions(file_handle, predictions):
-
-            def write(prediction):
-                row = ",".join('{}'.format(v) for v in prediction.values())
-                row += '\n'
-                file_handle.write(row)
-
-            prediction = next(predictions)
-            header = ",".join([key for key in prediction]) + '\n'
-            file_handle.write(header)
-            write(prediction)
-            for prediction in predictions:
-                write(prediction)
-
-        # Write predictions to a csv file
-        if config['Prediction'].get('export_as_file', False):
-            prediction_path = config['Prediction']['prediction_file_path']
-            with open(prediction_path, 'w') as predict_file:
-                write_predictions(predict_file, predictions)
-        else:
-            write_predictions(sys.stdout, predictions)
-
+        prediction = list(predictions)
+        write_output(h5file=predict_file, reader=reader, indices=indices, learning_tasks=learning_tasks, predictions=prediction, mode='predict', format='GammaBoard')
+    
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(

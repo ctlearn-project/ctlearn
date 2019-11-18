@@ -1,5 +1,5 @@
 Logging:
-    model_directory: '/home/tjark/multitask/LSTCam_legacyrun5'
+    model_directory: '/home/tjark/multitask/LSTCamtest'
 Data:
     file_list: '/home/tjark/prototype_files_class_balanced.txt'
     mode: 'mono'
@@ -88,16 +88,13 @@ Evaluation:
     default_tensorflow: true
     custom_ctlearn:
         evaluation_per_epoch: true
-        evaluation_file: '/home/tjark/multitask/LSTCam_legacyrun5/ctlearn_evaluation.h5'
-        evaluation_format: 'CTLearn_standard'
+        evaluation_file: '/home/tjark/multitask/LSTCamtest/ctlearn_evaluation.h5'
         final_evaluation: true
-        final_evaluation_file: '/home/tjark/multitask/LSTCam_legacyrun5/experiment.h5'
-        final_evaluation_format: 'GammaBoard'
+        final_evaluation_file: '/home/tjark/multitask/LSTCamtest/experiment.h5'
 Prediction:
-    prediction_file_list: '/home/tjark/prototype_files_class_balanced.txt'
+    prediction_file_list: '/home/tjark/prototype_files_class_balanced_test_dummy.txt'
     save_labels: true
     save_identifiers: true
-    prediction_file: '/home/tjark/multitask/LSTCam_legacyrun5/ctlearn_prediction.h5'
-    prediction_format: 'GammaBoard'
+    prediction_file: '/home/tjark/multitask/LSTCamtest/ctlearn_prediction.h5'
 TensorFlow:
     run_TFDBG: false
