@@ -250,6 +250,9 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     model_dir = config['Logging']['model_directory']
     # Create model directory if it doesn't exist already
     if not os.path.exists(model_dir):
+        if mode == 'predict':
+            raise ValueError("Invalid model directory '{}'. "
+            "Must be a path to an existing directory in the predict mode.".format(config['Logging']['model_directory']))
         os.makedirs(model_dir)
 
     # Set up logging, saving the config and optionally logging to a file
