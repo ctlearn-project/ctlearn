@@ -88,13 +88,13 @@ Evaluation:
     default_tensorflow: true
     custom_ctlearn:
         evaluation_per_epoch: true
-        evaluation_file: '/home/tjark/multitask/LSTCamtest/ctlearn_evaluation.h5'
+        evaluation_file_name: 'ctlearn_evaluation'
         final_evaluation: true
-        final_evaluation_file: '/home/tjark/multitask/LSTCamtest/experiment.h5'
+        final_evaluation_file_name: 'experiment'
 Prediction:
     prediction_file_list: '/home/tjark/prototype_files_class_balanced_test_dummy.txt'
     save_labels: true
     save_identifiers: true
-    prediction_file: '/home/tjark/multitask/LSTCamtest/ctlearn_prediction.h5'
+    prediction_file_name: 'ctlearn_prediction'
 TensorFlow:
     run_TFDBG: false

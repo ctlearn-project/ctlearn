@@ -2,6 +2,7 @@ import argparse
 import importlib
 import logging
 import math
+from random import randint
 import os
 from pprint import pformat
 import sys
@@ -95,7 +96,7 @@ def log_examples(reader, indices, labels, subset_name):
     logger.info('')
     return num_class_examples
     
-def write_output(h5file, reader, indices, learning_tasks, epoch=None, predictions=None, mode='train', format='GammaBoard'):
+def write_output(h5file, reader, indices, learning_tasks, epoch=None, predictions=None, mode='train', format='GammaBoard', seed= None):
     if format == 'GammaBoard':
         # Open the hdf5 file and create the table structure for the hdf5 file.
         if mode == 'train':
@@ -135,6 +136,8 @@ def write_output(h5file, reader, indices, learning_tasks, epoch=None, prediction
                     
         # Create the table.
         table_name = "experiment"
+        if seed:
+            table_name += "_{}".format(seed)
         if "/{}".format(table_name) not in h5:
             table = h5.create_table(eval("h5.root"),table_name,description)
         else:
@@ -244,16 +247,23 @@ def write_output(h5file, reader, indices, learning_tasks, epoch=None, prediction
         # Close hdf5 eval file.
         h5.close()
 
-def run_model(config, mode="train", debug=False, log_to_file=False):
+def run_model(config, mode="train", debug=False, log_to_file=False, multiple_runs=1):
 
     # Load options relating to logging and checkpointing
-    model_dir = config['Logging']['model_directory']
+    root_model_dir = model_dir = config['Logging']['model_directory']
     # Create model directory if it doesn't exist already
-    if not os.path.exists(model_dir):
+    if not os.path.exists(root_model_dir):
         if mode == 'predict':
             raise ValueError("Invalid model directory '{}'. "
             "Must be a path to an existing directory in the predict mode.".format(config['Logging']['model_directory']))
-        os.makedirs(model_dir)
+        os.makedirs(root_model_dir)
+
+    random_seed = None
+    if multiple_runs != 1:
+        random_seed = config['Data']['seed']
+        if mode=='train':
+            model_dir += "/experiment_{}".format(random_seed)
+            os.makedirs(model_dir)
 
     # Set up logging, saving the config and optionally logging to a file
     logger = setup_logging(config, model_dir, debug, log_to_file)
@@ -331,8 +341,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     config['Data']['transforms'] = transforms
 
     # Convert interpolation image shapes from lists to tuples, if present
-    if 'interpolation_image_shape' in config['Data'].get('mapping_settings',
-                                                         {}):
+    if 'interpolation_image_shape' in config['Data'].get('mapping_settings',{}):
         config['Data']['mapping_settings']['interpolation_image_shape'] = {
             k: tuple(l) for k, l in config['Data']['mapping_settings']['interpolation_image_shape'].items()}
 
@@ -445,13 +454,10 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         if params['evaluation']['custom_ctlearn']['evaluation_per_epoch']:
             logger.info("Write the true labels to the hdf5 evaluation file...")
             # Open the the h5 to dump the evaluation information in the selected format
-            try:
-                eval_file = params['evaluation']['custom_ctlearn']['evaluation_file']
-                if eval_file is None:
-                    raise KeyError
-            except KeyError:
+            if params['evaluation']['custom_ctlearn']['evaluation_file_name']:
+                eval_file = os.path.abspath(os.path.join(os.path.dirname(__file__), model_dir+"/{}.h5".format(params['evaluation']['custom_ctlearn']['evaluation_file_name'])))
+            else:
                 eval_file = os.path.abspath(os.path.join(os.path.dirname(__file__), model_dir+"/ctlearn_evaluation.h5"))
-            
             write_output(h5file=eval_file, reader=reader, indices=validation_indices, learning_tasks=learning_tasks, format='CTLearn_standard')
 
     if mode == 'load_only':
@@ -551,13 +557,10 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                 evaluation = list(evaluations)
                 
                 # Open the the h5 to dump the final evaluation information in the selected format
-                try:
-                    final_eval_file = params['evaluation']['custom_ctlearn']['final_evaluation_file']
-                    if final_eval_file is None:
-                        raise KeyError
-                except KeyError:
+                if params['evaluation']['custom_ctlearn']['final_evaluation_file_name']:
+                    final_eval_file = os.path.abspath(os.path.join(os.path.dirname(__file__), model_dir+"/{}.h5".format(params['evaluation']['custom_ctlearn']['final_evaluation_file_name'])))
+                else:
                     final_eval_file = os.path.abspath(os.path.join(os.path.dirname(__file__), model_dir+"/experiment.h5"))
-                        
                 write_output(h5file=final_eval_file, reader=reader, indices=validation_indices, learning_tasks=learning_tasks, predictions=evaluation)
             
             if params['evaluation']['custom_ctlearn']['evaluation_per_epoch']:
@@ -578,18 +581,20 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         logger.info("Predicting...")
         
         # Open the the h5 to dump the final evaluation information in the selected format
-        try:
-            predict_file = params['evaluation']['custom_ctlearn']['prediction_file']
-            if predict_file is None:
-                raise KeyError
-        except KeyError:
-            predict_file = os.path.abspath(os.path.join(os.path.dirname(__file__), model_dir+"/ctlearn_prediction.h5"))
-        
+        if params['prediction']['prediction_file_name']:
+            predict_file = os.path.abspath(os.path.join(os.path.dirname(__file__), root_model_dir+"/{}.h5".format(params['prediction']['prediction_file_name'])))
+        else:
+            predict_file = os.path.abspath(os.path.join(os.path.dirname(__file__), root_model_dir+"/ctlearn_prediction.h5"))
         predictions = estimator.predict(
             lambda: input_fn(reader, indices, mode='predict', **config['Input']),
             hooks=hooks)
         prediction = list(predictions)
-        write_output(h5file=predict_file, reader=reader, indices=indices, learning_tasks=learning_tasks, predictions=prediction, mode='predict', format='GammaBoard')
+        write_output(h5file=predict_file, reader=reader, indices=indices, learning_tasks=learning_tasks, predictions=prediction, mode='predict', format='GammaBoard', seed=random_seed)
+        
+    # clear the handlers, shutdown the logging and delete the logger
+    logger.handlers.clear()
+    logging.shutdown()
+    del logger
     return
     
 if __name__ == "__main__":
@@ -611,16 +616,37 @@ if __name__ == "__main__":
         '--log_to_file',
         action='store_true',
         help="log to a file in model directory instead of terminal")
+    parser.add_argument(
+        '--multiple_runs',
+        default=1,
+        type=int,
+        help="")
 
     args = parser.parse_args()
 
-    with open(args.config_file, 'r') as config_file:
-        config = yaml.safe_load(config_file)
-
-    if args.mode in ['train', 'predict']:
-        run_model(config, mode=args.mode, debug=args.debug, log_to_file=args.log_to_file)
-    else:
-        run_model(config, mode='train', debug=args.debug, log_to_file=args.log_to_file)
+    random_seeds = []
+    for run in np.arange(args.multiple_runs):
         with open(args.config_file, 'r') as config_file:
             config = yaml.safe_load(config_file)
-        run_model(config, mode='predict', debug=args.debug, log_to_file=args.log_to_file)
+        if args.multiple_runs != 1:
+            # Create and overwrite the random seed in the config file
+            while True:
+                random_seed = randint(1000,9999)
+                if random_seed not in random_seeds:
+                    random_seeds.append(random_seed)
+                    break
+            
+            config['Data']['seed'] = random_seed
+            print("CTLearn run {} with random seed '{}':".format(run+1,config['Data']['seed']))
+        config['Data']['shuffle'] = False if args.mode == 'predict' else True
+
+        if args.mode in ['train', 'predict']:
+            run_model(config, mode=args.mode, debug=args.debug, log_to_file=args.log_to_file, multiple_runs=args.multiple_runs)
+        else:
+            run_model(config, mode='train', debug=args.debug, log_to_file=args.log_to_file, multiple_runs=args.multiple_runs)
+            with open(args.config_file, 'r') as config_file:
+                config = yaml.safe_load(config_file)
+            if args.multiple_runs != 1:
+                config['Data']['seed'] = random_seed
+            config['Data']['shuffle'] = False
+            run_model(config, mode='predict', debug=args.debug, log_to_file=args.log_to_file, multiple_runs=args.multiple_runs)
