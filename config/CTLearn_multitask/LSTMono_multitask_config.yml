@@ -1,12 +1,12 @@
 Logging:
-    model_directory: '/home/tjark/multitask/LSTCamtest'
+    model_directory: '/home/tjark/multitask/LSTMonoTest'
 Data:
-    file_list: '/home/tjark/prototype_files_class_balanced.txt'
+    file_list: '/home/tjark/multitask/LST_mono_training_slim.txt'
     mode: 'mono'
-    selected_telescope_type: 'LST'
+    selected_telescope_type: 'LST_LSTCam'
     shuffle: true
     seed: 1111
-    image_channels: ['image_charge']
+    image_channels: ['charge']
     mapping_settings:
         camera_types: ['LSTCam']
         mapping_method:
@@ -22,10 +22,17 @@ Data:
             'VERITAS': 1
         mask_interpolation: false
     event_info:
-        - 'particle_id'
+        - 'shower_primary_id'
+        - 'mc_energy'
+        - 'alt'
+        - 'az'
+        - 'core_x'
+        - 'core_y'
     transforms:
-        -
-            name: 'ConvertShowerPrimaryIDToClassLabel'
+        - name: 'ConvertShowerPrimaryIDToParticleType'
+        - name: 'EnergyToLog'
+        - name: 'AltAzToDirection'
+        - name: 'CoreXYToImpactInKm'
 Input:
     seed: 1234
     batch_size: 64
@@ -33,13 +40,14 @@ Input:
     prefetch_buffer_size: 2
 Model:
     model_directory: '/home/tjark/multitask/ctlearn/ctlearn/default_models/'
-    model: {module: 'vanilla', function: 'vanilla_model'}
-    learning_tasks: ['gammahadron_classification', 'energy_regression', 'direction_regression', 'impact_regression']
-    #learning_tasks: ['gammahadron_classification', 'energy_regression', 'direction_regression', 'impact_regression', 'showermaximum_regression']
+    model: {module: 'single_tel', function: 'single_tel_model'}
     label_names:
-        class_label:
+        particletype:
             - 'proton'
             - 'gamma'
+        mc_energy: null
+        direction: null
+        impact: null
 Model Parameters:
     single_tel:
         network: {module: 'basic', function: 'conv_block'}
@@ -48,6 +56,12 @@ Model Parameters:
         cnn_block: {module: 'basic', function: 'conv_block'}
         pretrained_weights: null
         dropout_rate: 0.5
+    gammaPhysNet:
+        network: {module: 'basic', function: 'conv_block'}
+        pretrained_weights: null
+    gammaPhysNet2:
+        network: {module: 'basic', function: 'conv_block'}
+        pretrained_weights: null
     variable_input_model:
         cnn_block: {module: 'basic', function: 'conv_block'}
         telescope_combination: 'feature_maps'
@@ -76,7 +90,7 @@ Model Parameters:
         batchnorm_decay: 0.99
 Training:
     validation_split: 0.1
-    num_validations: 5
+    num_validations: 20
     num_training_steps_per_validation: 2500
     optimizer: 'Adam'
     adam_epsilon: 1.0e-8
@@ -87,8 +101,6 @@ Training:
 Evaluation:
     default_tensorflow: true
     custom_ctlearn:
-        evaluation_per_epoch: true
-        evaluation_file_name: 'ctlearn_evaluation'
         final_evaluation: true
         final_evaluation_file_name: 'experiment'
 Prediction:

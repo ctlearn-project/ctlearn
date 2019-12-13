@@ -6,246 +6,20 @@ from random import randint
 import os
 from pprint import pformat
 import sys
-import time
 
 import numpy as np
-import tables
-import pkg_resources
-import tensorflow as tf
-from tensorflow.python import debug as tf_debug
 import yaml
 
-from dl1_data_handler.reader_legacy import DL1DataReader
-#from dl1_data_handler.reader import DL1DataReader
+import tensorflow as tf
+from tensorflow.python import debug as tf_debug
+
+from dl1_data_handler.reader import DL1DataReader
+from ctlearn.ct_heads import *
+from ctlearn.utils import *
 
 # Disable Tensorflow info and warning messages (not error messages)
 #os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 #tf.logging.set_verbosity(tf.logging.WARN)
-
-def setup_logging(config, log_dir, debug, log_to_file):
-
-    # Log configuration to a text file in the log dir
-    time_str = time.strftime('%Y%m%d_%H%M%S')
-    config_filename = os.path.join(log_dir, time_str + '_config.yml')
-    with open(config_filename, 'w') as outfile:
-        ctlearn_version = pkg_resources.get_distribution("ctlearn").version
-        outfile.write('# Training performed with '
-                      'CTLearn version {}.\n'.format(ctlearn_version))
-        yaml.dump(config, outfile, default_flow_style=False)
-
-    # Set up logger
-    logger = logging.getLogger()
-
-    if debug:
-        logger.setLevel(logging.DEBUG)
-    else:
-        logger.setLevel(logging.INFO)
-
-    logger.handlers = [] # remove existing handlers from any previous runs
-    if not log_to_file:
-        handler = logging.StreamHandler()
-    else:
-        logging_filename = os.path.join(log_dir, time_str + '_logfile.log')
-        handler = logging.FileHandler(logging_filename)
-    handler.setFormatter(logging.Formatter("%(levelname)s:%(message)s"))
-    logger.addHandler(handler)
-
-    return logger
-
-def compute_class_weights(labels, num_class_examples):
-    logger = logging.getLogger()
-    class_weights = []
-    total_num = sum(num_class_examples.values())
-    logger.info("Computing class weights...")
-    for idx, class_name in enumerate(labels['class_label']):
-        try:
-            num = num_class_examples[(idx,)]
-            class_inverse_frac = total_num / num
-            class_weights.append(class_inverse_frac)
-        except KeyError:
-            logger.warning("Class '{}' has no examples, unable to "
-                           "calculate class weights".format(class_name))
-            class_weights = [1.0 for l in labels['class_label']]
-            break
-    logger.info("Class weights: {}".format(class_weights))
-    return class_weights
-
-def load_from_module(name, module, path=None, args=None):
-    if path is not None and path not in sys.path:
-        sys.path.append(path)
-    mod = importlib.import_module(module)
-    fn = getattr(mod, name)
-    params = args if args is not None else {}
-    return fn, params
-
-def log_examples(reader, indices, labels, subset_name):
-    logger = logging.getLogger()
-    logger.info("Examples for " + subset_name + ':')
-    logger.info("  Total number: {}".format(len(indices)))
-    label_list = list(labels)
-    num_class_examples = reader.num_examples(group_by=label_list,
-                                             example_indices=indices)
-    logger.info("  Breakdown by " + ', '.join(label_list) + ':')
-    for cls, num in num_class_examples.items():
-        names = []
-        for label, idx in zip(label_list, cls):
-            # Value if regression label, else class name if class label
-            name = str(idx) if labels[label] is None else labels[label][idx]
-            names.append(name)
-        logger.info("    " + ', '.join(names) + ": {}".format(num))
-    logger.info('')
-    return num_class_examples
-    
-def write_output(h5file, reader, indices, learning_tasks, epoch=None, predictions=None, mode='train', format='GammaBoard', seed= None):
-    if format == 'GammaBoard':
-        # Open the hdf5 file and create the table structure for the hdf5 file.
-        if mode == 'train':
-            h5 = tables.open_file(h5file, mode="a", title="Final evaluation")
-            columns_dict={"mc_particle":tables.Int32Col(pos=0),
-                          "reco_particle":tables.Int32Col(pos=1),
-                          "reco_gammaness":tables.Float32Col(pos=2),
-                          "mc_energy":tables.Float32Col(pos=3),
-                          "reco_energy":tables.Float32Col(pos=4),
-                          "mc_impact_x":tables.Float32Col(pos=5),
-                          "mc_impact_y":tables.Float32Col(pos=6),
-                          "reco_impact_x":tables.Float32Col(pos=7),
-                          "reco_impact_y":tables.Float32Col(pos=8),
-                          "mc_altitude":tables.Float32Col(pos=9),
-                          "mc_azimuth":tables.Float32Col(pos=10),
-                          "reco_altitude":tables.Float32Col(pos=11),
-                          "reco_azimuth":tables.Float32Col(pos=12)}
-        elif mode == 'predict':
-            h5 = tables.open_file(h5file, mode="a", title="Prediction")
-            columns_dict={"event_id":tables.Int32Col(pos=0),
-                          "obs_id":tables.Int32Col(pos=1),
-                          "tel_id":tables.Int32Col(pos=2),
-                          "mc_particle":tables.Int32Col(pos=3),
-                          "reco_particle":tables.Int32Col(pos=4),
-                          "reco_gammaness":tables.Float32Col(pos=5),
-                          "mc_energy":tables.Float32Col(pos=6),
-                          "reco_energy":tables.Float32Col(pos=7),
-                          "mc_impact_x":tables.Float32Col(pos=8),
-                          "mc_impact_y":tables.Float32Col(pos=9),
-                          "reco_impact_x":tables.Float32Col(pos=10),
-                          "reco_impact_y":tables.Float32Col(pos=11),
-                          "mc_altitude":tables.Float32Col(pos=12),
-                          "mc_azimuth":tables.Float32Col(pos=13),
-                          "reco_altitude":tables.Float32Col(pos=14),
-                          "reco_azimuth":tables.Float32Col(pos=15)}
-        description = type("description", (tables.IsDescription,), columns_dict)
-                    
-        # Create the table.
-        table_name = "experiment"
-        if seed:
-            table_name += "_{}".format(seed)
-        if "/{}".format(table_name) not in h5:
-            table = h5.create_table(eval("h5.root"),table_name,description)
-        else:
-            eval("h5.root.{}".format(table_name)).remove_rows()
-
-        # Fill the data into the table of the hdf5 file.
-        i = 0
-        for idx in indices:
-            table = eval("h5.root.{}".format(table_name))
-            row = table.row
-            if mode == 'train':
-                row['mc_energy'] = np.log(reader[idx][2])
-                row['reco_energy'] = predictions[i][('energy', 'predictions')] if 'energy_regression' in learning_tasks else np.nan
-                row['mc_impact_x'] = 0.001*reader[idx][5]
-                row['reco_impact_x'] = predictions[i][('impact', 'predictions')][0] if 'impact_regression' in learning_tasks else np.nan
-                row['mc_impact_y'] = 0.001*reader[idx][6]
-                row['reco_impact_y'] = predictions[i][('impact', 'predictions')][1] if 'impact_regression' in learning_tasks else np.nan
-                row['mc_altitude'] = reader[idx][3]
-                row['reco_altitude'] = predictions[i][('direction', 'predictions')][0] if 'direction_regression' in learning_tasks else np.nan
-                row['mc_azimuth'] = reader[idx][4]
-                row['reco_azimuth'] = predictions[i][('direction', 'predictions')][1] if 'direction_regression' in learning_tasks else np.nan
-                row['mc_particle'] = reader[idx][1]
-                row['reco_particle'] = predictions[i][('particle_type', 'class_ids')][0] if 'gammahadron_classification' in learning_tasks else np.nan
-                row['reco_gammaness'] = predictions[i][('particle_type', 'probabilities')][1] if 'gammahadron_classification' in learning_tasks else np.nan
-            elif mode == 'predict':
-                row['event_id'] = reader[idx][8]
-                row['obs_id'] = reader[idx][9]
-                row['tel_id'] = reader[idx][1]
-                row['mc_energy'] = np.log(reader[idx][3])
-                row['reco_energy'] = predictions[i][('energy', 'predictions')] if 'energy_regression' in learning_tasks else np.nan
-                row['mc_impact_x'] = 0.001*reader[idx][6]
-                row['reco_impact_x'] = predictions[i][('impact', 'predictions')][0] if 'impact_regression' in learning_tasks else np.nan
-                row['mc_impact_y'] = 0.001*reader[idx][7]
-                row['reco_impact_y'] = predictions[i][('impact', 'predictions')][1] if 'impact_regression' in learning_tasks else np.nan
-                row['mc_altitude'] = reader[idx][4]
-                row['reco_altitude'] = predictions[i][('direction', 'predictions')][0] if 'direction_regression' in learning_tasks else np.nan
-                row['mc_azimuth'] = reader[idx][5]
-                row['reco_azimuth'] = predictions[i][('direction', 'predictions')][1] if 'direction_regression' in learning_tasks else np.nan
-                row['mc_particle'] = reader[idx][2]
-                row['reco_particle'] = predictions[i][('particle_type', 'class_ids')][0] if 'gammahadron_classification' in learning_tasks else np.nan
-                row['reco_gammaness'] = predictions[i][('particle_type', 'probabilities')][1] if 'gammahadron_classification' in learning_tasks else np.nan
-            row.append()
-            table.flush()
-            i += 1
-        # Close hdf5 file.
-        h5.close()
-        
-    elif format == 'CTLearn_standard':
-        # Open the hdf5 evaluation file.
-        h5 = tables.open_file(h5file, mode="a", title="Evaluation per epoch")
-        if predictions == None:
-            # Create the table structure for the hdf5 evaluation file.
-            columns_dict={"mc_particle":tables.Int32Col(pos=0),
-                          "mc_energy":tables.Float32Col(pos=1),
-                          "mc_direction":tables.Float32Col(shape=(2,), pos=2),
-                          "mc_impact":tables.Float32Col(shape=(2,), pos=3)}
-            description = type("description", (tables.IsDescription,), columns_dict)
-                        
-            # Create the table for the evaluation of the epoch.
-            table_name = "simu_values"
-            if "/{}".format(table_name) not in h5:
-                table = h5.create_table(eval("h5.root"),table_name,description)
-            else:
-                eval("h5.root.{}".format(table_name)).remove_rows()
-
-            # Fill the data of the final evaluation into the table of the hdf5 file.
-            i = 0
-            for idx in indices:
-                table = eval("h5.root.{}".format(table_name))
-                row = table.row
-                row['mc_particle'] = reader[idx][1]
-                row['mc_energy'] = np.log(reader[idx][2])
-                row['mc_direction'] = [reader[idx][3], reader[idx][4]]
-                row['mc_impact'] = [0.001*reader[idx][5], 0.001*reader[idx][6]]
-                row.append()
-                table.flush()
-                i += 1
-        else:
-            # Create the table structure for the hdf5 evaluation file.
-            columns_dict={"reco_particle":tables.Int32Col(pos=0),
-                          "reco_gammaness":tables.Float32Col(pos=1),
-                          "reco_energy":tables.Float32Col(pos=2),
-                          "reco_direction":tables.Float32Col(shape=(2,), pos=3),
-                          "reco_impact":tables.Float32Col(shape=(2,), pos=4)}
-            description = type("description", (tables.IsDescription,), columns_dict)
-                            
-            # Create the table for the evaluation of the epoch.
-            table_name = "reco_values_epoch_{}".format(epoch)
-            if "/{}".format(table_name) not in h5:
-                table = h5.create_table(eval("h5.root"),table_name,description)
-            else:
-                eval("h5.root.{}".format(table_name)).remove_rows()
-
-            # Fill the data of the final evaluation into the table of the hdf5 file.
-            i = 0
-            for idx in indices:
-                table = eval("h5.root.{}".format(table_name))
-                row = table.row
-                row['reco_particle'] = predictions[i][('particle_type', 'class_ids')][0] if 'gammahadron_classification' in learning_tasks else np.nan
-                row['reco_gammaness'] = predictions[i][('particle_type', 'probabilities')][1] if 'gammahadron_classification' in learning_tasks else np.nan
-                row['reco_energy'] = predictions[i][('energy', 'predictions')] if 'energy_regression' in learning_tasks else np.nan
-                row['reco_direction'] = predictions[i][('direction', 'predictions')] if 'direction_regression' in learning_tasks else [np.nan, np.nan]
-                row['reco_impact'] = predictions[i][('impact', 'predictions')] if 'impact_regression' in learning_tasks else [np.nan, np.nan]
-                row.append()
-                table.flush()
-                i += 1
-        # Close hdf5 eval file.
-        h5.close()
 
 def run_model(config, mode="train", debug=False, log_to_file=False, multiple_runs=1):
 
@@ -287,6 +61,15 @@ def run_model(config, mode="train", debug=False, log_to_file=False, multiple_run
     sys.path.append(model_directory)
     model_module = importlib.import_module(config['Model']['model']['module'])
     model = getattr(model_module, config['Model']['model']['function'])
+    
+    # Create dictionary to map the selected heads to the ct_heads
+    config['Model']['multitask_heads'] = {
+        'particletype': particletype_head,
+        'mc_energy': energy_head,
+        'direction': direction_head,
+        'impact': impact_head,
+        'showermaximum': showermaximum_head
+    }
 
     params['model'] = {**config['Model'], **config.get('Model Parameters', {})}
 
@@ -344,9 +127,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False, multiple_run
     if 'interpolation_image_shape' in config['Data'].get('mapping_settings',{}):
         config['Data']['mapping_settings']['interpolation_image_shape'] = {
             k: tuple(l) for k, l in config['Data']['mapping_settings']['interpolation_image_shape'].items()}
-
-    config['Data']['event_info'] = ['particle_id', 'mc_energy', 'alt', 'az', 'core_x', 'core_y']
-    #config['Data']['event_info'] = ['particle_id', 'mc_energy', 'alt', 'az', 'core_x', 'core_y', 'x_max']
     
     # Possibly add additional info to load if predicting to write later
     if mode == 'predict':
@@ -358,45 +138,11 @@ def run_model(config, mode="train", debug=False, log_to_file=False, multiple_run
         if config['Prediction'].get('save_identifiers', False):
             if 'event_info' not in config['Data']:
                 config['Data']['event_info'] = []
-            config['Data']['event_info'].extend(['event_number', 'run_number'])
+            config['Data']['event_info'].extend(['event_id', 'obs_id'])
             if config['Data']['mode'] == 'mono':
                 if 'array_info' not in config['Data']:
                     config['Data']['array_info'] = []
-                config['Data']['array_info'].append('tel_id')
-            #config['Data']['event_info'].extend(['event_id', 'obs_id'])
-            #if config['Data']['mode'] == 'mono':
-            #    if 'array_info' not in config['Data']:
-            #        config['Data']['array_info'] = []
-            #    config['Data']['array_info'].append('id')
-
-    # Load learning tasks according to the selected model
-    if params['model']['model']['function'] == 'vanilla_model':
-        learning_tasks = params['model']['learning_tasks']
-    elif params['model']['model']['function'] == 'gammaPhysNet_model':
-        learning_tasks = ['gammahadron_classification', 'energy_regression', 'direction_regression', 'impact_regression']
-    elif params['model']['model']['function'] == 'gammaPhysNet2_model':
-        learning_tasks = ['gammahadron_classification', 'energy_regression', 'direction_regression', 'impact_regression', 'showermaximum_regression']
-    elif params['model']['model']['function'] == 'gammaPhysNetS_model':
-        learning_tasks = ['gammahadron_classification', 'energy_regression', 'direction_regression', 'impact_regression']
-    elif params['model']['model']['function'] == 'gammaPhysNet2S_model':
-        learning_tasks = ['gammahadron_classification', 'energy_regression', 'direction_regression', 'impact_regression', 'showermaximum_regression']
-    else:
-        raise ValueError("Invalid model selection '{}'. Valid options: 'vanilla_classification',"
-                "'vanilla', 'gammaPhysNet', 'gammaPhysNet2', 'gammaPhysNetS', 'gammaPhysNet2S'".format(params['model']['model']['module']))
-
-    learning_task_labels = {}
-    if 'gammahadron_classification' in learning_tasks:
-        learning_task_labels['class_label'] = params['model']['label_names']['class_label']
-    if 'energy_regression' in learning_tasks:
-        learning_task_labels['mc_energy'] = 'Simulated (MC) Primary Particle Energy'
-    if 'direction_regression' in learning_tasks:
-        learning_task_labels['alt'] = 'Zenith Angle'
-        learning_task_labels['az'] = 'Azimuth Angle'
-    if 'impact_regression' in learning_tasks:
-        learning_task_labels['core_x'] = 'Shower core x-position'
-        learning_task_labels['core_y'] = 'Shower core y-position'
-    if 'showermaximum_regression' in learning_tasks:
-        learning_task_labels['x_max'] = 'Location of shower maximum'
+                config['Data']['array_info'].append('id')
     
     # Create data reader
     logger.info("Loading data:")
@@ -420,7 +166,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False, multiple_run
     config['Input']['output_shapes'] = tuple(tf.TensorShape(d['shape']) for d
                                              in reader.example_description)
     config['Input']['label_names'] = config['Model'].get('label_names', {})
-    config['Input']['label_names'].update(learning_task_labels)
     
     # Load either training or prediction options
     # and log information about the data set
@@ -450,15 +195,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False, multiple_run
                     
         # Write the evaluation configuration in the params dict
         params['evaluation'] = config['Evaluation']
-        # Write the true labels to the hdf5 evaluation file
-        if params['evaluation']['custom_ctlearn']['evaluation_per_epoch']:
-            logger.info("Write the true labels to the hdf5 evaluation file...")
-            # Open the the h5 to dump the evaluation information in the selected format
-            if params['evaluation']['custom_ctlearn']['evaluation_file_name']:
-                eval_file = os.path.abspath(os.path.join(os.path.dirname(__file__), model_dir+"/{}.h5".format(params['evaluation']['custom_ctlearn']['evaluation_file_name'])))
-            else:
-                eval_file = os.path.abspath(os.path.join(os.path.dirname(__file__), model_dir+"/ctlearn_evaluation.h5"))
-            write_output(h5file=eval_file, reader=reader, indices=validation_indices, learning_tasks=learning_tasks, format='CTLearn_standard')
 
     if mode == 'load_only':
 
@@ -508,6 +244,8 @@ def run_model(config, mode="train", debug=False, log_to_file=False, multiple_run
         for tensor, name in zip(example, output_names):
             dic = labels if name in label_names else features
             dic[name] = tensor
+        if mode == 'predict':
+            labels = {}
 
         return features, labels
 
@@ -515,7 +253,50 @@ def run_model(config, mode="train", debug=False, log_to_file=False, multiple_run
     # metrics, optimizer, learning rate, etc.
     # to pass into TF Estimator
     def model_fn(features, labels, mode, params):
-        return model(features, labels, mode, params)
+    
+        training = True if mode == tf.estimator.ModeKeys.TRAIN else False
+
+        multihead_array, logits = model(features, params['model'], params['example_description'], training)
+        
+        # Combine the several heads in the multi_head class
+        multi_head = tf.contrib.estimator.multi_head(multihead_array)
+        
+        # Scale the learning rate so batches with fewer triggered
+        # telescopes don't have smaller gradients
+        # Only apply learning rate scaling for array-level models
+        optimizer = {}
+        if training:
+            training_params = params['training']
+            if (training_params['scale_learning_rate'] and params['model']['function'] in ['cnn_rnn_model', 'variable_input_model']):
+                trigger_rate = tf.reduce_mean(tf.cast(
+                                features['telescope_triggers'], tf.float32),
+                                name="trigger_rate")
+                trigger_rate = tf.maximum(trigger_rate, 0.1) # Avoid division by 0
+                scaling_factor = tf.reciprocal(trigger_rate, name="scaling_factor")
+                learning_rate = tf.multiply(scaling_factor,
+                                            training_params['base_learning_rate'],
+                                            name="learning_rate")
+            else:
+                learning_rate = training_params['base_learning_rate']
+        
+            # Select optimizer with appropriate arguments
+            # Dict of optimizer_name: (optimizer_fn, optimizer_args)
+            optimizers = {
+                'Adadelta': (tf.train.AdadeltaOptimizer,
+                             dict(learning_rate=learning_rate)),
+                'Adam': (tf.train.AdamOptimizer,
+                         dict(learning_rate=learning_rate,
+                         epsilon=training_params['adam_epsilon'])),
+                'RMSProp': (tf.train.RMSPropOptimizer,
+                            dict(learning_rate=learning_rate)),
+                'SGD': (tf.train.GradientDescentOptimizer,
+                        dict(learning_rate=learning_rate))
+                }
+
+            optimizer_fn, optimizer_args = optimizers[training_params['optimizer']]
+            optimizer = optimizer_fn(**optimizer_args)
+
+        return multi_head.create_estimator_spec(features=features, mode=mode, logits=logits, labels=labels, optimizer=optimizer)
     
     estimator = tf.estimator.Estimator(
         model_fn,
@@ -561,16 +342,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False, multiple_run
                     final_eval_file = os.path.abspath(os.path.join(os.path.dirname(__file__), model_dir+"/{}.h5".format(params['evaluation']['custom_ctlearn']['final_evaluation_file_name'])))
                 else:
                     final_eval_file = os.path.abspath(os.path.join(os.path.dirname(__file__), model_dir+"/experiment.h5"))
-                write_output(h5file=final_eval_file, reader=reader, indices=validation_indices, learning_tasks=learning_tasks, predictions=evaluation)
-            
-            if params['evaluation']['custom_ctlearn']['evaluation_per_epoch']:
-                logger.info("Evaluate with the custom CTLearn evaluation...")
-                evaluations = estimator.predict(
-                    lambda: input_fn(reader, validation_indices, mode='predict', **config['Input']),
-                    hooks=hooks)
-
-                evaluation = list(evaluations)
-                write_output(h5file=eval_file, reader=reader, indices=validation_indices, learning_tasks=learning_tasks, epoch=epoch, predictions=evaluation, format='CTLearn_standard')
+                write_output(h5file=final_eval_file, reader=reader, indices=validation_indices, example_description=params['example_description'], predictions=evaluation)
 
             if not train_forever:
                 num_validations_remaining -= 1
@@ -589,7 +361,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False, multiple_run
             lambda: input_fn(reader, indices, mode='predict', **config['Input']),
             hooks=hooks)
         prediction = list(predictions)
-        write_output(h5file=predict_file, reader=reader, indices=indices, learning_tasks=learning_tasks, predictions=prediction, mode='predict', format='GammaBoard', seed=random_seed)
+        write_output(h5file=predict_file, reader=reader, indices=indices, example_description=params['example_description'], predictions=prediction, mode='predict', seed=random_seed)
         
     # clear the handlers, shutdown the logging and delete the logger
     logger.handlers.clear()
@@ -620,7 +392,7 @@ if __name__ == "__main__":
         '--multiple_runs',
         default=1,
         type=int,
-        help="")
+        help="run the same model multiple times with the same config file")
 
     args = parser.parse_args()
 
