@@ -8,7 +8,7 @@ Data:
     # Either a list of data file paths,
     # or a path to a file listing data file paths, one per line.
     # Required list or string.
-    file_list: '/data2/deeplearning/datasets/icrc19/Paranal_North_20deg_3HB9_DL1_ML1_icrc19_test.txt'
+    file_list: '/home/tjark/prototype_files_class_balanced.txt'
 
     # Type of examples to load.
     # Optional string. Default: 'mono'
@@ -25,6 +25,8 @@ Data:
     # Seed for shuffling the examples. Only used if shuffle is true.
     # Optional integer. Default: use default random initialization.
     seed: 1111
+    # If it's breaking, try to use selected_tel_type without the s at the end
+    selected_tel_types: ['LST:LSTCam']
 
     # Image channels to load.
     # Optional list of strings. Default: ['charge']
@@ -33,6 +35,7 @@ Data:
     image_channels: ['image_charge']
 
     mapping_settings:
+        camera_types: ['LSTCam']
         mapping_method:
             'LSTCam': 'bilinear_interpolation'
             'FlashCam': 'bilinear_interpolation'
@@ -244,31 +247,3 @@ TensorFlow:
     # Whether to run TensorFlow debugger.
     run_TFDBG: false
 
-Multiple Configurations Settings:
-    # Required string.
-    # Path to file to save configuration combination for each run for reference.
-    run_combinations_path: '/data2/deeplearning/tmiener/run_combinations.yml'
-
-Multiple Configurations Values:
-    telescope_type:
-        config: ['Data', 'selected_telescope_type']
-        value_type: 'grouped'
-        values:
-            'LST_LSTCam': 'LST'
-            'MST_FlashCam': 'MSTF'
-            'SST1M_DigiCam': 'SST1'
-            'MST_NectarCam': MSTN
-            'MST-SCT_SCTCam': MSTS
-            'SST_ASTRICam': SSTA
-            'SST_CHEC': SSTC
-    camera_types:
-        config: ['Data', 'mapping_settings', 'camera_types']
-        value_type: 'grouped'
-        values:
-            'LST_LSTCam': ['LSTCam']
-            'MST_FlashCam': ['FlashCam']
-            'SST1M_DigiCam': ['DigiCam']
-            'MST_NectarCam': ['NectarCam']
-            'MST-SCT_SCTCam': ['SCTCam']
-            'SST_ASTRICam': ['ASTRICam']
-            'SST_CHEC': ['CHEC']
