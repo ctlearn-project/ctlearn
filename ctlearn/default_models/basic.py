@@ -1,5 +1,9 @@
 import tensorflow as tf
 
+from tensorflow.layers import conv2d, max_pooling2d
+from indexedconv.engine.tf.masked import masked_conv2d, masked_avgpool2d
+from indexedconv.engine.tf.indexed import indexed_conv2d, indexed_avgpool2d
+
 def conv_block(inputs, training, params, reuse=None):
 
     with tf.variable_scope("Basic_conv_block", reuse=reuse):
@@ -9,9 +13,11 @@ def conv_block(inputs, training, params, reuse=None):
         # Get custom hyperparameters
         filters_list = [layer['filters'] for layer in
                 params['basic']['conv_block']['layers']]
+        hexagonal_convolution = params['basic']['conv_block'].get('hexagonal_convolution', False)
+        indexed_convolution = params['basic']['conv_block'].get('indexed_convolution', False)
         kernel_sizes = [layer['kernel_size'] for layer in
                 params['basic']['conv_block']['layers']]
-        max_pool = params['basic']['conv_block']['max_pool']
+        pool = params['basic']['conv_block']['pool']
         bottleneck_filters = params['basic']['conv_block']['bottleneck']
         batchnorm = params['basic']['conv_block'].get('batchnorm', False)
         
@@ -22,19 +28,44 @@ def conv_block(inputs, training, params, reuse=None):
 
         for i, (filters, kernel_size) in enumerate(
                 zip(filters_list, kernel_sizes)):
-            x = tf.layers.conv2d(x, filters=filters, kernel_size=kernel_size,
-                    activation=tf.nn.relu, padding="same", reuse=reuse,
-                    name="conv_{}".format(i+1))
-            if max_pool:
-                x = tf.layers.max_pooling2d(x, pool_size=max_pool['size'],
-                        strides=max_pool['strides'], name="pool_{}".format(i+1))
+            if indexed_convolution:
+                x = indexed_conv2d(x, filters=filters, kernel_size=kernel_size,
+                    activation=tf.nn.relu, padding="same",
+                    name="indexed_conv2d_{}".format(i+1), reuse=reuse)
+            elif hexagonal_convolution:
+                x = masked_conv2d(x, filters=filters, kernel_size=kernel_size,
+                    activation=tf.nn.relu, padding="same",
+                    name="masked_conv2d_{}".format(i+1), reuse=reuse)
+            else:
+                x = tf.layers.conv2d(x, filters=filters, kernel_size=kernel_size,
+                    activation=tf.nn.relu, padding="same",
+                    name="conv2d_{}".format(i+1), reuse=reuse)
+            if pool:
+                if indexed_convolution:
+                    x = indexed_avgpool2d(x, pool_size=pool['size'],
+                    strides=pool['strides'], name="avg_pool_{}".format(i+1))
+                elif hexagonal_convolution:
+                    x = masked_avgpool2d(x, pool_size=pool['size'],
+                        strides=pool['strides'], name="avg_pool_{}".format(i+1))
+                else:
+                    x = tf.layers.max_pooling2d(x, pool_size=pool['size'],
+                        strides=pool['strides'], name="max_pool_{}".format(i+1))
             if batchnorm:
                 x = tf.layers.batch_normalization(x, momentum=bn_momentum,
                         training=training)
 
         # bottleneck layer
         if bottleneck_filters:
-            x = tf.layers.conv2d(x, filters=bottleneck_filters,
+            if indexed_convolution:
+                x = indexed_conv2d(x, filters=bottleneck_filters,
+                    kernel_size=1, activation=tf.nn.relu, padding="same",
+                    reuse=reuse, name="bottleneck")
+            elif hexagonal_convolution:
+                x = masked_conv2d(x, filters=bottleneck_filters,
+                    kernel_size=1, activation=tf.nn.relu, padding="same",
+                    reuse=reuse, name="bottleneck")
+            else:
+                x = tf.layers.conv2d(x, filters=bottleneck_filters,
                     kernel_size=1, activation=tf.nn.relu, padding="same",
                     reuse=reuse, name="bottleneck")
             if batchnorm:

@@ -23,18 +23,18 @@ Data:
         mask_interpolation: false
     event_info:
         - 'shower_primary_id'
-        - 'mc_energy'
-        - 'alt'
-        - 'az'
-        - 'core_x'
-        - 'core_y'
-        - 'x_max'
+        #- 'mc_energy'
+        #- 'alt'
+        #- 'az'
+        #- 'core_x'
+        #- 'core_y'
+        #- 'x_max'
     transforms:
         - name: 'ShowerPrimaryIDToParticleType'
-        - name: 'MCEnergyToEnergyInLog'
-        - name: 'AltAzToDirection'
-        - name: 'CoreXYToImpactInKm'
-        - name: 'XmaxToShowerMaximumInKm'
+        #- name: 'MCEnergyToEnergyInLog'
+        #- name: 'AltAzToDirection'
+        #- name: 'CoreXYToImpactInKm'
+        #- name: 'XmaxToShowerMaximumInKm'
 Input:
     seed: 1234
     batch_size: 64
@@ -47,10 +47,10 @@ Model:
         particletype:
             - 'proton'
             - 'gamma'
-        energy: null
-        direction: null
-        impact: null
-        showermaximum: null
+        #energy: null
+        #direction: null
+        #impact: null
+        #showermaximum: null
 Model Parameters:
     single_tel:
         network: {module: 'basic', function: 'conv_block'}
@@ -78,7 +78,9 @@ Model Parameters:
                 - {filters: 32, kernel_size: 3}
                 - {filters: 64, kernel_size: 3}
                 - {filters: 128, kernel_size: 3}
-            max_pool: {size: 2, strides: 2}
+            hexagonal_convolution: true
+            indexed_convolution: false
+            pool: {size: 3, strides: 3}
             bottleneck: null
             batchnorm: false
         fc_head:

@@ -71,8 +71,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False, multiple_run
         'showermaximum': showermaximum_head
     }
 
-    params['model'] = {**config['Model'], **config.get('Model Parameters', {})}
-
     # Parse file list or prediction file list
     if mode in ['train', 'load_only']:
         if isinstance(config['Data']['file_list'], str):
@@ -122,6 +120,17 @@ def run_model(config, mode="train", debug=False, log_to_file=False, multiple_run
         transform, args = load_from_module(**t)
         transforms.append(transform(**args))
     config['Data']['transforms'] = transforms
+    
+    # Hexagonal convolution
+    if 'indexed_convolution' in config['Model Parameters']['basic'].get('conv_block',{}):
+        if config['Model Parameters']['basic']['conv_block']['indexed_convolution']:
+            config['Data']['mapping_settings']['mapping_method'] = {c: 'indexed_conv' for c in config['Data']['mapping_settings']['camera_types']}
+    if 'hexagonal_convolution' in config['Model Parameters']['basic'].get('conv_block',{}):
+        if config['Model Parameters']['basic']['conv_block']['hexagonal_convolution']:
+            config['Data']['mapping_settings']['mapping_method'] = {c: 'axial_addressing' for c in config['Data']['mapping_settings']['camera_types']}
+            config['Model Parameters']['basic']['conv_block']['indexed_convolution'] = False
+
+    params['model'] = {**config['Model'], **config.get('Model Parameters', {})}
 
     # Convert interpolation image shapes from lists to tuples, if present
     if 'interpolation_image_shape' in config['Data'].get('mapping_settings',{}):

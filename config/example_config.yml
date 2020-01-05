@@ -147,6 +147,8 @@ Data:
         #       cameras only)
         #   - 'axial_addressing': Warp images by relabeling axes (hexagonal
         #       cameras only)
+        #   - 'indexed_conv': Return unmapped vector and an index matrix by
+        #       relabeling axes like 'axial_addressing' (hexagonal cameras only)
         mapping_method:
             'LSTCam': 'bilinear_interpolation'
 
@@ -368,11 +370,27 @@ Model Parameters:
                 - {filters: 32, kernel_size: 3}
                 - {filters: 64, kernel_size: 3}
                 - {filters: 128, kernel_size: 3}
+                
+            # Optional Boolean. Default: false
+            # If true, 'mapping_method' in 'Data/ mapping_settings' will
+            # set to 'axial_addressing' for all telescopes and the mask
+            # on the convolution will be applied.
+            hexagonal_convolution: true
+
+            # Optional Boolean. Default: false
+            # if true, 'mapping_method' in 'Data/ mapping_settings' will
+            # set to 'IndexedConv' for all telescopes and the mask on
+            # the convolution will be applied.
+            # If 'hexagonal_convolution' and 'indexed_convolution' are true,
+            # hexagonal convolution will be perfomed with the mask approach.
+            indexed_convolution: false
 
             # Required dictionary with keys 'size' and 'strides' and
             # integer values, or null.
-            # Max pool size and strides. If null, don't perform any pooling.
-            max_pool: {size: 2, strides: 2}
+            # Max pool size and strides, if hexagonal_convolution is false.
+            # Average pool size and strides, if hexagonal_convolution is true.
+            # If null, don't perform any pooling.
+            pool: {size: 3, strides: 3}
 
             # Required integer or null.
             # Number of output filters of a final 1x1 convolutional layer.
