@@ -18,16 +18,26 @@ def single_tel_model(features, model_params, example_description, training):
     network = getattr(network_module,
                       model_params['single_tel']['network']['function'])
 
-    with tf.variable_scope("Network"):
-        output = network(telescope_data, params=model_params, training=training)
+    if model_params['single_tel']['mode'] == 'hard':
+        with tf.variable_scope("Network"):
+            output = network(telescope_data, params=model_params, training=training)
 
-    if model_params['single_tel']['pretrained_weights']:    tf.contrib.framework.init_from_checkpoint(model_params['single_tel']['pretrained_weights'],{'Network/':'Network/'})
+        if model_params['single_tel']['pretrained_weights']:    tf.contrib.framework.init_from_checkpoint(model_params['single_tel']['pretrained_weights'],{'Network/':'Network/'})
         
-    output_flattened = tf.layers.flatten(output)
+        output_flattened = tf.layers.flatten(output)
     
     logits = {}
     multihead_array = []
     for task in model_params['label_names']:
+    
+        if model_params['single_tel']['mode'] == 'soft':
+            with tf.variable_scope("Network"):
+                output = network(telescope_data, params=model_params, training=training)
+
+            if model_params['single_tel']['pretrained_weights']:    tf.contrib.framework.init_from_checkpoint(model_params['single_tel']['pretrained_weights'],{'Network/':'Network/'})
+            
+            output_flattened = tf.layers.flatten(output)
+            
         if num_classes != 2 and task == 'particletype':
             multihead_array.append(model_params['multitask_heads'][task](output_flattened, logits, num_classes))
         else:
