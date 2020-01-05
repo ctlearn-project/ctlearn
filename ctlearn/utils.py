@@ -4,7 +4,7 @@ import numpy as np
 import os
 import pkg_resources
 import sys
-import tables
+import pandas as pd
 import time
 import yaml
 
@@ -82,83 +82,58 @@ def log_examples(reader, indices, labels, subset_name):
     logger.info('')
     return num_class_examples
     
-def write_output(h5file, reader, indices, example_description, epoch=None, predictions=None, mode='train', seed=None):
-
-    print(example_description)
-    # Open the hdf5 file and create the table structure for the hdf5 file.
-    title = "Final evaluation" if mode == 'train' else "Prediction"
-        
-    h5 = tables.open_file(h5file, mode="a", title=title)
+def write_output(h5file, reader, indices, example_description, predictions, seed=None):
+    # Fill the data into a dictionary with the column names as key
     columns_dict = {}
-
-    for des in example_description:
-        if des['name'] == 'particletype':
-            columns_dict['mc_particle'] = tables.Int32Col()
-            columns_dict['reco_particle'] = tables.Int32Col()
-            columns_dict['reco_gammaness'] = tables.Float32Col()
-        elif des['name'] == 'mc_energy':
-            columns_dict['mc_energy'] = tables.Float32Col()
-            columns_dict['reco_energy'] = tables.Float32Col()
-        elif des['name'] == 'direction':
-            columns_dict['mc_altitude'] = tables.Float32Col()
-            columns_dict['reco_altitude'] = tables.Float32Col()
-            columns_dict['mc_azimuth'] = tables.Float32Col()
-            columns_dict['reco_azimuth'] = tables.Float32Col()
-        elif des['name'] == 'impact':
-            columns_dict['mc_impact_x'] = tables.Float32Col()
-            columns_dict['reco_impact_x'] = tables.Float32Col()
-            columns_dict['mc_impact_y'] = tables.Float32Col()
-            columns_dict['reco_impact_y'] = tables.Float32Col()
-        elif des['name'] == 'event_id':
-            columns_dict['event_id'] = tables.Int32Col()
-        elif des['name'] == 'obs_id':
-            columns_dict['obs_id'] = tables.Int32Col()
-        elif des['name'] == 'tel_id':
-            columns_dict['tel_id'] = tables.Int32Col()
-
-    description = type("description", (tables.IsDescription,), columns_dict)
-                    
-    # Create the table.
-    table_name = "experiment"
-    if seed:
-        table_name += "_{}".format(seed)
-    if "/{}".format(table_name) not in h5:
-        table = h5.create_table(eval("h5.root"),table_name,description)
-    else:
-        eval("h5.root.{}".format(table_name)).remove_rows()
-
-    # Fill the data into the table of the hdf5 file.
-    i = 0
-    for idx in indices:
-        table = eval("h5.root.{}".format(table_name))
-        row = table.row
-        
+    for i,idx in enumerate(indices):
         for val, des in zip(reader[idx], example_description):
             if des['name'] == 'particletype':
-                row['mc_particle'] = val
-                row['reco_particle'] = predictions[i][('particletype', 'class_ids')][0]
-                row['reco_gammaness'] = predictions[i][('particletype', 'probabilities')][1]
-            elif des['name'] == 'mc_energy':
-                row['mc_energy'] = val
-                row['reco_energy'] = predictions[i][('mc_energy', 'predictions')]
+                if i == 0:
+                    columns_dict['mc_particle'], columns_dict['reco_particle'], columns_dict['reco_gammaness'] = ([] for j in range(3))
+                columns_dict['mc_particle'].append(val)
+                columns_dict['reco_particle'].append(predictions[i][('particletype', 'class_ids')][0])
+                columns_dict['reco_gammaness'].append(predictions[i][('particletype', 'probabilities')][1])
+            elif des['name'] == 'energy':
+                if i == 0:
+                    columns_dict['mc_energy'], columns_dict['reco_energy'] = ([] for j in range(2))
+                columns_dict['mc_energy'].append(val)
+                columns_dict['reco_energy'].append(predictions[i][('energy', 'predictions')])
             elif des['name'] == 'direction':
-                row['mc_altitude'] = val[0]
-                row['reco_altitude'] = predictions[i][('direction', 'predictions')][0]
-                row['mc_azimuth'] = val[1]
-                row['reco_azimuth'] = predictions[i][('direction', 'predictions')][1]
+                if i == 0:
+                    columns_dict['mc_altitude'], columns_dict['reco_altitude'], columns_dict['mc_azimuth'], columns_dict['reco_azimuth'] = ([] for j in range(4))
+                columns_dict['mc_altitude'].append(val[0])
+                columns_dict['reco_altitude'].append(predictions[i][('direction', 'predictions')][0])
+                columns_dict['mc_azimuth'].append(val[1])
+                columns_dict['reco_azimuth'].append(predictions[i][('direction', 'predictions')][1])
             elif des['name'] == 'impact':
-                row['mc_impact_x'] = val[0]
-                row['reco_impact_x'] = predictions[i][('impact', 'predictions')][0]
-                row['mc_impact_y'] = val[1]
-                row['reco_impact_y'] = predictions[i][('impact', 'predictions')][1]
+                if i == 0:
+                    columns_dict['mc_impact_x'], columns_dict['reco_impact_x'], columns_dict['mc_impact_y'], columns_dict['reco_impact_y'] = ([] for j in range(4))
+                columns_dict['mc_impact_x'].append(val[0])
+                columns_dict['reco_impact_x'].append(predictions[i][('impact', 'predictions')][0])
+                columns_dict['mc_impact_y'].append(val[1])
+                columns_dict['reco_impact_y'].append(predictions[i][('impact', 'predictions')][1])
+            elif des['name'] == 'showermaximum':
+                if i == 0:
+                    columns_dict['mc_x_max'], columns_dict['reco_x_max'] = ([] for j in range(2))
+                columns_dict['mc_x_max'].append(val)
+                columns_dict['reco_x_max'].append(predictions[i][('showermaximum', 'predictions')])
             elif des['name'] == 'event_id':
-                row['event_id'] = val
+                if i == 0:
+                    columns_dict['event_id'] = []
+                columns_dict['event_id'].append(val)
             elif des['name'] == 'obs_id':
-                row['obs_id'] = val
+                if i == 0:
+                    columns_dict['obs_id'] = []
+                columns_dict['obs_id'].append(val)
             elif des['name'] == 'tel_id':
-                row['tel_id'] = val
-        row.append()
-        table.flush()
-        i += 1
-    # Close hdf5 file.
-    h5.close()
+                if i == 0:
+                    columns_dict['tel_id'] = []
+                columns_dict['tel_id'].append(val)
+    # Create a panda DataFrame
+    gammaboard_data = pd.DataFrame(data=columns_dict)
+    # Write the panda DataFrame into the hdf5 file
+    if seed:
+        gammaboard_data.to_hdf(h5file, key='experiment_{}'.format(seed), mode='a')
+    else:
+        gammaboard_data.to_hdf(h5file, key='experiment', mode='w')
+    return
