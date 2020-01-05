@@ -15,9 +15,9 @@ def particletype_head(cnn_output, logits, num_classes=2):
 def energy_head(cnn_output, logits):
     logit_units = 1
     prediction_energy_regression = tf.layers.dense(cnn_output, units=logit_units)
-    logits.update({'mc_energy': prediction_energy_regression})
+    logits.update({'energy': prediction_energy_regression})
 
-    head = tf.contrib.estimator.regression_head(name='mc_energy',label_dimension=logit_units)
+    head = tf.contrib.estimator.regression_head(name='energy',label_dimension=logit_units)
    
     return head
     
@@ -42,8 +42,8 @@ def impact_head(cnn_output, logits):
 def showermaximum_head(cnn_output, logits):
     logit_units = 1
     prediction_xmax_regression = tf.layers.dense(cnn_output, units=logit_units)
-    logits.update({'x_max': prediction_xmax_regression})
+    logits.update({'showermaximum': prediction_xmax_regression})
 
-    head = tf.contrib.estimator.regression_head(name='x_max',label_dimension=logit_units)
+    head = tf.contrib.estimator.regression_head(name='showermaximum',label_dimension=logit_units)
 
     return head

@@ -155,6 +155,12 @@ def variable_input_model(features, model_params, example_description, training):
         out = network_head(array_features, params=model_params,
                 training=training)
     
-    logits = tf.layers.dense(out, units=num_classes, name="logits")
+    logits = {}
+    multihead_array = []
+    for task in model_params['label_names']:
+        if num_classes != 2 and task == 'particletype':
+            multihead_array.append(model_params['multitask_heads'][task](out, logits, num_classes))
+        else:
+            multihead_array.append(model_params['multitask_heads'][task](out, logits))
 
-    return logits
+    return multihead_array, logits

@@ -65,7 +65,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False, multiple_run
     # Create dictionary to map the selected heads to the ct_heads
     config['Model']['multitask_heads'] = {
         'particletype': particletype_head,
-        'mc_energy': energy_head,
+        'energy': energy_head,
         'direction': direction_head,
         'impact': impact_head,
         'showermaximum': showermaximum_head
@@ -74,7 +74,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False, multiple_run
     params['model'] = {**config['Model'], **config.get('Model Parameters', {})}
 
     # Parse file list or prediction file list
-    if mode == 'train':
+    if mode in ['train', 'load_only']:
         if isinstance(config['Data']['file_list'], str):
             data_files = []
             with open(config['Data']['file_list']) as f:
@@ -376,7 +376,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--mode',
         default="train",
-        help="Mode to run in (train/predict/trainandpredict)")
+        help="Mode to run in (train/predict/trainandpredict/load_only)")
     parser.add_argument(
         'config_file',
         help="path to YAML configuration file with training options")
@@ -412,7 +412,7 @@ if __name__ == "__main__":
             print("CTLearn run {} with random seed '{}':".format(run+1,config['Data']['seed']))
         config['Data']['shuffle'] = False if args.mode == 'predict' else True
 
-        if args.mode in ['train', 'predict']:
+        if args.mode != 'trainandpredict':
             run_model(config, mode=args.mode, debug=args.debug, log_to_file=args.log_to_file, multiple_runs=args.multiple_runs)
         else:
             run_model(config, mode='train', debug=args.debug, log_to_file=args.log_to_file, multiple_runs=args.multiple_runs)

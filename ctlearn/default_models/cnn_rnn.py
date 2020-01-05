@@ -96,4 +96,4 @@ def cnn_rnn_model(features, model_params, example_description, training):
             else:
                 multihead_array.append(model_params['multitask_heads'][task](dropout_2, logits))
 
-    return logits
+    return multihead_array, logits
