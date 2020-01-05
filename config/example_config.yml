@@ -185,7 +185,8 @@ Data:
     # Auxiliary information to return from the Events table.
     # Optional list of strings. Default: return no event info
     # Valid options are columns in the Events table.
-    event_info: ['shower_primary_id', 'mc_energy']
+    # These options have to be in consonance with the 'label_names' in 'Model'.
+    event_info: ['shower_primary_id', 'mc_energy', 'alt', 'az', 'core_x', 'core_y', 'x_max']
 
     # Transforms to apply to the data, in order.
     # Optional list of dictionaries with the following key/value pairs:
@@ -200,7 +201,15 @@ Data:
     # in the specified path and module.
     transforms:
         -
-            name: 'ConvertShowerPrimaryIDToClassLabel'
+            name: 'ShowerPrimaryIDToParticleType'
+        -
+            name: 'MCEnergyToEnergyInLog'
+        -
+            name: 'AltAzToDirection'
+        -
+            name: 'CoreXYToImpactInKm'
+        -
+            name: 'XmaxToShowerMaximumInKm'
         -
             name: 'NormalizeTelescopePositions'
             args: {'norm_x': 1.0, 'norm_y': 1.0, 'norm_z': 1.0}
@@ -269,10 +278,15 @@ Model:
     # For a regression label, the value is null.
     # Optional dictionary with string keys and values either null or
     # a list of strings. Default: {}
+    # These options have to be in consonance with the 'event_info' in 'Data'.
     label_names:
-        class_label:
+        particletype:
             - 'proton'
             - 'gamma'
+        energy: null
+        direction: null
+        impact: null
+        showermaximum: null
 
 # The options in this and the Model section are passed in a dictionary
 # called "params" to the model function.
@@ -294,6 +308,13 @@ Model Parameters:
         # Path to a checkpoint file or model directory from which to load
         # pretrained network weights. If null, don't load any weights.
         pretrained_weights: null
+        
+        # Required string.
+        # Sharing mode for the MTL model.
+        # Valid options:
+        #   - 'hard': tasks are sharing the same CNN block
+        #   - 'soft': each task has it's own CNN block
+        mode: 'hard'
 
     cnn_rnn:
         # Required dict with keys 'module' and 'function' & string values.
@@ -441,7 +462,26 @@ Training:
     # trainable variables.
     variables_to_train: null
 
+Evaluation:
+    # Required Boolean.
+    # Whether to run TensorFlow standard evaluation.
+    default_tensorflow: true
+    
+    custom_ctlearn:
+        # Required Boolean.
+        # Whether to run CTLearn custom evaluation.
+        final_evaluation: true
+        
+        # Required string.
+        # Name of the file to save the evaluation results in 'GammaBoard' format.
+        final_evaluation_file_name: 'experiment'
+
 Prediction:
+    # Either a list of data file paths,
+    # or a path to a file listing data file paths, one per line.
+    # Required list or string if running in predict mode.
+    prediction_file_list: '/tmp/dataset/prediction_file_list.txt'
+
     # Save the true labels along with the predictions.
     # Optional Boolearn. Default: false
     save_labels: false
@@ -452,14 +492,9 @@ Prediction:
     # Optional Boolearn. Default: false
     save_identifiers: false
 
-    # Optional Boolean. Default: false
-    # Whether to export predictions as a CSV file.
-    export_as_file: false
-
-    # Required Boolean if running in predict mode and export_as_file is true,
-    # ignored otherwise.
-    # Path to file to save predictions.
-    prediction_file_path: '/tmp/mypredictions.csv'
+    # Required string if running in predict mode.
+    # Name of the file to save predictions.
+    prediction_file_name: 'ctlearn_prediction'
 
 TensorFlow:
     # Optional Boolean. Default: false

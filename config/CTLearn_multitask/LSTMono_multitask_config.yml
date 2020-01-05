@@ -1,7 +1,7 @@
 Logging:
-    model_directory: '/home/tjark/multitask/LSTMonoTest'
+    model_directory: '/home/tjark/multitask/Test'
 Data:
-    file_list: '/home/tjark/multitask/LST_mono_training_slim.txt'
+    file_list: '/home/tjark/multitask/LST_mono_training.txt'
     mode: 'mono'
     selected_telescope_type: 'LST_LSTCam'
     shuffle: true
@@ -28,11 +28,13 @@ Data:
         - 'az'
         - 'core_x'
         - 'core_y'
+        - 'x_max'
     transforms:
-        - name: 'ConvertShowerPrimaryIDToParticleType'
-        - name: 'EnergyToLog'
+        - name: 'ShowerPrimaryIDToParticleType'
+        - name: 'MCEnergyToEnergyInLog'
         - name: 'AltAzToDirection'
         - name: 'CoreXYToImpactInKm'
+        - name: 'XmaxToShowerMaximumInKm'
 Input:
     seed: 1234
     batch_size: 64
@@ -45,13 +47,15 @@ Model:
         particletype:
             - 'proton'
             - 'gamma'
-        mc_energy: null
+        energy: null
         direction: null
         impact: null
+        showermaximum: null
 Model Parameters:
     single_tel:
         network: {module: 'basic', function: 'conv_block'}
         pretrained_weights: null
+        mode: 'hard'
     cnn_rnn:
         cnn_block: {module: 'basic', function: 'conv_block'}
         pretrained_weights: null
