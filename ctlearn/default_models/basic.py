@@ -4,6 +4,8 @@ from tensorflow.layers import conv2d, max_pooling2d
 from indexedconv.engine.tf.masked import masked_conv2d, masked_avgpool2d
 from indexedconv.engine.tf.indexed import indexed_conv2d, indexed_avgpool2d
 
+from dl1_data_handler.image_mapper import ImageMapper
+
 def conv_block(inputs, training, params, reuse=None):
 
     with tf.variable_scope("Basic_conv_block", reuse=reuse):
@@ -22,6 +24,11 @@ def conv_block(inputs, training, params, reuse=None):
         batchnorm = params['basic']['conv_block'].get('batchnorm', False)
         
         x = inputs
+	# quick fix (for testing only)
+	if indexed_convolution:
+            im = ImageMapper(camera_types=['LSTCam'], mapping_method={'LSTCam': 'indexed_conv'})
+            indexmatrix = im.get_indexmatrix('LSTCam')
+
         if batchnorm:
             x = tf.layers.batch_normalization(x, momentum=bn_momentum,
                     training=training)
@@ -29,7 +36,7 @@ def conv_block(inputs, training, params, reuse=None):
         for i, (filters, kernel_size) in enumerate(
                 zip(filters_list, kernel_sizes)):
             if indexed_convolution:
-                x = indexed_conv2d(x, filters=filters, kernel_size=kernel_size,
+                x = indexed_conv2d(x, indices=indexmatrix, filters=filters, kernel_size=kernel_size,
                     activation=tf.nn.relu, padding="same",
                     name="indexed_conv2d_{}".format(i+1), reuse=reuse)
             elif hexagonal_convolution:
@@ -42,11 +49,13 @@ def conv_block(inputs, training, params, reuse=None):
                     name="conv2d_{}".format(i+1), reuse=reuse)
             if pool:
                 if indexed_convolution:
-                    x = indexed_avgpool2d(x, pool_size=pool['size'],
-                    strides=pool['strides'], name="avg_pool_{}".format(i+1))
+                    if i != 0:
+                        x = indexed_avgpool2d(x, indices=indexmatrix, pool_size=pool['size'],
+                    	    strides=pool['strides'], name="avg_pool_{}".format(i+1))
                 elif hexagonal_convolution:
-                    x = masked_avgpool2d(x, pool_size=pool['size'],
-                        strides=pool['strides'], name="avg_pool_{}".format(i+1))
+                    if i != 0:
+                        x = masked_avgpool2d(x, pool_size=pool['size'],
+                            strides=pool['strides'], name="avg_pool_{}".format(i+1))
                 else:
                     x = tf.layers.max_pooling2d(x, pool_size=pool['size'],
                         strides=pool['strides'], name="max_pool_{}".format(i+1))
@@ -57,7 +66,7 @@ def conv_block(inputs, training, params, reuse=None):
         # bottleneck layer
         if bottleneck_filters:
             if indexed_convolution:
-                x = indexed_conv2d(x, filters=bottleneck_filters,
+                x = indexed_conv2d(x, indices=indexmatrix, filters=bottleneck_filters,
                     kernel_size=1, activation=tf.nn.relu, padding="same",
                     reuse=reuse, name="bottleneck")
             elif hexagonal_convolution:
