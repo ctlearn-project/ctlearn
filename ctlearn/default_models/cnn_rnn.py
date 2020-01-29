@@ -17,8 +17,6 @@ def cnn_rnn_model(features, model_params, example_description, training):
             num_telescopes = d['shape'][0]
         if name == 'trigger':
             telescope_triggers = tf.cast(f, tf.float32)
-
-    num_classes = len(model_params['label_names']['class_label'])
     
     # Transpose telescope_data from [batch_size,num_tel,length,width,channels]
     # to [num_tel,batch_size,length,width,channels].
@@ -91,8 +89,10 @@ def cnn_rnn_model(features, model_params, example_description, training):
         logits = {}
         multihead_array = []
         for task in model_params['label_names']:
-            if num_classes != 2 and task == 'particletype':
-                multihead_array.append(model_params['multitask_heads'][task](dropout_2, logits, num_classes))
+            if task == 'particletype':
+                num_classes = len(model_params['label_names']['class_label'])
+                if num_classes != 2:
+                    multihead_array.append(model_params['multitask_heads'][task](dropout_2, logits, num_classes))
             else:
                 multihead_array.append(model_params['multitask_heads'][task](dropout_2, logits))
 

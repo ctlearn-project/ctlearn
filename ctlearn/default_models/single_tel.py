@@ -10,7 +10,6 @@ def single_tel_model(features, model_params, example_description, training):
     for (name, f), d in zip(features.items(), example_description):
         if name == 'image':
             telescope_data = tf.reshape(f, [-1, *d['shape']])
-    num_classes = len(model_params['label_names']['particletype'])
     
     # Load neural network model
     sys.path.append(model_params['model_directory'])
@@ -38,8 +37,10 @@ def single_tel_model(features, model_params, example_description, training):
             
             output_flattened = tf.layers.flatten(output)
             
-        if num_classes != 2 and task == 'particletype':
-            multihead_array.append(model_params['multitask_heads'][task](output_flattened, logits, num_classes))
+        if task == 'particletype':
+            num_classes = len(model_params['label_names']['particletype'])
+            if num_classes != 2:
+                multihead_array.append(model_params['multitask_heads'][task](output_flattened, logits, num_classes))
         else:
             multihead_array.append(model_params['multitask_heads'][task](output_flattened, logits))
 
