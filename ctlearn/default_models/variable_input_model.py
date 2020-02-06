@@ -158,8 +158,7 @@ def variable_input_model(features, model_params, example_description, training):
     for task in model_params['label_names']:
         if task == 'particletype':
             num_classes = len(model_params['label_names']['particletype'])
-            if num_classes != 2:
-                multihead_array.append(model_params['multitask_heads'][task](out, logits, num_classes))
+            multihead_array.append(model_params['multitask_heads'][task](out, logits, num_classes))
         else:
             multihead_array.append(model_params['multitask_heads'][task](out, logits))
 
