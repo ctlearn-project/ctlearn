@@ -90,7 +90,7 @@ def cnn_rnn_model(features, model_params, example_description, training):
         multihead_array = []
         for task in model_params['label_names']:
             if task == 'particletype':
-                num_classes = len(model_params['label_names']['class_label'])
+                num_classes = len(model_params['label_names']['particletype'])
                 multihead_array.append(model_params['multitask_heads'][task](dropout_2, logits, num_classes))
             else:
                 multihead_array.append(model_params['multitask_heads'][task](dropout_2, logits))
