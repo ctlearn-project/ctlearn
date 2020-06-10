@@ -42,25 +42,22 @@ def conv_block(inputs, training, params, reuse=None):
                         training=training)
 
         return x
+        
+def fc_head(inputs, tasks_dict, expected_logits_dimension):
 
-def fc_head(inputs, training, params):
-
-    # Get standard hyperparameters
-    bn_momentum = params['basic'].get('batchnorm_decay', 0.99)
+    layers = tasks_dict['fc_head']
     
-    # Get custom hyperparameters
-    layers = params['basic']['fc_head']['layers']
-    batchnorm = params['basic']['fc_head'].get('batchnorm', False)
+    if layers[-1] != expected_logits_dimension:
+        print("Warning:fc_head: Last logit unit '{}' of the fc_head array differs from the expected_logits_dimension '{}'. The expected logits dimension '{}' will be appended.".format(layers[-1], expected_logits_dimension))
+        layers.append(expected_logits_dimension)
 
-    x = tf.layers.flatten(inputs)
-
+    x = inputs
+    activation=tf.nn.relu
     for i, units in enumerate(layers):
-        x = tf.layers.dense(x, units=units, activation=tf.nn.relu,
-                name="fc_{}".format(i+1))
-        if batchnorm:
-            x = tf.layers.batch_normalization(x, momentum=bn_momentum,
-                    training=training)
-
+        if i == len(layers)-1:
+            activation=None
+        x = tf.layers.dense(x, units=units, activation=activation,
+                name="fc_{}_{}".format(tasks_dict['name'], i+1))
     return x
 
 def conv_head(inputs, training, params):

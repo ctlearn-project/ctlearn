@@ -150,16 +150,7 @@ def variable_input_model(features, model_params, example_description, training):
    
     with tf.variable_scope("NetworkHead"):
         # Process the combined array features
-        out = network_head(array_features, params=model_params,
-                training=training)
+        output = network_head(array_features, params=model_params,
+                    training=training)
     
-    logits = {}
-    multihead_array = []
-    for task in model_params['label_names']:
-        if task == 'particletype':
-            num_classes = len(model_params['label_names']['particletype'])
-            multihead_array.append(model_params['multitask_heads'][task](out, logits, num_classes))
-        else:
-            multihead_array.append(model_params['multitask_heads'][task](out, logits))
-
-    return multihead_array, logits
+    return output

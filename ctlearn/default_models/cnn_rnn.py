@@ -85,14 +85,5 @@ def cnn_rnn_model(features, model_params, example_description, training):
         fc2 = tf.layers.dense(inputs=dropout_1, units=512, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.004), name="fc2")
         dropout_2 = tf.layers.dropout(inputs=fc2, rate=dropout_rate,
                 training=training)
-        
-        logits = {}
-        multihead_array = []
-        for task in model_params['label_names']:
-            if task == 'particletype':
-                num_classes = len(model_params['label_names']['particletype'])
-                multihead_array.append(model_params['multitask_heads'][task](dropout_2, logits, num_classes))
-            else:
-                multihead_array.append(model_params['multitask_heads'][task](dropout_2, logits))
 
-    return multihead_array, logits
+    return dropout_2
