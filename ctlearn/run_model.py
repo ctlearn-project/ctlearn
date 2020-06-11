@@ -259,16 +259,16 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                  shuffle_buffer_size=None, prefetch_buffer_size=1,
                  add_labels_to_features=False):
 
-        def generator(indices):
-            for idx in indices:
-                yield tuple(reader[idx])
-
-        dataset = tf.data.Dataset.from_generator(generator, output_dtypes,
-                                                 output_shapes=output_shapes,
-                                                 args=(indices,))
+        dataset = tf.data.Dataset.from_tensor_slices(indices)
         if shuffle_buffer_size is None:
             shuffle_buffer_size = len(indices)
         dataset = dataset.shuffle(buffer_size=shuffle_buffer_size, seed=seed)
+        # Do not use the num_parallel_calls option -
+        # it causes itermittent segmentation faults with the HDF5 files
+        # and does not provide a speedup with tf.py_function anyway.
+        dataset = dataset.map(lambda x: tf.py_function(func=reader.__getitem__,
+                                                       inp=[x],
+                                                       Tout=output_dtypes))
         dataset = dataset.batch(batch_size)
         dataset = dataset.prefetch(prefetch_buffer_size)
 
