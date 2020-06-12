@@ -206,8 +206,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             if dtype == utype:
                 dtypes[i] = stype
     config['Input']['output_dtypes'] = tuple(tf.as_dtype(d) for d in dtypes)
-    config['Input']['output_shapes'] = tuple(tf.TensorShape(d['shape']) for d
-                                             in reader.example_description)
     config['Input']['label_names'] = config['Model'].get('label_names', {})
 
     # Load either training or prediction options
@@ -254,15 +252,12 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     run_tfdbg = config.get('TensorFlow', {}).get('run_TFDBG', False)
 
     # Define input function for TF Estimator
-    def input_fn(reader, indices, output_names, output_dtypes, output_shapes,
-                 label_names, seed=None, batch_size=1,
-                 shuffle_buffer_size=None, prefetch_buffer_size=1,
+    def input_fn(reader, indices, output_names, output_dtypes,
+                 label_names, seed=None, batch_size=1, prefetch_buffer_size=1,
                  add_labels_to_features=False):
 
         dataset = tf.data.Dataset.from_tensor_slices(indices)
-        if shuffle_buffer_size is None:
-            shuffle_buffer_size = len(indices)
-        dataset = dataset.shuffle(buffer_size=shuffle_buffer_size, seed=seed)
+        dataset = dataset.shuffle(buffer_size=len(indices), seed=seed)
         # Do not use the num_parallel_calls option -
         # it causes itermittent segmentation faults with the HDF5 files
         # and does not provide a speedup with tf.py_function anyway.
