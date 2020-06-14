@@ -228,9 +228,15 @@ Input:
     # Optional integer. Default: 1
     batch_size: 32
 
-    # Maximum number of batches to be buffered when prefetching.
-    # Optional integer. Default: 1
-    prefetch_buffer_size: 1
+    # Arguments to tf.data.experimental.prefetch_to_device
+    # to prefetch examples to a specified device.
+    # Optional dictionary or null. Default if null: do not prefetch
+    prefetch_to_device:
+        # Device to which to prefetch (string)
+        device: "/gpu:0"
+        # Number of elements to prefetch
+        # Optional; will be automatically optimized if missing or null
+        buffer_size: null
 
 # Settings for the TensorFlow model. The options in this and the
 # Model Parameters section are passed to the Estimator model_fn

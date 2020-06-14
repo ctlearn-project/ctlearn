@@ -253,19 +253,22 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     # Define input function for TF Estimator
     def input_fn(reader, indices, output_names, output_dtypes,
-                 label_names, seed=None, batch_size=1, prefetch_buffer_size=1,
+                 label_names, seed=None, batch_size=1,
+                 prefetch_to_device=None,
                  add_labels_to_features=False):
 
         dataset = tf.data.Dataset.from_tensor_slices(indices)
         dataset = dataset.shuffle(buffer_size=len(indices), seed=seed)
         # Do not use the num_parallel_calls option -
         # it causes itermittent segmentation faults with the HDF5 files
-        # and does not provide a speedup with tf.py_function anyway.
+        # and may not provide a speedup with tf.py_function anyway.
         dataset = dataset.map(lambda x: tf.py_function(func=reader.__getitem__,
                                                        inp=[x],
                                                        Tout=output_dtypes))
         dataset = dataset.batch(batch_size)
-        dataset = dataset.prefetch(prefetch_buffer_size)
+        if prefetch_to_device is not None:
+            dataset = dataset.apply(
+                tf.data.experimental.prefetch_to_device(**prefetch_to_device))
 
         iterator = dataset.make_one_shot_iterator()
 
