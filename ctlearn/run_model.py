@@ -262,12 +262,11 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             dataset = dataset.shuffle(buffer_size=len(indices), seed=seed,
                                       reshuffle_each_iteration=True)
             dataset = dataset.repeat()
-        # Do not use the num_parallel_calls option -
-        # it causes itermittent segmentation faults with the HDF5 files
-        # and may not provide a speedup with tf.py_function anyway.
         dataset = dataset.map(lambda x: tf.py_function(func=reader.__getitem__,
                                                        inp=[x],
-                                                       Tout=output_dtypes))
+                                                       Tout=output_dtypes),
+                              num_parallel_calls=tf.data.experimental.AUTOTUNE)
+
         dataset = dataset.batch(batch_size)
         if prefetch_to_device is not None:
             dataset = dataset.apply(
