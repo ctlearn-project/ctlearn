@@ -231,8 +231,8 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         validation_indices = indices[num_training_examples:]
         logger.info("Number of training steps per epoch: {}".format(
             int(num_training_examples / batch_size)))
-        logger.info("Number of training steps between validations: {}".format(
-            config['Training']['num_training_steps_per_validation']))
+        logger.info("Max number of training steps: {}".format(
+            config['Training']['max_steps']))
 
     if mode == 'load_only':
 
@@ -253,12 +253,15 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     # Define input function for TF Estimator
     def input_fn(reader, indices, output_names, output_dtypes,
-                 label_names, seed=None, batch_size=1,
-                 prefetch_to_device=None,
+                 label_names, shuffle_and_repeat=False, seed=None,
+                 batch_size=1, prefetch_to_device=None,
                  add_labels_to_features=False):
 
         dataset = tf.data.Dataset.from_tensor_slices(indices)
-        dataset = dataset.shuffle(buffer_size=len(indices), seed=seed)
+        if shuffle_and_repeat:
+            dataset = dataset.shuffle(buffer_size=len(indices), seed=seed,
+                                      reshuffle_each_iteration=True)
+            dataset = dataset.repeat()
         # Do not use the num_parallel_calls option -
         # it causes itermittent segmentation faults with the HDF5 files
         # and may not provide a speedup with tf.py_function anyway.
@@ -437,19 +440,16 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
         # Train and evaluate the model
         logger.info("Training and evaluating...")
-        num_validations = config['Training']['num_validations']
-        steps = config['Training']['num_training_steps_per_validation']
-        train_forever = False if num_validations != 0 else True
-        num_validations_remaining = num_validations
-        while train_forever or num_validations_remaining:
-            estimator.train(
-                lambda: input_fn(reader, training_indices, **config['Input']),
-                steps=steps, hooks=hooks)
-            estimator.evaluate(
-                lambda: input_fn(reader, validation_indices, **config['Input']),
-                hooks=hooks, name='validation')
-            if not train_forever:
-                num_validations_remaining -= 1
+        max_steps = config['Training']['max_steps']
+        train_input_fn = lambda: input_fn(reader, training_indices,
+                                          shuffle_and_repeat=True,
+                                          **config['Input'])
+        train_spec = tf.estimator.TrainSpec(input_fn=train_input_fn,
+                                            max_steps=max_steps, hooks=hooks)
+        eval_input_fn = lambda: input_fn(reader, validation_indices,
+                                         **config['Input'])
+        eval_spec = tf.estimator.EvalSpec(input_fn=eval_input_fn)
+        tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
 
     elif mode == 'predict':
 
