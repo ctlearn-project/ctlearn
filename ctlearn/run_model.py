@@ -229,10 +229,10 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         num_training_examples = math.floor((1 - validation_split) * len(reader))
         training_indices = indices[:num_training_examples]
         validation_indices = indices[num_training_examples:]
+        logger.info("Number of epochs: {}".format(
+            config['Training']['num_epochs']))
         logger.info("Number of training steps per epoch: {}".format(
             int(num_training_examples / batch_size)))
-        logger.info("Max number of training steps: {}".format(
-            config['Training']['max_steps']))
 
     if mode == 'load_only':
 
@@ -439,7 +439,8 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
         # Train and evaluate the model
         logger.info("Training and evaluating...")
-        max_steps = config['Training']['max_steps']
+        max_steps = int(config['Training']['num_epochs']
+                        * num_training_examples / batch_size)
         train_input_fn = lambda: input_fn(reader, training_indices,
                                           shuffle_and_repeat=True,
                                           **config['Input'])

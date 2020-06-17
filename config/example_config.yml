@@ -402,8 +402,7 @@ Training:
     # Randomly chosen fraction of data to set aside for validation.
     validation_split: 0.1
 
-    # Required int.
-    # Number of steps (usually, batches) on which to train.
+    # Required number of epochs on which to train.
     max_steps: 10000
 
     # Required string.
