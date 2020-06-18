@@ -1,7 +1,7 @@
 Logging:
-    model_directory: '/home/tjark/multitask/fresh/test/'
+    model_directory: '/home/tjark/multitask/multitask'
 Output:
-    file: 'test'
+    file: 'multitask'
 Data:
     #file_list: '/home/tjark/multitask/LST_mono_test_gp.txt'
     file_list: '/home/tjark/multitask/LST_mono_training_balanced.txt'
@@ -52,10 +52,10 @@ Model:
     model: {module: 'single_tel', function: 'single_tel_model'}
     tasks:
         particletype: {class_names: ['proton', 'gamma'], fc_head: [2], weight: 1.0}
-        energy: {fc_head: [256, 1], loss: 'mae', weight: 1.0}
-        direction: {fc_head: [256, 2], loss: 'mae', weight: 1.0}
-        #impact: {fc_head: [256, 2], loss: 'mae', weight: 1.0}
-        #showermaximum: {fc_head: [256, 1], loss: 'mae', weight: 1.0}
+        energy: {fc_head: [256, 1], weight: 1.0}
+        direction: {fc_head: [256, 2], weight: 1.0}
+        #impact: {fc_head: [256, 2], weight: 1.0}
+        #showermaximum: {fc_head: [256, 1], weight: 1.0}
 Model Parameters:
     single_tel:
         network: {module: 'basic', function: 'conv_block'}

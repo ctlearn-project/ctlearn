@@ -36,20 +36,12 @@ def regression_loss(loss_type, labels, logits, params, class_labels=None):
     logits = tf.convert_to_tensor(logits)
     labels = tf.cast(labels, tf.float32)
     loss = tf.math.abs(logits - labels)
-    
-    if 'MeanSquaredError' == loss_type or 'mse' == loss_type:
-        loss = tf.math.square(loss)
-    
-    # TODO: multiclass handling! Set all non gammas to 0 and gammas to 1 in class_labels
-    num_gammas_in_batch = tf.cast(params['batch_size'], tf.float32)
-    if class_labels is not None:
-        num_gammas_in_batch = tf.cast(tf.math.count_nonzero(class_labels), tf.float32)
-        mask = tf.expand_dims(tf.cast(class_labels, tf.float32),1)
-        loss = tf.math.multiply(loss, mask)
 
-    loss = tf.math.reduce_sum(loss)
-    if 'MeanAbsoluteError' == loss_type or 'mae' == loss_type:
-        loss = tf.math.divide(loss, num_gammas_in_batch)
+    if class_labels is not None:
+        mask = tf.equal(class_labels, tf.constant(1, dtype=tf.int8))
+        loss = tf.boolean_mask(loss, mask)
+
+    loss = tf.math.reduce_mean(loss)
 
     # add regularization loss
     regularization_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
