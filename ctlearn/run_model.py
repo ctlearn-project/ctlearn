@@ -206,8 +206,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             if dtype == utype:
                 dtypes[i] = stype
     config['Input']['output_dtypes'] = tuple(tf.as_dtype(d) for d in dtypes)
-    config['Input']['output_shapes'] = tuple(tf.TensorShape(d['shape']) for d
-                                             in reader.example_description)
     config['Input']['label_names'] = config['Model'].get('label_names', {})
 
     # Load either training or prediction options
@@ -231,10 +229,10 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         num_training_examples = math.floor((1 - validation_split) * len(reader))
         training_indices = indices[:num_training_examples]
         validation_indices = indices[num_training_examples:]
+        logger.info("Number of epochs: {}".format(
+            config['Training']['num_epochs']))
         logger.info("Number of training steps per epoch: {}".format(
             int(num_training_examples / batch_size)))
-        logger.info("Number of training steps between validations: {}".format(
-            config['Training']['num_training_steps_per_validation']))
 
     if mode == 'load_only':
 
@@ -254,23 +252,25 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     run_tfdbg = config.get('TensorFlow', {}).get('run_TFDBG', False)
 
     # Define input function for TF Estimator
-    def input_fn(reader, indices, output_names, output_dtypes, output_shapes,
-                 label_names, seed=None, batch_size=1,
-                 shuffle_buffer_size=None, prefetch_buffer_size=1,
+    def input_fn(reader, indices, output_names, output_dtypes,
+                 label_names, shuffle_and_repeat=False, seed=None,
+                 batch_size=1, prefetch_to_device=None,
                  add_labels_to_features=False):
 
-        def generator(indices):
-            for idx in indices:
-                yield tuple(reader[idx])
+        dataset = tf.data.Dataset.from_tensor_slices(indices)
+        if shuffle_and_repeat:
+            dataset = dataset.shuffle(buffer_size=len(indices), seed=seed,
+                                      reshuffle_each_iteration=True)
+            dataset = dataset.repeat()
+        dataset = dataset.map(lambda x: tf.py_function(func=reader.__getitem__,
+                                                       inp=[x],
+                                                       Tout=output_dtypes),
+                              num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
-        dataset = tf.data.Dataset.from_generator(generator, output_dtypes,
-                                                 output_shapes=output_shapes,
-                                                 args=(indices,))
-        if shuffle_buffer_size is None:
-            shuffle_buffer_size = len(indices)
-        dataset = dataset.shuffle(buffer_size=shuffle_buffer_size, seed=seed)
         dataset = dataset.batch(batch_size)
-        dataset = dataset.prefetch(prefetch_buffer_size)
+        if prefetch_to_device is not None:
+            dataset = dataset.apply(
+                tf.data.experimental.prefetch_to_device(**prefetch_to_device))
 
         iterator = dataset.make_one_shot_iterator()
 
@@ -439,19 +439,17 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
         # Train and evaluate the model
         logger.info("Training and evaluating...")
-        num_validations = config['Training']['num_validations']
-        steps = config['Training']['num_training_steps_per_validation']
-        train_forever = False if num_validations != 0 else True
-        num_validations_remaining = num_validations
-        while train_forever or num_validations_remaining:
-            estimator.train(
-                lambda: input_fn(reader, training_indices, **config['Input']),
-                steps=steps, hooks=hooks)
-            estimator.evaluate(
-                lambda: input_fn(reader, validation_indices, **config['Input']),
-                hooks=hooks, name='validation')
-            if not train_forever:
-                num_validations_remaining -= 1
+        max_steps = int(config['Training']['num_epochs']
+                        * num_training_examples / batch_size)
+        train_input_fn = lambda: input_fn(reader, training_indices,
+                                          shuffle_and_repeat=True,
+                                          **config['Input'])
+        train_spec = tf.estimator.TrainSpec(input_fn=train_input_fn,
+                                            max_steps=max_steps, hooks=hooks)
+        eval_input_fn = lambda: input_fn(reader, validation_indices,
+                                         **config['Input'])
+        eval_spec = tf.estimator.EvalSpec(input_fn=eval_input_fn)
+        tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
 
     elif mode == 'predict':
 
