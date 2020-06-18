@@ -177,7 +177,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False, multiple_run
                 if training:
                     if len(labels[task].get_shape().as_list()) == 1:
                         labels[task] = tf.expand_dims(labels[task], 1)
-                    if 'particletype' in tasks_dict:
+                    if 'particletype' in labels:
                         task_losses[task] = regression_loss(tasks_dict[task]['loss'], labels[task], logits[task], training_params, labels['particletype'])
                     else:
                         task_losses[task] = regression_loss(tasks_dict[task]['loss'], labels[task], logits[task], training_params)

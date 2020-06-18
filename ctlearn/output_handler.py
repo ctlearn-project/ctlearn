@@ -78,6 +78,8 @@ def calculate_validation_step(h5file, data, step):
         mc_energy = np.array(data['mc_energy'])
         reco_energy = np.array(data['reco_energy'])
         if 'mc_particle' in data:
+            mc_particle = np.array(data['mc_particle']).astype(int)
+            mask_gamma = (mc_particle == 1)
             mc_energy = mc_energy[mask_gamma]
             reco_energy = reco_energy[mask_gamma]
         # Energy resolution
