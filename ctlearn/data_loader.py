@@ -106,33 +106,30 @@ def setup_TFdataset_format(config, example_description, labels):
             if dtype == utype:
                 dtypes[i] = stype
     config['Input']['output_dtypes'] = tuple(tf.as_dtype(d) for d in dtypes)
-    config['Input']['output_shapes'] = tuple(tf.TensorShape(d['shape']) for d
-                                             in example_description)
     config['Input']['label_names'] = config['Model']['tasks']
 
     return config['Input']
 
 # Define input function for TF Estimator
-def input_fn(reader, indices, output_names, output_dtypes, output_shapes,
-             label_names, mode='train', seed=None, batch_size=1,
-             shuffle_buffer_size=None, prefetch_buffer_size=1,
+def input_fn(reader, indices, output_names, output_dtypes,
+             label_names, shuffle_and_repeat=False, seed=None,
+             batch_size=1, prefetch_to_device=None,
              add_labels_to_features=False):
 
-    def generator(indices):
-        for idx in indices:
-            yield tuple(reader[idx])
+    dataset = tf.data.Dataset.from_tensor_slices(indices)
+    if shuffle_and_repeat:
+        dataset = dataset.shuffle(buffer_size=len(indices), seed=seed,
+                                      reshuffle_each_iteration=True)
+        dataset = dataset.repeat()
+    dataset = dataset.map(lambda x: tf.py_function(func=reader.__getitem__,
+                                                   inp=[x],
+                                                   Tout=output_dtypes),
+                          num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
-    dataset = tf.data.Dataset.from_generator(generator, output_dtypes,
-                                             output_shapes=output_shapes,
-                                             args=(indices,))
-   
-    # Only shuffle the data, when train mode is selected.
-    if mode == 'train':
-        if shuffle_buffer_size is None:
-            shuffle_buffer_size = len(indices)
-        dataset = dataset.shuffle(buffer_size=shuffle_buffer_size, seed=seed)
     dataset = dataset.batch(batch_size)
-    dataset = dataset.prefetch(prefetch_buffer_size)
+    if prefetch_to_device is not None:
+        dataset = dataset.apply(
+            tf.data.experimental.prefetch_to_device(**prefetch_to_device))
 
     iterator = dataset.make_one_shot_iterator()
 
@@ -141,54 +138,10 @@ def input_fn(reader, indices, output_names, output_dtypes, output_shapes,
 
     features, labels = {}, {}
     for tensor, name in zip(example, output_names):
-        dic = labels if name in label_names else features
-        dic[name] = tensor
-    if mode == 'predict':
-        labels = {}
+         dic = labels if name in label_names else features
+         dic[name] = tensor
+
+    if add_labels_to_features:  # for predict mode
+         features['labels'] = labels
 
     return features, labels
-
-def get_mc_data(reader, indices, example_description):
-    mc_data = {}
-    mc_data['tel_pointing'] = reader.tel_pointing
-    mc_data['energy_unit'] = 'TeV'
-    for i, idx in enumerate(indices):
-        for val, des in zip(reader[idx], example_description):
-            if des['name'] == 'particletype':
-                if i == 0:
-                    mc_data['mc_particle'] = []
-                mc_data['mc_particle'].append(val)
-            elif des['name'] == 'energy':
-                if i == 0:
-                    mc_data['mc_energy'] = []
-                if des['unit'] == 'log(TeV)':
-                    mc_data['energy_unit'] = 'log(TeV)'
-                    val = np.power(10,val)
-                mc_data['mc_energy'].append(val)
-            elif des['name'] == 'direction':
-                if i == 0:
-                    mc_data['mc_altitude'], mc_data['mc_azimuth'] = [],[]
-                mc_data['mc_altitude'].append(val[0] + reader.tel_pointing[1])
-                mc_data['mc_azimuth'].append(val[1] + reader.tel_pointing[0])
-            elif des['name'] == 'impact':
-                if i == 0:
-                    mc_data['mc_impact_x'], mc_data['mc_impact_y'] = [],[]
-                mc_data['mc_impact_x'].append(val[0])
-                mc_data['mc_impact_y'].append(val[1])
-            elif des['name'] == 'showermaximum':
-                if i == 0:
-                    mc_data['mc_x_max'] = []
-                mc_data['mc_x_max'].append(val)
-            elif des['name'] == 'event_id':
-                if i == 0:
-                    mc_data['event_id'] = []
-                mc_data['event_id'].append(val)
-            elif des['name'] == 'obs_id':
-                if i == 0:
-                    mc_data['obs_id'] = []
-                mc_data['obs_id'].append(val)
-            elif des['name'] == 'tel_id':
-                if i == 0:
-                    mc_data['tel_id'] = []
-                mc_data['tel_id'].append(val)
-    return mc_data

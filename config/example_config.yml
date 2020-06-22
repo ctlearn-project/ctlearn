@@ -237,17 +237,15 @@ Input:
     # Optional integer. Default: 1
     batch_size: 32
 
-    # Number of examples to load into memory before shuffling.
-    # For valid results, either randomize the example order
-    # in the generator (i.e. set Data:shuffle = True) or set to
-    # greater than or equal to the number of examples in the dataset.
-    # For best performance, set to less than the total number of examples.
-    # Optional integer. Default: All examples in dataset
-    shuffle_buffer_size: 10000
-
-    # Maximum number of batches to be buffered when prefetching.
-    # Optional integer. Default: 1
-    prefetch_buffer_size: 8
+    # Arguments to tf.data.experimental.prefetch_to_device
+    # to prefetch examples to a specified device.
+    # Optional dictionary or null. Default if null: do not prefetch
+    prefetch_to_device:
+        # Device to which to prefetch (string)
+        device: "/gpu:0"
+        # Number of elements to prefetch
+        # Optional; will be automatically optimized if missing or null
+        buffer_size: null
 
 # Settings for the TensorFlow model. The options in this and the
 # Model Parameters section are passed to the Estimator model_fn
@@ -425,14 +423,8 @@ Training:
     # Randomly chosen fraction of data to set aside for validation.
     validation_split: 0.1
 
-    # Required integer.
-    # Number of validations made before finishing training. If 0, run forever.
-    num_validations: 0
-
-    # Required integer.
-    # Number of training steps to run before each evaluation
-    # on the validation set.
-    num_training_steps_per_validation: 1000
+    # Required number of epochs on which to train.
+    num_epochs: 20
 
     # Required string.
     # Valid options: ['Adadelta', 'Adam', 'RMSProp', 'SGD']
