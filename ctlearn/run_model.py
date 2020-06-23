@@ -129,17 +129,17 @@ def run_model(config, mode="train", debug=False, log_to_file=False, multiple_run
     # metrics, optimizer, learning rate, etc.
     # to pass into TF Estimator
     def model_fn(features, labels, mode, params):
-    
+
         training = True if mode == tf.estimator.ModeKeys.TRAIN else False
         training_params = params['training']
 
         output = model(features, params['model'], params['example_description'], training)
-        
+
         # TODO: Handle all models properly
         if params['model']['model']['function'] == 'single_tel_model':
             output_flattened = tf.layers.flatten(output)
             output_globalpooled = tf.reduce_mean(output, axis=[1,2])
-        
+
         logits = {}
         tasks_dict = params['model']['tasks']
         for task in tasks_dict:
@@ -274,19 +274,15 @@ def run_model(config, mode="train", debug=False, log_to_file=False, multiple_run
                         weights = tf.cast(tf.equal(particletype, tf.constant(i)), tf.int32)
                         eval_metric_ops['accuracy_' + name] = tf.metrics.accuracy(
                             particletype, logits[task], weights=weights)
-                # This isn't working:
-                #else:
-                #    # To install the tensorflow_probability run 'pip install --upgrade tensorflow-probability==0.6.0'.
-                #    try:
-                #        import tensorflow_probability as tfp
-                #    except ImportError:
-                #        raise ImportError("The `tensorflow_probability` library is required to perform the evaluation.")
-                #    if task == 'energy':
-                #         # Compute accuracy
-                #        res = tf.math.divide(tf.math.abs(logits[task] - labels[task]),
-                #                             tf.math.abs(labels[task]))
-                #        eval_metric_ops['energy_res'] = tfp.stats.percentile(res, q=68.27)
-                #    #elif task == 'direction':
+                else:
+                    # Compute the mean aboslute error as the metric for the regression tasks
+                    eval_metric_ops['mae_' + task] = tf.metrics.mean_absolute_error(
+                           labels[task], logits[task], weights=gamma_mask)
+                    if task == 'direction':
+                        eval_metric_ops['mae_alt'] = tf.metrics.mean_absolute_error(
+                           labels[task][0], logits[task][0], weights=gamma_mask)
+                        eval_metric_ops['mae_az'] = tf.metrics.mean_absolute_error(
+                           labels[task][1], logits[task][1], weights=gamma_mask)
 
         return tf.estimator.EstimatorSpec(
             mode=mode,
@@ -349,7 +345,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False, multiple_run
     logging.shutdown()
     del logger
     return
-    
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(
@@ -382,7 +378,7 @@ if __name__ == "__main__":
         with open(args.config_file, 'r') as config_file:
             config = yaml.safe_load(config_file)
         random_seed = config['Data']['seed']
-        
+
         if args.multiple_runs != 1:
             # Create and overwrite the random seed in the config file
             while True:
@@ -392,7 +388,7 @@ if __name__ == "__main__":
                     break
             config['Data']['seed'] = random_seed
             print("CTLearn run {} with random seed '{}':".format(run+1,config['Data']['seed']))
-        
+
         if args.mode == 'train':
             run_model(config, mode=args.mode, debug=args.debug, log_to_file=args.log_to_file, multiple_runs=args.multiple_runs)
         elif args.mode == 'predict':
