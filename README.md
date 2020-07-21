@@ -60,6 +60,7 @@ NOTE for developers: If you wish to fork/clone the repository and edit the code,
   - Matplotlib
   - Pandas
   - Scikit-learn
+  - ctaplot
   
 ## Download Data
 
@@ -92,7 +93,7 @@ CTLearn works with any TensorFlow model obeying the signature `logits = model(fe
 
 To use a custom model, provide in this section the directory containing a Python file that implements the model and the module name (that is, the file name minus the .py extension) and name of the model function within the module.
 
-In addition, CTLearn includes three [models](models) for gamma/hadron classification. CNN-RNN and Variable Input Network perform array-level classification by feeding the output of a CNN for each telescope into either a recurrent network, or a convolutional or fully-connected network head, respectively. Single Tel classifies single telescope images using a convolutional network. All three models are built on a simple, configurable convolutional network called Basic.
+In addition, CTLearn includes four [models](models) for gamma/hadron classification, energy and arrival direction regression. CNN-RNN and Variable Input Network perform array-level classification by feeding the output of a CNN for each telescope into either a recurrent network, or a convolutional or fully-connected network head, respectively. Single Tel and Res Net classifies single telescope images using a convolutional network and multiple residual blocks of convolutional layers, respectively. All four models are built on a simple, configurable convolutional network called Basic. In addition, three different attention mechanisms are implemented in Basic. 
 
 The values in the data to be used as labels and lists of class names where applicable are also provided in this section.
 
@@ -120,11 +121,13 @@ Run CTLearn from the command line:
 CTLEARN_DIR=</installation/path>/ctlearn/ctlearn
 python $CTLEARN_DIR/run_model.py myconfig.yml [--mode <MODE>] [--debug] [--log_to_file]
 ```
-`--mode <MODE>`: Set run mode with `<MODE>` as `train`, `predict`, or `load_only`. If not set, defaults to `train`.
+`--mode <MODE>`: Set run mode with `<MODE>` as `train`, `predict`, `trainandpredict`, or `load_only`. If not set, defaults to `train`.
 
 `--debug`: Set logging level to DEBUG.
 
 `--log_to_file`: Save CTLearn logging messages to a timestamped file in the model directory instead of printing to stdout.
+
+`--multiple_runs`: Run the same model multiple times with the same config file, but different random seeds.
 
 Alternatively, import CTLearn as a module in a Python script:
 
@@ -134,7 +137,7 @@ from ctlearn.run_model import run_model
 
 with open('myconfig.yml', 'r') as myconfig:
   config = yaml.load(myconfig)
-run_model(config, mode='train', debug=True, log_to_file=True)
+run_model(config, mode='train', debug=True, log_to_file=True, multiple_runs=1)
 ```
 
 View training progress in real time with TensorBoard: 

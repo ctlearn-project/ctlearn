@@ -135,18 +135,11 @@ def run_model(config, mode="train", debug=False, log_to_file=False, multiple_run
 
         output = model(features, params['model'], params['example_description'], training)
 
-        # TODO: Handle all models properly
-        if params['model']['model']['function'] == 'single_tel_model':
-            output_flattened = tf.layers.flatten(output)
-            output_globalpooled = tf.reduce_mean(output, axis=[1,2])
-
         logits = {}
         tasks_dict = params['model']['tasks']
         for task in tasks_dict:
             tasks_dict[task].update({'name': task})
             if task == 'particletype':
-                if params['model']['model']['function'] == 'single_tel_model':
-                    output = output_flattened
                 expected_logits_dimension = len(tasks_dict[task]['class_names'])
                 logit = fc_head(output, tasks_dict[task], expected_logits_dimension)
                 logits['particletype_probabilities'] = tf.nn.softmax(logit)
@@ -155,8 +148,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False, multiple_run
                 for i, name in enumerate(tasks_dict['particletype']['class_names']):
                     logits[name] = logits['particletype_probabilities'][:, i]
             else:
-                if params['model']['model']['function'] == 'single_tel_model':
-                    output = output_globalpooled if task == 'energy' else output_flattened
                 expected_logits_dimension = 2 if task in ['direction', 'impact'] else 1
                 logits[task] = fc_head(output, tasks_dict[task], expected_logits_dimension)
 
@@ -164,17 +155,11 @@ def run_model(config, mode="train", debug=False, log_to_file=False, multiple_run
             return tf.estimator.EstimatorSpec(mode=mode, predictions=logits)
 
         training_params = params['training']
-        gamma_mask = 1.0
-        if 'particletype' in labels:
-            particletype = tf.cast(labels['particletype'], tf.int32,
-                                   name="true_classes")
-            for i, name in enumerate(tasks_dict['particletype']['class_names']):
-                if 'gamma' == name:
-                    gamma_mask = tf.cast(tf.equal(particletype, tf.constant(i)), tf.int32)
-
         losses = []
         for task in tasks_dict:
             if task == 'particletype':
+                particletype = tf.cast(labels['particletype'], tf.int32,
+                                   name="true_classes")
                 # Get class weights
                 if training_params['apply_class_weights']:
                     class_weights = tf.constant(training_params['class_weights'],
@@ -193,11 +178,10 @@ def run_model(config, mode="train", debug=False, log_to_file=False, multiple_run
                 loss = tf.add_n([loss] + regularization_losses)
                 task_loss = tf.math.multiply(loss, tf.cast(tasks_dict[task]['weight'], tf.float32))
             else:
-                #compute mean absolute error loss with masking out the non-gamma particles
                 loss = tf.losses.absolute_difference(
                            labels[task],
                            logits[task],
-                           weights=gamma_mask,
+                           weights=1.0,
                            loss_collection=tf.GraphKeys.LOSSES,
                            reduction=tf.losses.Reduction.SUM_BY_NONZERO_WEIGHTS
                        )
@@ -275,14 +259,8 @@ def run_model(config, mode="train", debug=False, log_to_file=False, multiple_run
                         eval_metric_ops['accuracy_' + name] = tf.metrics.accuracy(
                             particletype, logits[task], weights=weights)
                 else:
-                    # Compute the mean aboslute error as the metric for the regression tasks
                     eval_metric_ops['mae_' + task] = tf.metrics.mean_absolute_error(
-                           labels[task], logits[task], weights=gamma_mask)
-                    if task == 'direction':
-                        eval_metric_ops['mae_alt'] = tf.metrics.mean_absolute_error(
-                           labels[task][0], logits[task][0], weights=gamma_mask)
-                        eval_metric_ops['mae_az'] = tf.metrics.mean_absolute_error(
-                           labels[task][1], logits[task][1], weights=gamma_mask)
+                           labels[task], logits[task], weights=None)
 
         return tf.estimator.EstimatorSpec(
             mode=mode,
@@ -309,6 +287,11 @@ def run_model(config, mode="train", debug=False, log_to_file=False, multiple_run
 
         max_steps = int(config['Training']['num_epochs']
                         * num_training_examples / batch_size)
+
+        eval_steps = config['Evaluation'].get('eval_steps', None)
+        start_delay_secs = int(config['Evaluation'].get('start_delay_secs', 120))
+        throttle_secs = int(config['Evaluation'].get('throttle_secs', 600))
+
         train_input_fn = lambda: input_fn(reader, training_indices,
                                           shuffle_and_repeat=True,
                                           **config['Input'])
@@ -316,7 +299,10 @@ def run_model(config, mode="train", debug=False, log_to_file=False, multiple_run
                                             max_steps=max_steps, hooks=hooks)
         eval_input_fn = lambda: input_fn(reader, validation_indices,
                                          **config['Input'])
-        eval_spec = tf.estimator.EvalSpec(input_fn=eval_input_fn)
+        eval_spec = tf.estimator.EvalSpec(input_fn=eval_input_fn,
+                                          steps=eval_steps,
+                                          start_delay_secs=start_delay_secs,
+                                          throttle_secs=throttle_secs)
         tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
 
     elif mode == 'predict':

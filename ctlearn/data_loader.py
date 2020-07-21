@@ -112,7 +112,7 @@ def setup_TFdataset_format(config, example_description, labels):
 
 # Define input function for TF Estimator
 def input_fn(reader, indices, output_names, output_dtypes,
-             label_names, shuffle_and_repeat=False, seed=None,
+             label_names, shuffle_and_repeat=False, num_epochs=None, seed=None,
              batch_size=1, prefetch_to_device=None,
              add_labels_to_features=False):
 
@@ -120,7 +120,7 @@ def input_fn(reader, indices, output_names, output_dtypes,
     if shuffle_and_repeat:
         dataset = dataset.shuffle(buffer_size=len(indices), seed=seed,
                                       reshuffle_each_iteration=True)
-        dataset = dataset.repeat()
+        dataset = dataset.repeat(num_epochs)
     dataset = dataset.map(lambda x: tf.py_function(func=reader.__getitem__,
                                                    inp=[x],
                                                    Tout=output_dtypes),

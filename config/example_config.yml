@@ -201,15 +201,7 @@ Data:
     # in the specified path and module.
     transforms:
         -
-            name: 'ShowerPrimaryIDToParticleType'
-        -
-            name: 'MCEnergyToEnergyInLog'
-        -
-            name: 'AltAzToDirection'
-        -
-            name: 'CoreXYToImpactInKm'
-        -
-            name: 'XmaxToShowerMaximumInKm'
+            name: 'ShowerPrimaryID'
         -
             name: 'NormalizeTelescopePositions'
             args: {'norm_x': 1.0, 'norm_y': 1.0, 'norm_z': 1.0}
@@ -262,6 +254,8 @@ Model:
     # Module and function pairs included with CTLearn:
     #   - {module: 'single_tel', function: 'single_tel_model'}: single
     #       tel model using a basic convolutional neural network (CNN)
+    #   - {module: 'res_net', function: 'res_net_model'}: Residual block
+    #       model using a basic convolutional neural network (CNN)
     #   - {module: 'cnn_rnn', function: 'cnn_rnn_model'}: array model
     #       feeding output of a basic CNN for each  telescope into a
     #       recurrent neural network (RNN)
@@ -270,21 +264,21 @@ Model:
     #       telescope into a CNN network head
     model: {module: 'single_tel', function: 'single_tel_model'}
 
-    # Dictionary of labels where the keys are the label names.
-    # For a classification label, the value is a list of class names
+    # Dictionary of tasks where the values contain the fully connected layers
+    # head of each task. The final loss is calculated with a weighted sum 
+    # over the individual losses. Currently the weights are constanst values.
+    # For the classification task, the class names are passed into the dict
     # in order of class label (0 to n-1).
-    # For a regression label, the value is null.
     # Optional dictionary with string keys and values either null or
     # a list of strings. Default: {}
-    # These options have to be in consonance with the 'event_info' in 'Data'.
-    label_names:
-        particletype:
-            - 'proton'
-            - 'gamma'
-        energy: null
-        direction: null
-        impact: null
-        showermaximum: null
+    # These options have to be in consonance with the 'event_info' and 
+    # 'transforms' in 'Data'.
+    tasks:
+        particletype: {class_names: ['proton', 'gamma'], fc_head: [512, 256, 2], weight: 1.0}
+        #energy: {fc_head: [256, 1], weight: 1.0}
+        #direction: {fc_head: [256, 2], weight: 1.0}
+        #impact: {fc_head: [256, 2], weight: 1.0}
+        #showermaximum: {fc_head: [256, 1], weight: 1.0}
 
 # The options in this and the Model section are passed in a dictionary
 # called "params" to the model function.
@@ -301,18 +295,21 @@ Model Parameters:
         # Valid options:
         #   - {module: 'basic', function: 'conv_block'}
         network: {module: 'basic', function: 'conv_block'}
-
         # Required string or null.
         # Path to a checkpoint file or model directory from which to load
         # pretrained network weights. If null, don't load any weights.
         pretrained_weights: null
-        
-        # Required string.
-        # Sharing mode for the MTL model.
+
+    res_net:
+        # Required dict with keys 'module' and 'function' & string values.
+        # Module and function for ResNet models.
         # Valid options:
-        #   - 'hard': tasks are sharing the same CNN block
-        #   - 'soft': each task has it's own CNN block
-        mode: 'hard'
+        #   - {module: 'basic', function: 'stacked_res_blocks'}
+        network: {module: 'basic', function: 'stacked_res_blocks'}
+        # Required string or null.
+        # Path to a checkpoint file or model directory from which to load
+        # pretrained network weights. If null, don't load any weights.
+        pretrained_weights: null
 
     cnn_rnn:
         # Required dict with keys 'module' and 'function' & string values.
@@ -413,6 +410,41 @@ Model Parameters:
             # convolutional layer.
             batchnorm: false
 
+        stacked_res_blocks:
+            # Required list of dicts with keys 'filters' and 'blocks'
+            # with integer values.
+            # Filter dimension and number of blocks for the ResNet 
+            # architecture.
+            # Typical ResNet architectures:
+            # Thin-ResNet
+            #- {filters: 48, blocks: 2}
+            #- {filters: 96, blocks: 3}
+            #- {filters: 128, blocks: 3}
+            #- {filters: 256, blocks: 3}
+            # ResNet50
+            #- {filters: 64, blocks: 3}
+            #- {filters: 128, blocks: 4}
+            #- {filters: 256, blocks: 6}
+            #- {filters: 512, blocks: 3}
+            architecture:
+                - {filters: 48, blocks: 2}
+                - {filters: 96, blocks: 3}
+                - {filters: 128, blocks: 3}
+                - {filters: 256, blocks: 3}
+
+        # Optional dict of attention mechanisms.
+        # Valid options:
+        #   Dual attention (Spatial and channel squeeze-and-excitation attention)
+        #   - {mechanism: 'Squeeze-and-Excitation', ratio: 16}
+        #   Channel Squeeze-and-excitation attention
+        #   - {mechanism: 'Channel-Squeeze-and-Excitation', ratio: 4}
+        #   Spatial squeeze-and-excitatiom attention
+        #   - {mechanism: 'Spatial-Squeeze-and-Excitation'}
+        # References:
+        # - [Squeeze and Excitation Networks](https://arxiv.org/abs/1709.01507)
+        # - [Concurrent Spatial and Channel Squeeze & Excitation in Fully Convolutional Networks](https://arxiv.org/abs/1803.02579)
+        attention: {mechanism: 'Squeeze-and-Excitation', ratio: 16}
+        
         # Optional float. Default: 0.99
         # Decay parameter for batch normalization layers.
         batchnorm_decay: 0.99
@@ -425,6 +457,11 @@ Training:
 
     # Required number of epochs on which to train.
     num_epochs: 20
+
+    eval_steps: null
+    start_delay_secs: 120
+    throttle_secs: 600
+
 
     # Required string.
     # Valid options: ['Adadelta', 'Adam', 'RMSProp', 'SGD']
@@ -455,24 +492,34 @@ Training:
     variables_to_train: null
 
 Evaluation:
+
     # Required Boolean.
     # Whether to run TensorFlow standard evaluation.
-    default_tensorflow: true
-    
-    custom_ctlearn:
-        # Required Boolean.
-        # Whether to run CTLearn custom evaluation.
-        final_evaluation: true
-        
-        # Required string.
-        # Name of the file to save the evaluation results in 'GammaBoard' format.
-        final_evaluation_file_name: 'experiment'
+    tensorflow: true
 
+    # Optional settings for the EvalSpec.
+    # Int. Positive number of steps for which to evaluate model.
+    # If None, evaluates until input_fn raises an end-of-input exception.
+    eval_steps: null
+    # Int. Start evaluating after waiting for this many seconds.
+    start_delay_secs: 120
+    # Int. Do not re-evaluate unless the last evaluation was started at least
+    # this many seconds ago. Of course, evaluation does not occur if no new
+    # checkpoints are available, hence, this is the minimum. 
+    throttle_secs: 600
+    
 Prediction:
-    # Either a list of data file paths,
+
+    # Required string if running in predict mode.
+    # Name of the file to save predictions.
+    file: 'ctlearn_prediction'
+
+    # A dict of either a list of data file paths,
     # or a path to a file listing data file paths, one per line.
-    # Required list or string if running in predict mode.
-    prediction_file_list: '/tmp/dataset/prediction_file_list.txt'
+    # Required dict of list or string if running in predict mode.
+    prediction_file_lists: 
+        'prediction_file_list1': '/tmp/dataset/prediction_file_list1.txt'
+        'prediction_file_list2': '/tmp/dataset/prediction_file_list2.txt'
 
     # Save the true labels along with the predictions.
     # Optional Boolearn. Default: false
@@ -483,10 +530,6 @@ Prediction:
     # Stereo or multi-stereo mode: obs_id, event_id
     # Optional Boolearn. Default: false
     save_identifiers: false
-
-    # Required string if running in predict mode.
-    # Name of the file to save predictions.
-    prediction_file_name: 'ctlearn_prediction'
 
 TensorFlow:
     # Optional Boolean. Default: false
