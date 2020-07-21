@@ -458,11 +458,6 @@ Training:
     # Required number of epochs on which to train.
     num_epochs: 20
 
-    eval_steps: null
-    start_delay_secs: 120
-    throttle_secs: 600
-
-
     # Required string.
     # Valid options: ['Adadelta', 'Adam', 'RMSProp', 'SGD']
     # Optimizer function for training.

@@ -1,0 +1,108 @@
+Logging:
+    model_directory: '/home/tjark/multitask/LSTMono_results/arrdir/lowcut_thin_resnet_da/'
+Data:
+    #file_list: '/home/tjark/multitask/LST_mono_training_balanced.txt'
+    file_list: '/home/tjark/multitask/LST_mono_training_gammas.txt'
+    mode: 'mono'
+    selected_telescope_type: 'LST_LSTCam'
+    shuffle: true
+    seed: 1111
+    image_channels: ['charge', 'peakpos']
+    mapping_settings:
+        camera_types: ['LSTCam']
+        mapping_method:
+            'LSTCam': 'bilinear_interpolation'
+        padding:
+            'LSTCam': 2
+        mask_interpolation: false
+    image_selection:
+        -
+            name: 'leakage_filter'
+            args: {leakage_value: 0.2, leakage_number: 2, picture_thresh: 6, boundary_thresh: 3, keep_isolated_pixels: False, min_number_picture_neighbors: 2}
+        -
+            name: 'image_intensity_filter'
+            args: {i_min: 50.0}
+    event_info:
+        - 'mc_energy'
+        - 'alt'
+        - 'az'
+    transforms:
+        - name: 'MCEnergy'
+        - name: 'DeltaAltAz'
+Input:
+    seed: 1234
+    batch_size: 64
+    prefetch_to_device:
+        device: "/gpu:0"
+        buffer_size: null
+Model:
+    model_directory: '/home/tjark/multitask/fresh/ctlearn/ctlearn/default_models/'
+    model: {module: 'res_net', function: 'res_net_model'}
+    tasks:
+        direction: {fc_head: [512, 256, 2], weight: 1.0}
+Model Parameters:
+    res_net:
+        network: {module: 'basic', function: 'stacked_res_blocks'}
+        pretrained_weights: null
+    single_tel:
+        network: {module: 'basic', function: 'conv_block'}
+        pretrained_weights: null
+    cnn_rnn:
+        cnn_block: {module: 'basic', function: 'conv_block'}
+        pretrained_weights: null
+        dropout_rate: 0.5
+    variable_input_model:
+        cnn_block: {module: 'basic', function: 'conv_block'}
+        telescope_combination: 'feature_maps'
+        network_head: {module: 'basic', function: 'conv_head'}
+        pretrained_weights: null
+    basic:
+        conv_block:
+            layers:
+                - {filters: 32, kernel_size: 3}
+                - {filters: 32, kernel_size: 3}
+                - {filters: 64, kernel_size: 3}
+                - {filters: 128, kernel_size: 3}
+            max_pool: {size: 2, strides: 2}
+            bottleneck: null
+            batchnorm: false
+        fc_head:
+            layers: [1024, 512, 256, 128, 64]
+            batchnorm: false
+        conv_head:
+            layers:
+                - {filters: 64, kernel_size: 3}
+                - {filters: 128, kernel_size: 3}
+                - {filters: 256, kernel_size: 3}
+            final_avg_pool: true
+            batchnorm: false
+        stacked_res_blocks:
+            architecture:
+                - {filters: 48, blocks: 2}
+                - {filters: 96, blocks: 3}
+                - {filters: 128, blocks: 3}
+                - {filters: 256, blocks: 3}
+        attention: {mechanism: 'Squeeze-and-Excitation', ratio: 16}
+        batchnorm_decay: 0.99
+Training:
+    validation_split: 0.05
+    num_epochs: 10
+    optimizer: 'Adam'
+    adam_epsilon: 1.0e-8
+    base_learning_rate: 0.0005
+    scale_learning_rate: false
+    apply_class_weights: false
+    variables_to_train: null
+Evaluation:
+    tensorflow: true
+    start_delay_secs: 3000
+    throttle_secs: 3000
+Prediction:
+    file: 'arrdir_lowcut_thin_resnet_da'
+    prediction_file_lists:
+        'gamma_diffuse': '/home/tjark/multitask/LST_mono_testing_diffusegammas.txt'
+        'gamma_pointlike': '/home/tjark/multitask/LST_mono_testing_pointlikegammas.txt'
+    save_labels: true
+    save_identifiers: true
+TensorFlow:
+    run_TFDBG: false
