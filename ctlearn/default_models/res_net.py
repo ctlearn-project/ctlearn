@@ -20,10 +20,12 @@ def res_net_model(features, model_params, example_description, training):
 
        # The original ResNet implementation use this padding, but we pad the images in the ImageMapper.
        #x = tf.pad(telescope_data, tf.constant([[3, 3], [3, 3]]), name='conv1_pad')
-       x = tf.layers.conv2d(telescope_data, filters=64, kernel_size=7,
-                    strides=1, name='conv1_conv')
+       init_layer = model_params['res_net']['init_layer']
+       x = tf.layers.conv2d(telescope_data, filters=init_layer['filters'], kernel_size=init_layer['kernel_size'],
+                    strides=init_layer['strides'], name='conv1_conv')
        #x = tf.pad(x, tf.constant([[1, 1], [1, 1]]), name='pool1_pad')
-       x = tf.layers.max_pooling2d(x, 3, strides=2, name='pool1_pool')
+       init_max_pool = model_params['res_net']['init_max_pool']
+       x = tf.layers.max_pooling2d(x, init_max_pool['size'], strides=init_max_pool['strides'], name='pool1_pool')
 
        output = network(telescope_data, params=model_params)
        output = tf.reduce_mean(output, axis=[1,2], name='global_avgpool')
