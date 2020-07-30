@@ -23,7 +23,7 @@ from ctlearn.utils import *
 #os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 #tf.logging.set_verbosity(tf.logging.WARN)
 
-def run_model(config, mode="train", debug=False, log_to_file=False, multiple_runs=1):
+def run_model(config, mode="train", debug=False, log_to_file=False):
 
     # Load options relating to logging and checkpointing
     root_model_dir = model_dir = config['Logging']['model_directory']
@@ -35,9 +35,9 @@ def run_model(config, mode="train", debug=False, log_to_file=False, multiple_run
         os.makedirs(root_model_dir)
 
     random_seed = None
-    if multiple_runs != 1:
+    if config['Logging'].get('add_seed', False):
         random_seed = config['Data']['seed']
-        model_dir += "/experiment_{}".format(random_seed)
+        model_dir += "/seed_{}".format(random_seed)
         if not os.path.exists(model_dir):
             os.makedirs(model_dir)
 
@@ -373,6 +373,7 @@ if __name__ == "__main__":
         if args.multiple_runs == 1 and args.random_seed != 0:
             if 1000 <= args.random_seed <= 9999:
                 config['Data']['seed'] = args.random_seed
+                config['Logging']['add_seed'] = True
             else:
                 raise ValueError("Random seed: '{}'. "
                              "Must be 4 digit integer!".format(
@@ -387,10 +388,11 @@ if __name__ == "__main__":
                     random_seeds.append(random_seed)
                     break
             config['Data']['seed'] = random_seed
+            config['Logging']['add_seed'] = True
             print("CTLearn run {} with random seed '{}':".format(run+1,config['Data']['seed']))
 
         if args.mode == 'train':
-            run_model(config, mode=args.mode, debug=args.debug, log_to_file=args.log_to_file, multiple_runs=args.multiple_runs)
+            run_model(config, mode=args.mode, debug=args.debug, log_to_file=args.log_to_file)
         elif args.mode == 'predict':
             for key in config['Prediction']['prediction_file_lists']:
                 with open(args.config_file, 'r') as config_file:
@@ -398,13 +400,13 @@ if __name__ == "__main__":
                 config['Data']['seed'] = random_seed
                 config['Data']['shuffle'] = False
                 config['Prediction']['prediction_label'] = key
-                run_model(config, mode=args.mode, debug=args.debug, log_to_file=args.log_to_file, multiple_runs=args.multiple_runs)
+                run_model(config, mode=args.mode, debug=args.debug, log_to_file=args.log_to_file)
         else:
-            run_model(config, mode='train', debug=args.debug, log_to_file=args.log_to_file, multiple_runs=args.multiple_runs)
+            run_model(config, mode='train', debug=args.debug, log_to_file=args.log_to_file)
             for key in config['Prediction']['prediction_file_lists']:
                 with open(args.config_file, 'r') as config_file:
                     config = yaml.safe_load(config_file)
                 config['Data']['seed'] = random_seed
                 config['Data']['shuffle'] = False
                 config['Prediction']['prediction_label'] = key
-                run_model(config, mode='predict', debug=args.debug, log_to_file=args.log_to_file, multiple_runs=args.multiple_runs)
+                run_model(config, mode='predict', debug=args.debug, log_to_file=args.log_to_file)
