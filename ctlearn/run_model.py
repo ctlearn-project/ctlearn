@@ -356,6 +356,11 @@ if __name__ == "__main__":
         default=1,
         type=int,
         help="run the same model multiple times with the same config file")
+    parser.add_argument(
+        '--random_seed',
+        default=0,
+        type=int,
+        help="overwrite the random seed")
 
     args = parser.parse_args()
 
@@ -363,10 +368,19 @@ if __name__ == "__main__":
     for run in np.arange(args.multiple_runs):
         with open(args.config_file, 'r') as config_file:
             config = yaml.safe_load(config_file)
+
+        # Overwrite the random seed in the config file
+        if args.multiple_runs == 1 and args.random_seed != 0:
+            if 1000 <= args.random_seed <= 9999:
+                config['Data']['seed'] = args.random_seed
+            else:
+                raise ValueError("Random seed: '{}'. "
+                             "Must be 4 digit integer!".format(
+                                 args.random_seed))
         random_seed = config['Data']['seed']
 
+        # Create and overwrite the random seed in the config file for multiple runs
         if args.multiple_runs != 1:
-            # Create and overwrite the random seed in the config file
             while True:
                 random_seed = randint(1000,9999)
                 if random_seed not in random_seeds:
