@@ -3,7 +3,7 @@ name: ctlearn
 channels:
     - anaconda
 dependencies:
-    - python=3.7.3
+    - python=3.7.6
     - matplotlib
     - numpy
     - pandas
@@ -11,5 +11,7 @@ dependencies:
     - pyyaml
     - scikit-learn
     - pip:
-        # TensorFlow-CPU v1.13.1
-        - https://storage.googleapis.com/tensorflow/mac/cpu/tensorflow-1.13.1-py3-none-any.whl
+        # TensorFlow-CPU v1.15.3
+        - tensorflow==1.15.3
+        # ctaplot v0.5.3
+        - ctaplot==0.5.3
