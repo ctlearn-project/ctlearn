@@ -268,9 +268,16 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             train_op=train_op,
             eval_metric_ops=eval_metric_ops)
 
+    # Control tf checkpoints
+    tf_config = None
+    save_checkpoints_steps = config['Checkpoints'].get('save_checkpoints_steps', None)
+    if save_checkpoints_steps:
+        tf_config = tf.estimator.RunConfig(save_checkpoints_steps=save_checkpoints_steps)
+
     estimator = tf.estimator.Estimator(
         model_fn,
         model_dir=model_dir,
+        config=tf_config,
         params=params)
 
     hooks = None
@@ -398,6 +405,7 @@ if __name__ == "__main__":
                 with open(args.config_file, 'r') as config_file:
                     config = yaml.safe_load(config_file)
                 config['Data']['seed'] = random_seed
+                config['Logging']['add_seed'] = True
                 config['Data']['shuffle'] = False
                 config['Prediction']['prediction_label'] = key
                 run_model(config, mode=args.mode, debug=args.debug, log_to_file=args.log_to_file)
@@ -407,6 +415,7 @@ if __name__ == "__main__":
                 with open(args.config_file, 'r') as config_file:
                     config = yaml.safe_load(config_file)
                 config['Data']['seed'] = random_seed
+                config['Logging']['add_seed'] = True
                 config['Data']['shuffle'] = False
                 config['Prediction']['prediction_label'] = key
                 run_model(config, mode='predict', debug=args.debug, log_to_file=args.log_to_file)
