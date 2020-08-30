@@ -1,0 +1,102 @@
+Logging:
+    model_directory: '/home/sahil/deeplearning/magic_mono/energy/nocut/'
+Data:
+    file_list: '/home/sahil/deeplearning/MAGIC_mono_training_gammas.txt'
+    mode: 'mono'
+    selected_telescope_type: 'MAGIC_MAGICCam'
+    selected_telescope_ids:
+        'MAGIC_MAGICCam' :  [1,2]
+    shuffle: true
+    seed: 1111
+    image_channels: ['charge', 'peakpos']
+    mapping_settings:
+        camera_types: ['MAGICCam']
+        mapping_method:
+            'MAGICCam': 'bilinear_interpolation'
+        padding:
+            'MAGICCam': 2
+    event_info:
+        - 'mc_energy'
+    transforms:
+        - name: 'MCEnergy'
+Input:
+    seed: 1234
+    batch_size: 64
+    prefetch_to_device:
+        device: "/gpu:1"
+        buffer_size: null
+Model:
+    model_directory: '/home/sahil/deeplearning/ctlearn/ctlearn/default_models/'
+    model: {module: 'res_net', function: 'res_net_model'}
+    tasks:
+        energy: {fc_head: [512, 256, 1], weight: 1.0}
+Model Parameters:
+    res_net:
+        network: {module: 'basic', function: 'stacked_res_blocks'}
+        init_layer: {filters: 64, kernel_size: 7, strides: 1}
+        init_max_pool: {size: 3, strides: 2}
+        pretrained_weights: null
+    single_tel:
+        network: {module: 'basic', function: 'conv_block'}
+        pretrained_weights: null
+    cnn_rnn:
+        cnn_block: {module: 'basic', function: 'conv_block'}
+        pretrained_weights: null
+        dropout_rate: 0.5
+    variable_input_model:
+        cnn_block: {module: 'basic', function: 'conv_block'}
+        telescope_combination: 'feature_maps'
+        network_head: {module: 'basic', function: 'conv_head'}
+        pretrained_weights: null
+    basic:
+        conv_block:
+            layers:
+                - {filters: 32, kernel_size: 3}
+                - {filters: 32, kernel_size: 3}
+                - {filters: 64, kernel_size: 3}
+                - {filters: 128, kernel_size: 3}
+            max_pool: {size: 2, strides: 2}
+            bottleneck: null
+            batchnorm: false
+        fc_head:
+            layers: [1024, 512, 256, 128, 64]
+            batchnorm: false
+        conv_head:
+            layers:
+                - {filters: 64, kernel_size: 3}
+                - {filters: 128, kernel_size: 3}
+                - {filters: 256, kernel_size: 3}
+            final_avg_pool: true
+            batchnorm: false
+        stacked_res_blocks:
+            architecture:
+                - {filters: 48, blocks: 2}
+                - {filters: 96, blocks: 3}
+                - {filters: 128, blocks: 3}
+                - {filters: 256, blocks: 3}
+        attention: {mechanism: 'Squeeze-and-Excitation', ratio: 16}
+        batchnorm_decay: 0.99
+Training:
+    validation_split: 0.05
+    num_epochs: 6
+    optimizer: 'Adam'
+    adam_epsilon: 1.0e-8
+    base_learning_rate: 0.0001
+    scale_learning_rate: false
+    apply_class_weights: false
+    variables_to_train: null
+Evaluation:
+    tensorflow: true
+    start_delay_secs: 10200
+    throttle_secs: 10200
+Checkpoints:
+    save_checkpoints_steps: 10000
+Prediction:
+    file: 'energy_nocut'
+    prediction_file_lists:
+        'gamma_diffuse': '/home/sahil/deeplearning/LST_mono_testing_diffusegammas.txt'
+        'gamma_pointlike': '/home/sahil/deeplearning/LST_mono_testing_pointlikegammas.txt'
+    save_labels: true
+    save_identifiers: true
+TensorFlow:
+    run_TFDBG: false
