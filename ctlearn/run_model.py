@@ -141,8 +141,8 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             tasks_dict[task].update({'name': task})
             if task == 'particletype':
                 expected_logits_dimension = len(tasks_dict[task]['class_names'])
-                logit = fc_head(output, tasks_dict[task], expected_logits_dimension)
-                logits['particletype_probabilities'] = tf.nn.softmax(logit)
+                classification_logit = fc_head(output, tasks_dict[task], expected_logits_dimension)
+                logits['particletype_probabilities'] = tf.nn.softmax(classification_logit)
                 logits[task] = tf.cast(tf.argmax(logits['particletype_probabilities'], axis=1),
                                             tf.int32, name="predicted_classes")
                 for i, name in enumerate(tasks_dict['particletype']['class_names']):
@@ -171,7 +171,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                 onehot_labels = tf.one_hot(indices=particletype, depth=num_classes)
                 # compute cross-entropy loss
                 loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels,
-                                                       logits=logits['particletype_probabilities'], weights=weights)
+                                                       logits=classification_logit, weights=weights)
 
                 # add regularization loss
                 regularization_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
