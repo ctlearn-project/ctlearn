@@ -346,7 +346,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--mode',
         default="train",
-        help="Mode to run in (train/predict/trainandpredict/load_only)")
+        help="Mode to run in (train/predict/train_and_predict/load_only)")
     parser.add_argument(
         'config_file',
         help="path to YAML configuration file with training options")
@@ -398,7 +398,7 @@ if __name__ == "__main__":
             config['Logging']['add_seed'] = True
             print("CTLearn run {} with random seed '{}':".format(run+1,config['Data']['seed']))
 
-        if args.mode == 'train':
+        if args.mode == 'train' or args.mode == 'load_only':
             run_model(config, mode=args.mode, debug=args.debug, log_to_file=args.log_to_file)
         elif args.mode == 'predict':
             for key in config['Prediction']['prediction_file_lists']:
@@ -409,7 +409,7 @@ if __name__ == "__main__":
                 config['Data']['shuffle'] = False
                 config['Prediction']['prediction_label'] = key
                 run_model(config, mode=args.mode, debug=args.debug, log_to_file=args.log_to_file)
-        else:
+        elif args.mode == 'train_and_predict':
             run_model(config, mode='train', debug=args.debug, log_to_file=args.log_to_file)
             for key in config['Prediction']['prediction_file_lists']:
                 with open(args.config_file, 'r') as config_file:
