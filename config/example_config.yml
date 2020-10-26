@@ -359,14 +359,16 @@ Model Parameters:
 
     basic:
         conv_block:
-            # Required list of dicts with keys 'filters' and 'kernel_size'
+            # Required list of dicts with keys 'filters', 'kernel_size' and number
             # with integer values.
+            # If number value is not stored will be automatically set to 1
             # Filter dimension and kernel size for the CNN block
             # convolutional layers.
+            # Number for the desired number of convolutional layers 
             layers:
-                - {filters: 32, kernel_size: 3}
-                - {filters: 64, kernel_size: 3}
-                - {filters: 128, kernel_size: 3}
+                - {filters: 32, kernel_size: 3, number: 1}
+                - {filters: 64, kernel_size: 3, number: 1}
+                - {filters: 128, kernel_size: 3, number: 1}
 
             # Required dictionary with keys 'size' and 'strides' and
             # integer values, or null.
