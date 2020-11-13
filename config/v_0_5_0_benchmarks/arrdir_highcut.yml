@@ -42,8 +42,8 @@ Model:
 Model Parameters:
     res_net:
         network: {module: 'basic', function: 'stacked_res_blocks'}
-        init_layer: {filters: 64, kernel_size: 7, strides: 1}
-        init_max_pool: {size: 3, strides: 2}
+        #init_layer: {filters: 64, kernel_size: 7, strides: 1}
+        #init_max_pool: {size: 3, strides: 2}
         pretrained_weights: null
     single_tel:
         network: {module: 'basic', function: 'conv_block'}
