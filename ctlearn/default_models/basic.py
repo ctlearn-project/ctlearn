@@ -11,6 +11,8 @@ def conv_block(inputs, training, params, reuse=None):
                 params['basic']['conv_block']['layers']]
         kernel_sizes = [layer['kernel_size'] for layer in
                 params['basic']['conv_block']['layers']]
+        numbers_list = [layer.get('number', 1) for layer in
+                        params['basic']['conv_block']['layers']]
         max_pool = params['basic']['conv_block']['max_pool']
         bottleneck_filters = params['basic']['conv_block']['bottleneck']
         batchnorm = params['basic']['conv_block'].get('batchnorm', False)
@@ -19,19 +21,20 @@ def conv_block(inputs, training, params, reuse=None):
         x = inputs
         if batchnorm:
             x = tf.layers.batch_normalization(x, momentum=bn_momentum,
-                    training=training)
+                                              training=training)
 
-        for i, (filters, kernel_size) in enumerate(
-                zip(filters_list, kernel_sizes)):
-            x = tf.layers.conv2d(x, filters=filters, kernel_size=kernel_size,
-                    activation=tf.nn.relu, padding="same", reuse=reuse,
-                    name="conv_{}".format(i+1))
+        for i, (filters, kernel_size, number) in enumerate(
+                zip(filters_list, kernel_sizes, numbers_list)):
+            for nr in range(number):
+                x = tf.layers.conv2d(x, filters=filters, kernel_size=kernel_size,
+                                     activation=tf.nn.relu, padding="same", reuse=reuse,
+                                     name="conv_{}_{}".format(i + 1, nr + 1))
             if max_pool:
                 x = tf.layers.max_pooling2d(x, pool_size=max_pool['size'],
-                        strides=max_pool['strides'], name="pool_{}".format(i+1))
+                                            strides=max_pool['strides'], name="pool_{}".format(i + 1))
             if batchnorm:
                 x = tf.layers.batch_normalization(x, momentum=bn_momentum,
-                        training=training)
+                                                  training=training)
 
         # bottleneck layer
         if bottleneck_filters:
