@@ -417,6 +417,13 @@ Model Parameters:
             batchnorm: false
 
         stacked_res_blocks:
+            # Optional string. Default: 'bottleneck'
+            # Type of the residual block.
+            # Valid options:
+            #   - 'basic'
+            #   - 'bottleneck'
+            residual_block: 'bottleneck'
+
             # Required list of dicts with keys 'filters' and 'blocks'
             # with integer values.
             # Filter dimension and number of blocks for the ResNet 
