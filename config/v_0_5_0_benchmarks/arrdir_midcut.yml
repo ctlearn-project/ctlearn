@@ -41,11 +41,11 @@ Model:
         direction: {fc_head: [512, 256, 2], weight: 1.0}
 Model Parameters:
     res_net:
-        network: {module: 'basic', function: 'stacked_res_blocks'}
+        network: {module: 'resnet_engine', function: 'stacked_res_blocks'}
         #init_layer: {filters: 64, kernel_size: 7, strides: 1}
         #init_max_pool: {size: 3, strides: 2}
         pretrained_weights: null
-    single_tel:
+    single_cnn:
         network: {module: 'basic', function: 'conv_block'}
         pretrained_weights: null
     cnn_rnn:
@@ -77,14 +77,16 @@ Model Parameters:
                 - {filters: 256, kernel_size: 3}
             final_avg_pool: true
             batchnorm: false
+        batchnorm_decay: 0.99
+    resnet_engine:
         stacked_res_blocks:
+            residual_block: 'bottleneck'
             architecture:
                 - {filters: 48, blocks: 2}
                 - {filters: 96, blocks: 3}
                 - {filters: 128, blocks: 3}
                 - {filters: 256, blocks: 3}
-            attention: {mechanism: 'Squeeze-and-Excitation', ratio: 4}
-        batchnorm_decay: 0.99
+    attention: {mechanism: 'Squeeze-and-Excitation', ratio: 4}
 Training:
     validation_split: 0.05
     num_epochs: 17

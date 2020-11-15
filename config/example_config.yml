@@ -252,8 +252,8 @@ Model:
     # Required dictionary containing a module/function pair.
     # Module in model directory and function in module implementing the model.
     # Module and function pairs included with CTLearn:
-    #   - {module: 'single_tel', function: 'single_tel_model'}: single
-    #       tel model using a basic convolutional neural network (CNN)
+    #   - {module: 'single_cnn', function: 'single_cnn_model'}: single
+    #       telescope model using a basic convolutional neural network (CNN)
     #   - {module: 'res_net', function: 'res_net_model'}: Residual block
     #       model using a basic convolutional neural network (CNN)
     #   - {module: 'cnn_rnn', function: 'cnn_rnn_model'}: array model
@@ -262,7 +262,7 @@ Model:
     #   - {module: 'variable_input_model', function: 'variable_input_model'}:
     #       array model feeding combined outputs of a CNN for each
     #       telescope into a CNN network head
-    model: {module: 'single_tel', function: 'single_tel_model'}
+    model: {module: 'single_cnn', function: 'single_cnn_model'}
 
     # Dictionary of tasks where the values contain the fully connected layers
     # head of each task. The final loss is calculated with a weighted sum 
@@ -289,7 +289,7 @@ Model:
 # Below are listed the configuration options for the CTLearn included
 # models, which are only accessed if using those models.
 Model Parameters:
-    single_tel:
+    single_cnn:
         # Required dict with keys 'module' and 'function' & string values.
         # Module and function for image classification network.
         # Valid options:
@@ -304,8 +304,8 @@ Model Parameters:
         # Required dict with keys 'module' and 'function' & string values.
         # Module and function for ResNet models.
         # Valid options:
-        #   - {module: 'basic', function: 'stacked_res_blocks'}
-        network: {module: 'basic', function: 'stacked_res_blocks'}
+        #   - {module: 'resnet_engine', function: 'stacked_res_blocks'}
+        network: {module: 'resnet_engine', function: 'stacked_res_blocks'}
         # Optional arguments for the first Conv2D and MaxPool layer
         # of the ResNet model.
         init_layer: {filters: 64, kernel_size: 7, strides: 1}
@@ -416,6 +416,11 @@ Model Parameters:
             # convolutional layer.
             batchnorm: false
 
+        # Optional float. Default: 0.99
+        # Decay parameter for batch normalization layers.
+        batchnorm_decay: 0.99
+
+    resnet_engine:
         stacked_res_blocks:
             # Optional string. Default: 'bottleneck'
             # Type of the residual block.
@@ -445,22 +450,18 @@ Model Parameters:
                 - {filters: 128, blocks: 3}
                 - {filters: 256, blocks: 3}
 
-        # Optional dict of attention mechanisms.
-        # Valid options:
-        #   Dual attention (Spatial and channel squeeze-and-excitation attention)
-        #   - {mechanism: 'Squeeze-and-Excitation', ratio: 16}
-        #   Channel Squeeze-and-excitation attention
-        #   - {mechanism: 'Channel-Squeeze-and-Excitation', ratio: 4}
-        #   Spatial squeeze-and-excitatiom attention
-        #   - {mechanism: 'Spatial-Squeeze-and-Excitation'}
-        # References:
-        # - [Squeeze and Excitation Networks](https://arxiv.org/abs/1709.01507)
-        # - [Concurrent Spatial and Channel Squeeze & Excitation in Fully Convolutional Networks](https://arxiv.org/abs/1803.02579)
-        attention: {mechanism: 'Squeeze-and-Excitation', ratio: 16}
-        
-        # Optional float. Default: 0.99
-        # Decay parameter for batch normalization layers.
-        batchnorm_decay: 0.99
+    # Optional dict of attention mechanisms.
+    # Valid options:
+    #   Dual attention (Spatial and channel squeeze-and-excitation attention)
+    #   - {mechanism: 'Squeeze-and-Excitation', ratio: 16}
+    #   Channel Squeeze-and-excitation attention
+    #   - {mechanism: 'Channel-Squeeze-and-Excitation', ratio: 4}
+    #   Spatial squeeze-and-excitatiom attention
+    #   - {mechanism: 'Spatial-Squeeze-and-Excitation'}
+    # References:
+    # - [Squeeze and Excitation Networks](https://arxiv.org/abs/1709.01507)
+    # - [Concurrent Spatial and Channel Squeeze & Excitation in Fully Convolutional Networks](https://arxiv.org/abs/1803.02579)
+    attention: {mechanism: 'Squeeze-and-Excitation', ratio: 16}
 
 Training:
 
