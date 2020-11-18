@@ -405,7 +405,8 @@ if __name__ == "__main__":
                 with open(args.config_file, 'r') as config_file:
                     config = yaml.safe_load(config_file)
                 config['Data']['seed'] = random_seed
-                config['Logging']['add_seed'] = True
+                if args.multiple_runs != 1 or args.random_seed != 0:
+                    config['Logging']['add_seed'] = True
                 config['Data']['shuffle'] = False
                 config['Prediction']['prediction_label'] = key
                 run_model(config, mode=args.mode, debug=args.debug, log_to_file=args.log_to_file)
@@ -415,7 +416,8 @@ if __name__ == "__main__":
                 with open(args.config_file, 'r') as config_file:
                     config = yaml.safe_load(config_file)
                 config['Data']['seed'] = random_seed
-                config['Logging']['add_seed'] = True
+                if args.multiple_runs != 1 or args.random_seed != 0:
+                    config['Logging']['add_seed'] = True
                 config['Data']['shuffle'] = False
                 config['Prediction']['prediction_label'] = key
                 run_model(config, mode='predict', debug=args.debug, log_to_file=args.log_to_file)
