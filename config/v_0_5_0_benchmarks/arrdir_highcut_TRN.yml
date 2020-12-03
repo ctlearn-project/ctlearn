@@ -1,5 +1,5 @@
 Logging:
-    model_directory: '/home/tjark/deeplearning/lst_mono/arrdir/highcut/'
+    model_directory: '/home/tjark/deeplearning/lst_mono/TRN/arrdir/highcut/'
 Data:
     file_list: '/home/tjark/deeplearning/LST_mono_training_gammas.txt'
     mode: 'mono'
@@ -103,10 +103,12 @@ Evaluation:
 Checkpoints:
     save_checkpoints_steps: 10000
 Prediction:
-    file: 'arrdir_highcut'
+    file: 'arrdir_highcut_TRN'
     prediction_file_lists:
+        'proton': '/home/tjark/deeplearning/LST_mono_testing_protons.txt'
         'gamma_diffuse': '/home/tjark/deeplearning/LST_mono_testing_diffusegammas.txt'
         'gamma_pointlike': '/home/tjark/deeplearning/LST_mono_testing_pointlikegammas.txt'
+        'electron': '/home/tjark/deeplearning/LST_mono_testing_electrons.txt'
     save_labels: true
     save_identifiers: true
 TensorFlow:

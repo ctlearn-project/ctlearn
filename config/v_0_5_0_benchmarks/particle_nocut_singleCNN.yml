@@ -1,7 +1,7 @@
 Logging:
-    model_directory: '/home/tjark/deeplearning/lst_mono/energy/midcut/'
+    model_directory: '/home/tjark/deeplearning/lst_mono/singleCNN/particle/nocut/'
 Data:
-    file_list: '/home/tjark/deeplearning/LST_mono_training_gammas.txt'
+    file_list: '/home/tjark/deeplearning/LST_mono_training_balanced.txt'
     mode: 'mono'
     selected_telescope_type: 'LST_LSTCam'
     shuffle: true
@@ -14,28 +14,23 @@ Data:
         padding:
             'LSTCam': 2
         mask_interpolation: false
-    image_selection:
-        -
-            name: 'leakage_filter'
-            args: {leakage_value: 0.2, leakage_number: 2, picture_thresh: 6, boundary_thresh: 3, keep_isolated_pixels: False, min_number_picture_neighbors: 2}
-        -
-            name: 'image_intensity_filter'
-            args: {i_min: 200.0}
     event_info:
-        - 'mc_energy'
+        - 'shower_primary_id'
     transforms:
-        - name: 'MCEnergy'
+        - 
+            name: 'ShowerPrimaryID'
+            args: {name: 'particletype'}
 Input:
     seed: 1234
     batch_size: 64
     prefetch_to_device:
-        device: "/gpu:0"
+        device: "/gpu:1"
         buffer_size: null
 Model:
     model_directory: '/home/tjark/deeplearning/ctlearn/ctlearn/default_models/'
-    model: {module: 'res_net', function: 'res_net_model'}
+    model: {module: 'single_cnn', function: 'single_cnn_model'}
     tasks:
-        energy: {fc_head: [512, 256, 1], weight: 1.0}
+        particletype: {class_names: ['proton', 'gamma'], fc_head: [512, 256, 2], weight: 1.0}
 Model Parameters:
     res_net:
         network: {module: 'resnet_engine', function: 'stacked_res_blocks'}
@@ -57,10 +52,10 @@ Model Parameters:
     basic:
         conv_block:
             layers:
-                - {filters: 32, kernel_size: 3}
-                - {filters: 32, kernel_size: 3}
-                - {filters: 64, kernel_size: 3}
-                - {filters: 128, kernel_size: 3}
+                - {filters: 32, kernel_size: 3, number: 1}
+                - {filters: 32, kernel_size: 3, number: 1}
+                - {filters: 64, kernel_size: 3, number: 1}
+                - {filters: 128, kernel_size: 3, number: 1}
             max_pool: {size: 2, strides: 2}
             bottleneck: null
             batchnorm: false
@@ -83,10 +78,10 @@ Model Parameters:
                 - {filters: 96, blocks: 3}
                 - {filters: 128, blocks: 3}
                 - {filters: 256, blocks: 3}
-    attention: {mechanism: 'Channel-Squeeze-and-Excitation', ratio: 4}
+    #attention: {mechanism: 'Squeeze-and-Excitation', ratio: 16}
 Training:
     validation_split: 0.05
-    num_epochs: 17
+    num_epochs: 6
     optimizer: 'Adam'
     adam_epsilon: 1.0e-8
     base_learning_rate: 0.0001
@@ -95,15 +90,17 @@ Training:
     variables_to_train: null
 Evaluation:
     tensorflow: true
-    start_delay_secs: 10200
-    throttle_secs: 10200
+    start_delay_secs: 1000
+    throttle_secs: 1000
 Checkpoints:
-    save_checkpoints_steps: 10000
+    save_checkpoints_steps: 1000
 Prediction:
-    file: 'energy_midcut'
+    file: 'particle_nocut_singleCNN'
     prediction_file_lists:
+        'proton': '/home/tjark/deeplearning/LST_mono_testing_protons.txt'
         'gamma_diffuse': '/home/tjark/deeplearning/LST_mono_testing_diffusegammas.txt'
         'gamma_pointlike': '/home/tjark/deeplearning/LST_mono_testing_pointlikegammas.txt'
+        'electron': '/home/tjark/deeplearning/LST_mono_testing_electrons.txt'
     save_labels: true
     save_identifiers: true
 TensorFlow:
