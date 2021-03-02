@@ -2,6 +2,7 @@ import argparse
 
 from matplotlib import pyplot as plt
 import numpy as np
+import pandas as pd
 
 parser = argparse.ArgumentParser(
     description=("Plot histogram of classifier values."))
@@ -14,9 +15,10 @@ parser.add_argument(
     default="classifier_histogram.png")
 args = parser.parse_args()
 
-predictions = np.genfromtxt(args.predictions_file, delimiter=',', names=True)
-gamma_classifier_values = predictions['gamma']
-proton_classifier_values = predictions['proton']
+predictions = pd.read_hdf(args.predictions_file)
+gamma_mask = predictions['mc_particle'] == 1
+gamma_classifier_values = predictions['reco_gammaness'][gamma_mask]
+proton_classifier_values = predictions['reco_gammaness'][~gamma_mask]
 
 bins = np.linspace(0, 1, 100)
 

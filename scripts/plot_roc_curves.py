@@ -2,7 +2,7 @@ import argparse
 from itertools import cycle
 
 from matplotlib import pyplot as plt
-import numpy as np
+import pandas as pd
 import sklearn.metrics
 
 parser = argparse.ArgumentParser(
@@ -31,12 +31,12 @@ colors = cycle(['darkorange', 'aqua', 'cornflowerblue', 'deeppink'])
 for classifier, color in zip(classifiers, colors):
     classifier_name = classifier[0]
     predictions_path = classifier[1]
-    predictions = np.genfromtxt(predictions_path, delimiter=',', names=True)
-    labels = predictions['gamma_hadron_label'].astype(int) # gamma=0, proton=1
-    gamma_classifier_values = predictions['gamma']
+    predictions = pd.read_hdf(predictions_path)
+    labels = predictions['mc_particle'].astype(int)
+    gamma_classifier_values = predictions['reco_gammaness'].astype(float)
 
     fpr, tpr, thresholds = sklearn.metrics.roc_curve(labels,
-            gamma_classifier_values, pos_label=0)
+            gamma_classifier_values, pos_label=1)
     auc = sklearn.metrics.auc(fpr, tpr)
 
     plt.plot(fpr, tpr, color=color, lw=2,
