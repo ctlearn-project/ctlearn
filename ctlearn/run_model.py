@@ -346,7 +346,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     del logger
     return
 
-if __name__ == "__main__":
+def main():
 
     parser = argparse.ArgumentParser(
         description=("Train/Predict with a CTLearn model."))
@@ -401,3 +401,8 @@ if __name__ == "__main__":
             config['Data']['shuffle'] = False
             config['Prediction']['prediction_label'] = key
             run_model(config, mode='predict', debug=args.debug, log_to_file=args.log_to_file)
+
+
+
+if __name__ == "__main__":
+    main()
