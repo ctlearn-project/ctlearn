@@ -33,15 +33,13 @@ where `<MODE>` is either 'cpu' or 'gpu' (for linux systems) or 'macos' (for macO
 Finally, install CTLearn into the new conda environment with pip:
 
 ```bash
-source activate ctlearn
+conda activate ctlearn
 
 cd <ctlearn/installation/path>/ctlearn
-pip install --upgrade .
+pip install .
 ```
 
-The following error message due to incompatibilities between dependencies is expected and can be ignored: "ERROR: ctapipe unknown has requirement eventio==0.11.0, but you'll have eventio 0.21.2 which is incompatible."
-
-NOTE for developers: If you wish to fork/clone the repository and edit the code, either install with `pip -e` or reinstall  after making changes for them to take effect.
+NOTE for developers: If you wish to fork/clone the repository and edit the code, install with `pip -e`.
 
 ### Dependencies
 
