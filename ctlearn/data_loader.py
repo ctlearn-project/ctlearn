@@ -1,14 +1,14 @@
 import importlib
 import logging
-import numpy as np
 import os
 import pkg_resources
 import sys
-import pandas as pd
 import time
-import yaml
 
+import numpy as np
+import pandas as pd
 import tensorflow as tf
+import yaml
 
 def setup_DL1DataReader(config, mode):
     # Parse file list or prediction file list
