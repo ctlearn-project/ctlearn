@@ -34,13 +34,12 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             "Must be a path to an existing directory in the predict mode.".format(config['Logging']['model_directory']))
         os.makedirs(root_model_dir)
 
-    random_seed = config['Data']['seed']
-    model_dir += "/seed_{}".format(random_seed)
-    if not os.path.exists(model_dir):
-        if mode == 'predict':
-            raise ValueError("Invalid model directory '{}'. "
-            "Must be a path to an existing directory in the predict mode.".format(model_dir))
-        os.makedirs(model_dir)
+    random_seed = None
+    if config['Logging'].get('add_seed', False):
+        random_seed = config['Data']['seed']
+        model_dir += "/seed_{}".format(random_seed)
+        if not os.path.exists(model_dir):
+            os.makedirs(model_dir)
 
     # Set up logging, saving the config and optionally logging to a file
     logger = setup_logging(config, model_dir, debug, log_to_file)
@@ -398,11 +397,11 @@ def main():
             with open(args.config_file, 'r') as config_file:
                 config = yaml.safe_load(config_file)
             config['Data']['seed'] = random_seed
+            if args.random_seed != 0:
+                config['Logging']['add_seed'] = True
             config['Data']['shuffle'] = False
             config['Prediction']['prediction_label'] = key
             run_model(config, mode='predict', debug=args.debug, log_to_file=args.log_to_file)
-
-
 
 if __name__ == "__main__":
     main()
