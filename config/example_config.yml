@@ -271,8 +271,32 @@ Model:
     # in order of class label (0 to n-1).
     # Optional dictionary with string keys and values either null or
     # a list of strings. Default: {}
+    #
     # These options have to be in consonance with the 'event_info' and 
     # 'transforms' in 'Data'.
+    # Requirements/recommendations (see also config files from benchmarks):
+    #   - 'particletype':
+    #       event_info:
+    #           - 'shower_primary_id'
+    #       transforms:
+    #           -  name: 'ShowerPrimaryID'
+    #              args: {name: 'particletype'}
+    #
+    #   - 'energy':
+    #       event_info:
+    #           - 'mc_energy'
+    #       transforms:
+    #           -  name: 'MCEnergy'
+    #
+    #   - 'direction':
+    #       event_info:
+    #           - 'mc_energy'
+    #           - 'alt'
+    #           - 'az'
+    #       transforms:
+    #           -  name: 'MCEnergy'
+    #           - name: 'DeltaAltAz'
+    #
     tasks:
         particletype: {class_names: ['proton', 'gamma'], fc_head: [512, 256, 2], weight: 1.0}
         #energy: {fc_head: [256, 1], weight: 1.0}
