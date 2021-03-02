@@ -34,12 +34,13 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             "Must be a path to an existing directory in the predict mode.".format(config['Logging']['model_directory']))
         os.makedirs(root_model_dir)
 
-    random_seed = None
-    if config['Logging'].get('add_seed', False):
-        random_seed = config['Data']['seed']
-        model_dir += "/seed_{}".format(random_seed)
-        if not os.path.exists(model_dir):
-            os.makedirs(model_dir)
+    random_seed = config['Data']['seed']
+    model_dir += "/seed_{}".format(random_seed)
+    if not os.path.exists(model_dir):
+        if mode == 'predict':
+            raise ValueError("Invalid model directory '{}'. "
+            "Must be a path to an existing directory in the predict mode.".format(model_dir))
+        os.makedirs(model_dir)
 
     # Set up logging, saving the config and optionally logging to a file
     logger = setup_logging(config, model_dir, debug, log_to_file)
@@ -359,11 +360,6 @@ if __name__ == "__main__":
         action='store_true',
         help="log to a file in model directory instead of terminal")
     parser.add_argument(
-        '--multiple_runs',
-        default=1,
-        type=int,
-        help="run the same model multiple times with the same config file")
-    parser.add_argument(
         '--random_seed',
         default=0,
         type=int,
@@ -371,53 +367,31 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    random_seeds = []
-    for run in np.arange(args.multiple_runs):
-        with open(args.config_file, 'r') as config_file:
-            config = yaml.safe_load(config_file)
+    with open(args.config_file, 'r') as config_file:
+        config = yaml.safe_load(config_file)
 
-        # Overwrite the random seed in the config file
-        if args.multiple_runs == 1 and args.random_seed != 0:
-            if 1000 <= args.random_seed <= 9999:
-                config['Data']['seed'] = args.random_seed
-                config['Logging']['add_seed'] = True
-            else:
-                raise ValueError("Random seed: '{}'. "
-                             "Must be 4 digit integer!".format(
-                                 args.random_seed))
-        random_seed = config['Data']['seed']
-
-        # Create and overwrite the random seed in the config file for multiple runs
-        if args.multiple_runs != 1:
-            while True:
-                random_seed = randint(1000,9999)
-                if random_seed not in random_seeds:
-                    random_seeds.append(random_seed)
-                    break
-            config['Data']['seed'] = random_seed
+    # Overwrite the random seed in the config file
+    if args.random_seed != 0:
+        if 1000 <= args.random_seed <= 9999:
+            config['Data']['seed'] = args.random_seed
             config['Logging']['add_seed'] = True
-            print("CTLearn run {} with random seed '{}':".format(run+1,config['Data']['seed']))
+        else:
+            raise ValueError("Random seed: '{}'. "
+                             "Must be 4 digit integer!".format(
+                             args.random_seed))
+    random_seed = config['Data']['seed']
 
-        if args.mode == 'train' or args.mode == 'load_only':
-            run_model(config, mode=args.mode, debug=args.debug, log_to_file=args.log_to_file)
-        elif args.mode == 'predict':
-            for key in config['Prediction']['prediction_file_lists']:
-                with open(args.config_file, 'r') as config_file:
-                    config = yaml.safe_load(config_file)
-                config['Data']['seed'] = random_seed
-                if args.multiple_runs != 1 or args.random_seed != 0:
-                    config['Logging']['add_seed'] = True
-                config['Data']['shuffle'] = False
-                config['Prediction']['prediction_label'] = key
-                run_model(config, mode=args.mode, debug=args.debug, log_to_file=args.log_to_file)
-        elif args.mode == 'train_and_predict':
-            run_model(config, mode='train', debug=args.debug, log_to_file=args.log_to_file)
-            for key in config['Prediction']['prediction_file_lists']:
-                with open(args.config_file, 'r') as config_file:
-                    config = yaml.safe_load(config_file)
-                config['Data']['seed'] = random_seed
-                if args.multiple_runs != 1 or args.random_seed != 0:
-                    config['Logging']['add_seed'] = True
-                config['Data']['shuffle'] = False
-                config['Prediction']['prediction_label'] = key
-                run_model(config, mode='predict', debug=args.debug, log_to_file=args.log_to_file)
+    if args.mode == 'load_only':
+        run_model(config, mode=args.mode, debug=args.debug, log_to_file=args.log_to_file)
+
+    if 'train' in args.mode:
+        run_model(config, mode='train', debug=args.debug, log_to_file=args.log_to_file)
+
+    if 'predict' in args.mode:
+        for key in config['Prediction']['prediction_file_lists']:
+            with open(args.config_file, 'r') as config_file:
+                config = yaml.safe_load(config_file)
+            config['Data']['seed'] = random_seed
+            config['Data']['shuffle'] = False
+            config['Prediction']['prediction_label'] = key
+            run_model(config, mode='predict', debug=args.debug, log_to_file=args.log_to_file)
