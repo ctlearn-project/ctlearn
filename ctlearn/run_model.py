@@ -119,8 +119,14 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     if mode == 'train' and config['Training']['apply_class_weights']:
         num_class_examples = log_examples(reader, training_indices,
-                                          tasks, 'training')
-        class_weights = compute_class_weights(tasks, num_class_examples)
+                                          tasks, 'training',
+                                          group_by=['particletype'])
+        try:
+            class_labels = tasks['particletype']['class_names']
+        except KeyError:
+            raise ValueError("Applying class weights is supported"
+                             " only for the particletype task.")
+        class_weights = compute_class_weights(class_labels, num_class_examples)
         params['training']['class_weights'] = class_weights
 
     # Load options for TensorFlow

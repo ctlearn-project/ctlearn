@@ -41,10 +41,10 @@ def setup_logging(config, log_dir, debug, log_to_file):
 
 def compute_class_weights(labels, num_class_examples):
     logger = logging.getLogger()
-    class_weights = []
-    total_num = sum(num_class_examples.values())
     logger.info("Computing class weights...")
-    for idx, class_name in enumerate(labels['particletype']):
+    total_num = sum(num_class_examples.values())
+    class_weights = []
+    for idx, class_name in enumerate(labels):
         try:
             num = num_class_examples[(idx,)]
             class_inverse_frac = total_num / num
@@ -52,8 +52,9 @@ def compute_class_weights(labels, num_class_examples):
         except KeyError:
             logger.warning("Class '{}' has no examples, unable to "
                            "calculate class weights".format(class_name))
-            class_weights = [1.0 for l in labels['particletype']]
+            class_weights = [1.0 for l in labels]
             break
+    logger.info("Class labels: {}".format(labels))
     logger.info("Class weights: {}".format(class_weights))
     return class_weights
 
@@ -65,19 +66,29 @@ def load_from_module(name, module, path=None, args=None):
     params = args if args is not None else {}
     return fn, params
 
-def log_examples(reader, indices, labels, subset_name):
+def log_examples(reader, indices, tasks, subset_name, group_by=None):
+    """ Log the number of examples in each class or combination
+
+    Specify the names of the labels to group by as a sequence with group_by.
+    If group_by is None, group by all labels (default).
+    """
     logger = logging.getLogger()
     logger.info("Examples for " + subset_name + ':')
     logger.info("  Total number: {}".format(len(indices)))
-    label_list = list(labels)
-    num_class_examples = reader.num_examples(group_by=label_list,
+    labels = list(tasks)
+    if group_by is None:
+        group_by = labels
+    num_class_examples = reader.num_examples(group_by=group_by,
                                              example_indices=indices)
-    logger.info("  Breakdown by " + ', '.join(label_list) + ':')
+    logger.info("  Breakdown by " + ', '.join(labels) + ':')
     for cls, num in num_class_examples.items():
         names = []
-        for label, idx in zip(label_list, cls):
+        for label, idx in zip(labels, cls):
             # Value if regression label, else class name if class label
-            name = str(idx) if labels[label] is None else labels[label][idx]
+            if tasks[label].get('class_names') is not None:
+                name = tasks[label]['class_names'][idx]
+            else:
+                name = str(idx)
             names.append(name)
         logger.info("    " + ', '.join(names) + ": {}".format(num))
     logger.info('')
