@@ -1,11 +1,12 @@
 import importlib
 import logging
-import numpy as np
 import os
 import pkg_resources
 import sys
-import pandas as pd
 import time
+
+import numpy as np
+import pandas as pd
 import yaml
 
 def setup_logging(config, log_dir, debug, log_to_file):
