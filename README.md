@@ -53,7 +53,7 @@ NOTE for developers: If you wish to fork/clone the repository and edit the code,
 
 - Python 3.7.3
 - TensorFlow 1.13.1
-- DL1DataHandler
+- DL1DataHandler > 0.8.2
 - NumPy
 - PyYAML
 - Libraries used only in plotting scripts (optional)
@@ -127,7 +127,7 @@ python $CTLEARN_DIR/run_model.py myconfig.yml [--mode <MODE>] [--debug] [--log_t
 
 `--log_to_file`: Save CTLearn logging messages to a timestamped file in the model directory instead of printing to stdout.
 
-`--multiple_runs`: Run the same model multiple times with the same config file, but different random seeds.
+`--random_seed <SEED>`: Overwrite the random seed in the config file with `<SEED>` (4 digits).
 
 Alternatively, import CTLearn as a module in a Python script:
 
