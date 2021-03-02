@@ -17,7 +17,7 @@ def conv_block(inputs, training, params, reuse=None):
         max_pool = params['basic']['conv_block']['max_pool']
         bottleneck_filters = params['basic']['conv_block']['bottleneck']
         batchnorm = params['basic']['conv_block'].get('batchnorm', False)
-        attention = params.get('attention', None)
+        attention = params.get('attention')
 
         x = inputs
         if batchnorm:
