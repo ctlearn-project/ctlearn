@@ -2,8 +2,12 @@
 name: ctlearn
 channels:
     - anaconda
+    - conda-forge
+    - cta-observatory
+    - ctlearn-project
 dependencies:
-    - python=3.7.6
+    - python=3.7
+    - dl1_data_handler=0.8.2
     - matplotlib
     - numpy
     - pandas
@@ -13,5 +17,5 @@ dependencies:
     - pip:
         # TensorFlow-GPU v1.15.3
         - tensorflow_gpu==1.15.3
-        # ctaplot v0.5.3
-        - ctaplot==0.5.3
+        - ctaplot
+
