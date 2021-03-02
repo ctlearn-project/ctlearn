@@ -112,8 +112,7 @@ Set whether to run TensorFlow in debug mode.
 Run CTLearn from the command line:
 
 ```bash
-CTLEARN_DIR=</installation/path>/ctlearn/ctlearn
-python $CTLEARN_DIR/run_model.py myconfig.yml [--mode <MODE>] [--debug] [--log_to_file]
+ctlearn myconfig.yml [--mode <MODE>] [--debug] [--log_to_file] [--random_seed <SEED>]
 ```
 `--mode <MODE>`: Set run mode with `<MODE>` as `train`, `predict`, `train_and_predict`, or `load_only`. If not set, defaults to `train`.
 
@@ -145,7 +144,7 @@ tensorboard --logdir=/path/to/my/model_dir
 Print dataset statistics only, without running a model:
 
 ```bash
-python $CTLEARN_DIR/run_model.py myconfig.yml --mode load_only
+ctlearn myconfig.yml --mode load_only
 ```
 
 ## Supplementary Scripts
