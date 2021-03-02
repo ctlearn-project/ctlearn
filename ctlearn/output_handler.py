@@ -65,4 +65,3 @@ def write_output(h5file, reader, indices, example_description, predictions, pred
     if prediction_label in list(pd.HDFStore(h5file).keys()):
         pd.HDFStore(h5file).remove(prediction_label)
     pd.DataFrame(data=data).to_hdf(h5file, key=prediction_label, mode='a')
-    return
