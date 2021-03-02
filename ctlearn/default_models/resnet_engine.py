@@ -10,7 +10,6 @@ def stacked_res_blocks(inputs, params):
             params['resnet_engine']['stacked_res_blocks']['architecture']]
     attention = params.get('attention', None)
 
-    print(attention)
     x = stack_fn(inputs, filters_list[0], blocks_list[0], residual_block, stride=1, attention=attention, name='conv2')
     for i, (filters, blocks) in enumerate(zip(filters_list[1:], blocks_list[1:])):
        x = stack_fn(x, filters, blocks, residual_block, attention=attention, name='conv' + str(i+3))
