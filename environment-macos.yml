@@ -7,7 +7,7 @@ channels:
     - ctlearn-project
 dependencies:
     - python=3.7
-    - dl1_data_handler=0.8.2
+    - dl1_data_handler=0.8.3
     - matplotlib
     - numpy
     - pandas
