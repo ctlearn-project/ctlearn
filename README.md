@@ -7,20 +7,17 @@
 
 ![CTLearn Logo](images/CTLearnTextCTinBox_WhiteBkgd.png)
 
-CTLearn is a package under active development to run deep learning models to analyze data from all major current and future arrays of Imaging Atmospheric Cherenkov Telescopes (IACTs). CTLearn v0.3.0 can load data from [CTA](https://www.cta-observatory.org/) (Cherenkov Telescope Array), [FACT](https://www.isdc.unige.ch/fact/), [H.E.S.S.](https://www.mpi-hd.mpg.de/hfm/HESS/), [MAGIC](https://magic.mpp.mpg.de/), and [VERITAS](https://veritas.sao.arizona.edu/) telescopes processed using [DL1DataHandler v0.7.3+](https://github.com/cta-observatory/dl1-data-handler).
+CTLearn is a package under active development to run deep learning models to analyze data from all major current and future arrays of Imaging Atmospheric Cherenkov Telescopes (IACTs). CTLearn can load data from [CTA](https://www.cta-observatory.org/) (Cherenkov Telescope Array), [FACT](https://www.isdc.unige.ch/fact/), [H.E.S.S.](https://www.mpi-hd.mpg.de/hfm/HESS/), [MAGIC](https://magic.mpp.mpg.de/), and [VERITAS](https://veritas.sao.arizona.edu/) telescopes processed using [DL1DataHandler](https://github.com/cta-observatory/dl1-data-handler).
 
 ## Install CTLearn
 
 ### Clone Repository with Git
 
-Clone the CTLearn and DL1-Data-Handler repositories:
+Clone the CTLearn repository:
 
 ```bash
 cd </ctlearn/installation/path>
 git clone https://github.com/ctlearn-project/ctlearn.git
-
-cd </dl1-data-handler/installation/path>
-git clone https://github.com/cta-observatory/dl1-data-handler.git
 ```
 
 ### Install Package with Anaconda
@@ -33,33 +30,29 @@ conda env create -f </installation/path>/ctlearn/environment-<MODE>.yml
 
 where `<MODE>` is either 'cpu' or 'gpu' (for linux systems) or 'macos' (for macOS systems), denoting the TensorFlow version to be installed. If installing the GPU version of TensorFlow, verify that your system fulfills all the requirements [here](https://www.tensorflow.org/install/install_linux#NVIDIARequirements). Note that there is no GPU-enabled TensorFlow version for macOS yet.
 
-Finally, install DL1-Data-Handler and CTLearn into the new conda environment with pip:
+Finally, install CTLearn into the new conda environment with pip:
 
 ```bash
-source activate ctlearn
-
-cd <dl1-data-handler/installation/path>/dl1-data-handler
-pip install --upgrade .
+conda activate ctlearn
 
 cd <ctlearn/installation/path>/ctlearn
-pip install --upgrade .
+pip install .
 ```
 
-The following error message due to incompatibilities between dependencies is expected and can be ignored: "ERROR: ctapipe unknown has requirement eventio==0.11.0, but you'll have eventio 0.21.2 which is incompatible."
-
-NOTE for developers: If you wish to fork/clone the repository and edit the code, either install with `pip -e` or reinstall  after making changes for them to take effect.
+NOTE for developers: If you wish to fork/clone the repository and edit the code, install with `pip -e`.
 
 ### Dependencies
 
-- Python 3.7.3
-- TensorFlow 1.13.1
-- DL1DataHandler
+- Python>=3.7
+- TensorFlow==1.15.3
+- DL1DataHandler==0.8.2
 - NumPy
 - PyYAML
 - Libraries used only in plotting scripts (optional)
   - Matplotlib
   - Pandas
   - Scikit-learn
+  - ctaplot
   
 ## Download Data
 
@@ -92,7 +85,7 @@ CTLearn works with any TensorFlow model obeying the signature `logits = model(fe
 
 To use a custom model, provide in this section the directory containing a Python file that implements the model and the module name (that is, the file name minus the .py extension) and name of the model function within the module.
 
-In addition, CTLearn includes three [models](models) for gamma/hadron classification. CNN-RNN and Variable Input Network perform array-level classification by feeding the output of a CNN for each telescope into either a recurrent network, or a convolutional or fully-connected network head, respectively. Single Tel classifies single telescope images using a convolutional network. All three models are built on a simple, configurable convolutional network called Basic.
+In addition, CTLearn includes four [models](models) for gamma/hadron classification, energy and arrival direction regression. CNN-RNN and Variable Input Network perform array-level classification by feeding the output of a CNN for each telescope into either a recurrent network, or a convolutional or fully-connected network head, respectively. Single Tel and Res Net classifies single telescope images using a convolutional network and multiple residual blocks of convolutional layers, respectively. All four models are built on a simple, configurable convolutional network called Basic. In addition, three different attention mechanisms are implemented in Basic. 
 
 The values in the data to be used as labels and lists of class names where applicable are also provided in this section.
 
@@ -117,14 +110,15 @@ Set whether to run TensorFlow in debug mode.
 Run CTLearn from the command line:
 
 ```bash
-CTLEARN_DIR=</installation/path>/ctlearn/ctlearn
-python $CTLEARN_DIR/run_model.py myconfig.yml [--mode <MODE>] [--debug] [--log_to_file]
+ctlearn myconfig.yml [--mode <MODE>] [--debug] [--log_to_file] [--random_seed <SEED>]
 ```
-`--mode <MODE>`: Set run mode with `<MODE>` as `train`, `predict`, or `load_only`. If not set, defaults to `train`.
+`--mode <MODE>`: Set run mode with `<MODE>` as `train`, `predict`, `train_and_predict`, or `load_only`. If not set, defaults to `train`.
 
 `--debug`: Set logging level to DEBUG.
 
 `--log_to_file`: Save CTLearn logging messages to a timestamped file in the model directory instead of printing to stdout.
+
+`--random_seed <SEED>`: Overwrite the random seed in the config file with `<SEED>` (4 digits).
 
 Alternatively, import CTLearn as a module in a Python script:
 
@@ -134,7 +128,7 @@ from ctlearn.run_model import run_model
 
 with open('myconfig.yml', 'r') as myconfig:
   config = yaml.load(myconfig)
-run_model(config, mode='train', debug=True, log_to_file=True)
+run_model(config, mode='train', debug=True, log_to_file=True, multiple_runs=1)
 ```
 
 View training progress in real time with TensorBoard: 
@@ -148,7 +142,7 @@ tensorboard --logdir=/path/to/my/model_dir
 Print dataset statistics only, without running a model:
 
 ```bash
-python $CTLEARN_DIR/run_model.py myconfig.yml --mode load_only
+ctlearn myconfig.yml --mode load_only
 ```
 
 ## Supplementary Scripts

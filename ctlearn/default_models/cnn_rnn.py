@@ -18,8 +18,6 @@ def cnn_rnn_model(features, model_params, example_description, training):
         if name == 'trigger':
             telescope_triggers = tf.cast(f, tf.float32)
 
-    num_classes = len(model_params['label_names']['class_label'])
-    
     # Transpose telescope_data from [batch_size,num_tel,length,width,channels]
     # to [num_tel,batch_size,length,width,channels].
     telescope_data = tf.transpose(telescope_data, perm=[1, 0, 2, 3, 4])
@@ -47,7 +45,7 @@ def cnn_rnn_model(features, model_params, example_description, training):
     for telescope_index in range(num_telescopes):
         # Set all telescopes after the first to share weights
         reuse = None if telescope_index == 0 else True
-              
+
         with tf.variable_scope("CNN_block"):
             output = cnn_block(tf.gather(telescope_data, telescope_index),
                 params=model_params, reuse=reuse, training=training)
@@ -67,7 +65,7 @@ def cnn_rnn_model(features, model_params, example_description, training):
 
         #implement attention mechanism with range num_tel (covering all timesteps)
         #define LSTM cell size
-        rnn_cell = tf.nn.rnn_cell.LSTMCell(LSTM_SIZE) 
+        rnn_cell = tf.nn.rnn_cell.LSTMCell(LSTM_SIZE)
         outputs, _  = tf.nn.dynamic_rnn(
                             rnn_cell,
                             embeddings,
@@ -79,16 +77,13 @@ def cnn_rnn_model(features, model_params, example_description, training):
         outputs = tf.layers.flatten(outputs)
         output_dropout = tf.layers.dropout(outputs, rate=dropout_rate,
                 training=training, name="rnn_output_dropout")
-        
+
         fc1 = tf.layers.dense(inputs=output_dropout, units=1024, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.004), name="fc1")
         dropout_1 = tf.layers.dropout(inputs=fc1, rate=dropout_rate,
                 training=training)
-        
+
         fc2 = tf.layers.dense(inputs=dropout_1, units=512, kernel_regularizer=tf.contrib.layers.l2_regularizer(scale=0.004), name="fc2")
         dropout_2 = tf.layers.dropout(inputs=fc2, rate=dropout_rate,
                 training=training)
 
-        logits = tf.layers.dense(inputs=dropout_2, units=num_classes,
-                                 name="logits")
-
-    return logits
+    return dropout_2

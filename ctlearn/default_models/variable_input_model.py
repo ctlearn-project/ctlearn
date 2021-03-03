@@ -85,8 +85,6 @@ def variable_input_model(features, model_params, example_description, training):
                                       [-1, num_telescopes,
                                        len(telescope_aux_inputs)],
                                       name='telescope_aux_inputs')
-
-    num_classes = len(model_params['label_names']['class_label'])
     
     # Split data by telescope by switching the batch and telescope dimensions
     # leaving width, length, and channel depth unchanged
@@ -152,9 +150,7 @@ def variable_input_model(features, model_params, example_description, training):
    
     with tf.variable_scope("NetworkHead"):
         # Process the combined array features
-        out = network_head(array_features, params=model_params,
-                training=training)
+        output = network_head(array_features, params=model_params,
+                    training=training)
     
-    logits = tf.layers.dense(out, units=num_classes, name="logits")
-
-    return logits
+    return output
