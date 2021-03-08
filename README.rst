@@ -27,8 +27,36 @@ CTLearn is a package under active development to run deep learning models to ana
 Install CTLearn
 ---------------
 
-Clone Repository with Git
-^^^^^^^^^^^^^^^^^^^^^^^^^
+Install a released version
+^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Download and install `Anaconda <https://www.anaconda.com/download/>`_\ , or, for a minimal installation, `Miniconda <https://conda.io/miniconda.html>`_. Add the necessary channels for all dependencies:
+
+.. code-block:: bash
+
+   conda config --add channels anaconda
+   conda config --add channels conda-forge
+   conda config --add channels cta-observatory
+   conda config --add channels ctlearn-project
+
+Then, create and enter a new environment with the dl1_data_handler:
+
+.. code-block:: bash
+
+   conda create -n ctlearn dl1_data_handler=0.8.3
+   conda activate ctlearn
+
+This should automatically install all dependencies (NOTE: this may take some time, as by default MKL is included as a dependency of NumPy and it is very large).
+
+Then, install the ctlearn and tensorflow(-gpu) packages via pypi:
+
+.. code-block:: bash
+
+   pip install tensorflow-gpu==1.15.3 ctlearn
+
+
+Installing with pip/setuptools from source for development
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Clone the CTLearn repository:
 
@@ -37,10 +65,7 @@ Clone the CTLearn repository:
    cd </ctlearn/installation/path>
    git clone https://github.com/ctlearn-project/ctlearn.git
 
-Install Package with Anaconda/pypi
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-Next, download and install `Anaconda <https://www.anaconda.com/download/>`_\ , or, for a minimal installation, `Miniconda <https://conda.io/miniconda.html>`_. Create a new conda environment that includes all the dependencies for CTLearn:
+First, install Anaconda by following the instructions above. Create a new conda environment that includes all the dependencies for CTLearn:
 
 .. code-block:: bash
 
