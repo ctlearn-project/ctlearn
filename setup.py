@@ -9,6 +9,8 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 
 setup(name='ctlearn',
       version=get_version_pypi(),
+      author="CTLearn Team",
+      author_email="d.nieto@ucm.es",
       description='Deep learning for analysis and classification of image data for Imaging Atmospheric Cherenkov Telescopes, especially the Cherenkov Telescope Array (CTA).',
       long_description=long_description,
       long_description_content_type='text/x-rst',
@@ -16,13 +18,12 @@ setup(name='ctlearn',
       license='BSD-3-Clause',
       packages=['ctlearn'],
       install_requires=[
-      'dl1_data_handler==0.8.3',
       'matplotlib',
-      'numpy',
+      'numpy>=1.15.0',
       'pandas',
       'pip',
       'pyyaml',
-      'scikit-learn'
+      'dl1_data_handler==0.8.3'
       ],
       entry_points = {
         'console_scripts': ['ctlearn=ctlearn.run_model:main'],
