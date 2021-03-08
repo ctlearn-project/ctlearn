@@ -17,14 +17,6 @@ setup(name='ctlearn',
       url='https://github.com/ctlearn-project/ctlearn',
       license='BSD-3-Clause',
       packages=['ctlearn'],
-      install_requires=[
-      'matplotlib',
-      'numpy>=1.15.0',
-      'pandas',
-      'pip',
-      'pyyaml',
-      'dl1_data_handler==0.8.3'
-      ],
       entry_points = {
         'console_scripts': ['ctlearn=ctlearn.run_model:main'],
       },
