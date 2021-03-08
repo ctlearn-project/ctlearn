@@ -12,6 +12,9 @@ CTLearn: Deep Learning for IACT Event Reconstruction
    :target: https://travis-ci.com/ctlearn-project/ctlearn
    :alt: Build Status
 
+.. image:: https://img.shields.io/pypi/v/ctlearn
+    :target: https://pypi.org/project/ctlearn/
+    :alt: Latest Release
 
 
 .. image:: images/CTLearnTextCTinBox_WhiteBkgd.png
@@ -34,8 +37,8 @@ Clone the CTLearn repository:
    cd </ctlearn/installation/path>
    git clone https://github.com/ctlearn-project/ctlearn.git
 
-Install Package with Anaconda
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Install Package with Anaconda/pypi
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Next, download and install `Anaconda <https://www.anaconda.com/download/>`_\ , or, for a minimal installation, `Miniconda <https://conda.io/miniconda.html>`_. Create a new conda environment that includes all the dependencies for CTLearn:
 
@@ -45,7 +48,14 @@ Next, download and install `Anaconda <https://www.anaconda.com/download/>`_\ , o
 
 where ``<MODE>`` is either 'cpu' or 'gpu' (for linux systems) or 'macos' (for macOS systems), denoting the TensorFlow version to be installed. If installing the GPU version of TensorFlow, verify that your system fulfills all the requirements `here <https://www.tensorflow.org/install/install_linux#NVIDIARequirements>`_. Note that there is no GPU-enabled TensorFlow version for macOS yet.
 
-Finally, install CTLearn into the new conda environment with pip:
+Finally, install CTLearn into the new conda environment via pypi:
+
+.. code-block:: bash
+
+   conda activate ctlearn
+   pip install ctlearn
+
+or with pip from source:
 
 .. code-block:: bash
 
@@ -162,7 +172,7 @@ Alternatively, import CTLearn as a module in a Python script:
 
    with open('myconfig.yml', 'r') as myconfig:
      config = yaml.load(myconfig)
-   run_model(config, mode='train', debug=True, log_to_file=True, multiple_runs=1)
+   run_model(config, mode='train', debug=True, log_to_file=True)
 
 View training progress in real time with TensorBoard: 
 
