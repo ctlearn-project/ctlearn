@@ -1,16 +1,18 @@
 Logging:
-    model_directory: '/home/tjark/deeplearning/icrc2021/logs/test/'
+    model_directory: '/home/tjark/deeplearning/icrc2021/logs/NectarCam/'
 Data_format: 'stage1'
 Data:
     file_list: '/home/tjark/deeplearning/icrc2021/balanced_small.txt'
     mode: 'stereo'
-    selected_telescope_types: ['LST_LST_LSTCam']
+    selected_telescope_types: ['MST_MST_NectarCam']
+    # Prod5 layout S-M5C5-13MSTs40SSTs-MSTF -> NectarCam
+    selected_telescope_ids:  {"MST_MST_NectarCam": [100, 101, 103, 106, 107, 129, 111, 114, 115, 116, 119, 120, 121]}
     shuffle: true
     seed: 1234
     image_channels: ['image', 'peak_time']
     #image_channels: ['image', 'peak_time', 'image_mask']
     mapping_settings:
-        camera_types: ['LSTCam']
+        camera_types: ['NectarCam']
         mapping_method:
             'LSTCam': 'bilinear_interpolation'
         padding:
@@ -23,7 +25,7 @@ Data:
             name: 'ShowerPrimaryID'
         -
             name: 'SortTelescopes'
-            args: {'sorting':'size'}
+            args: {'sorting':'size', 'tel_desc': 'MST_MST_NectarCam'}
 Input:
     seed: 1234
     batch_size: 16
