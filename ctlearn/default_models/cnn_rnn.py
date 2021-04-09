@@ -12,10 +12,10 @@ def cnn_rnn_model(features, model_params, example_description, training):
 
     # Reshape inputs into proper dimensions
     for (name, f), d in zip(features.items(), example_description):
-        if name == 'image':
+        if name.endswith('images'):
             telescope_data = tf.reshape(f, [-1, *d['shape']])
             num_telescopes = d['shape'][0]
-        if name == 'trigger':
+        if name.endswith('triggers'):
             telescope_triggers = tf.cast(f, tf.float32)
 
     # Transpose telescope_data from [batch_size,num_tel,length,width,channels]

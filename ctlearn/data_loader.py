@@ -10,6 +10,7 @@ import pandas as pd
 import tensorflow as tf
 import yaml
 
+
 def setup_DL1DataReader(config, mode):
     # Parse file list or prediction file list
     if mode in ['train', 'load_only']:
@@ -38,21 +39,23 @@ def setup_DL1DataReader(config, mode):
             raise ValueError("Invalid prediction file list '{}'. "
                              "Must be list or path to file".format(file_list))
 
-    # Parse list of event selection filters
-    event_selection = {}
-    for s in config['Data'].get('event_selection', {}):
-        s = {'module': 'dl1_data_handler.filters', **s}
-        filter_fn, filter_params = load_from_module(**s)
-        event_selection[filter_fn] = filter_params
-    config['Data']['event_selection'] = event_selection
+    data_format = config.get('Data_format', 'stage1')
+    if data_format == 'dl1dh':
+        # Parse list of event selection filters
+        event_selection = {}
+        for s in config['Data'].get('event_selection', {}):
+            s = {'module': 'dl1_data_handler.filters', **s}
+            filter_fn, filter_params = load_from_module(**s)
+            event_selection[filter_fn] = filter_params
+        config['Data']['event_selection'] = event_selection
 
-    # Parse list of image selection filters
-    image_selection = {}
-    for s in config['Data'].get('image_selection', {}):
-        s = {'module': 'dl1_data_handler.filters', **s}
-        filter_fn, filter_params = load_from_module(**s)
-        image_selection[filter_fn] = filter_params
-    config['Data']['image_selection'] = image_selection
+        # Parse list of image selection filters
+        image_selection = {}
+        for s in config['Data'].get('image_selection', {}):
+            s = {'module': 'dl1_data_handler.filters', **s}
+            filter_fn, filter_params = load_from_module(**s)
+            image_selection[filter_fn] = filter_params
+        config['Data']['image_selection'] = image_selection
 
     # Parse list of Transforms
     transforms = []

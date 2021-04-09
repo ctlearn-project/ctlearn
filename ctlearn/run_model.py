@@ -13,7 +13,7 @@ import yaml
 import tensorflow as tf
 from tensorflow.python import debug as tf_debug
 
-from dl1_data_handler.reader import DL1DataReader
+from dl1_data_handler.reader import DL1DataReaderSTAGE1, DL1DataReaderDL1DH
 from ctlearn.default_models.basic import fc_head
 from ctlearn.data_loader import *
 from ctlearn.output_handler import *
@@ -67,13 +67,20 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     params['model'] = {**config['Model'], **config.get('Model Parameters', {})}
     tasks = config['Model']['tasks']
 
-    # Set up the DL1DataReader
+    # Set up the DL1DataReaderSTAGE1
     config['Data'] = setup_DL1DataReader(config, mode)
 
     # Create data reader
     logger.info("Loading data:")
     logger.info("For a large dataset, this may take a while...")
-    reader = DL1DataReader(**config['Data'])
+
+    if config['Data_format'] == 'stage1':
+        reader = DL1DataReaderSTAGE1(**config['Data'])
+    elif config['Data_format'] == 'dl1dh':
+        reader = DL1DataReaderDL1DH(**config['Data'])
+    else:
+        raise ValueError("Data format {} is not implemented in the DL1DH reader. Available data formats are 'stage1' and 'dl1dh'.".format(config['Data_format']))
+
     params['example_description'] = reader.example_description
 
     # Set up the TensorFlow dataset
