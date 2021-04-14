@@ -14,9 +14,9 @@ Data:
     mapping_settings:
         camera_types: ['CHEC']
         mapping_method:
-            'LSTCam': 'bilinear_interpolation'
+            'CHEC': 'oversampling'
         padding:
-            'LSTCam': 2
+            'CHEC': 2
         mask_interpolation: false
     event_info:
         - 'true_shower_primary_id'
@@ -30,7 +30,7 @@ Input:
     seed: 1234
     batch_size: 16
     prefetch_to_device:
-        device: "/gpu:0"
+        device: "/gpu:1"
         buffer_size: null
 Model:
     model_directory: '/home/tjark/deeplearning/ctlearn/ctlearn/default_models/'
@@ -92,7 +92,7 @@ Training:
     adam_epsilon: 1.0e-8
     base_learning_rate: 0.0001
     scale_learning_rate: false
-    apply_class_weights: false
+    apply_class_weights: true
     variables_to_train: null
 Evaluation:
     tensorflow: true

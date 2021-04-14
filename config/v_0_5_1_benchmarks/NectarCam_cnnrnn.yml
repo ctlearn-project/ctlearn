@@ -14,9 +14,9 @@ Data:
     mapping_settings:
         camera_types: ['NectarCam']
         mapping_method:
-            'LSTCam': 'bilinear_interpolation'
+            'NectarCam': 'bilinear_interpolation'
         padding:
-            'LSTCam': 2
+            'NectarCam': 2
         mask_interpolation: false
     event_info:
         - 'true_shower_primary_id'
@@ -92,7 +92,7 @@ Training:
     adam_epsilon: 1.0e-8
     base_learning_rate: 0.0001
     scale_learning_rate: false
-    apply_class_weights: false
+    apply_class_weights: true
     variables_to_train: null
 Evaluation:
     tensorflow: true
