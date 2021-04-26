@@ -1,20 +1,22 @@
 Logging:
-    model_directory: '/home/tjark/deeplearning/icrc2021/logs/test/'
+    model_directory: '/home/tjark/deeplearning/icrc2021/logs/FlashCam/'
 Data_format: 'stage1'
 Data:
     file_list: '/home/tjark/deeplearning/icrc2021/balanced_small.txt'
     mode: 'stereo'
-    selected_telescope_types: ['LST_LST_LSTCam']
+    selected_telescope_types: ['MST_MST_FlashCam']
+    # Prod5 layout S-M5C5-13MSTs40SSTs-MSTF
+    selected_telescope_ids:  {"MST_MST_FlashCam": [5, 6, 8, 11, 12, 126, 16, 19, 20, 21, 24, 25, 26]}
     shuffle: true
     seed: 1234
     image_channels: ['image', 'peak_time']
     #image_channels: ['image', 'peak_time', 'image_mask']
     mapping_settings:
-        camera_types: ['LSTCam']
+        camera_types: ['FlashCam']
         mapping_method:
-            'LSTCam': 'bilinear_interpolation'
+            'FlashCam': 'bilinear_interpolation'
         padding:
-            'LSTCam': 2
+            'FlashCam': 2
         mask_interpolation: false
     event_info:
         - 'true_shower_primary_id'
@@ -23,7 +25,7 @@ Data:
             name: 'ShowerPrimaryID'
         -
             name: 'SortTelescopes'
-            args: {'sorting':'size'}
+            args: {'sorting':'size', 'tel_desc': 'MST_MST_FlashCam'}
 Input:
     seed: 1234
     batch_size: 16
@@ -90,7 +92,7 @@ Training:
     adam_epsilon: 1.0e-8
     base_learning_rate: 0.0001
     scale_learning_rate: false
-    apply_class_weights: false
+    apply_class_weights: true
     variables_to_train: null
 Evaluation:
     tensorflow: true
