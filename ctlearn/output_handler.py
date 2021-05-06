@@ -4,7 +4,9 @@ import pandas as pd
 
 def write_output(h5file, reader, indices, example_description, predictions, prediction_label='prediction'):
     data = {}
-    tel_pointing = reader.tel_pointing
+    tel_pointing = np.array([0.0, 0.0], np.float32)
+    if reader.pointing_mode == 'fix_subarray':
+        tel_pointing = reader.pointing
     energy_unit = 'TeV'
     for i, idx in enumerate(indices):
         for val, des in zip(reader[idx], example_description):
@@ -19,11 +21,11 @@ def write_output(h5file, reader, indices, example_description, predictions, pred
                     energy_unit = 'log(TeV)'
                     val[0] = np.power(10,val[0])
                 data['mc_energy'].append(val[0])
-            elif des['name'] == 'direction':
+            elif des['name'] in ['direction', 'delta_direction'] :
                 if i == 0:
                     data['mc_altitude'], data['mc_azimuth'] = [],[]
-                data['mc_altitude'].append(val[0] + tel_pointing[1])
-                data['mc_azimuth'].append(val[1] + tel_pointing[0])
+                data['mc_altitude'].append(val[0] + tel_pointing[0])
+                data['mc_azimuth'].append(val[1] + tel_pointing[1])
             elif des['name'] == 'impact':
                 if i == 0:
                     data['mc_impact_x'], data['mc_impact_y'] = [],[]
@@ -48,8 +50,13 @@ def write_output(h5file, reader, indices, example_description, predictions, pred
         if 'direction' in prediction:
             if i == 0:
                 data['reco_altitude'], data['reco_azimuth'] = [],[]
-            data['reco_altitude'].append(prediction['direction'][0] + tel_pointing[1])
-            data['reco_azimuth'].append(prediction['direction'][1] + tel_pointing[0])
+            data['reco_altitude'].append(prediction['direction'][0] + tel_pointing[0])
+            data['reco_azimuth'].append(prediction['direction'][1] + tel_pointing[1])
+        if 'delta_direction' in prediction:
+            if i == 0:
+                data['reco_altitude'], data['reco_azimuth'] = [],[]
+            data['reco_altitude'].append(prediction['delta_direction'][0] + tel_pointing[0])
+            data['reco_azimuth'].append(prediction['delta_direction'][1] + tel_pointing[1])
         # Impact parameter regression
         if 'impact' in prediction:
             if i == 0:

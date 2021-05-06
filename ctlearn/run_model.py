@@ -161,7 +161,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                 for i, name in enumerate(tasks_dict['particletype']['class_names']):
                     logits[name] = logits['particletype_probabilities'][:, i]
             else:
-                expected_logits_dimension = 2 if task in ['direction', 'impact'] else 1
+                expected_logits_dimension = 2 if task in ['direction', 'delta_direction', 'impact'] else 1
                 logits[task] = fc_head(output, tasks_dict[task], expected_logits_dimension)
 
         if mode == tf.estimator.ModeKeys.PREDICT:
