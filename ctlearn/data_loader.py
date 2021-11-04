@@ -27,7 +27,7 @@ def setup_DL1DataReader(config, mode):
                              "Must be list or path to file".format(config['Data']['file_list']))
     else:
         file_list = config['Prediction']['prediction_file_lists'][config['Prediction']['prediction_label']]
-        if isinstance(file_list, str):
+        if file_list.endswith(".txt"):
             data_files = []
             with open(file_list) as f:
                 for line in f:
@@ -35,6 +35,8 @@ def setup_DL1DataReader(config, mode):
                     if line and line[0] != "#":
                         data_files.append(line)
             config['Data']['file_list'] = data_files
+        elif file_list.endswith(".h5"):
+            config['Data']['file_list'] = [file_list]
         if not isinstance(config['Data']['file_list'], list):
             raise ValueError("Invalid prediction file list '{}'. "
                              "Must be list or path to file".format(file_list))

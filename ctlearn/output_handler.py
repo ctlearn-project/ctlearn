@@ -10,7 +10,9 @@ def write_output(h5file, reader, indices, example_description, predictions, pred
     energy_unit = 'TeV'
     for i, idx in enumerate(indices):
         for val, des in zip(reader[idx], example_description):
-            if des['name'] == 'particletype':
+            if des['name'] == 'pointing':
+                tel_pointing = val
+            elif des['name'] == 'particletype':
                 if i == 0:
                     data['mc_particle'] = []
                 data['mc_particle'].append(val)
@@ -31,6 +33,34 @@ def write_output(h5file, reader, indices, example_description, predictions, pred
                     data['mc_impact_x'], data['mc_impact_y'] = [],[]
                 data['mc_impact_x'].append(val[0])
                 data['mc_impact_y'].append(val[1])
+            elif des['name'] == 'event_id':
+                if i == 0:
+                    data['event_id'] = []
+                data['event_id'].append(val)
+            elif des['name'] == 'core_y':
+                if i == 0:
+                    data['core_y'] = []
+                data['core_y'].append(val)
+            elif des['name'] == 'core_x':
+                if i == 0:
+                    data['core_x'] = []
+                data['core_x'].append(val)
+            elif des['name'] == 'mc_energy':
+                if i == 0:
+                    data['mc_energy'] = []
+                data['mc_energy'].append(val)
+
+            if des['name'].endswith('parameters'):
+                if i == 0:
+                    data['parameters'] = []
+                data['parameters'].append(val)
+            #else:
+            #    if des['name'] in reader.event_info:
+            #        print(des['name'])
+            #        if i == 0:
+            #            data[des['name']] = []
+            #        data[des['name']].append(val)
+            #        print(data[des['name']])
 
         prediction = predictions[i]
         # Gamma/hadron classification
@@ -68,6 +98,13 @@ def write_output(h5file, reader, indices, example_description, predictions, pred
             if i == 0:
                 data['reco_x_max'] = []
             data['reco_x_max'].append(prediction['showermaximum'][0])
+
+        # Store pointing
+        if reader.pointing_mode == 'subarray':
+            if i == 0:
+                data['pointing_alt'], data['pointing_az'] = [],[]
+            data['pointing_alt'].append(tel_pointing[0])
+            data['pointing_az'].append(tel_pointing[1])
 
     if prediction_label in list(pd.HDFStore(h5file).keys()):
         pd.HDFStore(h5file).remove(prediction_label)
