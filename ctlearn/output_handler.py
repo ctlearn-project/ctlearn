@@ -12,6 +12,10 @@ def write_output(h5file, reader, indices, example_description, predictions, pred
         for val, des in zip(reader[idx], example_description):
             if des['name'] == 'pointing':
                 tel_pointing = val
+            elif des['name'] == 'trigger_time':
+                if i == 0:
+                    data['time'] = []
+                data['time'].append(val)
             elif des['name'] == 'particletype':
                 if i == 0:
                     data['mc_particle'] = []

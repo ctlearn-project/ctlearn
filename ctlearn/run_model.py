@@ -424,7 +424,7 @@ def main():
                         config['Logging']['add_seed'] = True
                     config['Data']['shuffle'] = False
 
-                    config['Prediction']['file'] = file.split("/")[-1].replace("_S_", "_E_").replace(".h5","")
+                    config['Prediction']['file'] = file.split("/")[-1].replace("_S_", "_E_").replace("dl1", "dl2").replace(".h5","")
                     config['Prediction']['prediction_label'] = 'data'
                     config['Prediction']['prediction_file_lists'] = {'data': file}
                     run_model(config, mode='predict', debug=args.debug, log_to_file=args.log_to_file)
