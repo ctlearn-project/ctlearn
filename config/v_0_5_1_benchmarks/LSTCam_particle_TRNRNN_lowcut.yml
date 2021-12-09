@@ -1,11 +1,11 @@
 Logging:
-    model_directory: '/home/tjark/icrc2021/logs/CTAmeeting/LSTCam_particle_TRNRNN_lowcut_mult3/'
+    model_directory: '/home/tjark/icrc2021/logs/CTAmeeting/LSTCam_particle_TRNRNN_lowcut_mult4/'
 Data_format: 'stage1'
 Data:
     file_list: '/home/tjark/icrc2021/balanced.txt'
     mode: 'stereo'
     selected_telescope_types: ['LST_LST_LSTCam']
-    multiplicity_selection: {"LST_LST_LSTCam": 3}
+    multiplicity_selection: {"LST_LST_LSTCam": 4}
     shuffle: true
     seed: 1234
     image_channels: ['image', 'peak_time', 'image_mask']
@@ -109,7 +109,7 @@ Evaluation:
 Checkpoints:
     save_checkpoints_steps: 5000
 Prediction:
-    file: 'particle_TRN_lowcut'
+    file: 'LSTCam_particle_TRNRNN_lowcut_mult4'
     prediction_file_lists:
         'proton': '/home/tjark/icrc2021/proton_lstmeeting_test.txt'
         'diffuse': '/home/tjark/icrc2021/gamma-diffuse_lstmeeting_test.txt'

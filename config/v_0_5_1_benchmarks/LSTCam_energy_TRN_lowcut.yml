@@ -1,11 +1,13 @@
 Logging:
-    model_directory: '/home/tjark/icrc2021/logs/CTAmeeting/LSTCam_energy_TRNRNN_lowcut_mult4/'
+    model_directory: '/home/tjark/icrc2021/logs/CTAmeeting/LSTCam_energy_TRN_lowcut/'
 Data_format: 'stage1'
 Data:
     file_list: '/home/tjark/icrc2021/gamma-diffuse_train.txt'
-    mode: 'stereo'
+    mode: 'mono'
     selected_telescope_types: ['LST_LST_LSTCam']
-    multiplicity_selection: {"LST_LST_LSTCam": 4}
+    selected_telescope_ids: {'LST_LST_LSTCam': [1,2,3,4]}
+    # For testing select LST1 only
+    #selected_telescope_ids: {'LST_LST_LSTCam': [1]}
     shuffle: true
     seed: 1234
     image_channels: ['image', 'peak_time', 'image_mask']
@@ -16,40 +18,30 @@ Data:
         padding:
             'LSTCam': 2
         mask_interpolation: false
-    #event_selection: 
-    #    - {col_name: "hillas_intensity", min_value: 50.0}
-    #    - {col_name: "leakage_intensity_width_2", max_value: 0.2}
+    event_selection: 
+        - {col_name: "hillas_intensity", min_value: 50.0}
+        - {col_name: "leakage_intensity_width_2", max_value: 0.2}
     event_info:
         - 'true_energy'
     transforms:
         - name: 'MCEnergy'
-        -
-            name: 'SortTelescopes'
-            args: {'sorting':'size'}
 Input:
     seed: 1234
-    batch_size: 16
+    batch_size: 64
     prefetch_to_device:
-        device: "/gpu:1"
+        device: "/gpu:0"
         buffer_size: null
 Model:
     model_directory: '/home/tjark/icrc2021/ctlearn/ctlearn/default_models/'
-    model: {module: 'resnet_rnn', function: 'resnet_rnn_model'}
+    model: {module: 'res_net', function: 'res_net_model'}
     tasks:
-        energy: {fc_head: [1], weight: 1.0}
+        energy: {fc_head: [512, 256, 1], weight: 1.0}
 Model Parameters:
     res_net:
         network: {module: 'resnet_engine', function: 'stacked_res_blocks'}
         #init_layer: {filters: 64, kernel_size: 7, strides: 1}
         #init_max_pool: {size: 3, strides: 2}
         pretrained_weights: null
-    resnet_rnn:
-        network: {module: 'resnet_engine', function: 'stacked_res_blocks'}
-        #init_layer: {filters: 64, kernel_size: 7, strides: 1}
-        #init_max_pool: {size: 3, strides: 2}
-        pretrained_weights: '/home/tjark/icrc2021/logs/CTAmeeting/LSTCam_energy_TRN_lowcut/'
-        trainable_backbone: false
-        dropout_rate: 0.5
     single_cnn:
         network: {module: 'basic', function: 'conv_block'}
         pretrained_weights: null
@@ -103,17 +95,17 @@ Training:
     variables_to_train: null
 Evaluation:
     tensorflow: true
-    start_delay_secs: 5000
-    throttle_secs: 5000
+    start_delay_secs: 10200
+    throttle_secs: 10200
 Checkpoints:
-    save_checkpoints_steps: 5000
+    save_checkpoints_steps: 10000
 Prediction:
-    file: 'LSTCam_energy_TRNRNN_lowcut_mult4'
+    file: 'LST1_energy_TRN_lowcut'
     prediction_file_lists:
-        'proton': '/home/tjark/icrc2021/proton_lstmeeting_test.txt'
-        'diffuse': '/home/tjark/icrc2021/gamma-diffuse_lstmeeting_test.txt'
-        'gamma': '/home/tjark/icrc2021/gamma_lstmeeting_test.txt'
-        'electron': '/home/tjark/icrc2021/electron_lstmeeting_test.txt'
+        'proton': '/home/tjark/icrc2021/proton_test.txt'
+        'diffuse': '/home/tjark/icrc2021/gamma-diffuse_test.txt'
+        'gamma': '/home/tjark/icrc2021/gamma_test.txt'
+        'electron': '/home/tjark/icrc2021/electron_test.txt'
     save_labels: false
     save_identifiers: false
 TensorFlow:
