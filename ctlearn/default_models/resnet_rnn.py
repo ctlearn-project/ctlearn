@@ -5,10 +5,10 @@ import tensorflow as tf
 
 LSTM_SIZE = 2048
 
-def cnn_rnn_model(features, model_params, example_description, training):
+def resnet_rnn_model(features, model_params, example_description, training):
 
     # Get hyperparameters
-    dropout_rate = model_params['cnn_rnn'].get('dropout_rate', 0.5)
+    dropout_rate = model_params['resnet_rnn'].get('dropout_rate', 0.5)
 
     # Reshape inputs into proper dimensions
     for (name, f), d in zip(features.items(), example_description):
@@ -33,10 +33,11 @@ def cnn_rnn_model(features, model_params, example_description, training):
     # The array-level processing is then performed by the network head. The
     # logits are returned and fed into a classifier.
 
-    # Load CNN block model
+    # Load ResNet block model
     sys.path.append(model_params['model_directory'])
-    cnn_block_module = importlib.import_module(model_params['cnn_rnn']['cnn_block']['module'])
-    cnn_block = getattr(cnn_block_module, model_params['cnn_rnn']['cnn_block']['function'])
+    resnet_block_module = importlib.import_module(model_params['resnet_rnn']['network']['module'])
+    resnet_block = getattr(resnet_block_module, model_params['resnet_rnn']['network']['function'])
+    trainable = model_params['resnet_rnn'].get('trainable_backbone', False)
 
     #calculate number of valid images per event
     num_tels_triggered = tf.to_int32(tf.reduce_sum(telescope_triggers,1))
@@ -46,12 +47,24 @@ def cnn_rnn_model(features, model_params, example_description, training):
         # Set all telescopes after the first to share weights
         reuse = None if telescope_index == 0 else True
 
-        with tf.variable_scope("CNN_block"):
-            output = cnn_block(tf.gather(telescope_data, telescope_index),
-                params=model_params, reuse=reuse, training=training)
+        with tf.variable_scope("resnet_block"):
+            x = tf.gather(telescope_data, telescope_index)
+            # The original ResNet implementation use this padding, but we pad the images in the ImageMapper.
+            #x = tf.pad(telescope_data, tf.constant([[3, 3], [3, 3]]), name='conv1_pad')
+            init_layer = model_params['res_net'].get('init_layer', False)
+            if init_layer:
+                x = tf.layers.conv2d(x, filters=init_layer['filters'], kernel_size=init_layer['kernel_size'],
+                        strides=init_layer['strides'], trainable=trainable, name='conv1_conv')
+            #x = tf.pad(x, tf.constant([[1, 1], [1, 1]]), name='pool1_pad')
+            init_max_pool = model_params['res_net'].get('init_max_pool', False)
+            if init_max_pool:
+                x = tf.layers.max_pooling2d(x, init_max_pool['size'], strides=init_max_pool['strides'], trainable=trainable, name='pool1_pool')
 
-        if model_params['cnn_rnn']['pretrained_weights']:
-            tf.contrib.framework.init_from_checkpoint(model_params['cnn_rnn']['pretrained_weights'],{'CNN_block/':'CNN_block/'})
+            output = resnet_block(x, params=model_params, reuse=reuse, trainable=trainable)
+            output = tf.reduce_mean(output, axis=[1,2], name='global_avgpool')
+
+        if model_params['resnet_rnn']['pretrained_weights']:
+            tf.contrib.framework.init_from_checkpoint(model_params['resnet_rnn']['pretrained_weights'],{'Network/':'resnet_block/'})
 
         #flatten output of embedding CNN to (batch_size, _)
         image_embedding = tf.layers.flatten(output, name='image_embedding')

@@ -1,0 +1,115 @@
+Logging:
+    model_directory: '/data3/users/tjark/correct/ADASS_MAGIC_particle_raw/'
+Data_format: 'dl1dh'
+Data:
+    file_list: '/data/deeplearning/datasets/MAGIC/particle.txt'
+    mode: 'stereo'
+    selected_telescope_types: ['LST_MAGIC_MAGICCam']
+    shuffle: true
+    seed: 1234
+    parameter_list: ['hillas_intensity', 'hillas_length', 'hillas_phi', 'hillas_psi', 'hillas_r', 'hillas_width',  'hillas_skewness', 'hillas_x', 'hillas_y', 'leakage_intensity_1', 'leakage_intensity_2']
+    # Raw images
+    image_channels: ['charge', 'peak_time']
+    # Cleaned images
+    #image_channels: ['image_mask', 'time_mask']
+    mapping_settings:
+        camera_types: ['MAGICCam']
+        mapping_method:
+            'MAGICCam': 'bilinear_interpolation'
+        padding:
+            'MAGICCam': 2
+        mask_interpolation: false
+    event_info:
+        - 'shower_primary_id'
+        - 'mc_energy'
+        - 'core_x'
+        - 'core_y'
+    #transforms:
+    #    -
+    #        name: 'ShowerPrimaryID'
+    #        args: {name: 'particletype', particle_id_col_name: 'shower_primary_id'}
+Input:
+    seed: 1234
+    batch_size: 64
+    prefetch_to_device:
+        device: "/gpu:0"
+        buffer_size: null
+Model:
+    model_directory: '/home/tjark/deeplearning/ctlearn/ctlearn/default_models/'
+    model: {module: 'res_net', function: 'res_net_model'}
+    tasks:
+        particletype: {class_names: ['proton', 'gamma'], fc_head: [512, 256, 2], weight: 1.0}
+Model Parameters:
+    res_net:
+        network: {module: 'resnet_engine', function: 'stacked_res_blocks'}
+        #init_layer: {filters: 64, kernel_size: 7, strides: 1}
+        #init_max_pool: {size: 3, strides: 2}
+        merge_telescopes: true
+        pretrained_weights: null
+    single_tel:
+        network: {module: 'basic', function: 'conv_block'}
+        pretrained_weights: null
+    cnn_rnn:
+        cnn_block: {module: 'basic', function: 'conv_block'}
+        pretrained_weights: null
+        dropout_rate: 0.5
+    variable_input_model:
+        cnn_block: {module: 'basic', function: 'conv_block'}
+        telescope_combination: 'feature_maps'
+        network_head: {module: 'basic', function: 'conv_head'}
+        pretrained_weights: null
+    basic:
+        conv_block:
+            layers:
+                - {filters: 32, kernel_size: 3}
+                - {filters: 32, kernel_size: 3}
+                - {filters: 64, kernel_size: 3}
+                - {filters: 128, kernel_size: 3}
+            max_pool: {size: 2, strides: 2}
+            bottleneck: null
+            batchnorm: false
+        fc_head:
+            layers: [1024, 512, 256, 128, 64]
+            batchnorm: false
+        conv_head:
+            layers:
+                - {filters: 64, kernel_size: 3}
+                - {filters: 128, kernel_size: 3}
+                - {filters: 256, kernel_size: 3}
+            final_avg_pool: true
+            batchnorm: false
+        batchnorm_decay: 0.99
+    resnet_engine:
+        stacked_res_blocks:
+            residual_block: 'bottleneck'
+            architecture:
+                - {filters: 48, blocks: 2}
+                - {filters: 96, blocks: 3}
+                - {filters: 128, blocks: 3}
+                - {filters: 256, blocks: 3}
+    attention: {mechanism: 'Squeeze-and-Excitation', ratio: 16}
+Training:
+    validation_split: 0.05
+    num_epochs: 10
+    optimizer: 'Adam'
+    adam_epsilon: 1.0e-8
+    base_learning_rate: 0.0001
+    scale_learning_rate: false
+    apply_class_weights: true
+    variables_to_train: null
+Evaluation:
+    tensorflow: true
+    start_delay_secs: 5000
+    throttle_secs: 5000
+Checkpoints:
+    save_checkpoints_steps: 5000
+Prediction:
+    file: 'ADASS_particle_C_Test'
+    prediction_file_lists:
+        'gamma': '/data/deeplearning/datasets/MAGIC/pointlike_test.txt'
+        'off': '/data/deeplearning/datasets/MAGIC/off_test.txt'
+        'proton': '/data/deeplearning/datasets/MAGIC/proton_test.txt'
+    save_labels: false
+    save_identifiers: false
+TensorFlow:
+    run_TFDBG: false

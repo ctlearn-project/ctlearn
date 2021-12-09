@@ -4,6 +4,7 @@ import logging
 import math
 from random import randint
 import os
+import glob
 from pprint import pformat
 import sys
 
@@ -13,7 +14,7 @@ import yaml
 import tensorflow as tf
 from tensorflow.python import debug as tf_debug
 
-from dl1_data_handler.reader import DL1DataReader
+from dl1_data_handler.reader import DL1DataReaderSTAGE1, DL1DataReaderDL1DH
 from ctlearn.default_models.basic import fc_head
 from ctlearn.data_loader import *
 from ctlearn.output_handler import *
@@ -67,13 +68,20 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     params['model'] = {**config['Model'], **config.get('Model Parameters', {})}
     tasks = config['Model']['tasks']
 
-    # Set up the DL1DataReader
+    # Set up the DL1DataReaderSTAGE1
     config['Data'] = setup_DL1DataReader(config, mode)
 
     # Create data reader
     logger.info("Loading data:")
     logger.info("For a large dataset, this may take a while...")
-    reader = DL1DataReader(**config['Data'])
+
+    if config['Data_format'] == 'stage1':
+        reader = DL1DataReaderSTAGE1(**config['Data'])
+    elif config['Data_format'] == 'dl1dh':
+        reader = DL1DataReaderDL1DH(**config['Data'])
+    else:
+        raise ValueError("Data format {} is not implemented in the DL1DH reader. Available data formats are 'stage1' and 'dl1dh'.".format(config['Data_format']))
+
     params['example_description'] = reader.example_description
 
     # Set up the TensorFlow dataset
@@ -154,7 +162,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                 for i, name in enumerate(tasks_dict['particletype']['class_names']):
                     logits[name] = logits['particletype_probabilities'][:, i]
             else:
-                expected_logits_dimension = 2 if task in ['direction', 'impact'] else 1
+                expected_logits_dimension = 2 if task in ['direction', 'delta_direction', 'impact'] else 1
                 logits[task] = fc_head(output, tasks_dict[task], expected_logits_dimension)
 
         if mode == tf.estimator.ModeKeys.PREDICT:
@@ -327,7 +335,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
         predictions = list(estimator.predict(predict_input_fn))
 
-        file = config['Prediction'].get('file', "experiment")
+        output_file = file = config['Prediction'].get('file', "experiment")
         if random_seed:
             file += "_{}".format(random_seed)
         output_file = os.path.abspath(os.path.join(os.path.dirname(__file__), model_dir+"/{}.h5".format(file)))
@@ -350,22 +358,30 @@ def main():
     parser = argparse.ArgumentParser(
         description=("Train/Predict with a CTLearn model."))
     parser.add_argument(
-        '--mode',
+        '--input', '-i',
+        help='input directory (not required when set in the config file)')
+    parser.add_argument(
+        '--pattern', '-p',
+        help='pattern to mask unwanted files for the data input directory',
+        default=["*"],
+        nargs='+')
+    parser.add_argument(
+        '--mode', '-m',
         default="train",
         help="Mode to run in (train/predict/train_and_predict/load_only)")
     parser.add_argument(
         'config_file',
         help="path to YAML configuration file with training options")
     parser.add_argument(
-        '--debug',
+        '--debug', '-d',
         action='store_true',
         help="print debug/logger messages")
     parser.add_argument(
-        '--log_to_file',
+        '--log_to_file', '-l',
         action='store_true',
         help="log to a file in model directory instead of terminal")
     parser.add_argument(
-        '--random_seed',
+        '--random_seed', '-s',
         default=0,
         type=int,
         help="overwrite the random seed")
@@ -393,15 +409,35 @@ def main():
         run_model(config, mode='train', debug=args.debug, log_to_file=args.log_to_file)
 
     if 'predict' in args.mode:
-        for key in config['Prediction']['prediction_file_lists']:
-            with open(args.config_file, 'r') as config_file:
-                config = yaml.safe_load(config_file)
-            config['Data']['seed'] = random_seed
-            if args.random_seed != 0:
-                config['Logging']['add_seed'] = True
-            config['Data']['shuffle'] = False
-            config['Prediction']['prediction_label'] = key
-            run_model(config, mode='predict', debug=args.debug, log_to_file=args.log_to_file)
+        if args.input:
+            abs_file_dir = os.path.abspath(args.input)
+            input_data = []
+            for pattern in args.pattern:
+                files = glob.glob(os.path.join(abs_file_dir, pattern))
+                if not files: continue
+                for file in files:
+
+                    with open(args.config_file, 'r') as config_file:
+                        config = yaml.safe_load(config_file)
+                    config['Data']['seed'] = random_seed
+                    if args.random_seed != 0:
+                        config['Logging']['add_seed'] = True
+                    config['Data']['shuffle'] = False
+
+                    config['Prediction']['file'] = file.split("/")[-1].replace("_S_", "_E_").replace("dl1", "dl2").replace(".h5","")
+                    config['Prediction']['prediction_label'] = 'data'
+                    config['Prediction']['prediction_file_lists'] = {'data': file}
+                    run_model(config, mode='predict', debug=args.debug, log_to_file=args.log_to_file)
+        else:
+            for key in config['Prediction']['prediction_file_lists']:
+                with open(args.config_file, 'r') as config_file:
+                    config = yaml.safe_load(config_file)
+                config['Data']['seed'] = random_seed
+                if args.random_seed != 0:
+                    config['Logging']['add_seed'] = True
+                config['Data']['shuffle'] = False
+                config['Prediction']['prediction_label'] = key
+                run_model(config, mode='predict', debug=args.debug, log_to_file=args.log_to_file)
 
 if __name__ == "__main__":
     main()
