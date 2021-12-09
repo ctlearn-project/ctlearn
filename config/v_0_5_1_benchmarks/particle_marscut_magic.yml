@@ -1,13 +1,17 @@
 Logging:
-    model_directory: '/data3/users/tjark/correct/MAGIC_energy_TRNmerged_marscut/'
+    model_directory: '/data3/users/tjark/correct/ADASS_MAGIC_particle_raw/'
 Data_format: 'dl1dh'
 Data:
-    file_list: '/data/deeplearning/datasets/MAGIC/diffuse_train.txt'
+    file_list: '/data/deeplearning/datasets/MAGIC/particle.txt'
     mode: 'stereo'
     selected_telescope_types: ['LST_MAGIC_MAGICCam']
     shuffle: true
     seed: 1234
-    image_channels: ['charge', 'peak_time', 'image_mask']
+    parameter_list: ['hillas_intensity', 'hillas_length', 'hillas_phi', 'hillas_psi', 'hillas_r', 'hillas_width',  'hillas_skewness', 'hillas_x', 'hillas_y', 'leakage_intensity_1', 'leakage_intensity_2']
+    # Raw images
+    image_channels: ['charge', 'peak_time']
+    # Cleaned images
+    #image_channels: ['image_mask', 'time_mask']
     mapping_settings:
         camera_types: ['MAGICCam']
         mapping_method:
@@ -16,23 +20,25 @@ Data:
             'MAGICCam': 2
         mask_interpolation: false
     event_info:
+        - 'shower_primary_id'
         - 'mc_energy'
-        - 'obs_id'
-        - 'event_id'
-    transforms:
-        - name: 'MCEnergy'
-          args: {'energy_col_name': 'mc_energy'}
+        - 'core_x'
+        - 'core_y'
+    #transforms:
+    #    -
+    #        name: 'ShowerPrimaryID'
+    #        args: {name: 'particletype', particle_id_col_name: 'shower_primary_id'}
 Input:
     seed: 1234
     batch_size: 64
     prefetch_to_device:
-        device: "/gpu:1"
+        device: "/gpu:0"
         buffer_size: null
 Model:
     model_directory: '/home/tjark/deeplearning/ctlearn/ctlearn/default_models/'
     model: {module: 'res_net', function: 'res_net_model'}
     tasks:
-        energy: {fc_head: [512, 256, 1], weight: 1.0}
+        particletype: {class_names: ['proton', 'gamma'], fc_head: [512, 256, 2], weight: 1.0}
 Model Parameters:
     res_net:
         network: {module: 'resnet_engine', function: 'stacked_res_blocks'}
@@ -84,12 +90,12 @@ Model Parameters:
     attention: {mechanism: 'Squeeze-and-Excitation', ratio: 16}
 Training:
     validation_split: 0.05
-    num_epochs: 5
+    num_epochs: 10
     optimizer: 'Adam'
     adam_epsilon: 1.0e-8
     base_learning_rate: 0.0001
     scale_learning_rate: false
-    apply_class_weights: false
+    apply_class_weights: true
     variables_to_train: null
 Evaluation:
     tensorflow: true
@@ -98,12 +104,10 @@ Evaluation:
 Checkpoints:
     save_checkpoints_steps: 5000
 Prediction:
-    file: 'magic_energy_marscut'
+    file: 'ADASS_particle_C_Test'
     prediction_file_lists:
-        'CrabNebulaW004_035': '/data/deeplearning/datasets/MAGIC/crab035.txt'
-        'CrabNebulaW004_215': '/data/deeplearning/datasets/MAGIC/crab215.txt'
-        'gamma': '/data/deeplearning/datasets/MAGIC/pointlike.txt'
-        'electron': '/data/deeplearning/datasets/MAGIC/diffuse_test.txt'
+        'gamma': '/data/deeplearning/datasets/MAGIC/pointlike_test.txt'
+        'off': '/data/deeplearning/datasets/MAGIC/off_test.txt'
         'proton': '/data/deeplearning/datasets/MAGIC/proton_test.txt'
     save_labels: false
     save_identifiers: false

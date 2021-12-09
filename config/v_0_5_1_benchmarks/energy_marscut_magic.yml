@@ -1,13 +1,17 @@
 Logging:
-    model_directory: '/data3/users/tjark/MAGIC_energy_TRN_marscut/'
+    model_directory: '/data3/users/tjark/correct/ADASS_MAGIC_energy_raw/'
 Data_format: 'dl1dh'
 Data:
-    file_list: '/data/deeplearning/datasets/MAGIC/diffuse.txt'
-    mode: 'mono'
+    file_list: '/data/deeplearning/datasets/MAGIC/diffuse_train.txt'
+    mode: 'stereo'
     selected_telescope_types: ['LST_MAGIC_MAGICCam']
     shuffle: true
     seed: 1234
-    image_channels: ['charge', 'peak_time', 'image_mask']
+    parameter_list: ['hillas_intensity', 'hillas_length', 'hillas_phi', 'hillas_psi', 'hillas_r', 'hillas_width',  'hillas_skewness', 'hillas_x', 'hillas_y', 'leakage_intensity_1', 'leakage_intensity_2']
+    # Raw images
+    image_channels: ['charge', 'peak_time']
+    # Cleaned images
+    #image_channels: ['image_mask', 'time_mask']
     mapping_settings:
         camera_types: ['MAGICCam']
         mapping_method:
@@ -19,6 +23,7 @@ Data:
         - 'mc_energy'
     transforms:
         - name: 'MCEnergy'
+          args: {'energy_col_name': 'mc_energy'}
 Input:
     seed: 1234
     batch_size: 64
@@ -35,6 +40,7 @@ Model Parameters:
         network: {module: 'resnet_engine', function: 'stacked_res_blocks'}
         #init_layer: {filters: 64, kernel_size: 7, strides: 1}
         #init_max_pool: {size: 3, strides: 2}
+        merge_telescopes: true
         pretrained_weights: null
     single_tel:
         network: {module: 'basic', function: 'conv_block'}
@@ -80,7 +86,7 @@ Model Parameters:
     attention: {mechanism: 'Squeeze-and-Excitation', ratio: 16}
 Training:
     validation_split: 0.05
-    num_epochs: 6
+    num_epochs: 10
     optimizer: 'Adam'
     adam_epsilon: 1.0e-8
     base_learning_rate: 0.0001
@@ -89,14 +95,16 @@ Training:
     variables_to_train: null
 Evaluation:
     tensorflow: true
-    start_delay_secs: 1020
-    throttle_secs: 1020
+    start_delay_secs: 5000
+    throttle_secs: 5000
 Checkpoints:
-    save_checkpoints_steps: 1000
+    save_checkpoints_steps: 5000
 Prediction:
-    file: 'magic_energy_marscut'
+    file: 'ADASS_energy_C_Test'
     prediction_file_lists:
-        'gamma': '/data/deeplearning/datasets/MAGIC/pointlike.txt'
+        'gamma': '/data/deeplearning/datasets/MAGIC/pointlike_test.txt'
+        'off': '/data/deeplearning/datasets/MAGIC/off_test.txt'
+        'proton': '/data/deeplearning/datasets/MAGIC/proton_test.txt'
     save_labels: false
     save_identifiers: false
 TensorFlow:

@@ -1,13 +1,17 @@
 Logging:
-    model_directory: '/data3/users/tjark/MAGIC_arrdir_TRN_marscut_correct2/'
+    model_directory: '/data3/users/tjark/correct/ADASS_MAGIC_arrdir_raw/'
 Data_format: 'dl1dh'
 Data:
-    file_list: '/data/deeplearning/datasets/MAGIC/diffuse.txt'
-    mode: 'mono'
+    file_list: '/data/deeplearning/datasets/MAGIC/diffuse_train.txt'
+    mode: 'stereo'
     selected_telescope_types: ['LST_MAGIC_MAGICCam']
     shuffle: true
     seed: 1234
-    image_channels: ['charge', 'peak_time', 'image_mask']
+    parameter_list: ['hillas_intensity', 'hillas_length', 'hillas_phi', 'hillas_psi', 'hillas_r', 'hillas_width',  'hillas_skewness', 'hillas_x', 'hillas_y', 'leakage_intensity_1', 'leakage_intensity_2']
+    # Raw images
+    image_channels: ['charge', 'peak_time']
+    # Cleaned images
+    #image_channels: ['image_mask', 'time_mask']
     mapping_settings:
         camera_types: ['MAGICCam']
         mapping_method:
@@ -16,26 +20,30 @@ Data:
             'MAGICCam': 2
         mask_interpolation: false
     event_info:
-    #    - 'mc_energy'
-        - 'delta_direction'
-    #transforms:
-    #    - name: 'MCEnergy'
+        - 'mc_energy'
+        - 'alt'
+        - 'az'
+    transforms:
+        - name: 'MCEnergy'
+        - name: 'AltAz'
+          args: {'alt_col_name': 'alt', 'az_col_name': 'az', 'deg2rad': false}
 Input:
     seed: 1234
     batch_size: 64
     prefetch_to_device:
-        device: "/gpu:1"
+        device: "/gpu:0"
         buffer_size: null
 Model:
     model_directory: '/home/tjark/deeplearning/ctlearn/ctlearn/default_models/'
     model: {module: 'res_net', function: 'res_net_model'}
     tasks:
-        delta_direction: {fc_head: [512, 256, 2], weight: 1.0}
+        direction: {fc_head: [512, 256, 2], weight: 1.0}
 Model Parameters:
     res_net:
         network: {module: 'resnet_engine', function: 'stacked_res_blocks'}
         #init_layer: {filters: 64, kernel_size: 7, strides: 1}
         #init_max_pool: {size: 3, strides: 2}
+        merge_telescopes: true
         pretrained_weights: null
     single_tel:
         network: {module: 'basic', function: 'conv_block'}
@@ -80,7 +88,7 @@ Model Parameters:
     attention: {mechanism: 'Squeeze-and-Excitation', ratio: 16}
 Training:
     validation_split: 0.05
-    num_epochs: 5
+    num_epochs: 10
     optimizer: 'Adam'
     adam_epsilon: 1.0e-8
     base_learning_rate: 0.0001
@@ -94,11 +102,12 @@ Evaluation:
 Checkpoints:
     save_checkpoints_steps: 5000
 Prediction:
-    file: 'magic_arrdir_marscut'
+    file: 'ADASS_arrdir_C_Test'
     prediction_file_lists:
-        'gamma': '/home/tjark/deeplearning/dl1dh_v0.9.0_magic_pointlike.txt'
-        'proton': '/home/tjark/deeplearning/dl1dh_v0.9.0_magic_proton.txt'
-    save_labels: true
-    save_identifiers: true
+        'gamma': '/data/deeplearning/datasets/MAGIC/pointlike_test.txt'
+        'off': '/data/deeplearning/datasets/MAGIC/off_test.txt'
+        'proton': '/data/deeplearning/datasets/MAGIC/proton_test.txt'
+    save_labels: false
+    save_identifiers: false
 TensorFlow:
     run_TFDBG: false
