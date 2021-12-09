@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(name='ctlearn',
-      version='0.5.0',
+      version='0.5.1',
       description='Deep learning for analysis and classification of image data for Imaging Atmospheric Cherenkov Telescopes, especially the Cherenkov Telescope Array (CTA).',
       url='https://github.com/ctlearn-project/ctlearn',
       license='BSD-3-Clause',

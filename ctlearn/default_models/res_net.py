@@ -6,9 +6,16 @@ import tensorflow as tf
 def res_net_model(features, model_params, example_description, training):
 
     # Reshape inputs into proper dimensions
-    for (name, f), d in zip(features.items(), example_description):
-        if name == 'image':
-            telescope_data = tf.reshape(f, [-1, *d['shape']])
+    merge_telescopes = model_params['res_net'].get('merge_telescopes', False)
+    if merge_telescopes:
+        # Reshape inputs into proper dimensions
+        for (name, f), d in zip(features.items(), example_description):
+            if name.endswith('images'):
+                telescope_data = tf.reshape(f, [-1, d['shape'][1], d['shape'][2], d['shape'][0]*d['shape'][3]])
+    else:
+        for (name, f), d in zip(features.items(), example_description):
+            if name == 'image':
+                telescope_data = tf.reshape(f, [-1, *d['shape']])
 
     # Load neural network model
     sys.path.append(model_params['model_directory'])
