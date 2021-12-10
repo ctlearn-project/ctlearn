@@ -7,7 +7,7 @@ channels:
     - ctlearn-project
 dependencies:
     - python=3.7
-    - dl1_data_handler=0.9.0
+    - dl1_data_handler=0.10.0
     - astropy
     - matplotlib
     - numpy
@@ -18,5 +18,6 @@ dependencies:
     - pip:
         # TensorFlow-GPU v1.15.3
         - tensorflow_gpu==1.15.3
+        - pyirf
         - ctaplot
 
