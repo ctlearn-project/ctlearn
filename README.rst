@@ -97,7 +97,9 @@ Dependencies
 
 * Python>=3.7
 * TensorFlow==1.15.3
+* ctapipe==0.10.5
 * DL1DataHandler==0.10.0
+* pyIRF
 * NumPy
 * PyYAML
 * Libraries used only in plotting scripts (optional)
@@ -105,7 +107,7 @@ Dependencies
   * Matplotlib
   * Pandas
   * Scikit-learn
-  * ctaplot==0.10.5
+  * ctaplot
 
 Download Data
 -------------
