@@ -362,8 +362,8 @@ def main():
         help='input directory (not required when set in the config file)')
     parser.add_argument(
         '--pattern', '-p',
-        help='pattern to mask unwanted files for the data input directory',
-        default=["*"],
+        help='pattern to mask unwanted files from the data input directory',
+        default=["*.h5"],
         nargs='+')
     parser.add_argument(
         '--mode', '-m',

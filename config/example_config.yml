@@ -1,3 +1,7 @@
+# Based on the deprecated DL1DH data format. Better to use example config
+# files in the latest benchmarks folder! This will be updated once MAGIC
+# users working with the official CTA DL1 data model.
+
 # Example config file containing all possible options for CTLearn, whether
 # they're required or optional, their datatypes, and default arguments.
 #

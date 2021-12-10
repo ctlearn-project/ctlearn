@@ -43,16 +43,16 @@ Then, create and enter a new environment with the dl1_data_handler:
 
 .. code-block:: bash
 
-   conda create -n ctlearn dl1_data_handler=0.8.3
+   conda create -n ctlearn dl1_data_handler=0.10.0
    conda activate ctlearn
 
-This should automatically install all dependencies (NOTE: this may take some time, as by default MKL is included as a dependency of NumPy and it is very large).
+This should automatically install most of the dependencies (NOTE: this may take some time, as by default MKL is included as a dependency of NumPy and it is very large).
 
-Then, install the ctlearn and tensorflow(-gpu) packages via pypi:
+Then, install the ctlearn and tensorflow(-gpu) packages plus other dependencies via pypi:
 
 .. code-block:: bash
 
-   pip install tensorflow-gpu==1.15.3 ctlearn
+   pip install pytest-cov tensorflow-gpu==1.15.3 ctapipe==0.10.5 pyirf ctlearn==0.5.1
 
 
 Installing with pip/setuptools from source for development
@@ -78,7 +78,7 @@ Finally, install CTLearn into the new conda environment via pypi:
 .. code-block:: bash
 
    conda activate ctlearn
-   pip install ctlearn
+   pip install ctlearn==0.5.1
 
 or with pip from source:
 
@@ -97,7 +97,7 @@ Dependencies
 
 * Python>=3.7
 * TensorFlow==1.15.3
-* DL1DataHandler==0.8.3
+* DL1DataHandler==0.10.0
 * NumPy
 * PyYAML
 * Libraries used only in plotting scripts (optional)
@@ -105,12 +105,12 @@ Dependencies
   * Matplotlib
   * Pandas
   * Scikit-learn
-  * ctaplot
+  * ctaplot==0.10.5
 
 Download Data
 -------------
 
-CTLearn can load and process data in the HDF5 PyTables format produced from simtel files by `DL1DataHandler <https://github.com/cta-observatory/dl1-data-handler>`_.
+CTLearn can load and process data in the HDF5 PyTables format produced from simtel files by `ctapipe <https://github.com/cta-observatory/ctapipe>`_ and `DL1DataHandler <https://github.com/cta-observatory/dl1-data-handler>`_.
 
 Configure a Run
 ---------------
@@ -178,7 +178,7 @@ Run CTLearn from the command line:
 
 .. code-block:: bash
 
-   ctlearn myconfig.yml [--mode <MODE>] [--debug] [--log_to_file] [--random_seed <SEED>]
+   ctlearn myconfig.yml [--mode,-m <MODE>] [--debug,-d] [--log_to_file,-l] [--random_seed,-s  <SEED>]
 
 ``--mode <MODE>``\ : Set run mode with ``<MODE>`` as ``train``\ , ``predict``\ , ``train_and_predict``\ , or ``load_only``. If not set, defaults to ``train``.
 
@@ -187,6 +187,16 @@ Run CTLearn from the command line:
 ``--log_to_file``\ : Save CTLearn logging messages to a timestamped file in the model directory instead of printing to stdout.
 
 ``--random_seed <SEED>``\ : Overwrite the random seed in the config file with ``<SEED>`` (4 digits).
+
+In predict mode, one can directly pass the input files:
+
+.. code-block:: bash
+
+   ctlearn myconfig.yml --mode predict [--input,-i <INPUT_DIR>] [--pattern,-p <PATTERN>]
+
+``--input <INPUT_DIR>``\ : Overwrite the prediction_file_lists in the config file with ``<INPUT_DIR>``.
+
+``--pattern <PATTERN>``\ : multiple pattern to mask unwanted files from the data ``<INPUT_DIR>``. Default ``*.h5``.
 
 Alternatively, import CTLearn as a module in a Python script:
 
