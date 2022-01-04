@@ -2,14 +2,14 @@ import logging
 import numpy as np
 import pandas as pd
 
-def write_output(h5file, reader, indices, example_description, predictions, prediction_label='prediction'):
+def write_output(h5file, reader, indices, predictions, tasks, prediction_label='prediction'):
     data = {}
     tel_pointing = np.array([0.0, 0.0], np.float32)
     if reader.pointing_mode == 'fix_subarray':
         tel_pointing = reader.pointing
     energy_unit = 'TeV'
     for i, idx in enumerate(indices):
-        for val, des in zip(reader[idx], example_description):
+        for val, des in zip(reader[idx], reader.example_description):
             if des['name'] == 'pointing':
                 tel_pointing = val
             elif des['name'] == 'trigger_time':
@@ -68,41 +68,25 @@ def write_output(h5file, reader, indices, example_description, predictions, pred
 
         prediction = predictions[i]
         # Gamma/hadron classification
-        if 'particletype' in prediction and 'particletype_probabilities' in prediction:
+        if 'particletype' in tasks:
             if i == 0:
-                data['reco_particle'], data['reco_gammaness'] = [],[]
-            data['reco_particle'].append(prediction['particletype'])
-            data['reco_gammaness'].append(prediction['particletype_probabilities'][1])
+                data['reco_gammaness'] = []
+            data['reco_gammaness'].append(prediction[0])
         # Energy regression
-        if 'energy' in prediction:
+        if 'energy' in tasks:
             if i == 0:
                 data['reco_energy'] = []
             if energy_unit == 'log(TeV)':
-                prediction['energy'][0] = np.power(10,prediction['energy'][0])
-            data['reco_energy'].append(prediction['energy'][0])
+                data['reco_energy'].append(np.power(10,prediction[0]))
+            else:
+                data['reco_energy'].append(prediction[0])
         # Arrival direction regression
-        if 'direction' in prediction:
+        if 'direction' in tasks:
             if i == 0:
-                data['reco_altitude'], data['reco_azimuth'] = [],[]
-            data['reco_altitude'].append(prediction['direction'][0] + tel_pointing[0])
-            data['reco_azimuth'].append(prediction['direction'][1] + tel_pointing[1])
-        if 'delta_direction' in prediction:
-            if i == 0:
-                data['reco_altitude'], data['reco_azimuth'] = [],[]
-            data['reco_altitude'].append(prediction['delta_direction'][0] + tel_pointing[0])
-            data['reco_azimuth'].append(prediction['delta_direction'][1] + tel_pointing[1])
-        # Impact parameter regression
-        if 'impact' in prediction:
-            if i == 0:
-                data['reco_impact_x'], data['reco_impact_y'] = [],[]
-            data['reco_impact_x'].append(prediction['impact'][0])
-            data['reco_impact_y'].append(prediction['impact'][1])
-        # Shower maximum regression
-        if 'showermaximum' in prediction:
-            if i == 0:
-                data['reco_x_max'] = []
-            data['reco_x_max'].append(prediction['showermaximum'][0])
-
+                data['reco_altitude'], data['reco_azimuth'] = [], []
+            data['reco_altitude'].append(prediction[0] +  tel_pointing[0])
+            data['reco_azimuth'].append(prediction[1] + tel_pointing[1])
+        
         # Store pointing
         if reader.pointing_mode == 'subarray':
             if i == 0:

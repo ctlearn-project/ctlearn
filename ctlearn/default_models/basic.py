@@ -1,80 +1,79 @@
 import tensorflow as tf
 from ctlearn.default_models.attention import squeeze_excite_block, channel_squeeze_excite_block, spatial_squeeze_excite_block
 
-def conv_block(inputs, training, params, reuse=None):
+def conv_block(inputs, params):
 
-    with tf.variable_scope("Basic_conv_block", reuse=reuse):
+    # Get standard hyperparameters
+    bn_momentum = params.get('batchnorm_decay', 0.99)
+    # Get custom hyperparameters
+    filters_list = [layer['filters'] for layer in
+                    params['basic']['conv_block']['layers']]
+    kernel_sizes = [layer['kernel_size'] for layer in
+                    params['basic']['conv_block']['layers']]
+    numbers_list = [layer.get('number', 1) for layer in
+                    params['basic']['conv_block']['layers']]
+    max_pool = params['basic']['conv_block']['max_pool']
+    bottleneck_filters = params['basic']['conv_block']['bottleneck']
+    batchnorm = params['basic']['conv_block'].get('batchnorm', False)
+    attention = params.get('attention')
 
-        # Get standard hyperparameters
-        bn_momentum = params.get('batchnorm_decay', 0.99)
-        # Get custom hyperparameters
-        filters_list = [layer['filters'] for layer in
-                params['basic']['conv_block']['layers']]
-        kernel_sizes = [layer['kernel_size'] for layer in
-                params['basic']['conv_block']['layers']]
-        numbers_list = [layer.get('number', 1) for layer in
-                        params['basic']['conv_block']['layers']]
-        max_pool = params['basic']['conv_block']['max_pool']
-        bottleneck_filters = params['basic']['conv_block']['bottleneck']
-        batchnorm = params['basic']['conv_block'].get('batchnorm', False)
-        attention = params.get('attention')
+    x = inputs
+    if batchnorm:
+        x = tf.keras.layers.BatchNormalization(momentum=bn_momentum)(x)
 
-        x = inputs
+    for i, (filters, kernel_size, number) in enumerate(
+            zip(filters_list, kernel_sizes, numbers_list)):
+        for nr in range(number):
+            x = tf.keras.layers.Conv2D(filters=filters, kernel_size=kernel_size,
+                padding="same", name="conv_{}_{}".format(i + 1, nr + 1))(x)
+            x = tf.keras.layers.ReLU(name="conv_{}_{}_relu".format(i + 1, nr + 1))(x)
+        if max_pool:
+            x = tf.keras.layers.MaxPool2D(pool_size=max_pool['size'],
+                strides=max_pool['strides'], name="pool_{}".format(i + 1))(x)
         if batchnorm:
-            x = tf.layers.batch_normalization(x, momentum=bn_momentum,
-                                              training=training)
+            x = tf.keras.layers.BatchNormalization(momentum=bn_momentum)(x)
 
-        for i, (filters, kernel_size, number) in enumerate(
-                zip(filters_list, kernel_sizes, numbers_list)):
-            for nr in range(number):
-                x = tf.layers.conv2d(x, filters=filters, kernel_size=kernel_size,
-                                     activation=tf.nn.relu, padding="same", reuse=reuse,
-                                     name="conv_{}_{}".format(i + 1, nr + 1))
-            if max_pool:
-                x = tf.layers.max_pooling2d(x, pool_size=max_pool['size'],
-                                            strides=max_pool['strides'], name="pool_{}".format(i + 1))
-            if batchnorm:
-                x = tf.layers.batch_normalization(x, momentum=bn_momentum,
-                                                  training=training)
+    # bottleneck layer
+    if bottleneck_filters:
+        x = tf.keras.layers.Conv2D(filters=bottleneck_filters, kernel_size=1,
+            padding="same", name="bottleneck")(x)
+        x = tf.keras.layers.ReLU(name="bottleneck_relu")(x)
+        if batchnorm:
+            x = tf.keras.layers.BatchNormalization(momentum=bn_momentum)(x)
 
-        # bottleneck layer
-        if bottleneck_filters:
-            x = tf.layers.conv2d(x, filters=bottleneck_filters,
-                    kernel_size=1, activation=tf.nn.relu, padding="same",
-                    reuse=reuse, name="bottleneck")
-            if batchnorm:
-                x = tf.layers.batch_normalization(x, momentum=bn_momentum,
-                        training=training)
+    # Attention mechanism
+    if attention is not None:
+        if attention['mechanism'] == 'Squeeze-and-Excitation':
+            x = squeeze_excite_block(x, attention['ratio'], name='se')
+        elif attention['mechanism'] == 'Channel-Squeeze-and-Excitation':
+            x = channel_squeeze_excite_block(x, attention['ratio'], name='cse')
+        elif attention['mechanism'] == 'Spatial-Squeeze-and-Excitation':
+            x = spatial_squeeze_excite_block(x, name='sse')
 
-        # Attention mechanism
-        if attention is not None:
-            if attention['mechanism'] == 'Squeeze-and-Excitation':
-                x = squeeze_excite_block(x, attention['ratio'], name='se')
-            elif attention['mechanism'] == 'Channel-Squeeze-and-Excitation':
-                x = channel_squeeze_excite_block(x, attention['ratio'], name='cse')
-            elif attention['mechanism'] == 'Spatial-Squeeze-and-Excitation':
-                x = spatial_squeeze_excite_block(x, name='sse')
+    return x
 
-        return x
+def fully_connect(inputs, layers=None, expected_logits_dimension=None, name=None):
 
-def fc_head(inputs, tasks_dict, expected_logits_dimension):
-
-    layers = tasks_dict['fc_head']
+    if not layers:
+        layers = params['basic']['fully_connect']['layers']
+        expected_logits_dimension = layers[-1]
+        name = params['basic']['fully_connect'].get('name', 'default')
 
     if layers[-1] != expected_logits_dimension:
-        print("Warning:fc_head: Last logit unit '{}' of the fc_head array differs from the expected_logits_dimension '{}'. The expected logits dimension '{}' will be appended.".format(layers[-1], expected_logits_dimension))
+        print("Warning:fully_connect:layers: Last logit unit '{}' of the layers array differs from the expected_logits_dimension '{}'. The expected logits dimension '{}' will be appended.".format(layers[-1], expected_logits_dimension))
         layers.append(expected_logits_dimension)
 
     x = inputs
-    activation=tf.nn.relu
     for i, units in enumerate(layers):
-        if i == len(layers)-1:
-            activation=None
-        x = tf.layers.dense(x, units=units, activation=activation,
-                name="fc_{}_{}".format(tasks_dict['name'], i+1))
+        if i != len(layers)-1:
+            x = tf.keras.layers.Dense(units=units, name="fc_{}_{}".format(name, i+1))(x)
+            x = tf.keras.layers.ReLU(name="fc_{}_{}_relu".format(name, i+1))(x)
+        else:
+            x = tf.keras.layers.Dense(units=units, name=name)(x)
+
     return x
 
-def conv_head(inputs, training, params):
+def conv_head(inputs, params):
 
     # Get standard hyperparameters
     bn_momentum = params.get('batchnorm_decay', 0.99)
@@ -90,19 +89,18 @@ def conv_head(inputs, training, params):
     x = inputs
 
     for i, (filters, kernel_size) in enumerate(zip(filters_list, kernel_sizes)):
-        x = tf.layers.conv2d(x, filters=filters, kernel_size=kernel_size,
-                activation=tf.nn.relu, padding="same",
-                name="conv_{}".format(i+1))
+        x = tf.keras.layers.Conv2D(filters=filters, kernel_size=kernel_size,
+            padding="same", name="conv_{}".format(i+1))(x)
+        x = tf.keras.layers.ReLU(name="conv_{}_relu".format(i+1))(x)
+
         if batchnorm:
-            x = tf.layers.batch_normalization(x, momentum=bn_momentum,
-                    training=training)
+            x = tf.keras.layers.BatchNormalization(momentum=bn_momentum)(x)
 
     # Average over remaining width and length
     if final_avg_pool:
-        x = tf.layers.average_pooling2d(x,
-                pool_size=x.get_shape().as_list()[1],
-                strides=1, name="global_avg_pool")
+        x = tf.keras.layers.AveragePooling2D(pool_size=x.get_shape().as_list()[1],
+            strides=1, name="global_avg_pool")(x)
 
-    flat = tf.layers.flatten(x)
+    flat = tf.keras.layers.Flatten()(x)
 
     return flat

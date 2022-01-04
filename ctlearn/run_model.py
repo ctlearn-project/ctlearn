@@ -15,14 +15,10 @@ import tensorflow as tf
 from tensorflow.python import debug as tf_debug
 
 from dl1_data_handler.reader import DL1DataReaderSTAGE1, DL1DataReaderDL1DH
-from ctlearn.default_models.basic import fc_head
-from ctlearn.data_loader import *
+from ctlearn.data_loader import KerasBatchGenerator
 from ctlearn.output_handler import *
 from ctlearn.utils import *
 
-# Disable Tensorflow info and warning messages (not error messages)
-#os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
-#tf.logging.set_verbosity(tf.logging.WARN)
 
 def run_model(config, mode="train", debug=False, log_to_file=False):
 
@@ -50,31 +46,11 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     logger.info("Logging has been correctly set up")
 
-    # Create params dictionary that will be passed to the model_fn
-    params = {}
-
-    # Load options to specify the model
-    try:
-        model_directory = config['Model']['model_directory']
-        if model_directory is None:
-            raise KeyError
-    except KeyError:
-        model_directory = os.path.abspath(os.path.join(
-            os.path.dirname(__file__), "default_models/"))
-    sys.path.append(model_directory)
-    model_module = importlib.import_module(config['Model']['model']['module'])
-    model = getattr(model_module, config['Model']['model']['function'])
-
-    params['model'] = {**config['Model'], **config.get('Model Parameters', {})}
-    tasks = config['Model']['tasks']
-
-    # Set up the DL1DataReaderSTAGE1
+    # Set up the DL1DataReader
     config['Data'] = setup_DL1DataReader(config, mode)
-
     # Create data reader
     logger.info("Loading data:")
-    logger.info("For a large dataset, this may take a while...")
-
+    logger.info("  For a large dataset, this may take a while...")
     if config['Data_format'] == 'stage1':
         reader = DL1DataReaderSTAGE1(**config['Data'])
     elif config['Data_format'] == 'dl1dh':
@@ -82,258 +58,231 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     else:
         raise ValueError("Data format {} is not implemented in the DL1DH reader. Available data formats are 'stage1' and 'dl1dh'.".format(config['Data_format']))
 
-    params['example_description'] = reader.example_description
+    # Create a MirroredStrategy.
+    strategy = tf.distribute.MirroredStrategy()
+    logger.info('Number of devices: {}'.format(strategy.num_replicas_in_sync))
 
-    # Set up the TensorFlow dataset
-    if 'Input' not in config:
-        config['Input'] = {}
-
-    config['Input'] = setup_TFdataset_format(config, params['example_description'], tasks)
-    batch_size = config['Input'].get('batch_size', 1)
-
-    # Load either training or prediction options
-    # and log information about the data set
+    # Set up the KerasBatchGenerator
     indices = list(range(len(reader)))
 
-    # Write the training configuration in the params dict
-    params['training'] = config['Training']
+    if 'Input' not in config:
+        config['Input'] = {}
+    batch_size_per_worker = config['Input'].get('batch_size_per_worker', 64)
+    batch_size = batch_size_per_worker * strategy.num_replicas_in_sync
 
-    if mode in ['train', 'load_only']:
+    if mode == 'train':
 
-        # Write the training configuration in the params dict
-        params['training'] = config['Training']
-
-        validation_split = config['Training']['validation_split']
+        if 'Training' not in config:
+            config['Training'] = {}
+        validation_split = np.float(config['Training'].get('validation_split', 0.1))
         if not 0.0 < validation_split < 1.0:
             raise ValueError("Invalid validation split: {}. "
-                             "Must be between 0.0 and 1.0".format(
-                                 validation_split))
+                            "Must be between 0.0 and 1.0".format(validation_split))
         num_training_examples = math.floor((1 - validation_split) * len(reader))
         training_indices = indices[:num_training_examples]
         validation_indices = indices[num_training_examples:]
-        logger.info("Number of epochs: {}".format(
-            config['Training']['num_epochs']))
-        logger.info("Number of training steps per epoch: {}".format(
-            int(num_training_examples / batch_size)))
 
-    if mode == 'load_only':
+        training_data = KerasBatchGenerator(reader, training_indices, batch_size=batch_size)
+        validation_data = KerasBatchGenerator(reader, validation_indices, batch_size=batch_size)
+    elif mode == 'predict':
+        data = KerasBatchGenerator(reader, indices, batch_size=batch_size, shuffle=False)
 
-        log_examples(reader, indices, tasks, 'total dataset')
-        log_examples(reader, training_indices, tasks, 'training')
-        log_examples(reader, validation_indices, tasks, 'validation')
-        # If only loading data, can end now that dataset logging is complete
-        return
+        # Keras is only considering the last complete batch.
+        # In prediction mode we don't want to loose the last
+        # uncomplete batch, so we are creating an adiitional
+        # batch generator for the remaining events.
+        rest = len(indices) % batch_size
+        rest_indices = indices[-rest:]
+        rest_data = KerasBatchGenerator(reader, rest_indices, batch_size=rest, shuffle=False)
 
-    if mode == 'train' and config['Training']['apply_class_weights']:
-        num_class_examples = log_examples(reader, training_indices,
-                                          tasks, 'training',
-                                          group_by=['particletype'])
-        try:
-            class_labels = tasks['particletype']['class_names']
-        except KeyError:
-            raise ValueError("Applying class weights is supported"
-                             " only for the particletype task.")
-        class_weights = compute_class_weights(class_labels, num_class_examples)
-        params['training']['class_weights'] = class_weights
+    # Load or construct model
+    model_file = config['Model'].get('model_file', None)
+    logger.info("Setting up model:")
 
-    # Load options for TensorFlow
-    run_tfdbg = config.get('TensorFlow', {}).get('run_TFDBG', False)
+    # Open a strategy scope.
+    with strategy.scope():
 
-    # Define model function with model, mode (train/predict),
-    # metrics, optimizer, learning rate, etc.
-    # to pass into TF Estimator
-    def model_fn(features, labels, mode, params):
+        if 'saved_model.pb' in np.array([os.listdir(model_dir)]):
+            logger.info("  Loading model from '{}'.".format(model_dir))
+            model = tf.keras.models.load_model(model_dir)
+        else:
+            try:
+                model_directory = config['Model']['model_directory']
+                if model_directory is None:
+                    raise KeyError
+            except KeyError:
+                model_directory = os.path.abspath(os.path.join(
+                    os.path.dirname(__file__), "default_models/"))
+            sys.path.append(model_directory)
+            logger.info("  Constructing model from config.")
+            # Write the model parameters in the params dictionary
+            model_params = {**config['Model'], **config.get('Model Parameters', {})}
 
-        training = True if mode == tf.estimator.ModeKeys.TRAIN else False
-        training_params = params['training']
+            # Backbone model
+            backbone_module = importlib.import_module(config['Model']['backbone']['module'])
+            backbone_model = getattr(backbone_module, config['Model']['backbone']['function'])
+            backbone_inputs, backbone = backbone_model(training_data, model_params)
+            backbone_output = backbone(backbone_inputs)
 
-        output = model(features, params['model'], params['example_description'], training)
+            # Head model
+            head_module = importlib.import_module(config['Model']['head']['module'])
+            head_model = getattr(head_module, config['Model']['head']['function'])
+            logits, losses, loss_weights, metrics = head_model(inputs=backbone_output,
+                tasks=config['Reco'],
+                params=model_params)
 
-        logits = {}
-        tasks_dict = params['model']['tasks']
-        for task in tasks_dict:
-            tasks_dict[task].update({'name': task})
-            if task == 'particletype':
-                expected_logits_dimension = len(tasks_dict[task]['class_names'])
-                classification_logit = fc_head(output, tasks_dict[task], expected_logits_dimension)
-                logits['particletype_probabilities'] = tf.nn.softmax(classification_logit)
-                logits[task] = tf.cast(tf.argmax(logits['particletype_probabilities'], axis=1),
-                                            tf.int32, name="predicted_classes")
-                for i, name in enumerate(tasks_dict['particletype']['class_names']):
-                    logits[name] = logits['particletype_probabilities'][:, i]
-            else:
-                expected_logits_dimension = 2 if task in ['direction', 'delta_direction', 'impact'] else 1
-                logits[task] = fc_head(output, tasks_dict[task], expected_logits_dimension)
+            model = tf.keras.Model(backbone_inputs, logits, name='CTLearn_model')
 
-        if mode == tf.estimator.ModeKeys.PREDICT:
-            return tf.estimator.EstimatorSpec(mode=mode, predictions=logits)
+        if config['Model'].get('plot_model', False):
+            logger.info("  Saving the backbone architecture in '{}/backbone.png'.".format(model_dir))
+            tf.keras.utils.plot_model(backbone, to_file=model_dir+'/backbone.png', show_shapes=True, show_layer_names=True)
+            logger.info("  Saving the model architecture in '{}/model.png'.".format(model_dir))
+            tf.keras.utils.plot_model(model, to_file=model_dir+'/model.png', show_shapes=True, show_layer_names=True)
 
-        training_params = params['training']
-        losses = []
-        for task in tasks_dict:
-            if task == 'particletype':
-                particletype = tf.cast(labels['particletype'], tf.int32,
-                                   name="true_classes")
-                # Get class weights
-                if training_params['apply_class_weights']:
-                    class_weights = tf.constant(training_params['class_weights'],
-                                                dtype=tf.float32, name="class_weights")
-                    weights = tf.gather(class_weights, particletype, name="weights")
-                else:
-                    weights = 1.0
-                num_classes = len(tasks_dict['particletype']['class_names'])
-                onehot_labels = tf.one_hot(indices=particletype, depth=num_classes)
-                # compute cross-entropy loss
-                loss = tf.losses.softmax_cross_entropy(onehot_labels=onehot_labels,
-                                                       logits=classification_logit, weights=weights)
+        logger.info("  Model has been correctly set up from config.")
 
-                # add regularization loss
-                regularization_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
-                loss = tf.add_n([loss] + regularization_losses)
-                task_loss = tf.math.multiply(loss, tf.cast(tasks_dict[task]['weight'], tf.float32))
-            else:
-                loss = tf.losses.absolute_difference(
-                           labels[task],
-                           logits[task],
-                           weights=1.0,
-                           loss_collection=tf.GraphKeys.LOSSES,
-                           reduction=tf.losses.Reduction.SUM_BY_NONZERO_WEIGHTS
-                       )
-
-                # add regularization loss
-                regularization_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
-                loss = tf.add_n([loss] + regularization_losses)
-                task_loss = tf.math.multiply(loss, tf.cast(tasks_dict[task]['weight'], tf.float32))
-            losses.append(task_loss)
-
-        # Combine the losses
-        merged_loss = tf.math.add_n(losses)
-        # add regularization loss
-        regularization_losses = tf.get_collection(tf.GraphKeys.REGULARIZATION_LOSSES)
-        final_loss = tf.add_n([merged_loss] + regularization_losses)
-
+        optimizer = config['Training'].get('optimizer', 'Adam')
+        logger.info("  Optimizer: {}".format(optimizer))
+        adam_epsilon = float(config['Training'].get('adam_epsilon', 1.0e-8))
+        learning_rate = float(config['Training'].get('base_learning_rate',  0.0001))
+        logger.info("  Learning rate: {}".format(learning_rate))
+        # ToDo: Implement this in Keras
         # Scale the learning rate so batches with fewer triggered
         # telescopes don't have smaller gradients
         # Only apply learning rate scaling for array-level models
-        if (training_params['scale_learning_rate'] and params['model']['function'] in ['cnn_rnn_model', 'variable_input_model']):
-            trigger_rate = tf.reduce_mean(tf.cast(
-                            features['telescope_triggers'], tf.float32),
-                            name="trigger_rate")
-            trigger_rate = tf.maximum(trigger_rate, 0.1) # Avoid division by 0
-            scaling_factor = tf.reciprocal(trigger_rate, name="scaling_factor")
-            learning_rate = tf.multiply(scaling_factor,
-                                        training_params['base_learning_rate'],
-                                        name="learning_rate")
-        else:
-            learning_rate = training_params['base_learning_rate']
+        #if (training_params['scale_learning_rate'] and params['model']['function'] in ['cnn_rnn_model', 'variable_input_model']):
+        #    trigger_rate = tf.reduce_mean(tf.cast(
+        #                    features['telescope_triggers'], tf.float32),
+        #                    name="trigger_rate")
+        #    trigger_rate = tf.maximum(trigger_rate, 0.1) # Avoid division by 0
+        #    scaling_factor = tf.reciprocal(trigger_rate, name="scaling_factor")
+        #    learning_rate = tf.multiply(scaling_factor,
+        #                                training_params['base_learning_rate'],
+        #                                name="learning_rate")
+        #else:
+        #    learning_rate = training_params['base_learning_rate']
 
         # Select optimizer with appropriate arguments
         # Dict of optimizer_name: (optimizer_fn, optimizer_args)
         optimizers = {
-            'Adadelta': (tf.train.AdadeltaOptimizer,
-                         dict(learning_rate=learning_rate)),
-            'Adam': (tf.train.AdamOptimizer,
-                     dict(learning_rate=learning_rate,
-                     epsilon=training_params['adam_epsilon'])),
-            'RMSProp': (tf.train.RMSPropOptimizer,
+            'Adadelta': (tf.keras.optimizers.Adadelta,
+                            dict(learning_rate=learning_rate)),
+            'Adam': (tf.keras.optimizers.Adam,
+                        dict(learning_rate=learning_rate, epsilon=adam_epsilon)),
+            'RMSProp': (tf.keras.optimizers.RMSprop,
                         dict(learning_rate=learning_rate)),
-            'SGD': (tf.train.GradientDescentOptimizer,
+            'SGD': (tf.keras.optimizers.SGD,
                     dict(learning_rate=learning_rate))
             }
-
-        optimizer_fn, optimizer_args = optimizers[training_params['optimizer']]
+        optimizer_fn, optimizer_args = optimizers[optimizer]
         optimizer = optimizer_fn(**optimizer_args)
-
-        var_list = None
-        if training_params['variables_to_train'] is not None:
-            var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES,
-                                         training_params['variables_to_train'])
-
-        # Define train op with update ops dependency for batch norm
-        update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
-        with tf.control_dependencies(update_ops):
-            train_op = optimizer.minimize(
-                final_loss,
-                global_step=tf.train.get_global_step(),
-                var_list=var_list)
-
-        # Define the evaluation metrics
-        eval_metric_ops = {}
-        if config['Evaluation']['tensorflow']:
-            for task in tasks_dict:
-                if task == 'particletype':
-                    eval_metric_ops['accuracy'] = tf.metrics.accuracy(particletype,
-                                                                      logits[task])
-                    eval_metric_ops['auc'] = tf.metrics.auc(particletype,
-                                                            logits['gamma'])
-
-                    # add class-wise accuracies
-                    for i, name in enumerate(tasks_dict['particletype']['class_names']):
-                        weights = tf.cast(tf.equal(particletype, tf.constant(i)), tf.int32)
-                        eval_metric_ops['accuracy_' + name] = tf.metrics.accuracy(
-                            particletype, logits[task], weights=weights)
-                else:
-                    eval_metric_ops['mae_' + task] = tf.metrics.mean_absolute_error(
-                           labels[task], logits[task], weights=None)
-
-        return tf.estimator.EstimatorSpec(
-            mode=mode,
-            loss=final_loss,
-            train_op=train_op,
-            eval_metric_ops=eval_metric_ops)
-
-    # Control tf checkpoints
-    tf_config = None
-    save_checkpoints_steps = config['Checkpoints'].get('save_checkpoints_steps', None)
-    if save_checkpoints_steps:
-        tf_config = tf.estimator.RunConfig(save_checkpoints_steps=save_checkpoints_steps)
-
-    estimator = tf.estimator.Estimator(
-        model_fn,
-        model_dir=model_dir,
-        config=tf_config,
-        params=params)
-
-    hooks = None
-    # Activate Tensorflow debugger if appropriate option set
-    if run_tfdbg:
-        if not isinstance(hooks, list):
-            hooks = []
-        hooks.append(tf_debug.LocalCLIDebugHook())
+        logger.info("  Compiling model.")
+        model.compile(
+            optimizer=optimizer,
+            loss=losses,
+            metrics=metrics)
 
     if mode == 'train':
+        logger.info("Setting up training:")
+        logger.info("  Validation split: {}".format(validation_split))
+
+        if not 0.0 < validation_split < 1.0:
+            raise ValueError("Invalid validation split: {}. "
+                             "Must be between 0.0 and 1.0".format(
+                                 validation_split))
+        num_epochs = int(config['Training'].get('num_epochs', 10))
+        logger.info("  Number of epochs: {}".format(num_epochs))
+        logger.info("  Size of the batches per worker: {}".format(batch_size_per_worker))
+        logger.info("  Size of the batches: {}".format(batch_size))
+        num_training_examples = math.floor((1 - validation_split) * len(reader))
+        logger.info("  Number of training steps per epoch: {}".format(
+            int(num_training_examples / batch_size)))
+
+        verbose = int(config['Training'].get('verbose', 2))
+        logger.info("  Verbosity mode: {}".format(verbose))
+        workers = int(config['Training'].get('workers', 1))
+        # ToDo: Fix multiprocessing issue
+        workers = 1
+        logger.info("  Number of workers: {}".format(workers))
+        use_multiprocessing = True if workers > 1 else False
+        logger.info("  Use of multiprocessing: {}".format(use_multiprocessing))
+
+        # ToDo: Come up with a better solution for the callbacks
+        # Set up the callbacks
+        monitor='batch_loss'
+        monitor_mode='min'
+        val_freq = int((num_training_examples / batch_size) / 5)
+        logger.info("  Validation frequency: {}".format(val_freq))
+
+        if 'particletype' in config['Reco'] and len(config['Reco'])==1:
+            monitor='batch_auc'
+            monitor_mode='max'
+        # Model checkpoint callback
+        model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
+            filepath=model_dir,
+            monitor=monitor,
+            mode=monitor_mode,
+            save_freq=val_freq,
+            save_best_only=True)
+        # Tensorboard callback
+        tensorboard_callback = tf.keras.callbacks.TensorBoard(
+            log_dir=model_dir+'/tensorboard_logs',
+            histogram_freq=1,
+            update_freq=val_freq)
+        # Early stopping
+        #early_stopping_callback = tf.keras.callbacks.EarlyStopping(
+        #    monitor=monitor,
+        #    patience=5,
+        #    mode=monitor_mode,
+        #    restore_best_weights=True)
+        #callbacks = [model_checkpoint_callback, tensorboard_callback, early_stopping_callback]
+
+        callbacks = [model_checkpoint_callback, tensorboard_callback]
+        
+        # Class weights calculation
+        # Scaling by total/2 helps keep the loss to a similar magnitude.
+        # The sum of the weights of all examples stays the same.
+        class_weight = None
+        if len(reader.simulated_particles) > 2:
+            logger.info("  Apply class weights:")
+            shower_primary_id_to_class = {
+                0: 1,    # gamma
+                101: 0,  # proton
+                1: 2,    # electron
+                255: 0   # MAGIC real data
+            }
+            total = reader.simulated_particles['total']
+            logger.info("    Total number: {}".format(total))
+            class_weight = {}
+            for particle_id, num_particles in reader.simulated_particles.items():
+                if particle_id != 'total':
+                    logger.info("    Breakdown by {}: {}".format(shower_primary_id_to_class[particle_id], num_particles))
+                    class_weight[shower_primary_id_to_class[particle_id]] = (1 / num_particles) * (total / 2.0)
+            logger.info("     Class weights: {}".format(class_weight))
+            #if class_weight[1] < 2.0 and class_weight[0] < 2.0:
+            #    class_weight = None
+            #    logger.info("     Dataset is balanced. Do not apply class weights!")
 
         # Train and evaluate the model
         logger.info("Training and evaluating...")
+        model.fit(x=training_data,
+            validation_data=validation_data,
+            batch_size=batch_size,
+            epochs=num_epochs,
+            class_weight=class_weight,
+            callbacks=callbacks,
+            verbose=verbose,
+            workers=workers,
+            use_multiprocessing=use_multiprocessing)
 
-        max_steps = int(config['Training']['num_epochs']
-                        * num_training_examples / batch_size)
-
-        eval_steps = config['Evaluation'].get('eval_steps', None)
-        start_delay_secs = int(config['Evaluation'].get('start_delay_secs', 120))
-        throttle_secs = int(config['Evaluation'].get('throttle_secs', 600))
-
-        train_input_fn = lambda: input_fn(reader, training_indices,
-                                          shuffle_and_repeat=True,
-                                          **config['Input'])
-        train_spec = tf.estimator.TrainSpec(input_fn=train_input_fn,
-                                            max_steps=max_steps, hooks=hooks)
-        eval_input_fn = lambda: input_fn(reader, validation_indices,
-                                         **config['Input'])
-        eval_spec = tf.estimator.EvalSpec(input_fn=eval_input_fn,
-                                          steps=eval_steps,
-                                          start_delay_secs=start_delay_secs,
-                                          throttle_secs=throttle_secs)
-        tf.estimator.train_and_evaluate(estimator, train_spec, eval_spec)
+        model.save(model_dir)
 
     elif mode == 'predict':
 
         # Generate predictions and add to output
         logger.info("Predicting...")
-        predict_input_fn = lambda: input_fn(reader, indices,
-                                            **config['Input'])
-
-        predictions = list(estimator.predict(predict_input_fn))
+        predictions = model.predict(data)
+        predictions = np.concatenate((predictions, model.predict(rest_data)), axis=0)
 
         output_file = file = config['Prediction'].get('file', "experiment")
         if random_seed:
@@ -341,11 +290,11 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         output_file = os.path.abspath(os.path.join(os.path.dirname(__file__), model_dir+"/{}.h5".format(file)))
 
         write_output(output_file,
-                     reader,
-                     indices,
-                     params['example_description'],
-                     predictions,
-                     config['Prediction']['prediction_label'])
+            reader,
+            indices,
+            predictions,
+            config['Reco'],
+            config['Prediction']['prediction_label'])
 
     # clear the handlers, shutdown the logging and delete the logger
     logger.handlers.clear()
@@ -358,6 +307,9 @@ def main():
     parser = argparse.ArgumentParser(
         description=("Train/Predict with a CTLearn model."))
     parser.add_argument(
+        'config_file',
+        help="path to YAML configuration file with training options")
+    parser.add_argument(
         '--input', '-i',
         help='input directory (not required when set in the config file)')
     parser.add_argument(
@@ -366,18 +318,18 @@ def main():
         default=["*.h5"],
         nargs='+')
     parser.add_argument(
+        '--reco', '-r',
+        help='reconstruction task to perform valid options: particletype, energy and/or direction',
+        nargs='+')
+    parser.add_argument(
         '--mode', '-m',
         default="train",
-        help="Mode to run in (train/predict/train_and_predict/load_only)")
+        help="Mode to run in (train/predict/train_and_predict)")
     parser.add_argument(
-        'config_file',
-        help="path to YAML configuration file with training options")
+        '--logging_model', '-l',
+        help="Logging model directory")
     parser.add_argument(
-        '--debug', '-d',
-        action='store_true',
-        help="print debug/logger messages")
-    parser.add_argument(
-        '--log_to_file', '-l',
+        '--log_to_file',
         action='store_true',
         help="log to a file in model directory instead of terminal")
     parser.add_argument(
@@ -385,11 +337,21 @@ def main():
         default=0,
         type=int,
         help="overwrite the random seed")
+    parser.add_argument(
+        '--debug', '-d',
+        action='store_true',
+        help="print debug/logger messages")
 
     args = parser.parse_args()
 
     with open(args.config_file, 'r') as config_file:
         config = yaml.safe_load(config_file)
+
+    if args.reco:
+        config['Reco'] = args.reco
+    if args.logging_model:
+        config['Logging'] = {}
+        config['Logging']['model_directory'] = args.logging_model
 
     # Overwrite the random seed in the config file
     if args.random_seed != 0:
@@ -401,9 +363,6 @@ def main():
                              "Must be 4 digit integer!".format(
                              args.random_seed))
     random_seed = config['Data']['seed']
-
-    if args.mode == 'load_only':
-        run_model(config, mode=args.mode, debug=args.debug, log_to_file=args.log_to_file)
 
     if 'train' in args.mode:
         run_model(config, mode='train', debug=args.debug, log_to_file=args.log_to_file)
@@ -419,6 +378,11 @@ def main():
 
                     with open(args.config_file, 'r') as config_file:
                         config = yaml.safe_load(config_file)
+                    if args.reco:
+                        config['Reco'] = args.reco
+                    if args.logging_model:
+                        config['Logging'] = {}
+                        config['Logging']['model_directory'] = args.logging_model
                     config['Data']['seed'] = random_seed
                     if args.random_seed != 0:
                         config['Logging']['add_seed'] = True
@@ -432,6 +396,11 @@ def main():
             for key in config['Prediction']['prediction_file_lists']:
                 with open(args.config_file, 'r') as config_file:
                     config = yaml.safe_load(config_file)
+                if args.reco:
+                    config['Reco'] = args.reco
+                if args.logging_model:
+                    config['Logging'] = {}
+                    config['Logging']['model_directory'] = args.logging_model
                 config['Data']['seed'] = random_seed
                 if args.random_seed != 0:
                     config['Logging']['add_seed'] = True

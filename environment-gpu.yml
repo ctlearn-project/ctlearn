@@ -1,13 +1,14 @@
 # conda env create -f environment-gpu.yml
-name: ctlearn
+name: ctlearn_tf2
 channels:
     - anaconda
     - conda-forge
-    - cta-observatory
-    - ctlearn-project
+    #- cta-observatory
+    #- ctlearn-project
+    #- nvidia
 dependencies:
-    - python=3.7
-    - dl1_data_handler=0.10.0
+    - python=3.8
+    #- dl1_data_handler=0.10.0
     - astropy
     - matplotlib
     - numpy
@@ -15,9 +16,14 @@ dependencies:
     - pip
     - pyyaml
     - scikit-learn
+    #- cudatoolkit=11
+    #- cudnn=8
+    #- cupti=11
+    #- cuda-nvcc
     - pip:
-        # TensorFlow-GPU v1.15.3
-        - tensorflow_gpu==1.15.3
+        # TensorFlow-GPU 
+        - tensorflow_gpu
         - pyirf
         - ctaplot
+        - pydot
 

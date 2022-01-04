@@ -3,12 +3,7 @@ import sys
 
 import tensorflow as tf
 
-def single_cnn_model(features, model_params, example_description, training):
-
-    # Reshape inputs into proper dimensions
-    for (name, f), d in zip(features.items(), example_description):
-        if name == 'image':
-            telescope_data = tf.reshape(f, [-1, *d['shape']])
+def single_cnn_model(data, model_params):
 
     # Load neural network model
     sys.path.append(model_params['model_directory'])
@@ -16,10 +11,9 @@ def single_cnn_model(features, model_params, example_description, training):
     network = getattr(network_module,
                       model_params['single_cnn']['network']['function'])
 
-    with tf.variable_scope("Network"):
-        output = network(telescope_data, params=model_params, training=training)
-        output = tf.reduce_mean(output, axis=[1,2], name='global_avgpool')
+    x = tf.keras.Input(shape=data.img_shape, name='images')
 
-    if model_params['single_cnn']['pretrained_weights']:    tf.contrib.framework.init_from_checkpoint(model_params['single_cnn']['pretrained_weights'],{'Network/':'Network/'})
+    output = network(x, params=model_params)
+    output = tf.keras.layers.GlobalAveragePooling2D(name='global_avgpool')(output)
 
-    return output
+    return x, tf.keras.Model(x, output, name='SingleCNN')
