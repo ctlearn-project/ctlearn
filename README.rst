@@ -33,7 +33,7 @@ Install a released version
 Download and install `Anaconda <https://www.anaconda.com/download/>`_\ , or, for a minimal installation, `Miniconda <https://conda.io/miniconda.html>`_.
 
 The following command will set up a conda virtual environment, add the
-necessary package channels, and install ctlearn specified version and its dependencies:
+necessary package channels, and install CTLearn specified version and its dependencies:
 
 .. code-block:: bash
 
@@ -119,7 +119,7 @@ Specify model directory to store TensorFlow checkpoints and summaries, a timesta
 Data
 ^^^^
 
-Describe the dataset to use and relevant settings for loading and processing it. The parameters in this section are used to initialize a DL1DataReader, which loads the data files, maps the images from vectors to arrays, applies preprocessing, and returns the data as an iterator. Data can be loaded in three modes:
+Describe the dataset to use and relevant settings for loading and processing it. The parameters in this section are used to initialize a DL1DataReader, which loads the data files, maps the images from vectors to arrays, applies preprocessing, and returns the data as an iterator. Data can be loaded in two modes:
 
 
 * Mono: single images of one telescope type
