@@ -30,29 +30,22 @@ Install CTLearn
 Install a released version
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Download and install `Anaconda <https://www.anaconda.com/download/>`_\ , or, for a minimal installation, `Miniconda <https://conda.io/miniconda.html>`_. Add the necessary channels for all dependencies:
+Download and install `Anaconda <https://www.anaconda.com/download/>`_\ , or, for a minimal installation, `Miniconda <https://conda.io/miniconda.html>`_.
+
+The following command will set up a conda virtual environment, add the
+necessary package channels, and install dl1-data-handler specified version and its dependencies:
 
 .. code-block:: bash
 
-   conda config --add channels anaconda
-   conda config --add channels conda-forge
-   conda config --add channels cta-observatory
-   conda config --add channels ctlearn-project
+   CTLEARN_VER=0.5.2
+   wget https://raw.githubusercontent.com/cta-observatory/dl1-data-handler/v$CTLEARN_VER/environment-<MODE>.yml
+   conda env create -n [ENVIRONMENT_NAME] -f environment-<MODE>.yml
+   conda activate [ENVIRONMENT_NAME]
+   pip install ctlearn=$CTLEARN_VER
 
-Then, create and enter a new environment with the dl1_data_handler:
+where ``<MODE>`` is either 'cpu' or 'gpu' (for linux systems) or 'macos' (for macOS systems), denoting the TensorFlow version to be installed. If installing the GPU version of TensorFlow, verify that your system fulfills all the requirements `here <https://www.tensorflow.org/install/install_linux#NVIDIARequirements>`_. Note that there is no GPU-enabled TensorFlow version for macOS yet.
 
-.. code-block:: bash
-
-   conda create -n ctlearn dl1_data_handler=0.10.0
-   conda activate ctlearn
-
-This should automatically install most of the dependencies (NOTE: this may take some time, as by default MKL is included as a dependency of NumPy and it is very large).
-
-Then, install the ctlearn and tensorflow(-gpu) packages plus other dependencies via pypi:
-
-.. code-block:: bash
-
-   pip install pytest-cov tensorflow-gpu==1.15.3 ctapipe==0.10.5 pyirf ctlearn==0.5.1
+This should automatically install all dependencies (NOTE: this may take some time, as by default MKL is included as a dependency of NumPy and it is very large).
 
 
 Installing with pip/setuptools from source for development
@@ -78,7 +71,7 @@ Finally, install CTLearn into the new conda environment via pypi:
 .. code-block:: bash
 
    conda activate ctlearn
-   pip install ctlearn==0.5.1
+   pip install ctlearn==0.5.2
 
 or with pip from source:
 
@@ -97,17 +90,15 @@ Dependencies
 
 * Python>=3.7
 * TensorFlow==1.15.3
-* ctapipe==0.10.5
-* DL1DataHandler==0.10.0
-* pyIRF
+* ctapipe==0.12.0
+* DL1DataHandler==0.10.4
 * NumPy
 * PyYAML
+* Pandas
 * Libraries used only in plotting scripts (optional)
 
   * Matplotlib
-  * Pandas
   * Scikit-learn
-  * ctaplot
 
 Download Data
 -------------
@@ -131,8 +122,7 @@ Describe the dataset to use and relevant settings for loading and processing it.
 
 
 * Mono: single images of one telescope type
-* Stereo: events of one telescope type
-* Multi-stereo: events including multiple telescope types
+* Stereo: events of one or multiple telescope types
 
 Parameters in this section include telescope IDs to select, auxiliary parameters to return, pre-selection cuts, image mapping settings, and pre-processing to apply to the data. Image mapping is performed by the DL1DataReader and maps the 1D pixel vectors in the raw data into 2D images. The available mapping methods are oversampling, nearest interpolation, rebinning, bilinear interpolation and bicubic interpolation, image shifting, and axial addressing.
 Pre-processing is performed using the DL1DataHandler Transform class.
