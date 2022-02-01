@@ -33,17 +33,18 @@ Install a released version
 Download and install `Anaconda <https://www.anaconda.com/download/>`_\ , or, for a minimal installation, `Miniconda <https://conda.io/miniconda.html>`_.
 
 The following command will set up a conda virtual environment, add the
-necessary package channels, and install dl1-data-handler specified version and its dependencies:
+necessary package channels, and install ctlearn specified version and its dependencies:
 
 .. code-block:: bash
 
    CTLEARN_VER=0.5.2
-   wget https://raw.githubusercontent.com/cta-observatory/dl1-data-handler/v$CTLEARN_VER/environment-<MODE>.yml
-   conda env create -n [ENVIRONMENT_NAME] -f environment-<MODE>.yml
+   mode=cpu
+   wget https://raw.githubusercontent.com/ctlearn-project/ctlearn/v$CTLEARN_VER/environment-$mode.yml
+   conda env create -n [ENVIRONMENT_NAME] -f environment-$mode.yml
    conda activate [ENVIRONMENT_NAME]
    pip install ctlearn=$CTLEARN_VER
 
-where ``<MODE>`` is either 'cpu' or 'gpu' (for linux systems) or 'macos' (for macOS systems), denoting the TensorFlow version to be installed. If installing the GPU version of TensorFlow, verify that your system fulfills all the requirements `here <https://www.tensorflow.org/install/install_linux#NVIDIARequirements>`_. Note that there is no GPU-enabled TensorFlow version for macOS yet.
+where ``mode`` is either 'cpu' or 'gpu' (for linux systems) or 'macos' (for macOS systems), denoting the TensorFlow version to be installed. If installing the GPU version of TensorFlow, verify that your system fulfills all the requirements `here <https://www.tensorflow.org/install/install_linux#NVIDIARequirements>`_. Note that there is no GPU-enabled TensorFlow version for macOS yet.
 
 This should automatically install all dependencies (NOTE: this may take some time, as by default MKL is included as a dependency of NumPy and it is very large).
 
@@ -64,7 +65,7 @@ First, install Anaconda by following the instructions above. Create a new conda 
 
    conda env create -f </installation/path>/ctlearn/environment-<MODE>.yml
 
-where ``<MODE>`` is either 'cpu' or 'gpu' (for linux systems) or 'macos' (for macOS systems), denoting the TensorFlow version to be installed. If installing the GPU version of TensorFlow, verify that your system fulfills all the requirements `here <https://www.tensorflow.org/install/install_linux#NVIDIARequirements>`_. Note that there is no GPU-enabled TensorFlow version for macOS yet.
+where ``<MODE>`` is either 'cpu' or 'gpu' (for linux systems) or 'macos' (for macOS systems), denoting the TensorFlow version to be installed (see above).
 
 Finally, install CTLearn into the new conda environment via pypi:
 
