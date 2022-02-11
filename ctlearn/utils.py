@@ -74,7 +74,7 @@ def setup_DL1DataReader(config, mode):
     allow_overwrite = config['Data'].get('allow_overwrite', True)
     del config['Data']['allow_overwrite']
     
-    tasks = config['Tasks']
+    tasks = config['Reco']
     transformations = []
     event_info = []
     if data_format == 'dl1dh':

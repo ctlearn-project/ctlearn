@@ -4,11 +4,12 @@ import tensorflow as tf
 
 class KerasBatchGenerator(tf.keras.utils.Sequence):
     'Generates batches for Keras application'
-    def __init__(self, DL1DataReaderDL1DH, indices, batch_size=64, shuffle=True):
+    def __init__(self, DL1DataReaderDL1DH, indices, batch_size=64, mode='train', shuffle=True):
         'Initialization'
         self.DL1DataReaderDL1DH = DL1DataReaderDL1DH
         self.batch_size = batch_size
         self.indices = indices
+        self.mode = mode
         self.shuffle = shuffle
         self.on_epoch_end()
         
@@ -40,7 +41,7 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
                 self.enr_pos = i
             elif 'direction' in desc['name']:
                 self.drc_pos = i
-        
+
         #ToDo: Reshape inputs into proper dimensions for telescopes concatanate for MAGIC
         concat_telescopes = False
         #config['Input'].get('concat_telescopes', False)
@@ -68,13 +69,14 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
             images = np.empty((self.batch_size, *self.img_shape))
         if self.prm_pos is not None:
             parameters = np.empty((self.batch_size, *self.prm_shape))
-        
-        if self.prt_pos is not None:
-            particletype = np.empty((self.batch_size))
-        if self.enr_pos is not None:
-            energy = np.empty((self.batch_size))
-        if self.drc_pos is not None:
-            direction = np.empty((self.batch_size, 2))
+
+        if self.mode == 'train':
+            if self.prt_pos is not None:
+                particletype = np.empty((self.batch_size))
+            if self.enr_pos is not None:
+                energy = np.empty((self.batch_size))
+            if self.drc_pos is not None:
+                direction = np.empty((self.batch_size, 2))
 
         # Generate data
         for i, index in enumerate(batch_indices):
@@ -85,35 +87,37 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
                 #images[ind] = np.reshape(event[self.img_pos], self.img_shape)
             if self.prm_pos is not None:
                 parameters[i] = event[self.prm_pos]
-            # Fill the labels
-            if self.prt_pos is not None:
-                particletype[i] = event[self.prt_pos]
-            if self.enr_pos is not None:
-                energy[i] = event[self.enr_pos]
-            if self.drc_pos is not None:
-                direction[i] = event[self.drc_pos]
+
+            if self.mode == 'train':
+                # Fill the labels
+                if self.prt_pos is not None:
+                    particletype[i] = event[self.prt_pos]
+                if self.enr_pos is not None:
+                    energy[i] = event[self.enr_pos]
+                if self.drc_pos is not None:
+                    direction[i] = event[self.drc_pos]
 
         features = {}
         if self.img_pos is not None:
             features['images'] = images
         if self.prm_pos is not None:
             features['parameters'] = parameters
-            
+
         labels = {}
-        if self.prt_pos is not None:
-            #ToDo: Take num_classes from config settings‚
-            labels['particletype'] = tf.keras.utils.to_categorical(particletype, num_classes=2)
-            label = tf.keras.utils.to_categorical(particletype, num_classes=2)
-        if self.enr_pos is not None:
-            labels['energy'] = energy
-            label = energy
-        if self.drc_pos is not None:
-            labels['direction'] = direction
-            label = direction
-    
+        if self.mode == 'train':
+            if self.prt_pos is not None:
+                labels['particletype'] = tf.keras.utils.to_categorical(particletype, num_classes=2)
+                label = tf.keras.utils.to_categorical(particletype, num_classes=2)
+            if self.enr_pos is not None:
+                labels['energy'] = energy
+                label = energy
+            if self.drc_pos is not None:
+                labels['direction'] = direction
+                label = direction
+
         # Temp fix till keras support class weights for multiple outputs or I wrote custom loss
         # https://github.com/keras-team/keras/issues/11735
         if len(labels) == 1:
             labels = label
-            
+
         return features, labels

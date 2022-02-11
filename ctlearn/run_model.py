@@ -46,6 +46,10 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     logger.info("Logging has been correctly set up")
 
+    # Create a MirroredStrategy.
+    strategy = tf.distribute.MirroredStrategy()
+    logger.info('Number of devices: {}'.format(strategy.num_replicas_in_sync))
+
     # Set up the DL1DataReader
     config['Data'] = setup_DL1DataReader(config, mode)
     # Create data reader
@@ -58,9 +62,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     else:
         raise ValueError("Data format {} is not implemented in the DL1DH reader. Available data formats are 'stage1' and 'dl1dh'.".format(config['Data_format']))
 
-    # Create a MirroredStrategy.
-    strategy = tf.distribute.MirroredStrategy()
-    logger.info('Number of devices: {}'.format(strategy.num_replicas_in_sync))
+    logger.info("  Number of events loaded: {}".format(len(reader)))
 
     # Set up the KerasBatchGenerator
     indices = list(range(len(reader)))
@@ -71,7 +73,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     batch_size = batch_size_per_worker * strategy.num_replicas_in_sync
 
     if mode == 'train':
-
         if 'Training' not in config:
             config['Training'] = {}
         validation_split = np.float(config['Training'].get('validation_split', 0.1))
@@ -82,10 +83,11 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         training_indices = indices[:num_training_examples]
         validation_indices = indices[num_training_examples:]
 
-        training_data = KerasBatchGenerator(reader, training_indices, batch_size=batch_size)
-        validation_data = KerasBatchGenerator(reader, validation_indices, batch_size=batch_size)
+        data = KerasBatchGenerator(reader, training_indices, batch_size=batch_size, mode=mode)
+        validation_data = KerasBatchGenerator(reader, validation_indices, batch_size=batch_size, mode=mode)
     elif mode == 'predict':
-        data = KerasBatchGenerator(reader, indices, batch_size=batch_size, shuffle=False)
+        logger.info("  Simulation info for pyirf.simulations.SimulatedEventsInfo: {}".format(reader.simulation_info))
+        data = KerasBatchGenerator(reader, indices, batch_size=batch_size, mode=mode, shuffle=False)
 
         # Keras is only considering the last complete batch.
         # In prediction mode we don't want to loose the last
@@ -93,7 +95,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         # batch generator for the remaining events.
         rest = len(indices) % batch_size
         rest_indices = indices[-rest:]
-        rest_data = KerasBatchGenerator(reader, rest_indices, batch_size=rest, shuffle=False)
+        rest_data = KerasBatchGenerator(reader, rest_indices, batch_size=rest, mode=mode, shuffle=False)
 
     # Load or construct model
     model_file = config['Model'].get('model_file', None)
@@ -102,35 +104,35 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     # Open a strategy scope.
     with strategy.scope():
 
+        try:
+            model_directory = config['Model']['model_directory']
+            if model_directory is None:
+                raise KeyError
+        except KeyError:
+            model_directory = os.path.abspath(os.path.join(
+                os.path.dirname(__file__), "default_models/"))
+        sys.path.append(model_directory)
+        logger.info("  Constructing model from config.")
+        # Write the model parameters in the params dictionary
+        model_params = {**config['Model'], **config.get('Model Parameters', {})}
+
+        # Backbone model
+        backbone_module = importlib.import_module(config['Model']['backbone']['module'])
+        backbone_model = getattr(backbone_module, config['Model']['backbone']['function'])
+        backbone_inputs, backbone = backbone_model(data, model_params)
+        backbone_output = backbone(backbone_inputs)
+
+        # Head model
+        head_module = importlib.import_module(config['Model']['head']['module'])
+        head_model = getattr(head_module, config['Model']['head']['function'])
+        logits, losses, loss_weights, metrics = head_model(inputs=backbone_output,
+            tasks=config['Reco'],
+            params=model_params)
+
         if 'saved_model.pb' in np.array([os.listdir(model_dir)]):
             logger.info("  Loading model from '{}'.".format(model_dir))
             model = tf.keras.models.load_model(model_dir)
         else:
-            try:
-                model_directory = config['Model']['model_directory']
-                if model_directory is None:
-                    raise KeyError
-            except KeyError:
-                model_directory = os.path.abspath(os.path.join(
-                    os.path.dirname(__file__), "default_models/"))
-            sys.path.append(model_directory)
-            logger.info("  Constructing model from config.")
-            # Write the model parameters in the params dictionary
-            model_params = {**config['Model'], **config.get('Model Parameters', {})}
-
-            # Backbone model
-            backbone_module = importlib.import_module(config['Model']['backbone']['module'])
-            backbone_model = getattr(backbone_module, config['Model']['backbone']['function'])
-            backbone_inputs, backbone = backbone_model(training_data, model_params)
-            backbone_output = backbone(backbone_inputs)
-
-            # Head model
-            head_module = importlib.import_module(config['Model']['head']['module'])
-            head_model = getattr(head_module, config['Model']['head']['function'])
-            logits, losses, loss_weights, metrics = head_model(inputs=backbone_output,
-                tasks=config['Reco'],
-                params=model_params)
-
             model = tf.keras.Model(backbone_inputs, logits, name='CTLearn_model')
 
         if config['Model'].get('plot_model', False):
@@ -209,14 +211,19 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
         # ToDo: Come up with a better solution for the callbacks
         # Set up the callbacks
-        monitor='batch_loss'
+        monitor='val_loss'
         monitor_mode='min'
         val_freq = int((num_training_examples / batch_size) / 5)
         logger.info("  Validation frequency: {}".format(val_freq))
 
         if 'particletype' in config['Reco'] and len(config['Reco'])==1:
-            monitor='batch_auc'
+            monitor='val_auc'
             monitor_mode='max'
+        if 'energy' in config['Reco'] and len(config['Reco'])==1:
+            monitor='mae_energy'
+        if 'direction' in config['Reco'] and len(config['Reco'])==1:
+            monitor='mae_direction'
+
         # Model checkpoint callback
         model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
             filepath=model_dir,
@@ -265,7 +272,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
         # Train and evaluate the model
         logger.info("Training and evaluating...")
-        model.fit(x=training_data,
+        model.fit(x=data,
             validation_data=validation_data,
             batch_size=batch_size,
             epochs=num_epochs,
@@ -278,7 +285,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         model.save(model_dir)
 
     elif mode == 'predict':
-
         # Generate predictions and add to output
         logger.info("Predicting...")
         predictions = model.predict(data)

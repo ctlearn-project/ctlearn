@@ -71,7 +71,7 @@ def write_output(h5file, reader, indices, predictions, tasks, prediction_label='
         if 'particletype' in tasks:
             if i == 0:
                 data['reco_gammaness'] = []
-            data['reco_gammaness'].append(prediction[0])
+            data['reco_gammaness'].append(prediction[1])
         # Energy regression
         if 'energy' in tasks:
             if i == 0:
