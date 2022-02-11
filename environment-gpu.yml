@@ -3,12 +3,12 @@ name: ctlearn_tf2
 channels:
     - anaconda
     - conda-forge
-    #- cta-observatory
-    #- ctlearn-project
+    - cta-observatory
+    - ctlearn-project
     #- nvidia
 dependencies:
     - python=3.8
-    #- dl1_data_handler=0.10.0
+    - dl1_data_handler=0.10.4
     - astropy
     - matplotlib
     - numpy
@@ -23,7 +23,5 @@ dependencies:
     - pip:
         # TensorFlow-GPU 
         - tensorflow_gpu
-        - pyirf
-        - ctaplot
         - pydot
 

@@ -6,8 +6,8 @@ channels:
     - cta-observatory
     - ctlearn-project
 dependencies:
-    - python=3.7
-    - dl1_data_handler=0.10.0
+    - python=3.8
+    - dl1_data_handler=0.10.4
     - astropy
     - matplotlib
     - numpy
@@ -16,7 +16,6 @@ dependencies:
     - pyyaml
     - scikit-learn
     - pip:
-        # TensorFlow-CPU v1.15.3
-        - tensorflow==1.15.3
-        - pyirf
-        - ctaplot
+        # TensorFlow-CPU
+        - tensorflow
+        - pydot

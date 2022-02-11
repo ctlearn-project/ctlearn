@@ -7,7 +7,7 @@ Data:
     allow_overwrite: true
     file_list: '/home/ir-mien1/rds/rds-iris-ip007/ir-mien1/file_lists/Prod5_balanced_train.txt'
     #file_list: '/home/tjark/tf2update_covid/test.txt'
-    example_identifiers_file: '/home/ir-mien1/example_identifiers/LSTCam_mono_balanced.h5'
+    #example_identifiers_file: '/home/ir-mien1/example_identifiers/LSTCam_mono_balanced.h5'
     mode: 'mono'
     selected_telescope_types: ['LST_LST_LSTCam']
     #selected_telescope_ids: {'LST_LST_LSTCam': [1,2,3,4]}
@@ -23,7 +23,7 @@ Data:
         padding:
             'LSTCam': 2
         mask_interpolation: false
-    event_selection: 
+    parameter_selection: 
         - {col_name: "hillas_intensity", min_value: 50.0}
         - {col_name: "leakage_intensity_width_2", max_value: 0.2}
 Input:
