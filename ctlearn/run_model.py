@@ -1,3 +1,4 @@
+import atexit
 import argparse
 import importlib
 import logging
@@ -9,6 +10,8 @@ from pprint import pformat
 import sys
 
 import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 import yaml
 
 import tensorflow as tf
@@ -48,6 +51,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     # Create a MirroredStrategy.
     strategy = tf.distribute.MirroredStrategy()
+    atexit.register(strategy._extended._collective_ops._pool.close) # type: ignore
     logger.info('Number of devices: {}'.format(strategy.num_replicas_in_sync))
 
     # Set up the DL1DataReader
@@ -71,6 +75,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         config['Input'] = {}
     batch_size_per_worker = config['Input'].get('batch_size_per_worker', 64)
     batch_size = batch_size_per_worker * strategy.num_replicas_in_sync
+    concat_telescopes = config['Input'].get('concat_telescopes', False)
 
     if mode == 'train':
         if 'Training' not in config:
@@ -83,11 +88,11 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         training_indices = indices[:num_training_examples]
         validation_indices = indices[num_training_examples:]
 
-        data = KerasBatchGenerator(reader, training_indices, batch_size=batch_size, mode=mode)
-        validation_data = KerasBatchGenerator(reader, validation_indices, batch_size=batch_size, mode=mode)
+        data = KerasBatchGenerator(reader, training_indices, batch_size=batch_size, mode=mode, concat_telescopes=concat_telescopes)
+        validation_data = KerasBatchGenerator(reader, validation_indices, batch_size=batch_size, mode=mode, concat_telescopes=concat_telescopes)
     elif mode == 'predict':
         logger.info("  Simulation info for pyirf.simulations.SimulatedEventsInfo: {}".format(reader.simulation_info))
-        data = KerasBatchGenerator(reader, indices, batch_size=batch_size, mode=mode, shuffle=False)
+        data = KerasBatchGenerator(reader, indices, batch_size=batch_size, mode=mode, shuffle=False, concat_telescopes=concat_telescopes)
 
         # Keras is only considering the last complete batch.
         # In prediction mode we don't want to loose the last
@@ -95,7 +100,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         # batch generator for the remaining events.
         rest = len(indices) % batch_size
         rest_indices = indices[-rest:]
-        rest_data = KerasBatchGenerator(reader, rest_indices, batch_size=rest, mode=mode, shuffle=False)
+        rest_data = KerasBatchGenerator(reader, rest_indices, batch_size=rest, mode=mode, shuffle=False, concat_telescopes=concat_telescopes)
 
     # Load or construct model
     model_file = config['Model'].get('model_file', None)
@@ -211,13 +216,13 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
         # ToDo: Come up with a better solution for the callbacks
         # Set up the callbacks
-        monitor='val_loss'
+        monitor='loss'
         monitor_mode='min'
         val_freq = int((num_training_examples / batch_size) / 5)
         logger.info("  Validation frequency: {}".format(val_freq))
 
         if 'particletype' in config['Reco'] and len(config['Reco'])==1:
-            monitor='val_auc'
+            monitor='auc'
             monitor_mode='max'
         if 'energy' in config['Reco'] and len(config['Reco'])==1:
             monitor='mae_energy'
@@ -233,18 +238,23 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             save_best_only=True)
         # Tensorboard callback
         tensorboard_callback = tf.keras.callbacks.TensorBoard(
-            log_dir=model_dir+'/tensorboard_logs',
+            log_dir=model_dir,
             histogram_freq=1,
             update_freq=val_freq)
+        # CSV logger callback
+        csv_logger_callback = tf.keras.callbacks.CSVLogger(
+            filename= model_dir+'/training_log.csv',
+            append=True)
+
         # Early stopping
         #early_stopping_callback = tf.keras.callbacks.EarlyStopping(
         #    monitor=monitor,
         #    patience=5,
         #    mode=monitor_mode,
         #    restore_best_weights=True)
-        #callbacks = [model_checkpoint_callback, tensorboard_callback, early_stopping_callback]
+        #callbacks = [model_checkpoint_callback, tensorboard_callback, csvlogger_callback, early_stopping_callback]
 
-        callbacks = [model_checkpoint_callback, tensorboard_callback]
+        callbacks = [model_checkpoint_callback, tensorboard_callback, csv_logger_callback]
         
         # Class weights calculation
         # Scaling by total/2 helps keep the loss to a similar magnitude.
@@ -266,16 +276,18 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                     logger.info("    Breakdown by {}: {}".format(shower_primary_id_to_class[particle_id], num_particles))
                     class_weight[shower_primary_id_to_class[particle_id]] = (1 / num_particles) * (total / 2.0)
             logger.info("     Class weights: {}".format(class_weight))
-            #if class_weight[1] < 2.0 and class_weight[0] < 2.0:
-            #    class_weight = None
-            #    logger.info("     Dataset is balanced. Do not apply class weights!")
+
+        initial_epoch = 0
+        if 'training_log.csv' in np.array([os.listdir(model_dir)]):
+            initial_epoch = pd.read_csv(model_dir+'/training_log.csv')['epoch'].iloc[-1] + 1
 
         # Train and evaluate the model
         logger.info("Training and evaluating...")
-        model.fit(x=data,
+        history = model.fit(x=data,
             validation_data=validation_data,
             batch_size=batch_size,
             epochs=num_epochs,
+            initial_epoch = initial_epoch,
             class_weight=class_weight,
             callbacks=callbacks,
             verbose=verbose,
@@ -283,6 +295,23 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             use_multiprocessing=use_multiprocessing)
 
         model.save(model_dir)
+
+        logger.info("Training and evaluating finished succesfully!")
+
+        # Plotting training history
+        training_log = pd.read_csv(model_dir+'/training_log.csv')
+        for metric in training_log.columns:
+            epochs = training_log['epoch'] + 1
+            if metric != 'epoch' and not metric.startswith("val_"):
+                logger.info("Plotting training history: {}".format(metric))
+                fig, ax = plt.subplots()
+                plt.plot(epochs, training_log[metric])
+                plt.plot(epochs, training_log[f'val_{metric}'])
+                plt.title(f'CTLearn training history - {metric}')
+                plt.xlabel('epoch')
+                plt.ylabel(metric)
+                plt.legend(['train', 'val'], loc='upper left')
+                plt.savefig(f'{model_dir}/{metric}.png')
 
     elif mode == 'predict':
         # Generate predictions and add to output
@@ -328,6 +357,10 @@ def main():
         help='reconstruction task to perform valid options: particletype, energy and/or direction',
         nargs='+')
     parser.add_argument(
+        '--tel_types', '-t',
+        help='selected telescope types, e.g LST_LST_LSTCam or LST_MAGIC_MAGICCam',
+        nargs='+')
+    parser.add_argument(
         '--mode', '-m',
         default="train",
         help="Mode to run in (train/predict/train_and_predict)")
@@ -355,6 +388,10 @@ def main():
 
     if args.reco:
         config['Reco'] = args.reco
+
+    if args.tel_types:
+        config['Data']['selected_telescope_types'] = args.tel_types
+
     if args.logging_model:
         config['Logging'] = {}
         config['Logging']['model_directory'] = args.logging_model

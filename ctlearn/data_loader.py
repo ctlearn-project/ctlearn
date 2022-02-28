@@ -4,7 +4,7 @@ import tensorflow as tf
 
 class KerasBatchGenerator(tf.keras.utils.Sequence):
     'Generates batches for Keras application'
-    def __init__(self, DL1DataReaderDL1DH, indices, batch_size=64, mode='train', shuffle=True):
+    def __init__(self, DL1DataReaderDL1DH, indices, batch_size=64, mode='train', shuffle=True, concat_telescopes=False):
         'Initialization'
         self.DL1DataReaderDL1DH = DL1DataReaderDL1DH
         self.batch_size = batch_size
@@ -29,8 +29,6 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
                 self.trg_shape = desc['shape']
             elif 'image' in desc['name']:
                 self.img_pos = i
-                #print(desc['shape'])
-                #print(int(desc['shape']))
                 self.img_shape = desc['shape']
             elif 'parameters' in desc['name']:
                 self.prm_pos = i
@@ -42,9 +40,7 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
             elif 'direction' in desc['name']:
                 self.drc_pos = i
 
-        #ToDo: Reshape inputs into proper dimensions for telescopes concatanate for MAGIC
-        concat_telescopes = False
-        #config['Input'].get('concat_telescopes', False)
+        #Reshape inputs into proper dimensions
         if concat_telescopes:
             self.img_shape = (self.img_shape[1], self.img_shape[2], self.img_shape[0]*self.img_shape[3])
 
@@ -83,8 +79,7 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
             event = self.DL1DataReaderDL1DH[index]
             # Fill the features
             if self.img_pos is not None:
-                images[i] = event[self.img_pos]
-                #images[ind] = np.reshape(event[self.img_pos], self.img_shape)
+                images[i] = np.reshape(event[self.img_pos], self.img_shape)
             if self.prm_pos is not None:
                 parameters[i] = event[self.prm_pos]
 

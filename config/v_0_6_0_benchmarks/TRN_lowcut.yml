@@ -3,13 +3,13 @@
 Data_format: 'stage1'
 #Reco: ['particletype' , 'energy', 'direction']
 Data:
-    # Allow to overwrite config setting based on tasks selection
+    # Allow to overwrite config setting based on command line arguments
     allow_overwrite: true
-    file_list: '/home/ir-mien1/rds/rds-iris-ip007/ir-mien1/file_lists/Prod5_balanced_train.txt'
-    #file_list: '/home/tjark/tf2update_covid/test.txt'
+    #file_list: '/home/ir-mien1/rds/rds-iris-ip007/ir-mien1/file_lists/Prod5_balanced_train.txt'
+    file_list: '/home/tjark/tf2update_covid/test.txt'
     #example_identifiers_file: '/home/ir-mien1/example_identifiers/LSTCam_mono_balanced.h5'
     mode: 'mono'
-    selected_telescope_types: ['LST_LST_LSTCam']
+    #selected_telescope_types: ['LST_LST_LSTCam']
     #selected_telescope_ids: {'LST_LST_LSTCam': [1,2,3,4]}
     # For testing select LST1 only
     #selected_telescope_ids: {'LST_LST_LSTCam': [1]}
@@ -17,11 +17,19 @@ Data:
     seed: 1234
     image_channels: ['image', 'peak_time']
     mapping_settings:
-        camera_types: ['LSTCam']
+        #camera_types: ['LSTCam']
         mapping_method:
             'LSTCam': 'bilinear_interpolation'
+            'FlashCam': 'bilinear_interpolation'
+            'NectarCam': 'bilinear_interpolation'
+            'CHEC': 'oversampling'
+            'MAGICCam': 'bilinear_interpolation'
         padding:
             'LSTCam': 2
+            'FlashCam': 2
+            'NectarCam': 2
+            'CHEC': 0
+            'MAGICCam': 2
         mask_interpolation: false
     parameter_selection: 
         - {col_name: "hillas_intensity", min_value: 50.0}
@@ -33,7 +41,7 @@ Input:
 Model:
     #sudo apt install graphviz
     plot_model: false
-    model_directory: '/home/ir-mien1/tf2/ctlearn/ctlearn/default_models/'
+    model_directory: '/home/tjark/tf2update_covid/ctlearn/ctlearn/default_models/'
     backbone: {module: 'res_net', function: 'res_net_model'}
     head: {module: 'head', function: 'standard_head'}
 Model Parameters:

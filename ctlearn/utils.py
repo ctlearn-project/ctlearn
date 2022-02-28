@@ -1,3 +1,4 @@
+
 import importlib
 import logging
 import os
@@ -73,7 +74,10 @@ def setup_DL1DataReader(config, mode):
     data_format = config.get('Data_format', 'stage1')
     allow_overwrite = config['Data'].get('allow_overwrite', True)
     del config['Data']['allow_overwrite']
-    
+
+    selected_telescope_types = config['Data']['selected_telescope_types']
+    camera_types = [tel_type.split("_")[-1] for tel_type in selected_telescope_types]
+
     tasks = config['Reco']
     transformations = []
     event_info = []
@@ -93,36 +97,34 @@ def setup_DL1DataReader(config, mode):
             filter_fn, filter_params = load_from_module(**s)
             image_selection[filter_fn] = filter_params
         config['Data']['image_selection'] = image_selection
-        
-        # Need to check this
-        if 'particletype' in tasks:
-            event_info.append('shower_primary_id')
-            transformations.append({'name': 'ShowerPrimaryID', 'args': {'name': 'particletype', 'particle_id_col_name': 'shower_primary_id'}})
-        if 'energy' in tasks:
-            event_info.append('mc_energy')
-            transformations.append({'name': 'MCEnergy', 'args': {'energy_col_name': 'mc_energy'}})
-        if 'direction' in tasks:
-            event_info.append('alt')
-            event_info.append('az')
-            transformations.append({'name': 'AltAz', 'args': {'alt_col_name': 'alt', 'az_col_name': 'az', 'deg2rad': False}})
 
+        if 'direction' in tasks:
+            event_info.append('src_pos_cam_x')
+            event_info.append('src_pos_cam_y')
+            transformations.append({'name': 'AltAz', 'args': {'alt_col_name': 'src_pos_cam_x', 'az_col_name': 'src_pos_cam_y', 'deg2rad': False}})
     else:
-        if 'particletype' in tasks:
-            event_info.append('true_shower_primary_id')
-            transformations.append({'name': 'ShowerPrimaryID'})
-        if 'energy' in tasks:
-            event_info.append('true_energy')
-            transformations.append({'name': 'MCEnergy'})
         if 'direction' in tasks:
             event_info.append('true_alt')
             event_info.append('true_az')
             transformations.append({'name': 'DeltaAltAz_fix_subarray'})
-            
+
+    if 'particletype' in tasks:
+        event_info.append('true_shower_primary_id')
+        transformations.append({'name': 'ShowerPrimaryID'})
+    if 'energy' in tasks:
+        event_info.append('true_energy')
+        transformations.append({'name': 'MCEnergy'})
+
+    # Convert interpolation image shapes from lists to tuples, if present
+    if 'interpolation_image_shape' in config['Data'].get('mapping_settings',{}):
+        config['Data']['mapping_settings']['interpolation_image_shape'] = {k: tuple(l) for k, l in config['Data']['mapping_settings']['interpolation_image_shape'].items()}
+
     if allow_overwrite:
         config['Data']['event_info'] = event_info
+        config['Data']['mapping_settings']['camera_types'] = camera_types
     else:
         transformations = config['Data'].get('transforms', {})
-    
+
     transforms = []
     # Parse list of Transforms
     for t in transformations:
@@ -130,11 +132,6 @@ def setup_DL1DataReader(config, mode):
         transform, args = load_from_module(**t)
         transforms.append(transform(**args))
     config['Data']['transforms'] = transforms
-
-    # Convert interpolation image shapes from lists to tuples, if present
-    if 'interpolation_image_shape' in config['Data'].get('mapping_settings',{}):
-        config['Data']['mapping_settings']['interpolation_image_shape'] = {k: tuple(l) for k, l in config['Data']['mapping_settings']['interpolation_image_shape'].items()}
-
 
     # Possibly add additional info to load if predicting to write later
     if mode == 'predict':
