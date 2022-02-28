@@ -41,7 +41,7 @@ Input:
 Model:
     #sudo apt install graphviz
     plot_model: false
-    model_directory: '/home/tjark/tf2update_covid/ctlearn/ctlearn/default_models/'
+    #model_directory: '/home/tjark/tf2update_covid/ctlearn/ctlearn/default_models/'
     backbone: {module: 'res_net', function: 'res_net_model'}
     head: {module: 'head', function: 'standard_head'}
 Model Parameters:

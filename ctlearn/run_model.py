@@ -102,24 +102,21 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         rest_indices = indices[-rest:]
         rest_data = KerasBatchGenerator(reader, rest_indices, batch_size=rest, mode=mode, shuffle=False, concat_telescopes=concat_telescopes)
 
-    # Load or construct model
+    # Construct the model
     model_file = config['Model'].get('model_file', None)
     logger.info("Setting up model:")
 
+    model_directory = config['Model'].get('model_directory', os.path.abspath(os.path.join(
+                os.path.dirname(__file__), "default_models/")))
+
+    sys.path.append(model_directory)
+    logger.info("  Constructing model from config.")
+    # Write the model parameters in the params dictionary
+    model_params = {**config['Model'], **config.get('Model Parameters', {})}
+    model_params['model_directory'] = model_directory
+
     # Open a strategy scope.
     with strategy.scope():
-
-        try:
-            model_directory = config['Model']['model_directory']
-            if model_directory is None:
-                raise KeyError
-        except KeyError:
-            model_directory = os.path.abspath(os.path.join(
-                os.path.dirname(__file__), "default_models/"))
-        sys.path.append(model_directory)
-        logger.info("  Constructing model from config.")
-        # Write the model parameters in the params dictionary
-        model_params = {**config['Model'], **config.get('Model Parameters', {})}
 
         # Backbone model
         backbone_module = importlib.import_module(config['Model']['backbone']['module'])
