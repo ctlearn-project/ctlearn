@@ -1,4 +1,3 @@
-
 import importlib
 import logging
 import os
@@ -17,8 +16,9 @@ def setup_logging(config, log_dir, debug, log_to_file):
     config_filename = os.path.join(log_dir, time_str + '_config.yml')
     with open(config_filename, 'w') as outfile:
         ctlearn_version = pkg_resources.get_distribution("ctlearn").version
+        tensorflow_version = pkg_resources.get_distribution("tensorflow-gpu").version
         outfile.write('# Training performed with '
-                      'CTLearn version {}.\n'.format(ctlearn_version))
+                      'CTLearn version {} and TensorFlow version {}.\n'.format(ctlearn_version, tensorflow_version))
         yaml.dump(config, outfile, default_flow_style=False)
 
     # Set up logger
