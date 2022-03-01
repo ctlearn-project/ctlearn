@@ -55,16 +55,14 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     logger.info('Number of devices: {}'.format(strategy.num_replicas_in_sync))
 
     # Set up the DL1DataReader
-    config['Data'] = setup_DL1DataReader(config, mode)
+    config['Data'], data_format = setup_DL1DataReader(config, mode)
     # Create data reader
     logger.info("Loading data:")
     logger.info("  For a large dataset, this may take a while...")
-    if config['Data_format'] == 'stage1':
+    if data_format == 'stage1':
         reader = DL1DataReaderSTAGE1(**config['Data'])
-    elif config['Data_format'] == 'dl1dh':
+    elif data_format == 'dl1dh':
         reader = DL1DataReaderDL1DH(**config['Data'])
-    else:
-        raise ValueError("Data format {} is not implemented in the DL1DH reader. Available data formats are 'stage1' and 'dl1dh'.".format(config['Data_format']))
 
     logger.info("  Number of events loaded: {}".format(len(reader)))
 
@@ -339,7 +337,7 @@ def main():
     parser = argparse.ArgumentParser(
         description=("Train/Predict with a CTLearn model."))
     parser.add_argument(
-        'config_file',
+        '--config_file', '-c',
         help="path to YAML configuration file with training options")
     parser.add_argument(
         '--input', '-i',
@@ -350,6 +348,20 @@ def main():
         default=["*.h5"],
         nargs='+')
     parser.add_argument(
+        '--mode', '-m',
+        default="train",
+        help="Mode to run in (train/predict/train_and_predict)")
+    parser.add_argument(
+        '--output', '-o',
+        help="output directory, where the logging, model weights and processed output files are stored")
+    parser.add_argument(
+        '--log_to_file',
+        action='store_true',
+        help="log to a file in model directory instead of terminal")
+    parser.add_argument(
+        '--default_model', '-d',
+        help="Default CTLearn Model valid options: TRN")
+    parser.add_argument(
         '--reco', '-r',
         help='reconstruction task to perform valid options: particletype, energy and/or direction',
         nargs='+')
@@ -358,27 +370,43 @@ def main():
         help='selected telescope types, e.g LST_LST_LSTCam or LST_MAGIC_MAGICCam',
         nargs='+')
     parser.add_argument(
-        '--mode', '-m',
-        default="train",
-        help="Mode to run in (train/predict/train_and_predict)")
+        '--size_cut', '-z',
+        type=float,
+        help="Hillas intensity cut to perform")
     parser.add_argument(
-        '--logging_model', '-l',
-        help="Logging model directory")
+        '--leakage_cut', '-l',
+        type=float,
+        help="Leakage intensity cut to perform")
     parser.add_argument(
-        '--log_to_file',
-        action='store_true',
-        help="log to a file in model directory instead of terminal")
+        '--multiplicity_cut', '-u',
+        type=int,
+        help="Multiplicity cut to perform (only valid for stereo models with CTA data)",
+        nargs='+')
+    parser.add_argument(
+        '--num_epochs', '-e',
+        type=int,
+        help="Number of epochs to train")
+    parser.add_argument(
+        '--batch_size', '-b',
+        type=int,
+        help="Batch size per worker")
     parser.add_argument(
         '--random_seed', '-s',
-        default=0,
         type=int,
         help="overwrite the random seed")
     parser.add_argument(
-        '--debug', '-d',
+        '--debug',
         action='store_true',
         help="print debug/logger messages")
 
     args = parser.parse_args()
+
+    # Use the default CTLearn config file if no config file is provided
+    # and a default CTLearn model is selected.
+    if args.default_model and not args.config_file:
+        default_config_files = os.path.abspath(os.path.join(
+                os.path.dirname(__file__), "default_config_files/"))
+        args.config_file = f'{default_config_files}/{args.default_model}.yml'
 
     with open(args.config_file, 'r') as config_file:
         config = yaml.safe_load(config_file)
@@ -389,12 +417,43 @@ def main():
     if args.tel_types:
         config['Data']['selected_telescope_types'] = args.tel_types
 
-    if args.logging_model:
-        config['Logging'] = {}
-        config['Logging']['model_directory'] = args.logging_model
+    parameter_selection = []
+    if args.size_cut:
+        parameter_selection.append({'col_name': 'hillas_intensity', 'min_value': args.size_cut})
 
-    # Overwrite the random seed in the config file
-    if args.random_seed != 0:
+    if args.leakage_cut:
+        parameter_selection.append({'col_name': 'leakage_intensity_width_2', 'max_value': args.leakage_cut})
+
+    for parameter in config['Data'].get('parameter_selection', []):
+        if parameter['col_name'] == 'hillas_intensity' and args.size_cut:
+            continue
+        if parameter['col_name'] == 'leakage_intensity_width_2' and args.leakage_cut:
+            continue
+        parameter_selection.append(parameter)
+
+    if parameter_selection:
+        config['Data']['parameter_selection'] = parameter_selection
+
+    if args.multiplicity_cut:
+        multiplicity_cut = {}
+        for mult, tel_typ in zip(args.multiplicity_cut, config['Data']['selected_telescope_types']):
+            multiplicity_cut[tel_typ] = mult
+        config['Data']['multiplicity_selection'] = multiplicity_cut
+
+    if args.output:
+        config['Logging'] = {}
+        config['Logging']['model_directory'] = args.output
+
+    # Overwrite the number of epochs, batch size and random seed in the config file
+    if args.num_epochs:
+        if 'Training' not in config:
+            config['Training'] = {}
+        config['Training']['num_epochs'] = args.num_epochs
+    if args.batch_size:
+        if 'Input' not in config:
+            config['Input'] = {}
+        config['Input']['batch_size_per_worker'] = args.batch_size
+    if args.random_seed:
         if 1000 <= args.random_seed <= 9999:
             config['Data']['seed'] = args.random_seed
             config['Logging']['add_seed'] = True
@@ -402,9 +461,24 @@ def main():
             raise ValueError("Random seed: '{}'. "
                              "Must be 4 digit integer!".format(
                              args.random_seed))
-    random_seed = config['Data']['seed']
+    random_seed = config['Data'].get('seed', 1234)
 
     if 'train' in args.mode:
+
+        training_file_list = f"{config['Logging']['model_directory']}/training_file_list.txt"
+        if args.input:
+            abs_file_dir = os.path.abspath(args.input)
+            with open(training_file_list, 'w+') as file_list:
+                for pattern in args.pattern:
+                    files = glob.glob(os.path.join(abs_file_dir, pattern))
+                    if not files: continue
+                    for file in np.sort(files):
+                        file_list.write(f"{file}\n")
+            config['Data']['file_list'] = training_file_list
+
+        if 'training_file_list.txt' in np.array([os.listdir(config['Logging']['model_directory'])]):
+            config['Data']['file_list'] = training_file_list
+
         run_model(config, mode='train', debug=args.debug, log_to_file=args.log_to_file)
 
     if 'predict' in args.mode:
@@ -420,13 +494,18 @@ def main():
                         config = yaml.safe_load(config_file)
                     if args.reco:
                         config['Reco'] = args.reco
-                    if args.logging_model:
+                    if args.tel_types:
+                        config['Data']['selected_telescope_types'] = args.tel_types
+                    if parameter_selection:
+                        config['Data']['parameter_selection'] = parameter_selection
+                    if multiplicity_cut:
+                        config['Data']['multiplicity_selection'] = multiplicity_cut
+                    if args.output:
                         config['Logging'] = {}
-                        config['Logging']['model_directory'] = args.logging_model
+                        config['Logging']['model_directory'] = args.output
                     config['Data']['seed'] = random_seed
                     if args.random_seed != 0:
                         config['Logging']['add_seed'] = True
-                    config['Data']['shuffle'] = False
 
                     config['Prediction']['file'] = file.split("/")[-1].replace("_S_", "_E_").replace("dl1", "dl2").replace(".h5","")
                     config['Prediction']['prediction_label'] = 'data'
@@ -438,13 +517,18 @@ def main():
                     config = yaml.safe_load(config_file)
                 if args.reco:
                     config['Reco'] = args.reco
-                if args.logging_model:
+                if args.tel_types:
+                    config['Data']['selected_telescope_types'] = args.tel_types
+                if parameter_selection:
+                    config['Data']['parameter_selection'] = parameter_selection
+                if multiplicity_cut:
+                    config['Data']['multiplicity_selection'] = multiplicity_cut
+                if args.output:
                     config['Logging'] = {}
-                    config['Logging']['model_directory'] = args.logging_model
+                    config['Logging']['model_directory'] = args.output
                 config['Data']['seed'] = random_seed
                 if args.random_seed != 0:
                     config['Logging']['add_seed'] = True
-                config['Data']['shuffle'] = False
                 config['Prediction']['prediction_label'] = key
                 run_model(config, mode='predict', debug=args.debug, log_to_file=args.log_to_file)
 

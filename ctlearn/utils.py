@@ -7,6 +7,7 @@ import time
 
 import numpy as np
 import pandas as pd
+import tables
 import yaml
 
 def setup_logging(config, log_dir, debug, log_to_file):
@@ -42,6 +43,7 @@ def setup_logging(config, log_dir, debug, log_to_file):
     
     
 def setup_DL1DataReader(config, mode):
+
     # Parse file list or prediction file list
     if mode in ['train', 'load_only']:
         if isinstance(config['Data']['file_list'], str):
@@ -71,9 +73,17 @@ def setup_DL1DataReader(config, mode):
             raise ValueError("Invalid prediction file list '{}'. "
                              "Must be list or path to file".format(file_list))
 
-    data_format = config.get('Data_format', 'stage1')
+    with tables.open_file(config['Data']['file_list'][0], mode="r") as f:
+        if 'CTA PRODUCT DATA MODEL NAME' in f.root._v_attrs:
+            data_format = 'stage1'
+        elif 'dl1_data_handler_version' in f.root._v_attrs:
+            data_format = 'dl1dh'
+        else:
+            raise ValueError("Data format is not implemented in the DL1DH reader. Available data formats are 'stage1' and 'dl1dh'.")
+
     allow_overwrite = config['Data'].get('allow_overwrite', True)
-    del config['Data']['allow_overwrite']
+    if 'allow_overwrite' in config['Data']:
+        del config['Data']['allow_overwrite']
 
     selected_telescope_types = config['Data']['selected_telescope_types']
     camera_types = [tel_type.split("_")[-1] for tel_type in selected_telescope_types]
@@ -148,7 +158,7 @@ def setup_DL1DataReader(config, mode):
                     config['Data']['array_info'] = []
                 config['Data']['array_info'].append('id')
 
-    return config['Data']
+    return config['Data'], data_format
 
 def load_from_module(name, module, path=None, args=None):
     if path is not None and path not in sys.path:

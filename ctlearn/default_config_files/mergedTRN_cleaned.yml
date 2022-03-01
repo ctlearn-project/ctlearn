@@ -1,0 +1,50 @@
+Data:
+    mode: 'stereo'
+    image_channels: ['cleaned_image', 'cleaned_peak_time']
+    mapping_settings:
+        mapping_method:
+            'LSTCam': 'bilinear_interpolation'
+            'FlashCam': 'bilinear_interpolation'
+            'NectarCam': 'bilinear_interpolation'
+            'CHEC': 'oversampling'
+            'MAGICCam': 'bilinear_interpolation'
+        padding:
+            'LSTCam': 2
+            'FlashCam': 2
+            'NectarCam': 2
+            'CHEC': 0
+            'MAGICCam': 2
+Input:
+    batch_size_per_worker: 64
+    concat_telescopes: true
+Model:
+    backbone: {module: 'res_net', function: 'res_net_model'}
+    head: {module: 'head', function: 'standard_head'}
+Model Parameters:
+    attention: {mechanism: 'Squeeze-and-Excitation', ratio: 16}
+    res_net:
+        network: {module: 'resnet_engine', function: 'stacked_res_blocks'}
+        #init_layer: {filters: 64, kernel_size: 7, strides: 1}
+        #init_max_pool: {size: 3, strides: 2}
+        pretrained_weights: null
+    resnet_engine:
+        name: 'ThinResNet'
+        stacked_res_blocks:
+            residual_block: 'bottleneck'
+            architecture:
+                - {filters: 48, blocks: 2}
+                - {filters: 96, blocks: 3}
+                - {filters: 128, blocks: 3}
+                - {filters: 256, blocks: 3}
+    standard_head:
+        particletype: {class_names: ['proton', 'gamma'], fc_head: [512, 256, 2], weight: 1.0}
+        energy: {fc_head: [512, 256, 1], weight: 1.0}
+        direction: {fc_head: [512, 256, 2], weight: 1.0}
+Training:
+    validation_split: 0.1
+    num_epochs: 10
+    verbose: 2
+    workers: 1
+    optimizer: 'Adam'
+    adam_epsilon: 1.0e-8
+    base_learning_rate: 0.0001
