@@ -27,18 +27,15 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     # Load options relating to logging and checkpointing
     root_model_dir = model_dir = config['Logging']['model_directory']
-    # Create model directory if it doesn't exist already
-    if not os.path.exists(root_model_dir):
-        if mode == 'predict':
-            raise ValueError("Invalid model directory '{}'. "
-            "Must be a path to an existing directory in the predict mode.".format(config['Logging']['model_directory']))
-        os.makedirs(root_model_dir)
 
     random_seed = None
     if config['Logging'].get('add_seed', False):
         random_seed = config['Data']['seed']
-        model_dir += "/seed_{}".format(random_seed)
+        model_dir += f"/seed_{random_seed}"
         if not os.path.exists(model_dir):
+            if mode == 'predict':
+                raise ValueError(f"Invalid output directory '{model_dir}'. "
+                    "Must be a path to an existing directory in the predict mode.")
             os.makedirs(model_dir)
 
     # Set up logging, saving the config and optionally logging to a file
@@ -273,7 +270,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             logger.info("     Class weights: {}".format(class_weight))
 
         initial_epoch = 0
-        if 'training_log.csv' in np.array([os.listdir(model_dir)]):
+        if 'training_log.csv' in os.listdir(model_dir):
             initial_epoch = pd.read_csv(model_dir+'/training_log.csv')['epoch'].iloc[-1] + 1
 
         # Train and evaluate the model
@@ -443,6 +440,12 @@ def main():
     if args.output:
         config['Logging'] = {}
         config['Logging']['model_directory'] = args.output
+    # Create output directory if it doesn't exist already
+    if not os.path.exists(config['Logging']['model_directory']):
+        if 'predict' in args.mode:
+            raise ValueError(f"Invalid output directory '{config['Logging']['model_directory']}'. "
+                "Must be a path to an existing directory in the predict mode.")
+        os.makedirs(config['Logging']['model_directory'])
 
     # Overwrite the number of epochs, batch size and random seed in the config file
     if args.num_epochs:
@@ -476,7 +479,7 @@ def main():
                         file_list.write(f"{file}\n")
             config['Data']['file_list'] = training_file_list
 
-        if 'training_file_list.txt' in np.array([os.listdir(config['Logging']['model_directory'])]):
+        if 'training_file_list.txt' in os.listdir(config['Logging']['model_directory']):
             config['Data']['file_list'] = training_file_list
 
         run_model(config, mode='train', debug=args.debug, log_to_file=args.log_to_file)

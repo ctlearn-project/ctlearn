@@ -1,7 +1,7 @@
 import tensorflow as tf
 from ctlearn.default_models.attention import squeeze_excite_block, channel_squeeze_excite_block, spatial_squeeze_excite_block
 
-def conv_block(inputs, params):
+def conv_block(inputs, params, name='cnn_block'):
 
     # Get standard hyperparameters
     bn_momentum = params.get('batchnorm_decay', 0.99)
@@ -25,30 +25,30 @@ def conv_block(inputs, params):
             zip(filters_list, kernel_sizes, numbers_list)):
         for nr in range(number):
             x = tf.keras.layers.Conv2D(filters=filters, kernel_size=kernel_size,
-                padding="same", name="conv_{}_{}".format(i + 1, nr + 1))(x)
-            x = tf.keras.layers.ReLU(name="conv_{}_{}_relu".format(i + 1, nr + 1))(x)
+                padding="same", name=f"{name}_conv_{i+1}_{nr+1}")(x)
+            x = tf.keras.layers.ReLU(name=f"{name}_conv_{i+1}_{nr+1}_relu")(x)
         if max_pool:
             x = tf.keras.layers.MaxPool2D(pool_size=max_pool['size'],
-                strides=max_pool['strides'], name="pool_{}".format(i + 1))(x)
+                strides=max_pool['strides'], name=f"{name}_pool_{i+1}")(x)
         if batchnorm:
             x = tf.keras.layers.BatchNormalization(momentum=bn_momentum)(x)
 
     # bottleneck layer
     if bottleneck_filters:
         x = tf.keras.layers.Conv2D(filters=bottleneck_filters, kernel_size=1,
-            padding="same", name="bottleneck")(x)
-        x = tf.keras.layers.ReLU(name="bottleneck_relu")(x)
+            padding="same", name=f"{name}_bottleneck")(x)
+        x = tf.keras.layers.ReLU(name=f"{name}_bottleneck_relu")(x)
         if batchnorm:
             x = tf.keras.layers.BatchNormalization(momentum=bn_momentum)(x)
 
     # Attention mechanism
     if attention is not None:
         if attention['mechanism'] == 'Squeeze-and-Excitation':
-            x = squeeze_excite_block(x, attention['ratio'], name='se')
+            x = squeeze_excite_block(x, attention['ratio'], name=f"{name}_se")
         elif attention['mechanism'] == 'Channel-Squeeze-and-Excitation':
-            x = channel_squeeze_excite_block(x, attention['ratio'], name='cse')
+            x = channel_squeeze_excite_block(x, attention['ratio'], name=f"{name}_cse")
         elif attention['mechanism'] == 'Spatial-Squeeze-and-Excitation':
-            x = spatial_squeeze_excite_block(x, name='sse')
+            x = spatial_squeeze_excite_block(x, name=f"{name}_sse")
 
     return x
 

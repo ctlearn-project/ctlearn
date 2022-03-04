@@ -1,4 +1,3 @@
-
 import tensorflow as tf
 from ctlearn.default_models.basic import fully_connect
 

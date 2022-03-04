@@ -18,17 +18,16 @@ Input:
     batch_size_per_worker: 64
     concat_telescopes: false
 Model:
-    backbone: {module: 'res_net', function: 'res_net_model'}
+    name: 'ThinResNet'
+    backbone: {module: 'single_cnn', function: 'single_cnn_model'}
+    network: {module: 'resnet_engine', function: 'stacked_res_blocks'}
     head: {module: 'head', function: 'standard_head'}
+    #init_layer: {filters: 64, kernel_size: 7, strides: 1}
+    #init_max_pool: {size: 3, strides: 2}
+    pretrained_weights: null
 Model Parameters:
     attention: {mechanism: 'Squeeze-and-Excitation', ratio: 16}
-    res_net:
-        network: {module: 'resnet_engine', function: 'stacked_res_blocks'}
-        #init_layer: {filters: 64, kernel_size: 7, strides: 1}
-        #init_max_pool: {size: 3, strides: 2}
-        pretrained_weights: null
     resnet_engine:
-        name: 'ThinResNet'
         stacked_res_blocks:
             residual_block: 'bottleneck'
             architecture:
