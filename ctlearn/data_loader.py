@@ -142,7 +142,7 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
                 labels['particletype'] = tf.keras.utils.to_categorical(particletype, num_classes=2)
                 label = tf.keras.utils.to_categorical(particletype, num_classes=2)
             if self.enr_pos is not None:
-                labels['energy'] = energy
+                labels['energy'] = energy.reshape((-1, 1))
                 label = energy
             if self.drc_pos is not None:
                 labels['direction'] = direction
