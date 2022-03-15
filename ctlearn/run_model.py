@@ -380,6 +380,9 @@ def main():
         help="Multiplicity cut to perform (only valid for stereo models with CTA data)",
         nargs='+')
     parser.add_argument(
+        '--pretrained_weights', '-w',
+        help='Path to the pretrained weights')
+    parser.add_argument(
         '--num_epochs', '-e',
         type=int,
         help="Number of epochs to train")
@@ -447,6 +450,11 @@ def main():
                 "Must be a path to an existing directory in the predict mode.")
         os.makedirs(config['Logging']['model_directory'])
 
+    # Set the path to pretrained weights from the command line
+    if args.pretrained_weights:
+        config['Model']['pretrained_weights'] = args.pretrained_weights
+        config['Model']['trainable_backbone'] = False
+
     # Overwrite the number of epochs, batch size and random seed in the config file
     if args.num_epochs:
         if 'Training' not in config:
@@ -506,6 +514,10 @@ def main():
                     if args.output:
                         config['Logging'] = {}
                         config['Logging']['model_directory'] = args.output
+                    if args.pretrained_weights:
+                        config['Model']['pretrained_weights'] = args.pretrained_weights
+                        config['Model']['trainable_backbone'] = False
+
                     config['Data']['seed'] = random_seed
                     if args.random_seed != 0:
                         config['Logging']['add_seed'] = True
@@ -529,6 +541,10 @@ def main():
                 if args.output:
                     config['Logging'] = {}
                     config['Logging']['model_directory'] = args.output
+                if args.pretrained_weights:
+                    config['Model']['pretrained_weights'] = args.pretrained_weights
+                    config['Model']['trainable_backbone'] = False
+
                 config['Data']['seed'] = random_seed
                 if args.random_seed != 0:
                     config['Logging']['add_seed'] = True

@@ -25,8 +25,10 @@ def cnn_rnn_model(data, model_params):
     pretrained_weights = model_params.get('pretrained_weights', None)
     if pretrained_weights:
         loaded_model = tf.keras.models.load_model(pretrained_weights)
-        model = loaded_model.get_layer('ThinResNet')
-        model.trainable = trainable_backbone
+        for layer in loaded_model.layers:
+            if layer.name.endswith('_block'):
+                model = loaded_model.get_layer(layer.name)
+                model.trainable = trainable_backbone
     else:
         sys.path.append(model_params['model_directory'])
         network_module = importlib.import_module(model_params['network']['module'])
@@ -39,7 +41,6 @@ def cnn_rnn_model(data, model_params):
     for telescope_index in range(data.num_tels):
         telescope_data = tf.keras.Input(shape=data.img_shape, name=f'images_tel{telescope_index}')
         model_input.append(telescope_data)
-
         output = model(telescope_data)
 
         #flatten output of embedding CNN to (batch_size, _)
