@@ -145,21 +145,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         adam_epsilon = float(config['Training'].get('adam_epsilon', 1.0e-8))
         learning_rate = float(config['Training'].get('base_learning_rate',  0.0001))
         logger.info("  Learning rate: {}".format(learning_rate))
-        # ToDo: Implement this in Keras
-        # Scale the learning rate so batches with fewer triggered
-        # telescopes don't have smaller gradients
-        # Only apply learning rate scaling for array-level models
-        #if (training_params['scale_learning_rate'] and params['model']['function'] in ['cnn_rnn_model', 'variable_input_model']):
-        #    trigger_rate = tf.reduce_mean(tf.cast(
-        #                    features['telescope_triggers'], tf.float32),
-        #                    name="trigger_rate")
-        #    trigger_rate = tf.maximum(trigger_rate, 0.1) # Avoid division by 0
-        #    scaling_factor = tf.reciprocal(trigger_rate, name="scaling_factor")
-        #    learning_rate = tf.multiply(scaling_factor,
-        #                                training_params['base_learning_rate'],
-        #                                name="learning_rate")
-        #else:
-        #    learning_rate = training_params['base_learning_rate']
 
         # Select optimizer with appropriate arguments
         # Dict of optimizer_name: (optimizer_fn, optimizer_args)

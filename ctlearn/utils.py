@@ -40,8 +40,8 @@ def setup_logging(config, log_dir, debug, log_to_file):
     logger.addHandler(handler)
 
     return logger
-    
-    
+
+
 def setup_DL1DataReader(config, mode):
 
     # Parse file list or prediction file list
@@ -124,6 +124,11 @@ def setup_DL1DataReader(config, mode):
     if 'energy' in tasks:
         event_info.append('true_energy')
         transformations.append({'name': 'MCEnergy'})
+
+    concat_telescopes = config['Input'].get('concat_telescopes', False)
+    if config['Data']['mode'] == 'stereo' and not concat_telescopes:
+        for tel_desc in selected_telescope_types:
+            transformations.append({'name': 'SortTelescopes', 'args': {'sorting': 'size', 'tel_desc': f'{tel_desc}'}})
 
     # Convert interpolation image shapes from lists to tuples, if present
     if 'interpolation_image_shape' in config['Data'].get('mapping_settings',{}):
