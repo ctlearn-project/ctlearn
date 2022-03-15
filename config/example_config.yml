@@ -284,7 +284,7 @@ Model:
     # Path to directory containing model module.
     # Optional string or null. Default if missing or null is to load
     # CTLearn default models directory: 'installation_path/ctlearn/ctlearn/default_models/'
-    model_directory: null  # '/my/model/path/'
+    #model_directory: '/my/model/path/'
 
     # Name of the constructed model.
     # Optional string or null.
