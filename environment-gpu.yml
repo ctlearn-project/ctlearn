@@ -1,5 +1,5 @@
 # conda env create -f environment-gpu.yml
-name: ctlearn_tf2
+name: ctlearn
 channels:
     - anaconda
     - conda-forge
