@@ -1,4 +1,4 @@
-wData:
+Data:
     mode: 'mono'
     image_channels: ['image', 'peak_time']
     mapping_settings:
