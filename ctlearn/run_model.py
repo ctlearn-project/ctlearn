@@ -352,6 +352,11 @@ def main():
         help='selected telescope types, e.g LST_LST_LSTCam or LST_MAGIC_MAGICCam',
         nargs='+')
     parser.add_argument(
+        '--allowed_tels', '-a',
+        type=int,
+        help='list of allowed tel_ids, others will be ignored. Selected tel_ids will be ignored, when their telescope type is not selected.',
+        nargs='+')
+    parser.add_argument(
         '--size_cut', '-z',
         type=float,
         help="Hillas intensity cut to perform")
@@ -362,8 +367,7 @@ def main():
     parser.add_argument(
         '--multiplicity_cut', '-u',
         type=int,
-        help="Multiplicity cut to perform (only valid for stereo models with CTA data)",
-        nargs='+')
+        help="Multiplicity cut to perform (only valid for stereo models with CTA data)")
     parser.add_argument(
         '--pretrained_weights', '-w',
         help='Path to the pretrained weights')
@@ -402,6 +406,9 @@ def main():
     if args.tel_types:
         config['Data']['selected_telescope_types'] = args.tel_types
 
+    if args.allowed_tels:
+        config['Data']['selected_telescope_ids'] = args.allowed_tels
+
     parameter_selection = []
     if args.size_cut:
         parameter_selection.append({'col_name': 'hillas_intensity', 'min_value': args.size_cut})
@@ -420,10 +427,7 @@ def main():
         config['Data']['parameter_selection'] = parameter_selection
 
     if args.multiplicity_cut:
-        multiplicity_cut = {}
-        for mult, tel_typ in zip(args.multiplicity_cut, config['Data']['selected_telescope_types']):
-            multiplicity_cut[tel_typ] = mult
-        config['Data']['multiplicity_selection'] = multiplicity_cut
+        config['Data']['multiplicity_selection'] = {'Subarray': args.multiplicity_cut}
 
     if args.output:
         config['Logging'] = {}
@@ -461,6 +465,11 @@ def main():
 
     if 'train' in args.mode:
 
+        # Shuffle the data in train mode as default
+        if 'shuffle' not in config['Data']:
+            config['Data']['shuffle'] = True
+
+        # Training file handling
         training_file_list = f"{config['Logging']['model_directory']}/training_file_list.txt"
         if args.input:
             abs_file_dir = os.path.abspath(args.input)
@@ -492,6 +501,8 @@ def main():
                         config['Reco'] = args.reco
                     if args.tel_types:
                         config['Data']['selected_telescope_types'] = args.tel_types
+                    if args.allowed_tels:
+                        config['Data']['selected_telescope_ids'] = args.allowed_tels
                     if parameter_selection:
                         config['Data']['parameter_selection'] = parameter_selection
                     if multiplicity_cut:
@@ -503,8 +514,9 @@ def main():
                         config['Model']['pretrained_weights'] = args.pretrained_weights
                         config['Model']['trainable_backbone'] = False
 
+                    config['Data']['shuffle'] = False
                     config['Data']['seed'] = random_seed
-                    if args.random_seed != 0:
+                    if args.random_seed:
                         config['Logging']['add_seed'] = True
 
                     config['Prediction']['file'] = file.split("/")[-1].replace("_S_", "_E_").replace("dl1", "dl2").replace(".h5","")
@@ -519,6 +531,8 @@ def main():
                     config['Reco'] = args.reco
                 if args.tel_types:
                     config['Data']['selected_telescope_types'] = args.tel_types
+                if args.allowed_tels:
+                    config['Data']['selected_telescope_ids'] = args.allowed_tels
                 if parameter_selection:
                     config['Data']['parameter_selection'] = parameter_selection
                 if multiplicity_cut:
@@ -530,8 +544,9 @@ def main():
                     config['Model']['pretrained_weights'] = args.pretrained_weights
                     config['Model']['trainable_backbone'] = False
 
+                config['Data']['shuffle'] = False
                 config['Data']['seed'] = random_seed
-                if args.random_seed != 0:
+                if args.random_seed:
                     config['Logging']['add_seed'] = True
                 config['Prediction']['prediction_label'] = key
                 run_model(config, mode='predict', debug=args.debug, log_to_file=args.log_to_file)

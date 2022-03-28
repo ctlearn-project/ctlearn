@@ -75,13 +75,9 @@ Data:
     selected_telescope_types: ['LST_LST_LSTCam']
 
     # Subset of telescope IDs to include of the selected telescope types.
-    # Optional dictionary with string keys and list of integer values.
-    # Valid keys are the telescope types listed above, and valid values are
-    # are the tel_ids of the telescopes to load of that telescope type.
-    # Default if not provided or telescope type not in dict: load all
-    # telescopes of that telescope type if selected.
-    selected_telescope_ids:
-        'LST_LST_LSTCam': [1, 2, 3, 4]
+    # Optional list of integer values.
+    # Default: load all telescopes of the selected telescope types.
+    selected_telescope_ids: [1, 2, 3, 4]
 
     # Dict of multiplicity selection.
     # Valid options:
