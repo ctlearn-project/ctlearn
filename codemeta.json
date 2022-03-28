@@ -1,0 +1,105 @@
+{
+    "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+    "@type": "SoftwareSourceCode",
+    "license": "https://spdx.org/licenses/BSD-3-Clause",
+    "codeRepository": "git+https://github.com/ctlearn-project/ctlearn.git",
+    "contIntegration": "https://www.travis-ci.com/ctlearn-project/ctlearn",
+    "datePublished": "2018-03-18",
+    "dateModified": "2022-03-30",
+    "downloadUrl": "https://zenodo.org/record/5947837/files/ctlearn-project/ctlearn-v0.6.0.zip",
+    "issueTracker": "https://github.com/ctlearn-project/ctlearn/issues",
+    "name": "CTLearn: Deep learning for imaging atmospheric Cherenkov telescopes event reconstruction",
+    "version": "0.6.0",
+    "identifier": "10.5281/zenodo.3342952",
+    "description": "CTLearn is a high-level Python package providing a backend for training deep learning models for the reconstruction of imaging atmospheric Cherenkov telescope events using TensorFlow.",
+    "applicationCategory": "Astronomy",
+    "funding": "ESCAPE 824064",
+    "developmentStatus": "active",
+    "isPartOf": "https://github.com/ctlearn-project",
+    "referencePublication": "https://doi.org/10.5281/zenodo.3342952",
+    "funder": {
+        "@type": "Organization",
+        "name": "European Union's Horizon 2020 research and innovation programme"
+    },
+    "keywords": [
+        "Imaging atmospheric Cherenkov telescopes",
+        "Deep learning",
+        "High energy physics",
+        "Event reconstruction"
+    ],
+    "programmingLanguage": [
+        "Python 3"
+    ],
+    "operatingSystem": [
+        "Linux",
+        "MacOS"
+    ],
+    "softwareRequirements": [
+        "Python 3",
+        "TensorFlow 2",
+        "ctapipe",
+        "DL1DataHandler",
+        "pyIRF",
+        "NumPy",
+        "PyYAML"
+    ],
+    "author": [
+        {
+            "@type": "Person",
+            "@id": " https://orcid.org/ 0000-0002-6208-5244",
+            "givenName": "Ari",
+            "familyName": "Brill"
+        },
+        {
+            "@type": "Person",
+            "givenName": "Bryan",
+            "familyName": "Kim",
+            "affiliation": {
+                "@type": "Organization",
+                "name": "University of California Los Angeles, Division of Astronomy and Astrophysics, Los Angeles, CA, USA"
+            }
+        },
+        {
+            "@type": "Person",
+            "@id": "https://orcid.org/0000-0003-3343-0755",
+            "givenName": "Daniel",
+            "familyName": "Nieto",
+            "email": "d.nieto@ucm.es",
+            "affiliation": {
+                "@type": "Organization",
+                "name": "Instituto de Física de Partículas y del Cosmos, Departamento de EMFTEL, Universidad Complutense de Madrid, Madrid, Spain "
+            }
+        },
+        {
+            "@type": "Person",
+            "@id": "https://orcid.org/0000-0003-1821-7964",
+            "givenName": "Tjark",
+            "familyName": "Miener",
+            "affiliation": {
+                "@type": "Organization",
+                "name": "Instituto de Física de Partículas y del Cosmos, Departamento de EMFTEL, Universidad Complutense de Madrid, Madrid, Spain "
+            }
+        },
+        {
+            "@type": "Person",
+            "@id": " https://orcid.org/ 0000-0001-6674-4238",
+            "givenName": "Qi",
+            "familyName": "Feng",
+            "affiliation": {
+                "@type": "Organization",
+                "name": "Barnard College, Columbia University, New York, NY, USA"
+            }
+        }
+    ],
+    "contributor": [
+        {
+            "@type": "Person",
+            "givenName": "Jaime",
+            "familyName": "Sevilla",
+            "affiliation": {
+                "@type": "Organization",
+                "name": "Facultad de Ingeniería Informática, Universidad Complutense de Madrid, Madrid, Spain"
+            }
+        }
+    ]
+}
