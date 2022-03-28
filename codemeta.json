@@ -3,7 +3,7 @@
     "@type": "SoftwareSourceCode",
     "license": "https://spdx.org/licenses/BSD-3-Clause",
     "codeRepository": "git+https://github.com/ctlearn-project/ctlearn.git",
-    "contIntegration": "https://www.travis-ci.com/ctlearn-project/ctlearn",
+    "contIntegration": "https://app.travis-ci.com/github/ctlearn-project/ctlearn",
     "datePublished": "2018-03-18",
     "dateModified": "2022-03-30",
     "downloadUrl": "https://zenodo.org/record/5947837/files/ctlearn-project/ctlearn-v0.6.0.zip",
