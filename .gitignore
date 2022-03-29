@@ -15,3 +15,6 @@ __pycache__/
 *.py[cod]
 
 ctlearn.egg-info/
+
+# Sphinx documentation
+docs/build/
