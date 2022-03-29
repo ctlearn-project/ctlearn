@@ -19,4 +19,3 @@ dependencies:
         # TensorFlow-GPU 
         - tensorflow_gpu
         - pydot
-
