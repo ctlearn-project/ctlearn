@@ -320,41 +320,40 @@ def main():
         description=("Train/Predict with a CTLearn model."))
     parser.add_argument(
         '--config_file', '-c',
-        help="path to YAML configuration file with training options")
+        help="Path to YAML configuration file with training options")
     parser.add_argument(
         '--input', '-i',
-        help='input directory (not required when set in the config file)')
+        help='Input directory (not required when file_list is set in the config file)')
     parser.add_argument(
         '--pattern', '-p',
-        help='pattern to mask unwanted files from the data input directory',
+        help='Pattern to mask unwanted files from the data input directory',
         default=["*.h5"],
         nargs='+')
     parser.add_argument(
         '--mode', '-m',
         default="train",
-        help="Mode to run in (train/predict/train_and_predict)")
+        help="Mode to run CTLearn; valid options: train, predict, or train_and_predict")
     parser.add_argument(
         '--output', '-o',
-        help="output directory, where the logging, model weights and processed output files are stored")
-    parser.add_argument(
-        '--log_to_file',
-        action='store_true',
-        help="log to a file in model directory instead of terminal")
-    parser.add_argument(
-        '--default_model', '-d',
-        help="Default CTLearn Model valid options: TRN")
+        help="Output directory, where the logging, model weights and processed output files are stored")
     parser.add_argument(
         '--reco', '-r',
-        help='reconstruction task to perform valid options: particletype, energy and/or direction',
+        help='Reconstruction task to perform; valid options: particletype, energy, and/or direction',
         nargs='+')
     parser.add_argument(
+        '--default_model', '-d',
+        help="Default CTLearn Model; valid options: TRN, TRN_cleaned, mergedTRN, mergedTRN_cleaned, CNNRNN, and CNNRNN_cleaned")
+    parser.add_argument(
+        '--pretrained_weights', '-w',
+        help='Path to the pretrained weights')
+    parser.add_argument(
         '--tel_types', '-t',
-        help='selected telescope types, e.g LST_LST_LSTCam or LST_MAGIC_MAGICCam',
+        help='Selection of telescope types; valid option: LST_LST_LSTCam, LST_MAGIC_MAGICCam, MST_MST_FlashCam, MST_MST_NectarCam, SST_SCT_SCTCam, and/or SST_ASTRI_ASTRICam',
         nargs='+')
     parser.add_argument(
         '--allowed_tels', '-a',
         type=int,
-        help='list of allowed tel_ids, others will be ignored. Selected tel_ids will be ignored, when their telescope type is not selected.',
+        help='List of allowed tel_ids, others will be ignored. Selected tel_ids will be ignored, when their telescope type is not selected',
         nargs='+')
     parser.add_argument(
         '--size_cut', '-z',
@@ -367,10 +366,7 @@ def main():
     parser.add_argument(
         '--multiplicity_cut', '-u',
         type=int,
-        help="Multiplicity cut to perform (only valid for stereo models with CTA data)")
-    parser.add_argument(
-        '--pretrained_weights', '-w',
-        help='Path to the pretrained weights')
+        help="Multiplicity cut to perform")
     parser.add_argument(
         '--num_epochs', '-e',
         type=int,
@@ -382,11 +378,15 @@ def main():
     parser.add_argument(
         '--random_seed', '-s',
         type=int,
-        help="overwrite the random seed")
+        help="Selection of random seed (4 digits)")
+    parser.add_argument(
+        '--log_to_file',
+        action='store_true',
+        help="Log to a file in model directory instead of terminal")
     parser.add_argument(
         '--debug',
         action='store_true',
-        help="print debug/logger messages")
+        help="Print debug/logger messages")
 
     args = parser.parse_args()
 

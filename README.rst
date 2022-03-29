@@ -37,7 +37,7 @@ necessary package channels, and install CTLearn specified version and its depend
 
 .. code-block:: bash
 
-   CTLEARN_VER=0.5.2
+   CTLEARN_VER=0.6.0
    mode=cpu
    wget https://raw.githubusercontent.com/ctlearn-project/ctlearn/v$CTLEARN_VER/environment-$mode.yml
    conda env create -n [ENVIRONMENT_NAME] -f environment-$mode.yml
@@ -72,7 +72,7 @@ Finally, install CTLearn into the new conda environment via pypi:
 .. code-block:: bash
 
    conda activate ctlearn
-   pip install ctlearn==0.5.2
+   pip install ctlearn==0.6.0
 
 or with pip from source:
 
@@ -89,10 +89,10 @@ Dependencies
 ^^^^^^^^^^^^
 
 
-* Python>=3.7
-* TensorFlow==1.15.3
+* Python>=3.8
+* TensorFlow>=2.8
 * ctapipe==0.12.0
-* DL1DataHandler==0.10.4
+* DL1DataHandler==0.10.5
 * NumPy
 * PyYAML
 * Pandas
@@ -152,7 +152,7 @@ This section in its entirety is directly included as the model ``params``\ , ena
 Training
 ^^^^^^^^
 
-Set training parameters such as the training/validation split, the number of validations to run, and how often to evaluate on the validation set, as well as hyperparameters including the base learning rate and optimizer.
+Set training parameters such as the training/validation split, the number of epochs to run, as well as hyperparameters including the base learning rate and optimizer.
 
 Prediction
 ^^^^^^^^^^
@@ -171,25 +171,47 @@ Run CTLearn from the command line:
 
 .. code-block:: bash
 
-   ctlearn myconfig.yml [--mode,-m <MODE>] [--debug,-d] [--log_to_file,-l] [--random_seed,-s  <SEED>]
+   ctlearn [-h] [--config_file,-c CONFIG_FILE] [--input,-i INPUT] [--pattern,-p PATTERN [PATTERN ...]] [--mode,-m MODE] [--output,-o OUTPUT] [--reco,-r RECO [RECO ...]]
+                [--default_model,-d DEFAULT_MODEL] [--pretrained_weights,-w PRETRAINED_WEIGHTS] [--tel_types,-t TEL_TYPES [TEL_TYPES ...]] [--allowed_tels,-a ALLOWED_TELS [ALLOWED_TELS ...]]
+                [--size_cut,-z SIZE_CUT] [--leakage_cut,-l LEAKAGE_CUT] [--multiplicity_cut,-u MULTIPLICITY_CUT] [--num_epochs,-e NUM_EPOCHS] [--batch_size,-b BATCH_SIZE] [--random_seed,-s RANDOM_SEED]
+                [--log_to_file] [--debug]
 
-``--mode <MODE>``\ : Set run mode with ``<MODE>`` as ``train``\ , ``predict``\ , ``train_and_predict``\ , or ``load_only``. If not set, defaults to ``train``.
+optional arguments:
+  ``-h, --help``\       show this help message and exit
+  ``--config_file,-c CONFIG_FILE``\
+                        Path to YAML configuration file with training options
+  ``--input,-i INPUT``\
+                        Input directory (not required when file_list is set in the config file)
+  ``--pattern,-p PATTERN [PATTERN ...]``
+                        Pattern to mask unwanted files from the data input directory
+  ``--mode,-m MODE``\   Mode to run CTLearn; valid options: train, predict, or train_and_predict
+  ``--output,-o OUTPUT``\
+                        Output directory, where the logging, model weights and processed output files are stored
+  ``--reco,-r RECO [RECO ...]``\
+                        Reconstruction task to perform; valid options: particletype, energy, and/or direction
+  ``--default_model,-d DEFAULT_MODEL``\
+                        Default CTLearn Model; valid options: TRN, TRN_cleaned, mergedTRN, mergedTRN_cleaned, CNNRNN, and CNNRNN_cleaned
+  ``--pretrained_weights,-w PRETRAINED_WEIGHTS``\
+                        Path to the pretrained weights
+  ``--tel_types,-t TEL_TYPES [TEL_TYPES ...]``\
+                        Selection of telescope types; valid option: LST_LST_LSTCam, LST_MAGIC_MAGICCam, MST_MST_FlashCam, MST_MST_NectarCam, SST_SCT_SCTCam, and/or SST_ASTRI_ASTRICam
+  ``--allowed_tels,-a ALLOWED_TELS [ALLOWED_TELS ...]``\
+                        List of allowed tel_ids, others will be ignored. Selected tel_ids will be ignored, when their telescope type is not selected
+  ``--size_cut,-z SIZE_CUT``\
+                        Hillas intensity cut to perform
+  ``--leakage_cut,-l LEAKAGE_CUT``\
+                        Leakage intensity cut to perform
+  ``--multiplicity_cut,-u MULTIPLICITY_CUT``\
+                        Multiplicity cut to perform
+  ``--num_epochs,-e NUM_EPOCHS``\
+                        Number of epochs to train
+  ``--batch_size,-b BATCH_SIZE``\
+                        Batch size per worker
+  ``--random_seed,-s RANDOM_SEED``\
+                        Selection of random seed (4 digits)
+  ``--log_to_file``\    Log to a file in model directory instead of terminal
+  ``--debug``\          Print debug/logger messages
 
-``--debug``\ : Set logging level to DEBUG.
-
-``--log_to_file``\ : Save CTLearn logging messages to a timestamped file in the model directory instead of printing to stdout.
-
-``--random_seed <SEED>``\ : Overwrite the random seed in the config file with ``<SEED>`` (4 digits).
-
-In predict mode, one can directly pass the input files:
-
-.. code-block:: bash
-
-   ctlearn myconfig.yml --mode predict [--input,-i <INPUT_DIR>] [--pattern,-p <PATTERN>]
-
-``--input <INPUT_DIR>``\ : Overwrite the prediction_file_lists in the config file with ``<INPUT_DIR>``.
-
-``--pattern <PATTERN>``\ : multiple pattern to mask unwanted files from the data ``<INPUT_DIR>``. Default ``*.h5``.
 
 Alternatively, import CTLearn as a module in a Python script:
 
@@ -208,19 +230,11 @@ View training progress in real time with TensorBoard:
 
    tensorboard --logdir=/path/to/my/model_dir
 
-Inspect Data
-------------
-
-Print dataset statistics only, without running a model:
-
-.. code-block:: bash
-
-   ctlearn myconfig.yml --mode load_only
 
 Supplementary Scripts
 ---------------------
 
-
+[Deprecated] 
 * **plot_classifier_values.py** Plot a histogram of gamma/hadron classification values from a CTLearn predictions file.
 * **plot_roc_curves.py** Plot gamma/hadron classification ROC curves from a list of CTLearn predictions files.
 * **run_multiple_configurations.py** Generate a list of configuration combinations and run a model for each, for example, to conduct a hyperparameter search or to automate training or prediction for a set of models. Parses a standard CTLearn configuration file with two additional sections for Multiple Configurations added. Has an option to resume from a specific run in case the execution is interrupted.
