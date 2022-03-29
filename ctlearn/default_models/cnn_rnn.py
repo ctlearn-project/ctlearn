@@ -16,7 +16,7 @@ def cnn_rnn_model(data, model_params):
     # Unlike standard dropout, this zeroing-out procedure is performed both at
     # training and test time since it encodes meaningful aspects of the data.
     # The telescope outputs are then stacked into input for the array-level
-    # network, either into 1D feature vectors or into 3D convolutional 
+    # network, either into 1D feature vectors or into 3D convolutional
     # feature maps, depending on the requirements of the network head.
     # The array-level processing is then performed by the network head. The
     # logits are returned and fed into a classifier.
@@ -65,5 +65,5 @@ def cnn_rnn_model(data, model_params):
 
     cnnrnn_model = tf.keras.Model(model_input, dropout_2, name=network_name)
 
-    return model_input, cnnrnn_model
+    return cnnrnn_model, model_input
 

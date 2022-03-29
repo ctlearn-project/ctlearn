@@ -116,7 +116,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         # Backbone model
         backbone_module = importlib.import_module(config['Model']['backbone']['module'])
         backbone_model = getattr(backbone_module, config['Model']['backbone']['function'])
-        backbone_inputs, backbone = backbone_model(data, model_params)
+        backbone, backbone_inputs = backbone_model(data, model_params)
         backbone_output = backbone(backbone_inputs)
 
         # Head model

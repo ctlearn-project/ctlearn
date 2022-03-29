@@ -132,18 +132,16 @@ Pre-processing is performed using the DL1DataHandler Transform class.
 Input
 ^^^^^
 
-Set parameters of the KerasBatchGenerator that converts the loaded, processed data into generator of batches for the Keras application.
+Set parameters of the KerasBatchGenerator that converts the loaded, processed data into generator of batches for the Keras application. Stereoscopic images can be concatenated via the ``concat_telescopes`` flag.
 
 Model
 ^^^^^
 
-CTLearn works with any TensorFlow model obeying the signature ``logits = model(features, params, example_description, training)`` where ``logits`` is a vector of raw (non-normalized, pre-Softmax) predictions, ``features`` is a dictionary of tensors, ``params`` is a dictionary of model parameters, ``example_description`` is a DL1DataReader example description, and ``training`` is a Boolean that's True in training mode and False in testing mode.
+CTLearn works with any TensorFlow-Keras model obeying the signature of a backbone_model (``backbone, backbone_inputs = backbone_model(data, model_params)`` where ``backbone`` is a TensorFlow-Keras (sub)model with model inputs ``backbone_inputs``, ``data`` is a KerasBatchGenerator, and ``model_params`` is a dictionary of model parameters) and a head_model (``logits, losses, loss_weights, metrics = head_model(backbone_output, tasks, model_params)`` where ``backbone_output`` is an output of a TensorFlow-Keras backbone model, ``tasks`` is a list of reconstruction tasks, ``model_params`` is a dictionary of model parameters, and ``logits``, ``losses``, ``loss_weights``, ``metrics`` are lists of self-explanatory outputs correspondent to the selected tasks).
 
 To use a custom model, provide in this section the directory containing a Python file that implements the model and the module name (that is, the file name minus the .py extension) and name of the model function within the module.
 
-In addition, CTLearn includes four `models <models>`_ for gamma/hadron classification, energy and arrival direction regression. CNN-RNN and Variable Input Network perform array-level classification by feeding the output of a CNN for each telescope into either a recurrent network, or a convolutional or fully-connected network head, respectively. Single Tel and Res Net classifies single telescope images using a convolutional network and multiple residual blocks of convolutional layers, respectively. All four models are built on a simple, configurable convolutional network called Basic. In addition, three different attention mechanisms are implemented in Basic. 
-
-The values in the data to be used as labels and lists of class names where applicable are also provided in this section.
+In addition, CTLearn includes two main models for gamma/hadron classification, energy and arrival direction regression. ``SingleCNN`` analyzes single telescope images using a convolutional neural network (CNN) or multiple residual blocks of convolutional layers (ResNet). Stereoscopic images can be concatenated beforehand (in the ``Input`` config section) to be analyzed by the ``SingleCNN`` model. ``CNN-RNN`` performs array-level reconstruction by feeding the output of a CNN or a ResNet for each telescope into either a recurrent neural network (RNN). All models are built on generic functions from ``basic.py`` and ``resnet_engine.py``. In addition, three different attention mechanisms are implemented in ``attention.py``.
 
 Model Parameters
 ^^^^^^^^^^^^^^^^
@@ -239,6 +237,7 @@ Supplementary Scripts
 ---------------------
 
 [Deprecated] 
+
 * **plot_classifier_values.py** Plot a histogram of gamma/hadron classification values from a CTLearn predictions file.
 * **plot_roc_curves.py** Plot gamma/hadron classification ROC curves from a list of CTLearn predictions files.
 * **run_multiple_configurations.py** Generate a list of configuration combinations and run a model for each, for example, to conduct a hyperparameter search or to automate training or prediction for a set of models. Parses a standard CTLearn configuration file with two additional sections for Multiple Configurations added. Has an option to resume from a specific run in case the execution is interrupted.
