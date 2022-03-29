@@ -5,10 +5,9 @@ channels:
     - conda-forge
     - cta-observatory
     - ctlearn-project
-    #- nvidia
 dependencies:
     - python=3.8
-    - dl1_data_handler=0.10.4
+    - dl1_data_handler=0.10.5
     - astropy
     - matplotlib
     - numpy
@@ -16,10 +15,6 @@ dependencies:
     - pip
     - pyyaml
     - scikit-learn
-    #- cudatoolkit=11
-    #- cudnn=8
-    #- cupti=11
-    #- cuda-nvcc
     - pip:
         # TensorFlow-GPU 
         - tensorflow_gpu
