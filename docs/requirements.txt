@@ -1,1 +1,10 @@
+python
+dl1_data_handler
+astropy
+matplotlib
 numpy
+pandas
+pip
+pyyaml
+scikit-learn
+tensorflow
