@@ -7,40 +7,31 @@ import sklearn.metrics
 
 parser = argparse.ArgumentParser(
     description=("Plot ROC curves."))
-parser.add_argument('predictions_list_file',
-        help='list of paths to predictions files with names')
+parser.add_argument(
+    'predictions_file',
+    help='pandas hdf file of predictions')
 parser.add_argument(
     "--output_filename",
     help="name for output plot file",
     default="roc_curves.png")
 args = parser.parse_args()
 
-# Predictions list has the format: classifer_name, classifier_path
-classifiers = []
-with open(args.predictions_list_file) as f:
-    for line in f:
-        if not line or line[0] == '#': continue
-        name, path = line.split(',')
-        classifiers.append([name.strip(), path.strip()])
+gamma_classifier_values = pd.read_hdf(args.predictions_file, key='gamma')['reco_gammaness'].astype(float)
+gamma_true_values = np.ones(len(gamma_classifier_values))
+proton_classifier_values = pd.read_hdf(args.predictions_file, key='proton')['reco_gammaness'].astype(float)
+proton_true_values = np.zeros(len(proton_classifier_values))
 
 # Make the plot
 plt.figure()
-colors = cycle(['darkorange', 'aqua', 'cornflowerblue', 'deeppink'])
 
-# Plot the ROC curve for each set of predictions
-for classifier, color in zip(classifiers, colors):
-    classifier_name = classifier[0]
-    predictions_path = classifier[1]
-    predictions = pd.read_hdf(predictions_path)
-    labels = predictions['mc_particle'].astype(int)
-    gamma_classifier_values = predictions['reco_gammaness'].astype(float)
+# Plot the ROC curve
+classifier_values = np.concatenate((gamma_classifier_values, proton_classifier_values))
+true_values = np.concatenate((gamma_true_values, proton_true_values))
 
-    fpr, tpr, thresholds = sklearn.metrics.roc_curve(labels,
-            gamma_classifier_values, pos_label=1)
-    auc = sklearn.metrics.auc(fpr, tpr)
+fpr, tpr, thresholds = sklearn.metrics.roc_curve(true_values, classifier_values)
+auc = sklearn.metrics.auc(fpr, tpr)
 
-    plt.plot(fpr, tpr, color=color, lw=2,
-            label=classifier_name+' (AUC = {:.2f})'.format(auc))
+plt.plot(fpr, tpr, lw=2, label=classifier_name+'AUC = {:.2f}'.format(auc))
 
 # Finish the plot
 plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
@@ -54,4 +45,3 @@ plt.title('Receiver Operating Characteristic')
 plt.legend(loc='lower right')
 
 plt.savefig(args.output_filename, bbox_inches='tight')
-#plt.show()

@@ -1,3 +1,4 @@
+# [Deprecated]
 # This script will automatically rewrite the relevant yml fields in all the benchmark to your specification
 # Just modify the variables below to match your configuration
 # and execute this script from the folder whose yml files you want to modify

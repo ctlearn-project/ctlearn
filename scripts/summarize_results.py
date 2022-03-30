@@ -1,4 +1,5 @@
 """
+[Deprecated]
 Run this script from the folder where the run folders are situated.
 It will automatically read the results and create a table summarizing them.
 It currently has columns for telescope type, array or single tel, AUROC
