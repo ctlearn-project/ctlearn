@@ -180,8 +180,8 @@ optional arguments:
                         show this help message and exit
   ``--config_file,-c CONFIG_FILE``\
                         Path to YAML configuration file with training options
-  ``--input,-i INPUT``\
-                        Input directory (not required when file_list is set in the config file)
+  ``--input,-i INPUT [INPUT ...]``\
+                        Input directories (not required when file_list is set in the config file)
   ``--pattern,-p PATTERN [PATTERN ...]``\
                         Pattern to mask unwanted files from the data input directory
   ``--mode,-m MODE``\

@@ -323,7 +323,8 @@ def main():
         help="Path to YAML configuration file with training options")
     parser.add_argument(
         '--input', '-i',
-        help='Input directory (not required when file_list is set in the config file)')
+        help='Input directories (not required when file_list is set in the config file)',
+        nargs='+')
     parser.add_argument(
         '--pattern', '-p',
         help='Pattern to mask unwanted files from the data input directory',
@@ -472,13 +473,14 @@ def main():
         # Training file handling
         training_file_list = f"{config['Logging']['model_directory']}/training_file_list.txt"
         if args.input:
-            abs_file_dir = os.path.abspath(args.input)
-            with open(training_file_list, 'w+') as file_list:
-                for pattern in args.pattern:
-                    files = glob.glob(os.path.join(abs_file_dir, pattern))
-                    if not files: continue
-                    for file in np.sort(files):
-                        file_list.write(f"{file}\n")
+            for input in args.input:
+                abs_file_dir = os.path.abspath(input)
+                with open(training_file_list, 'a') as file_list:
+                    for pattern in args.pattern:
+                        files = glob.glob(os.path.join(abs_file_dir, pattern))
+                        if not files: continue
+                        for file in np.sort(files):
+                            file_list.write(f"{file}\n")
             config['Data']['file_list'] = training_file_list
 
         if 'training_file_list.txt' in os.listdir(config['Logging']['model_directory']):
@@ -488,41 +490,44 @@ def main():
 
     if 'predict' in args.mode:
         if args.input:
-            abs_file_dir = os.path.abspath(args.input)
-            input_data = []
-            for pattern in args.pattern:
-                files = glob.glob(os.path.join(abs_file_dir, pattern))
-                if not files: continue
-                for file in files:
+            for input in args.input:
+                abs_file_dir = os.path.abspath(input)
+                for pattern in args.pattern:
+                    files = glob.glob(os.path.join(abs_file_dir, pattern))
+                    if not files: continue
+                    for file in files:
 
-                    with open(args.config_file, 'r') as config_file:
-                        config = yaml.safe_load(config_file)
-                    if args.reco:
-                        config['Reco'] = args.reco
-                    if args.tel_types:
-                        config['Data']['selected_telescope_types'] = args.tel_types
-                    if args.allowed_tels:
-                        config['Data']['selected_telescope_ids'] = args.allowed_tels
-                    if parameter_selection:
-                        config['Data']['parameter_selection'] = parameter_selection
-                    if multiplicity_cut:
-                        config['Data']['multiplicity_selection'] = multiplicity_cut
-                    if args.output:
-                        config['Logging'] = {}
-                        config['Logging']['model_directory'] = args.output
-                    if args.pretrained_weights:
-                        config['Model']['pretrained_weights'] = args.pretrained_weights
-                        config['Model']['trainable_backbone'] = False
+                        with open(args.config_file, 'r') as config_file:
+                            config = yaml.safe_load(config_file)
 
-                    config['Data']['shuffle'] = False
-                    config['Data']['seed'] = random_seed
-                    if args.random_seed:
-                        config['Logging']['add_seed'] = True
+                        if args.reco:
+                            config['Reco'] = args.reco
+                        if args.tel_types:
+                            config['Data']['selected_telescope_types'] = args.tel_types
+                        if args.allowed_tels:
+                            config['Data']['selected_telescope_ids'] = args.allowed_tels
+                        if parameter_selection:
+                            config['Data']['parameter_selection'] = parameter_selection
+                        if args.multiplicity_cut:
+                            config['Data']['multiplicity_selection'] = {'Subarray': args.multiplicity_cut}
+                        if args.output:
+                            config['Logging'] = {}
+                            config['Logging']['model_directory'] = args.output
+                        if args.pretrained_weights:
+                            config['Model']['pretrained_weights'] = args.pretrained_weights
+                            config['Model']['trainable_backbone'] = False
 
-                    config['Prediction']['file'] = file.split("/")[-1].replace("_S_", "_E_").replace("dl1", "dl2").replace(".h5","")
-                    config['Prediction']['prediction_label'] = 'data'
-                    config['Prediction']['prediction_file_lists'] = {'data': file}
-                    run_model(config, mode='predict', debug=args.debug, log_to_file=args.log_to_file)
+                        config['Data']['shuffle'] = False
+                        config['Data']['seed'] = random_seed
+                        if args.random_seed:
+                            config['Logging']['add_seed'] = True
+
+                        if 'Prediction' not in config:
+                            config['Prediction'] = {}
+                        config['Prediction']['file'] = file.split("/")[-1].replace("_S_", "_E_").replace("dl1", "dl2").replace(".h5","")
+                        config['Prediction']['prediction_label'] = 'data'
+                        config['Prediction']['prediction_file_lists'] = {'data': file}
+                        run_model(config, mode='predict', debug=args.debug, log_to_file=args.log_to_file)
         else:
             for key in config['Prediction']['prediction_file_lists']:
                 with open(args.config_file, 'r') as config_file:
@@ -535,8 +540,8 @@ def main():
                     config['Data']['selected_telescope_ids'] = args.allowed_tels
                 if parameter_selection:
                     config['Data']['parameter_selection'] = parameter_selection
-                if multiplicity_cut:
-                    config['Data']['multiplicity_selection'] = multiplicity_cut
+                if args.multiplicity_cut:
+                    config['Data']['multiplicity_selection'] = {'Subarray': args.multiplicity_cut}
                 if args.output:
                     config['Logging'] = {}
                     config['Logging']['model_directory'] = args.output
@@ -548,6 +553,8 @@ def main():
                 config['Data']['seed'] = random_seed
                 if args.random_seed:
                     config['Logging']['add_seed'] = True
+                if 'Prediction' not in config:
+                    config['Prediction'] = {}
                 config['Prediction']['prediction_label'] = key
                 run_model(config, mode='predict', debug=args.debug, log_to_file=args.log_to_file)
 
