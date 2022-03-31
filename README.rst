@@ -236,6 +236,7 @@ View training progress in real time with TensorBoard:
 Supplementary Scripts
 ---------------------
 
+* **run_ctlearn_on_Wilkes3.sh** Launch CTLearn runs on Wilkes-3 via Slurm workload manager. 
 * **plot_classifier_values.py** Plot a histogram of gamma/hadron classification values from a CTLearn predictions file.
 * **plot_roc_curves.py** Plot gamma/hadron classification ROC curves from a list of CTLearn predictions files.
 * [Deprecated] **run_multiple_configurations.py** Generate a list of configuration combinations and run a model for each, for example, to conduct a hyperparameter search or to automate training or prediction for a set of models. Parses a standard CTLearn configuration file with two additional sections for Multiple Configurations added. Has an option to resume from a specific run in case the execution is interrupted.
