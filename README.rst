@@ -22,7 +22,7 @@ CTLearn: Deep Learning for IACT Event Reconstruction
    :alt: CTLearn Logo
 
 
-CTLearn is a package under active development to run deep learning models to analyze data from all major current and future arrays of Imaging Atmospheric Cherenkov Telescopes (IACTs). CTLearn can load data from `CTA <https://www.cta-observatory.org/>`_ (Cherenkov Telescope Array), `FACT <https://www.isdc.unige.ch/fact/>`_\ , `H.E.S.S. <https://www.mpi-hd.mpg.de/hfm/HESS/>`_\ , `MAGIC <https://magic.mpp.mpg.de/>`_\ , and `VERITAS <https://veritas.sao.arizona.edu/>`_ telescopes processed using `DL1DataHandler <https://github.com/cta-observatory/dl1-data-handler>`_.
+CTLearn is a package under active development to run deep learning models to analyze data from all major current and future arrays of Imaging Atmospheric Cherenkov Telescopes (IACTs). CTLearn can load data from `CTA <https://www.cta-observatory.org/>`_ (Cherenkov Telescope Array), `FACT <https://www.isdc.unige.ch/fact/>`_\ , `H.E.S.S. <https://www.mpi-hd.mpg.de/hfm/HESS/>`_\ , `MAGIC <https://magic.mpp.mpg.de/>`_\ , and `VERITAS <https://veritas.sao.arizona.edu/>`_ telescopes processed by `ctapipe <https://github.com/cta-observatory/ctapipe>`_ or `DL1DataHandler <https://github.com/cta-observatory/dl1-data-handler>`_.
 
 Install CTLearn
 ---------------
@@ -37,12 +37,13 @@ necessary package channels, and install CTLearn specified version and its depend
 
 .. code-block:: bash
 
-   CTLEARN_VER=0.5.2
+   CTLEARN_VER=0.6.0
    mode=cpu
    wget https://raw.githubusercontent.com/ctlearn-project/ctlearn/v$CTLEARN_VER/environment-$mode.yml
    conda env create -n [ENVIRONMENT_NAME] -f environment-$mode.yml
    conda activate [ENVIRONMENT_NAME]
    pip install ctlearn=$CTLEARN_VER
+   ctlearn -h
 
 where ``mode`` is either 'cpu' or 'gpu' (for linux systems) or 'macos' (for macOS systems), denoting the TensorFlow version to be installed. If installing the GPU version of TensorFlow, verify that your system fulfills all the requirements `here <https://www.tensorflow.org/install/install_linux#NVIDIARequirements>`_. Note that there is no GPU-enabled TensorFlow version for macOS yet.
 
@@ -72,7 +73,7 @@ Finally, install CTLearn into the new conda environment via pypi:
 .. code-block:: bash
 
    conda activate ctlearn
-   pip install ctlearn==0.5.2
+   pip install ctlearn==0.6.0
 
 or with pip from source:
 
@@ -89,10 +90,10 @@ Dependencies
 ^^^^^^^^^^^^
 
 
-* Python>=3.7
-* TensorFlow==1.15.3
+* Python>=3.8
+* TensorFlow>=2.8
 * ctapipe==0.12.0
-* DL1DataHandler==0.10.4
+* DL1DataHandler==0.10.5
 * NumPy
 * PyYAML
 * Pandas
@@ -109,7 +110,7 @@ CTLearn can load and process data in the HDF5 PyTables format produced from simt
 Configure a Run
 ---------------
 
-CTLearn encourages reproducible training and prediction by keeping all run settings in a single YAML configuration file, organized into the sections listed below. The `example config file <config/example_config.yml>`_ describes every available setting and its possible values in detail.
+CTLearn encourages reproducible training and prediction by keeping all run settings in a single YAML configuration file, organized into the sections listed below. The `example config file <config/example_config.yml>`_ describes every available setting and its possible values in detail. Predefined default CTLearn models are shipped with the installation and can be constructed via ``--default_model,-d`` from the command line.
 
 Logging
 ^^^^^^^
@@ -131,18 +132,16 @@ Pre-processing is performed using the DL1DataHandler Transform class.
 Input
 ^^^^^
 
-Set parameters of the TensorFlow Estimator input function that converts the loaded, processed data into tensors.
+Set parameters of the KerasBatchGenerator that converts the loaded, processed data into generator of batches for the Keras application. Stereoscopic images can be concatenated via the ``concat_telescopes`` flag.
 
 Model
 ^^^^^
 
-CTLearn works with any TensorFlow model obeying the signature ``logits = model(features, params, example_description, training)`` where ``logits`` is a vector of raw (non-normalized, pre-Softmax) predictions, ``features`` is a dictionary of tensors, ``params`` is a dictionary of model parameters, ``example_description`` is a DL1DataReader example description, and ``training`` is a Boolean that's True in training mode and False in testing mode.
+CTLearn works with any TensorFlow-Keras model obeying the signature of a backbone_model (``backbone, backbone_inputs = backbone_model(data, model_params)`` where ``backbone`` is a TensorFlow-Keras (sub)model with model inputs ``backbone_inputs``, ``data`` is a KerasBatchGenerator, and ``model_params`` is a dictionary of model parameters) and a head_model (``logits, losses, loss_weights, metrics = head_model(backbone_output, tasks, model_params)`` where ``backbone_output`` is an output of a TensorFlow-Keras backbone model, ``tasks`` is a list of reconstruction tasks, ``model_params`` is a dictionary of model parameters, and ``logits``, ``losses``, ``loss_weights``, ``metrics`` are lists of self-explanatory outputs correspondent to the selected tasks).
 
 To use a custom model, provide in this section the directory containing a Python file that implements the model and the module name (that is, the file name minus the .py extension) and name of the model function within the module.
 
-In addition, CTLearn includes four `models <models>`_ for gamma/hadron classification, energy and arrival direction regression. CNN-RNN and Variable Input Network perform array-level classification by feeding the output of a CNN for each telescope into either a recurrent network, or a convolutional or fully-connected network head, respectively. Single Tel and Res Net classifies single telescope images using a convolutional network and multiple residual blocks of convolutional layers, respectively. All four models are built on a simple, configurable convolutional network called Basic. In addition, three different attention mechanisms are implemented in Basic. 
-
-The values in the data to be used as labels and lists of class names where applicable are also provided in this section.
+In addition, CTLearn includes two main models for gamma/hadron classification, energy and arrival direction regression. ``SingleCNN`` analyzes single telescope images using a convolutional neural network (CNN) or multiple residual blocks of convolutional layers (ResNet). Stereoscopic images can be concatenated beforehand (in the ``Input`` config section) to be analyzed by the ``SingleCNN`` model. ``CNN-RNN`` performs array-level reconstruction by feeding the output of a CNN or a ResNet for each telescope into either a recurrent neural network (RNN). All models are built on generic functions from ``basic.py`` and ``resnet_engine.py``. In addition, three different attention mechanisms are implemented in ``attention.py``.
 
 Model Parameters
 ^^^^^^^^^^^^^^^^
@@ -152,7 +151,7 @@ This section in its entirety is directly included as the model ``params``\ , ena
 Training
 ^^^^^^^^
 
-Set training parameters such as the training/validation split, the number of validations to run, and how often to evaluate on the validation set, as well as hyperparameters including the base learning rate and optimizer.
+Set training parameters such as the training/validation split, the number of epochs to run, as well as hyperparameters including the base learning rate and optimizer.
 
 Prediction
 ^^^^^^^^^^
@@ -171,25 +170,50 @@ Run CTLearn from the command line:
 
 .. code-block:: bash
 
-   ctlearn myconfig.yml [--mode,-m <MODE>] [--debug,-d] [--log_to_file,-l] [--random_seed,-s  <SEED>]
+   ctlearn [-h] [--config_file,-c CONFIG_FILE] [--input,-i INPUT] [--pattern,-p PATTERN [PATTERN ...]] [--mode,-m MODE] [--output,-o OUTPUT] [--reco,-r RECO [RECO ...]]
+                [--default_model,-d DEFAULT_MODEL] [--pretrained_weights,-w PRETRAINED_WEIGHTS] [--tel_types,-t TEL_TYPES [TEL_TYPES ...]] [--allowed_tels,-a ALLOWED_TELS [ALLOWED_TELS ...]]
+                [--size_cut,-z SIZE_CUT] [--leakage_cut,-l LEAKAGE_CUT] [--multiplicity_cut,-u MULTIPLICITY_CUT] [--num_epochs,-e NUM_EPOCHS] [--batch_size,-b BATCH_SIZE] [--random_seed,-s RANDOM_SEED]
+                [--log_to_file] [--debug]
 
-``--mode <MODE>``\ : Set run mode with ``<MODE>`` as ``train``\ , ``predict``\ , ``train_and_predict``\ , or ``load_only``. If not set, defaults to ``train``.
-
-``--debug``\ : Set logging level to DEBUG.
-
-``--log_to_file``\ : Save CTLearn logging messages to a timestamped file in the model directory instead of printing to stdout.
-
-``--random_seed <SEED>``\ : Overwrite the random seed in the config file with ``<SEED>`` (4 digits).
-
-In predict mode, one can directly pass the input files:
-
-.. code-block:: bash
-
-   ctlearn myconfig.yml --mode predict [--input,-i <INPUT_DIR>] [--pattern,-p <PATTERN>]
-
-``--input <INPUT_DIR>``\ : Overwrite the prediction_file_lists in the config file with ``<INPUT_DIR>``.
-
-``--pattern <PATTERN>``\ : multiple pattern to mask unwanted files from the data ``<INPUT_DIR>``. Default ``*.h5``.
+optional arguments:
+  ``-h, --help``\
+                        show this help message and exit
+  ``--config_file,-c CONFIG_FILE``\
+                        Path to YAML configuration file with training options
+  ``--input,-i INPUT [INPUT ...]``\
+                        Input directories (not required when file_list is set in the config file)
+  ``--pattern,-p PATTERN [PATTERN ...]``\
+                        Pattern to mask unwanted files from the data input directory
+  ``--mode,-m MODE``\
+                        Mode to run CTLearn; valid options: train, predict, or train_and_predict
+  ``--output,-o OUTPUT``\
+                        Output directory, where the logging, model weights and processed output files are stored
+  ``--reco,-r RECO [RECO ...]``\
+                        Reconstruction task to perform; valid options: particletype, energy, and/or direction
+  ``--default_model,-d DEFAULT_MODEL``\
+                        Default CTLearn Model; valid options: TRN, TRN_cleaned, mergedTRN, mergedTRN_cleaned, CNNRNN, and CNNRNN_cleaned
+  ``--pretrained_weights,-w PRETRAINED_WEIGHTS``\
+                        Path to the pretrained weights
+  ``--tel_types,-t TEL_TYPES [TEL_TYPES ...]``\
+                        Selection of telescope types; valid option: LST_LST_LSTCam, LST_MAGIC_MAGICCam, MST_MST_FlashCam, MST_MST_NectarCam, SST_SCT_SCTCam, and/or SST_ASTRI_ASTRICam
+  ``--allowed_tels,-a ALLOWED_TELS [ALLOWED_TELS ...]``\
+                        List of allowed tel_ids, others will be ignored. Selected tel_ids will be ignored, when their telescope type is not selected
+  ``--size_cut,-z SIZE_CUT``\
+                        Hillas intensity cut to perform
+  ``--leakage_cut,-l LEAKAGE_CUT``\
+                        Leakage intensity cut to perform
+  ``--multiplicity_cut,-u MULTIPLICITY_CUT``\
+                        Multiplicity cut to perform
+  ``--num_epochs,-e NUM_EPOCHS``\
+                        Number of epochs to train
+  ``--batch_size,-b BATCH_SIZE``\
+                        Batch size per worker
+  ``--random_seed,-s RANDOM_SEED``\
+                        Selection of random seed (4 digits)
+  ``--log_to_file``\
+                        Log to a file in model directory instead of terminal
+  ``--debug``\
+                        Print debug/logger messages
 
 Alternatively, import CTLearn as a module in a Python script:
 
@@ -208,29 +232,16 @@ View training progress in real time with TensorBoard:
 
    tensorboard --logdir=/path/to/my/model_dir
 
-Inspect Data
-------------
-
-Print dataset statistics only, without running a model:
-
-.. code-block:: bash
-
-   ctlearn myconfig.yml --mode load_only
 
 Supplementary Scripts
 ---------------------
 
-
+* **run_ctlearn_on_Wilkes3.sh** Launch CTLearn runs on Wilkes-3 via Slurm workload manager. 
 * **plot_classifier_values.py** Plot a histogram of gamma/hadron classification values from a CTLearn predictions file.
 * **plot_roc_curves.py** Plot gamma/hadron classification ROC curves from a list of CTLearn predictions files.
-* **run_multiple_configurations.py** Generate a list of configuration combinations and run a model for each, for example, to conduct a hyperparameter search or to automate training or prediction for a set of models. Parses a standard CTLearn configuration file with two additional sections for Multiple Configurations added. Has an option to resume from a specific run in case the execution is interrupted.
-* **auto_configuration.py** Fill the path information specific to your computer and run this script from a folder with any number of configuration files to automatically overwrite them.
-* **summarize_results.py** Run this script from the folder containing the ``runXX`` folders generated by the ``run_multiple_configurations.py`` script to generate a ``summary.csv`` file with key validation metrics after training of each run.
-
-CTLearn Benchmarks
-------------------
-
-Configuration files and corresponding results showing CTLearn's operation for training both single telescope and array models using simulations from all CTA telescopes are provided in `config/v_X_Y_Z_benchmarks <config/>`_.
+* [Deprecated] **run_multiple_configurations.py** Generate a list of configuration combinations and run a model for each, for example, to conduct a hyperparameter search or to automate training or prediction for a set of models. Parses a standard CTLearn configuration file with two additional sections for Multiple Configurations added. Has an option to resume from a specific run in case the execution is interrupted.
+* [Deprecated] **auto_configuration.py** Fill the path information specific to your computer and run this script from a folder with any number of configuration files to automatically overwrite them.
+* [Deprecated] **summarize_results.py** Run this script from the folder containing the ``runXX`` folders generated by the ``run_multiple_configurations.py`` script to generate a ``summary.csv`` file with key validation metrics after training of each run.
 
 Uninstall CTLearn
 -----------------

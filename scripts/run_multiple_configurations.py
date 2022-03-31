@@ -1,4 +1,5 @@
 """
+[Deprecated] - Multiple experiments should be set up via sbatch.
 Generate a list of configuration combinations and run a model for each, for
 example, to conduct a hyperparameter search or simply to automate training or
 prediction for a set of models.

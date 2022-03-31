@@ -1,18 +1,48 @@
-# Based on the deprecated DL1DH data format. Better to use example config
-# files in the latest benchmarks folder! This will be updated once MAGIC
-# users working with the official CTA DL1 data model.
-
 # Example config file containing all possible options for CTLearn, whether
 # they're required or optional, their datatypes, and default arguments.
+# A config file is only required for creating new models. Existing CTLearn
+# benchmark models can be constructed from the command line. Please see the
+# README for instructions.
 #
 # For an explanation of the data format and valid column names for the
 # selection_string, array_info, and event_info Data config options, see
 # https://github.com/cta-observatory/dl1-data-handler/wiki/CTA-ML-Data-Format
 # or use ViTables http://vitables.org/ to examine the HDF5 files directly.
----
+
+# List of reconstruction tasks. For now it's recommended to you single task learning.
+# Valid options:
+#     - 'particletype'
+#     - 'energy'
+#     - 'direction'
+# These options have to be in consonance with the 'event_info' and 
+# 'transforms' in 'Data'.
+# Requirements/recommendations:
+#   - 'particletype':
+#       event_info:
+#           - 'true_shower_primary_id'
+#       transforms:
+#           -  name: 'ShowerPrimaryID'
+#
+#   - 'energy':
+#       event_info:
+#           - 'true_energy'
+#       transforms:
+#           -  name: 'MCEnergy'
+#
+#   - 'direction':
+#       event_info:
+#           - 'true_energy'
+#           - 'true_alt'
+#           - 'true_az'
+#       transforms:
+#           -  name: 'MCEnergy'
+#           - name: 'DeltaAltAz'
+#
+# Required list of strings.
+Reco: ['energy']
 
 Logging:
-    # Path to directory to store TensorFlow model checkpoints and summaries.
+    # Path to directory to store TensorFlow model checkpoints and summary plots.
     # A timestamped copy of the configuration file will also be put here.
     # Required string.
     model_directory: '/tmp/logs/example/'
@@ -27,41 +57,49 @@ Data:
     # Optional string. Default: 'mono'
     # Valid options:
     #   - 'mono': single images of one telescope type
-    #   - 'stereo': events of one telescope type
-    #   - 'multi-stereo': events including multiple telescope types
+    #   - 'stereo': stereoscopic images of events
     mode: 'mono'
 
-    # Telescope type or list thereof to load.
-    # Optional string (mono or stereo) or list of strings (multi-stereo).
-    # Default in mono or stereo mode: first telescope type in the dataset
-    # Default in multi-stereo mode: all telescope types in the dataset
+    # List of telescope types to load.
     # Valid telescope types:
-    #   - 'LST_LSTCam': LST Telescope and Camera
-    #   - 'MST_FlashCam': MST Telescope with FlashCAM Camera
-    #   - 'MST_NectarCam': MST Telescope with NectarCAM Camera
-    #   - 'SCT_SCTCam': SCT Telescope and Camera
-    #   - 'SST1M_DigiCam': SST-1M Telescope with DigiCam Camera
-    #   - 'SSTASTRI_ASTRICam': SST-2M ASTRI Telescope and Camera
-    #   - 'SSTGCT_CHEC': SST-2M GCT Telescope with CHEC Camera
+    #   - 'LST_LST_LSTCam': LST Telescope and Camera
+    #   - 'LST_MAGIC_MAGICCam': MAGIC Telescopes
+    #   - 'MST_MST_FlashCam': MST Telescope with FlashCAM Camera
+    #   - 'MST_MST_NectarCam': MST Telescope with NectarCAM Camera
+    #   - 'SST_SCT_SCTCam': SCT Telescope and Camera
+    #   - 'SST_ASTRI_ASTRICam': SST-2M ASTRI Telescope and CHECH Camera
     # Camera images from the following telescopes can be read, but writers
     # for the data are not yet available:
-    #   - FACT, HESS-I, HESS-II, MAGIC, VERITAS
-    selected_telescope_type: 'LST_LSTCam'
+    #   - FACT, HESS-I, HESS-II, VERITAS
+    # Required list of strings.
+    selected_telescope_types: ['LST_LST_LSTCam']
 
     # Subset of telescope IDs to include of the selected telescope types.
-    # Optional dictionary with string keys and list of integer values.
-    # Valid keys are the telescope types listed above, and valid values are
-    # are the tel_ids of the telescopes to load of that telescope type.
-    # Default if not provided or telescope type not in dict: load all
-    # telescopes of that telescope type if selected.
-    selected_telescope_ids:
-        'LST_LSTCam': [1, 2, 3, 4]
+    # Optional list of integer values.
+    # Default: load all telescopes of the selected telescope types.
+    selected_telescope_ids: [1, 2, 3, 4]
 
+    # Dict of multiplicity selection.
+    # Valid options:
+    #     - 'telescope_types': int (from above)
+    #     - 'Subarray': int (for full array multiplicity)
+    # Optinal dict. Not needed for MAGIC data!
+    #multiplicity_selection: {"LST_LST_LSTCam": 4}
+
+    # Dict of parameter selections from the DL1 file.
+    # The recommended way of applying quality cuts to the data.
+    # Only available for mono analysis at the moment.
+    # Optional dict.
+    parameter_selection: 
+        - {col_name: "hillas_intensity", min_value: 50.0}
+        - {col_name: "leakage_intensity_width_2", max_value: 0.2}
+
+    # Not the recommended way of applying quality cuts to the data. 
     # PyTables cut condition to apply selection cuts to events.
     # Optional string. Default: don't apply any cuts
     # See https://www.pytables.org/usersguide/condition_syntax.html
     # for explanation of syntax.
-    selection_string: '(mc_energy > 1.0) & (h_first_int < 20000)'
+    #selection_string: '(true_energy > 1.0) & (true_h_first_int < 20000)'
 
     # Event selection filters to apply to each data file.
     # Optional list of dictionaries with the following key/value pairs:
@@ -74,15 +112,15 @@ Data:
     #             filter(file, **args). Default: {}
     # Valid filter names are those defined in DL1DataHandler or any defined
     # in the specified path and module.
-    event_selection:
-        -
-            name: 'event_intensity_filter'
-            args: {i_min: 100, i_max: 316}
-#       -
-#           path: '/path/to/my/module/'
-#           module: 'my_filter'
-#           name: 'filter_fn'
-#           args: {'arg1': 'foo', 'arg2': 3.14}
+    #event_selection:
+    #    -
+    #        name: 'event_intensity_filter'
+    #        args: {i_min: 100, i_max: 316}
+    #   -
+    #       path: '/path/to/my/module/'
+    #       module: 'my_filter'
+    #       name: 'filter_fn'
+    #       args: {'arg1': 'foo', 'arg2': 3.14}
 
     # Image selection filters to apply to each image (mono mode only).
     # Optional list of dictionaries with the following key/value pairs:
@@ -95,15 +133,15 @@ Data:
     #             filter(file, **args). Default: {}
     # Valid filter names are those defined in DL1DataHandler or any defined
     # in the specified path and module.
-    image_selection:
-        -
-            name: 'image_intensity_filter'
-            args: {i_min: 10, i_max: 31.6}
-#       -
-#           path: '/path/to/my/module/'
-#           module: 'my_filter'
-#           name: 'filter_fn'
-#           args: {'arg1': 'foo', 'arg2': 3.14}
+    #image_selection:
+    #    -
+    #        name: 'image_intensity_filter'
+    #        args: {i_min: 10, i_max: 31.6}
+    #    -
+    #        path: '/path/to/my/module/'
+    #        module: 'my_filter'
+    #        name: 'filter_fn'
+    #        args: {'arg1': 'foo', 'arg2': 3.14}
 
     # Whether to shuffle the examples.
     # Optional Boolean. Default: False
@@ -114,10 +152,10 @@ Data:
     seed: 1234
 
     # Image channels to load.
-    # Optional list of strings. Default: ['charge']
-    # Valid options are 'charge' and 'peakpos', or whichever columns are in
+    # Optional list of strings. Default: ['image']
+    # Valid options are 'image', 'peak_time' 'cleaned_image' and 'clean_peak_time', or whichever columns are in
     # the telescope tables of your data files.
-    image_channels: ['charge']
+    image_channels: ['image', 'peak_time']
 
     # Settings passed directly as arguments to ImageMapper.
     # Optional dictionary. Default: {}
@@ -153,6 +191,11 @@ Data:
         #       cameras only)
         mapping_method:
             'LSTCam': 'bilinear_interpolation'
+            'FlashCam': 'bilinear_interpolation'
+            'NectarCam': 'bilinear_interpolation'
+            'SCTCam': 'oversampling'
+            'CHEC': 'oversampling'
+            'MAGICCam': 'bilinear_interpolation'
 
         # Number of padding pixels to add around each edge of the mapped image.
         # A value of 1 will increase both the image height and width by 2, etc.
@@ -162,11 +205,9 @@ Data:
             'LSTCam': 2
             'FlashCam': 1
             'NectarCam': 2
-            'SCTCam': 4
-            'DigiCam': 1
-            'ASTRICam': 0
+            'SCTCam': 0
             'CHEC': 0
-            'VERITAS': 1
+            'MAGICCam': 2
 
         # Shape of mapped image to return. Used only for mapping methods
         # without a fixed output shape: rebinning, nearest interpolation,
@@ -184,13 +225,13 @@ Data:
     # Auxiliary information to return from the Array Information table.
     # Optional list of strings. Default: return no array info
     # Valid options are columns in the Array_Information table.
-    array_info: ['x', 'y', 'z']
+    #array_info: ['x', 'y', 'z']
 
     # Auxiliary information to return from the Events table.
     # Optional list of strings. Default: return no event info
     # Valid options are columns in the Events table.
     # These options have to be in consonance with the 'label_names' in 'Model'.
-    event_info: ['shower_primary_id', 'mc_energy', 'alt', 'az', 'core_x', 'core_y', 'x_max']
+    event_info: ['true_shower_primary_id', 'true_energy', 'true_alt', 'true_az']
 
     # Transforms to apply to the data, in order.
     # Optional list of dictionaries with the following key/value pairs:
@@ -205,15 +246,12 @@ Data:
     # in the specified path and module.
     transforms:
         -
-            name: 'ShowerPrimaryID'
-        -
-            name: 'NormalizeTelescopePositions'
-            args: {'norm_x': 1.0, 'norm_y': 1.0, 'norm_z': 1.0}
-#       -
-#           path: '/path/to/my/module/'
-#           module: 'my_transform'
-#           name: 'MyTransform'
-#           args: {'arg1': 'foo', 'arg2': 3.14}
+            name: 'MCEnergy'
+    #   -
+    #       path: '/path/to/my/module/'
+    #       module: 'my_transform'
+    #       name: 'MyTransform'
+    #       args: {'arg1': 'foo', 'arg2': 3.14}
 
     # Whether to validate that the shape and dtype of the processed data
     # matches the example description.
@@ -222,91 +260,69 @@ Data:
     # Optional Boolean. Default: False
     validate_processor: False
 
-# Settings for the TensorFlow Estimator input_fn.
+# Settings for the Keras batch generator.
 Input:
 
-    # Random seed for shuffling the dataset.
-    # Optional integer. Default: use default TensorFlow behavior
-    seed: null
-
-    # Number of consecutive examples to combine into a batch.
+    # Number of consecutive examples to combine into a batch for a single gpu.
     # Optional integer. Default: 1
-    batch_size: 32
+    batch_size_per_worker: 32
 
-    # Arguments to tf.data.experimental.prefetch_to_device
-    # to prefetch examples to a specified device.
-    # Optional dictionary or null. Default if null: do not prefetch
-    prefetch_to_device:
-        # Device to which to prefetch (string)
-        device: "/gpu:0"
-        # Number of elements to prefetch
-        # Optional; will be automatically optimized if missing or null
-        buffer_size: null
+    # Whether to concatenate the stereo images from an event to feed it
+    # to a monoscopic model.
+    # Optional boolean. Default: false
+    concat_telescopes: false
 
 # Settings for the TensorFlow model. The options in this and the
 # Model Parameters section are passed to the Estimator model_fn
 # and the user's model function.
 Model:
 
-    # Optional string or null. Default if missing or null is to load
-    # CTLearn default models directory: 'ctlearn/ctlearn/default_models/'
     # Path to directory containing model module.
-    model_directory: null  # '/my/model/path/'
+    # Optional string or null. Default if missing or null is to load
+    # CTLearn default models directory: 'installation_path/ctlearn/ctlearn/default_models/'
+    #model_directory: '/my/model/path/'
+
+    # Name of the constructed model.
+    # Optional string or null.
+    name: 'SingleCNN'
 
     # Required dictionary containing a module/function pair.
     # Module in model directory and function in module implementing the model.
     # Module and function pairs included with CTLearn:
-    #   - {module: 'single_cnn', function: 'single_cnn_model'}: single
-    #       telescope model using a basic convolutional neural network (CNN)
-    #   - {module: 'res_net', function: 'res_net_model'}: Residual block
+    #   - {module: 'single_cnn', function: 'single_cnn_model'}: monoscopic
     #       model using a basic convolutional neural network (CNN)
+    #       or residual blocks (ResNets)
     #   - {module: 'cnn_rnn', function: 'cnn_rnn_model'}: array model
-    #       feeding output of a basic CNN for each  telescope into a
-    #       recurrent neural network (RNN)
-    #   - {module: 'variable_input_model', function: 'variable_input_model'}:
-    #       array model feeding combined outputs of a CNN for each
-    #       telescope into a CNN network head
-    model: {module: 'single_cnn', function: 'single_cnn_model'}
+    #       feeding output of a basic CNN or a ResNet for each  telescope
+    #       into a recurrent neural network (RNN)
+    backbone: {module: 'single_cnn', function: 'single_cnn_model'}
 
-    # Dictionary of tasks where the values contain the fully connected layers
-    # head of each task. The final loss is calculated with a weighted sum 
-    # over the individual losses. Currently the weights are constanst values.
-    # For the classification task, the class names are passed into the dict
-    # in order of class label (0 to n-1).
-    # Optional dictionary with string keys and values either null or
-    # a list of strings. Default: {}
-    #
-    # These options have to be in consonance with the 'event_info' and 
-    # 'transforms' in 'Data'.
-    # Requirements/recommendations (see also config files from benchmarks):
-    #   - 'particletype':
-    #       event_info:
-    #           - 'shower_primary_id'
-    #       transforms:
-    #           -  name: 'ShowerPrimaryID'
-    #              args: {name: 'particletype'}
-    #
-    #   - 'energy':
-    #       event_info:
-    #           - 'mc_energy'
-    #       transforms:
-    #           -  name: 'MCEnergy'
-    #
-    #   - 'direction':
-    #       event_info:
-    #           - 'mc_energy'
-    #           - 'alt'
-    #           - 'az'
-    #       transforms:
-    #           -  name: 'MCEnergy'
-    #           - name: 'DeltaAltAz'
-    #
-    tasks:
-        particletype: {class_names: ['proton', 'gamma'], fc_head: [512, 256, 2], weight: 1.0}
-        #energy: {fc_head: [256, 1], weight: 1.0}
-        #direction: {fc_head: [256, 2], weight: 1.0}
-        #impact: {fc_head: [256, 2], weight: 1.0}
-        #showermaximum: {fc_head: [256, 1], weight: 1.0}
+    # Required dict with keys 'module' and 'function' & string values.
+    # Module and function for the CTLearn backbone.
+    # Valid options:
+    #   - {module: 'basic', function: 'conv_block'}
+    #   - {module: 'resnet_engine', function: 'stacked_res_blocks'}
+    network: {module: 'basic', function: 'conv_block'}
+
+    # Optional arguments for the first Conv2D and MaxPool layer
+    # before the selected model.
+    #init_layer: {filters: 64, kernel_size: 7, strides: 1}
+    #init_max_pool: {size: 3, strides: 2}
+
+    # Required dict with keys 'module' and 'function' & string values.
+    # Module and function for the CTLearn head.
+    # Valid options:
+    #   - {module: 'head', function: 'standard_head'}
+    head: {module: 'head', function: 'standard_head'}
+
+    # Required string or null.
+    # Path to a checkpoint file or model directory from which to load
+    # pretrained network weights. If null, don't load any weights.
+    pretrained_weights: null
+
+    # Optional float. Default: 0.5
+    # Dropout rate of dropout layers in the CNNRNN model.
+    dropout_rate: 0.5
 
 # The options in this and the Model section are passed in a dictionary
 # called "params" to the model function.
@@ -317,73 +333,6 @@ Model:
 # Below are listed the configuration options for the CTLearn included
 # models, which are only accessed if using those models.
 Model Parameters:
-    single_cnn:
-        # Required dict with keys 'module' and 'function' & string values.
-        # Module and function for image classification network.
-        # Valid options:
-        #   - {module: 'basic', function: 'conv_block'}
-        network: {module: 'basic', function: 'conv_block'}
-        # Required string or null.
-        # Path to a checkpoint file or model directory from which to load
-        # pretrained network weights. If null, don't load any weights.
-        pretrained_weights: null
-
-    res_net:
-        # Required dict with keys 'module' and 'function' & string values.
-        # Module and function for ResNet models.
-        # Valid options:
-        #   - {module: 'resnet_engine', function: 'stacked_res_blocks'}
-        network: {module: 'resnet_engine', function: 'stacked_res_blocks'}
-        # Optional arguments for the first Conv2D and MaxPool layer
-        # of the ResNet model.
-        init_layer: {filters: 64, kernel_size: 7, strides: 1}
-        init_max_pool: {size: 3, strides: 2}
-        # Required string or null.
-        # Path to a checkpoint file or model directory from which to load
-        # pretrained network weights. If null, don't load any weights.
-        pretrained_weights: null
-
-    cnn_rnn:
-        # Required dict with keys 'module' and 'function' & string values.
-        # Module and function for single telescope CNN.
-        # Valid options:
-        #   - {module: 'basic', function: 'conv_block'}
-        cnn_block: {module: 'basic', function: 'conv_block'}
-
-        # Required string or null.
-        # Path to a checkpoint file or model directory from which to load
-        # pretrained CNN block weights. If null, don't load any weights.
-        pretrained_weights: null
-
-        # Optional float. Default: 0.5
-        # Dropout rate of dropout layers.
-        dropout_rate: 0.5
-
-    variable_input_model:
-        # Required dict with keys 'module' and 'function' & string values.
-        # Module and function for single telescope CNN.
-        # Valid options:
-        #   - {module: 'basic', function: 'conv_block'}
-        cnn_block: {module: 'basic', function: 'conv_block'}
-
-        # Required string.
-        # Valid options:
-        #   - 'vector': Use for network heads expecting an input vector
-        #   - 'feature_maps': Use for networks heads expecting input as
-        #       a stack of feature maps as used for convolutional layers
-        telescope_combination: 'feature_maps'
-
-        # Required dict with keys 'module' and 'function' & string values.
-        # Module and function for network head.
-        # Valid options:
-        #   - {module: 'basic', function: 'fc_head'}
-        #   - {module: 'basic', function: 'conv_head'}
-        network_head: {module: 'basic', function: 'conv_head'}
-
-        # Required string or null.
-        # Path to a checkpoint file or model directory from which to load
-        # pretrained CNN block weights. If null, don't load any weights.
-        pretrained_weights: null
 
     basic:
         conv_block:
@@ -478,6 +427,16 @@ Model Parameters:
                 - {filters: 128, blocks: 3}
                 - {filters: 256, blocks: 3}
 
+    # Dictionary of tasks where the values contain the fully connected layers
+    # head of each reconstruction task. The final loss is calculated with a weighted sum 
+    # over the individual losses. Currently the weights are constanst values.
+    # For the classification task, the class names are passed into the dict
+    # in order of class label (0 to n-1).
+    standard_head:
+        particletype: {class_names: ['proton', 'gamma'], fc_head: [512, 256, 2], weight: 1.0}
+        energy: {fc_head: [512, 256, 1], weight: 1.0}
+        direction: {fc_head: [512, 256, 2], weight: 1.0}
+
     # Optional dict of attention mechanisms.
     # Valid options:
     #   Dual attention (Spatial and channel squeeze-and-excitation attention)
@@ -513,38 +472,6 @@ Training:
     # Base learning rate before scaling or annealing.
     base_learning_rate: 0.001
 
-    # Required Boolean.
-    # Whether to scale the learning rate inversely proportional to the
-    # number of triggered telescopes. Not used for single tel models.
-    scale_learning_rate: false
-
-    # Required Boolean.
-    # Whether to weight the loss to rebalance unequal classes.
-    apply_class_weights: false
-
-    # Required string or null. If provided, train on only variables
-    # within the scope matching this name, freezing all others. This is
-    # useful when loading pretrained weights. If null, train on all
-    # trainable variables.
-    variables_to_train: null
-
-Evaluation:
-
-    # Required Boolean.
-    # Whether to run TensorFlow standard evaluation.
-    tensorflow: true
-
-    # Optional settings for the EvalSpec.
-    # Int. Positive number of steps for which to evaluate model.
-    # If None, evaluates until input_fn raises an end-of-input exception.
-    eval_steps: null
-    # Int. Start evaluating after waiting for this many seconds.
-    start_delay_secs: 120
-    # Int. Do not re-evaluate unless the last evaluation was started at least
-    # this many seconds ago. Of course, evaluation does not occur if no new
-    # checkpoints are available, hence, this is the minimum. 
-    throttle_secs: 600
-    
 Prediction:
 
     # Required string if running in predict mode.
@@ -564,14 +491,9 @@ Prediction:
 
     # Save the example identifiers along with the predictions.
     # Mono mode: obs_id, event_id, tel_id
-    # Stereo or multi-stereo mode: obs_id, event_id
+    # Stereo mode: obs_id, event_id
     # Optional Boolearn. Default: false
     save_identifiers: false
-
-TensorFlow:
-    # Optional Boolean. Default: false
-    # Whether to run TensorFlow debugger.
-    run_TFDBG: false
 
 # Optional: used in run_multiple_configurations.py only
 Multiple Configurations Settings:
@@ -625,20 +547,20 @@ Multiple Configurations Values:
         config: ['Data', 'selection_string']
         value_type: 'list'
         values:
-            - 'mc_energy < 1.0'
-            - 'mc_energy >= 1.0'
+            - 'true_energy < 1.0'
+            - 'true_energy >= 1.0'
     telescope_type:
         config: ['Data', 'selected_telescope_type']
         value_type: 'grouped'
         values:
-            'LST_LSTCam': 'LST_LSTCam'
-            'MST_NectarCam': 'MST_NectarCam'
+            'LST_LST_LSTCam': 'LST_LST_LSTCam'
+            'MST_MST_NectarCam': 'MST_MST_NectarCam'
     selected_telescopes:
         config: ['Data', 'selected_telescope_ids']
         value_type: 'grouped'
         values:
-            'LST_LSTCam': [1, 2, 3, 4]
-            'MST_NectarCam': [30, 31, 32, 33]
+            'LST_LST_LSTCam': [1, 2, 3, 4]
+            'MST_MST_NectarCam': [30, 31, 32, 33]
     network_type:
         config: ['Model', 'model']
         value_type: 'grouped'
@@ -646,9 +568,6 @@ Multiple Configurations Values:
             CNN_RNN:
                 module: 'cnn_rnn'
                 function: 'cnn_rnn_model'
-            variable_input:
-                module: 'variable_input_model'
-                function: 'variable_input_model'
     # Not yet implemented!
     telescope_sorting:
         config: ['Data', 'transforms']
