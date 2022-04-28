@@ -42,7 +42,7 @@ necessary package channels, and install CTLearn specified version and its depend
    wget https://raw.githubusercontent.com/ctlearn-project/ctlearn/v$CTLEARN_VER/environment-$mode.yml
    conda env create -n [ENVIRONMENT_NAME] -f environment-$mode.yml
    conda activate [ENVIRONMENT_NAME]
-   pip install ctlearn=$CTLEARN_VER
+   pip install ctlearn==$CTLEARN_VER
    ctlearn -h
 
 where ``mode`` is either 'cpu' or 'gpu' (for linux systems) or 'macos' (for macOS systems), denoting the TensorFlow version to be installed. If installing the GPU version of TensorFlow, verify that your system fulfills all the requirements `here <https://www.tensorflow.org/install/install_linux#NVIDIARequirements>`_. Note that there is no GPU-enabled TensorFlow version for macOS yet.
