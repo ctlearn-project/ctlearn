@@ -1,4 +1,4 @@
-# conda env create -f environment-cpu.yml
+# conda env create -f environment.yml
 name: ctlearn
 channels:
     - anaconda
@@ -7,7 +7,7 @@ channels:
     - ctlearn-project
 dependencies:
     - python=3.8
-    - dl1_data_handler=0.10.5
+    - dl1_data_handler=0.10.6
     - astropy
     - matplotlib
     - numpy
@@ -16,7 +16,6 @@ dependencies:
     - pyyaml
     - scikit-learn
     - pip:
-        # TensorFlow-CPU
+        # TensorFlow via pip
         - tensorflow
         - pydot
-
