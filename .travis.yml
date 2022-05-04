@@ -20,7 +20,7 @@ install:
       - conda update -q conda
         # Useful for debugging any issues with conda
       - conda info -a
-      - conda env create -f environment-cpu.yml
+      - conda env create -f environment.yml
       - source activate ctlearn 
       - conda install -c conda-forge codecov
       - python setup.py install
