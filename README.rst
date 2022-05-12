@@ -38,14 +38,12 @@ necessary package channels, and install CTLearn specified version and its depend
 .. code-block:: bash
 
    CTLEARN_VER=0.6.0
-   mode=cpu
-   wget https://raw.githubusercontent.com/ctlearn-project/ctlearn/v$CTLEARN_VER/environment-$mode.yml
-   conda env create -n [ENVIRONMENT_NAME] -f environment-$mode.yml
+   wget https://raw.githubusercontent.com/ctlearn-project/ctlearn/v$CTLEARN_VER/environment.yml
+   conda env create -n [ENVIRONMENT_NAME] -f environment.yml
    conda activate [ENVIRONMENT_NAME]
    pip install ctlearn==$CTLEARN_VER
    ctlearn -h
 
-where ``mode`` is either 'cpu' or 'gpu' (for linux systems) or 'macos' (for macOS systems), denoting the TensorFlow version to be installed. If installing the GPU version of TensorFlow, verify that your system fulfills all the requirements `here <https://www.tensorflow.org/install/install_linux#NVIDIARequirements>`_. Note that there is no GPU-enabled TensorFlow version for macOS yet.
 
 This should automatically install all dependencies (NOTE: this may take some time, as by default MKL is included as a dependency of NumPy and it is very large).
 
@@ -64,9 +62,7 @@ First, install Anaconda by following the instructions above. Create a new conda 
 
 .. code-block:: bash
 
-   conda env create -f </installation/path>/ctlearn/environment-<MODE>.yml
-
-where ``<MODE>`` is either 'cpu' or 'gpu' (for linux systems) or 'macos' (for macOS systems), denoting the TensorFlow version to be installed (see above).
+   conda env create -f </installation/path>/ctlearn/environment.yml
 
 Finally, install CTLearn into the new conda environment via pypi:
 
@@ -92,8 +88,8 @@ Dependencies
 
 * Python>=3.8
 * TensorFlow>=2.8
-* ctapipe==0.12.0
-* DL1DataHandler==0.10.5
+* ctapipe==0.14.0
+* DL1DataHandler==0.10.6
 * NumPy
 * PyYAML
 * Pandas
