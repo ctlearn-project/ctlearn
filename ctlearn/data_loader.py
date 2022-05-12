@@ -14,9 +14,8 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
         self.on_epoch_end()
 
         # Decrypt the example description
-        self.num_tels = 1
         # Features
-        self.input_shape = None
+        self.singleimg_shape = None
         self.trg_pos, self.trg_shape  = None, None
         self.img_pos, self.img_shape  = None, None
         self.prm_pos, self.prm_shape  = None, None
@@ -42,19 +41,12 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
             elif 'direction' in desc['name']:
                 self.drc_pos = i
 
+        # Retrieve shape from a single image in stereo analysis
+        if self.trg_pos is not None and self.img_pos is not None:
+            self.singleimg_shape = (self.img_shape[1], self.img_shape[2], self.img_shape[3])
         # Reshape inputs into proper dimensions for the stereo analysis with merged models
         if self.concat_telescopes:
             self.img_shape = (self.img_shape[1], self.img_shape[2], self.img_shape[0]*self.img_shape[3])
-        else:
-            # For stereo models we have to remove the first dimension for the telescopes,
-            # because we need to feed the CNN block with each image before the LSTM cell.
-            if self.trg_pos is not None:
-                self.num_tels = self.img_shape[0]
-                if self.img_pos is not None:
-                    self.input_shape = (self.img_shape[0], self.batch_size, self.img_shape[1], self.img_shape[2], self.img_shape[3])
-                    self.img_shape = (self.img_shape[1], self.img_shape[2], self.img_shape[3])
-                if self.prm_pos is not None:
-                    self.prm_shape = (self.prm_shape[1])
 
     def __len__(self):
         'Denotes the number of batches per epoch'
@@ -71,22 +63,12 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
 
     def __data_generation(self, batch_indices):
         'Generates data containing batch_size samples'
-        # Initialization
-        # For stereo models: Transpose telescope_data from [batch_size,num_tel,length,width,channels]
-        # to [num_tel,batch_size,length,width,channels].
-        if self.trg_pos is not None and not self.concat_telescopes:
+        if self.trg_pos is not None:
             triggers = np.empty((self.batch_size, *self.trg_shape))
-            images, parameters = [], []
-            for telescope_index in range(self.num_tels):
-                if self.img_pos is not None:
-                    images.append(np.empty((self.batch_size, *self.img_shape)))
-                if self.prm_pos is not None:
-                    parameters.append(np.empty((self.batch_size, *self.prm_shape)))
-        else:
-            if self.img_pos is not None:
-                images = np.empty((self.batch_size, *self.img_shape))
-            if self.prm_pos is not None:
-                parameters = np.empty((self.batch_size, *self.prm_shape))
+        if self.img_pos is not None:
+            images = np.empty((self.batch_size, *self.img_shape))
+        if self.prm_pos is not None:
+            parameters = np.empty((self.batch_size, *self.prm_shape))
 
         if self.mode == 'train':
             if self.prt_pos is not None:
@@ -100,18 +82,12 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
         for i, index in enumerate(batch_indices):
             event = self.DL1DataReaderDL1DH[index]
             # Fill the features
-            if self.trg_pos is not None and not self.concat_telescopes:
+            if self.trg_pos is not None:
                 triggers[i] = event[self.trg_pos]
-                for telescope_index in range(self.num_tels):
-                    if self.img_pos is not None:
-                        images[telescope_index][i] = event[self.img_pos][telescope_index]
-                    if self.prm_pos is not None:
-                        parameters[telescope_index][i] = event[self.prm_pos][telescope_index]
-            else:
-                if self.img_pos is not None:
-                    images[i] = np.reshape(event[self.img_pos], self.img_shape)
-                if self.prm_pos is not None:
-                    parameters[i] = event[self.prm_pos]
+            if self.img_pos is not None:
+                images[i] = np.reshape(event[self.img_pos], self.img_shape)
+            if self.prm_pos is not None:
+                parameters[i] = event[self.prm_pos]
 
             if self.mode == 'train':
                 # Fill the labels
@@ -123,18 +99,12 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
                     direction[i] = event[self.drc_pos]
 
         features = {}
-        if self.trg_pos is not None and not self.concat_telescopes:
+        if self.trg_pos is not None:
             features['triggers'] = triggers
-            for telescope_index in range(self.num_tels):
-                if self.img_pos is not None:
-                    features[f'images_tel{telescope_index}'] = images[telescope_index]
-                if self.prm_pos is not None:
-                    features[f'parameters_tel{telescope_index}'] = parameters[telescope_index]
-        else:
-            if self.img_pos is not None:
-                features['images'] = images
-            if self.prm_pos is not None:
-                features['parameters'] = parameters
+        if self.img_pos is not None:
+            features['images'] = images
+        if self.prm_pos is not None:
+            features['parameters'] = parameters
 
         labels = {}
         if self.mode == 'train':
