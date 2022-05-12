@@ -132,7 +132,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         else:
             model = tf.keras.Model(backbone_inputs, logits, name='CTLearn_model')
 
-        if config['Model'].get('plot_model', False):
+        if config['Model'].get('plot_model', True):
             logger.info("  Saving the backbone architecture in '{}/backbone.png'.".format(model_dir))
             tf.keras.utils.plot_model(backbone, to_file=model_dir+'/backbone.png', show_shapes=True, show_layer_names=True)
             logger.info("  Saving the model architecture in '{}/model.png'.".format(model_dir))
@@ -485,6 +485,8 @@ def main():
 
         if 'training_file_list.txt' in os.listdir(config['Logging']['model_directory']):
             config['Data']['file_list'] = training_file_list
+
+        config['Data']['example_identifiers_file'] = f"{config['Logging']['model_directory']}/example_identifiers_file.h5"
 
         run_model(config, mode='train', debug=args.debug, log_to_file=args.log_to_file)
 
