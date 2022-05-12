@@ -132,7 +132,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         else:
             model = tf.keras.Model(backbone_inputs, logits, name='CTLearn_model')
 
-        if config['Model'].get('plot_model', True):
+        if config['Model'].get('plot_model', False):
             logger.info("  Saving the backbone architecture in '{}/backbone.png'.".format(model_dir))
             tf.keras.utils.plot_model(backbone, to_file=model_dir+'/backbone.png', show_shapes=True, show_layer_names=True)
             logger.info("  Saving the model architecture in '{}/model.png'.".format(model_dir))
