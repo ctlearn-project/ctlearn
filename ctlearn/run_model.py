@@ -486,6 +486,8 @@ def main():
         if 'training_file_list.txt' in os.listdir(config['Logging']['model_directory']):
             config['Data']['file_list'] = training_file_list
 
+        config['Data']['example_identifiers_file'] = f"{config['Logging']['model_directory']}/example_identifiers_file.h5"
+
         run_model(config, mode='train', debug=args.debug, log_to_file=args.log_to_file)
 
     if 'predict' in args.mode:

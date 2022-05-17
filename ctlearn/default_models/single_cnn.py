@@ -20,7 +20,6 @@ def single_cnn_model(data, model_params):
         sys.path.append(model_params['model_directory'])
         network_module = importlib.import_module(model_params['network']['module'])
         network = getattr(network_module, model_params['network']['function'])
-        network_input = tf.keras.Input(shape=data.img_shape, name=f'images')
 
         # The original ResNet implementation use this padding, but we pad the images in the ImageMapper.
         #x = tf.pad(telescope_data, tf.constant([[3, 3], [3, 3]]), name='conv1_pad')

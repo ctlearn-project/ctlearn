@@ -19,7 +19,7 @@ def cnn_rnn_model(data, model_params):
     # network, either into 1D feature vectors or into 3D convolutional
     # feature maps, depending on the requirements of the network head.
     # The array-level processing is then performed by the network head. The
-    # logits are returned and fed into a classifier.
+    # logits are returned and fed into a classifier/regressor.
     network_name = model_params.get('name', 'CNNRNN')
     trainable_backbone = model_params.get('trainable_backbone', True)
     pretrained_weights = model_params.get('pretrained_weights', None)
@@ -33,27 +33,20 @@ def cnn_rnn_model(data, model_params):
         sys.path.append(model_params['model_directory'])
         network_module = importlib.import_module(model_params['network']['module'])
         network = getattr(network_module, model_params['network']['function'])
-        network_input = tf.keras.Input(shape=data.img_shape, name=f'images')
+        network_input = tf.keras.Input(shape=data.singleimg_shape, name=f'images')
         network_output = network(network_input, params=model_params, name=model_params['network']['function'])
-        model = tf.keras.Model(network_input, network_output, name=model_params['network']['function'])
+        output = tf.keras.layers.GlobalAveragePooling2D(name=network_name+'_global_avgpool')(network_output)
+        model = tf.keras.Model(network_input, output, name=model_params['network']['function'])
 
-    model_input, telescope_outputs = [], []
-    for telescope_index in range(data.num_tels):
-        telescope_data = tf.keras.Input(shape=data.img_shape, name=f'images_tel{telescope_index}')
-        model_input.append(telescope_data)
-        output = model(telescope_data)
+    telescope_data = tf.keras.Input(shape=data.img_shape, name=f'images')
+    telescope_triggers = tf.keras.Input(shape=(*data.trg_shape, 1), name=f'triggers')
 
-        #flatten output of embedding CNN to (batch_size, _)
-        image_embedding = tf.keras.layers.Flatten(name=f'image_embedding_tel{telescope_index}')(output)
-        image_embedding_dropout = tf.keras.layers.Dropout(rate=0.2)(image_embedding)
-        telescope_outputs.append(image_embedding_dropout)
+    output = tf.keras.layers.TimeDistributed(model)(telescope_data)
+    dropout = tf.keras.layers.TimeDistributed(tf.keras.layers.Dropout(rate=0.2))(output)
+    mask_output = tf.keras.layers.Multiply()([dropout, telescope_triggers])
+    mask_layer = tf.keras.layers.Masking(mask_value=0)(mask_output)
 
-    #combine image embeddings (batch_size, num_tel, num_units_embedding)
-    embeddings = tf.stack(telescope_outputs,axis=1)
-
-    #implement attention mechanism with range num_tel (covering all timesteps)
-    #define LSTM cell size
-    outputs = tf.keras.layers.RNN(tf.keras.layers.LSTMCell(LSTM_SIZE))(embeddings)
+    outputs = tf.keras.layers.LSTM(LSTM_SIZE, name="LSTM")(mask_layer)
 
     output_dropout = tf.keras.layers.Dropout(rate=dropout_rate, name="rnn_output_dropout")(outputs)
 
@@ -63,7 +56,7 @@ def cnn_rnn_model(data, model_params):
     fc2 = tf.keras.layers.Dense(units=512, kernel_regularizer=tf.keras.regularizers.L2(l2=0.004), name="fc2")(dropout_1)
     dropout_2 = tf.keras.layers.Dropout(rate=dropout_rate)(fc2)
 
-    cnnrnn_model = tf.keras.Model(model_input, dropout_2, name=network_name)
+    cnnrnn_model = tf.keras.Model([telescope_data, telescope_triggers], dropout_2, name=network_name)
 
-    return cnnrnn_model, model_input
+    return cnnrnn_model, [telescope_data, telescope_triggers]
 

@@ -1,7 +1,7 @@
 dist: focal
 language: python
 python:
-      - "3.8"
+      - "3.10"
 notifications:
     email:
         on_success: change # default: change
