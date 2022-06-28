@@ -195,10 +195,8 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         logger.info("  Model has been correctly set up from config.")
 
         optimizer = config["Training"].get("optimizer", "Adam")
-        logger.info("  Optimizer: {}".format(optimizer))
         adam_epsilon = float(config["Training"].get("adam_epsilon", 1.0e-8))
         learning_rate = float(config["Training"].get("base_learning_rate", 0.0001))
-        logger.info("  Learning rate: {}".format(learning_rate))
 
         # Select optimizer with appropriate arguments
         # Dict of optimizer_name: (optimizer_fn, optimizer_args)
@@ -221,6 +219,8 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     if mode == "train":
         logger.info("Setting up training:")
+        logger.info("  Optimizer: {}".format(optimizer))
+        logger.info("  Learning rate: {}".format(learning_rate))
         logger.info("  Validation split: {}".format(validation_split))
 
         if not 0.0 < validation_split < 1.0:
@@ -252,30 +252,22 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
         # ToDo: Come up with a better solution for the callbacks
         # Set up the callbacks
-        monitor = "loss"
+        monitor = "val_loss"
         monitor_mode = "min"
-        val_freq = int((num_training_examples / batch_size) / 5)
-        logger.info("  Validation frequency: {}".format(val_freq))
-
         if "particletype" in config["Reco"] and len(config["Reco"]) == 1:
-            monitor = "auc"
+            monitor = "val_auc"
             monitor_mode = "max"
-        if "energy" in config["Reco"] and len(config["Reco"]) == 1:
-            monitor = "mae_energy"
-        if "direction" in config["Reco"] and len(config["Reco"]) == 1:
-            monitor = "mae_direction"
 
         # Model checkpoint callback
         model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
             filepath=model_dir,
             monitor=monitor,
             mode=monitor_mode,
-            save_freq=val_freq,
             save_best_only=True,
         )
         # Tensorboard callback
         tensorboard_callback = tf.keras.callbacks.TensorBoard(
-            log_dir=model_dir, histogram_freq=1, update_freq=val_freq
+            log_dir=model_dir, histogram_freq=1
         )
         # CSV logger callback
         csv_logger_callback = tf.keras.callbacks.CSVLogger(
