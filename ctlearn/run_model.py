@@ -419,13 +419,13 @@ def main():
     parser.add_argument(
         "--default_model",
         "-d",
-        help="Default CTLearn Model; valid options: TRN, TRN_cleaned, mergedTRN, mergedTRN_cleaned, CNNRNN, and CNNRNN_cleaned",
+        help="Default CTLearn Model; valid options: TRN (mono), mergedTRN (stereo), and CNNRNN (stereo)",
     )
     parser.add_argument(
         "--cleaned_images",
         default=False,
         action=argparse.BooleanOptionalAction,
-        help="flag, if the network should be trained with cleaned images",
+        help="Flag, if the network should be trained with cleaned images",
     )
     parser.add_argument(
         "--pretrained_weights", "-w", help="Path to the pretrained weights"
