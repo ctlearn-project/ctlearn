@@ -86,7 +86,7 @@ Dependencies
 ^^^^^^^^^^^^
 
 
-* Python>=3.8
+* Python>=3.9
 * TensorFlow>=2.8
 * ctapipe==0.14.0
 * DL1DataHandler==0.10.6

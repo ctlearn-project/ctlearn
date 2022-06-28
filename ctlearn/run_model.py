@@ -422,6 +422,12 @@ def main():
         help="Default CTLearn Model; valid options: TRN, TRN_cleaned, mergedTRN, mergedTRN_cleaned, CNNRNN, and CNNRNN_cleaned",
     )
     parser.add_argument(
+        "--cleaned_images",
+        default=False,
+        action=argparse.BooleanOptionalAction,
+        help="flag, if the network should be trained with cleaned images",
+    )
+    parser.add_argument(
         "--pretrained_weights", "-w", help="Path to the pretrained weights"
     )
     parser.add_argument(
@@ -482,6 +488,11 @@ def main():
 
     if args.reco:
         config["Reco"] = args.reco
+
+    if args.cleaned_images:
+        config["Data"]["image_channels"] = [
+            "cleaned_" + channel for channel in config["Data"]["image_channels"]
+        ]
 
     if args.tel_types:
         config["Data"]["selected_telescope_types"] = args.tel_types
@@ -596,6 +607,11 @@ def main():
 
                         if args.reco:
                             config["Reco"] = args.reco
+                        if args.cleaned_images:
+                            config["Data"]["image_channels"] = [
+                                "cleaned_" + channel
+                                for channel in config["Data"]["image_channels"]
+                            ]
                         if args.tel_types:
                             config["Data"]["selected_telescope_types"] = args.tel_types
                         if args.allowed_tels:
@@ -648,6 +664,11 @@ def main():
                     config = yaml.safe_load(config_file)
                 if args.reco:
                     config["Reco"] = args.reco
+                if args.cleaned_images:
+                    config["Data"]["image_channels"] = [
+                        "cleaned_" + channel
+                        for channel in config["Data"]["image_channels"]
+                    ]
                 if args.tel_types:
                     config["Data"]["selected_telescope_types"] = args.tel_types
                 if args.allowed_tels:
