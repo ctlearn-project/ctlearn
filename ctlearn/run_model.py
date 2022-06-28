@@ -194,7 +194,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
         logger.info("  Model has been correctly set up from config.")
 
-        optimizer = config["Training"].get("optimizer", "Adam")
+        optimizer_name = config["Training"].get("optimizer", "Adam")
         adam_epsilon = float(config["Training"].get("adam_epsilon", 1.0e-8))
         learning_rate = float(config["Training"].get("base_learning_rate", 0.0001))
 
@@ -212,14 +212,14 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             "RMSProp": (tf.keras.optimizers.RMSprop, dict(learning_rate=learning_rate)),
             "SGD": (tf.keras.optimizers.SGD, dict(learning_rate=learning_rate)),
         }
-        optimizer_fn, optimizer_args = optimizers[optimizer]
+        optimizer_fn, optimizer_args = optimizers[optimizer_name]
         optimizer = optimizer_fn(**optimizer_args)
         logger.info("  Compiling model.")
         model.compile(optimizer=optimizer, loss=losses, metrics=metrics)
 
     if mode == "train":
         logger.info("Setting up training:")
-        logger.info("  Optimizer: {}".format(optimizer))
+        logger.info("  Optimizer: {}".format(optimizer_name))
         logger.info("  Learning rate: {}".format(learning_rate))
         logger.info("  Validation split: {}".format(validation_split))
 
