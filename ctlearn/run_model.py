@@ -249,19 +249,30 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         logger.info("  Number of workers: {}".format(workers))
         use_multiprocessing = True if workers > 1 else False
         logger.info("  Use of multiprocessing: {}".format(use_multiprocessing))
+        lr_reducing_patience = int(config["Training"].get("lr_reducing_patience", 5))
+        logger.info(
+            "  Learning rate reducing patience: {}".format(lr_reducing_patience)
+        )
+        lr_reducing_factor = int(config["Training"].get("lr_reducing_factor", 0.5))
+        logger.info("  Learning rate reducing factor: {}".format(lr_reducing_factor))
+        lr_reducing_mindelta = int(config["Training"].get("lr_reducing_mindelta", 0.01))
+        logger.info(
+            "  Learning rate reducing min delta: {}".format(lr_reducing_mindelta)
+        )
+        lr_reducing_minlr = int(
+            config["Training"].get("lr_reducing_minlr", 0.1 * learning_rate)
+        )
+        logger.info("  Learning rate reducing min lr: {}".format(lr_reducing_minlr))
 
-        # ToDo: Come up with a better solution for the callbacks
         # Set up the callbacks
         monitor = "val_loss"
         monitor_mode = "min"
-        if "particletype" in config["Reco"] and len(config["Reco"]) == 1:
-            monitor = "val_auc"
-            monitor_mode = "max"
 
         # Model checkpoint callback
         model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
             filepath=model_dir,
             monitor=monitor,
+            verbose=1,
             mode=monitor_mode,
             save_best_only=True,
         )
@@ -273,19 +284,22 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         csv_logger_callback = tf.keras.callbacks.CSVLogger(
             filename=model_dir + "/training_log.csv", append=True
         )
-
-        # Early stopping
-        # early_stopping_callback = tf.keras.callbacks.EarlyStopping(
-        #    monitor=monitor,
-        #    patience=5,
-        #    mode=monitor_mode,
-        #    restore_best_weights=True)
-        # callbacks = [model_checkpoint_callback, tensorboard_callback, csvlogger_callback, early_stopping_callback]
+        # Learning rate reducing callback
+        lr_reducing_callback = tf.keras.callbacks.ReduceLROnPlateau(
+            monitor=monitor,
+            factor=lr_reducing_factor,
+            patience=lr_reducing_patience,
+            mode=monitor_mode,
+            verbose=1,
+            min_delta=lr_reducing_mindelta,
+            min_lr=lr_reducing_minlr,
+        )
 
         callbacks = [
             model_checkpoint_callback,
             tensorboard_callback,
             csv_logger_callback,
+            lr_reducing_callback,
         ]
 
         # Class weights calculation

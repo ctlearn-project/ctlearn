@@ -46,3 +46,7 @@ Training:
     optimizer: 'Adam'
     adam_epsilon: 1.0e-8
     base_learning_rate: 0.0001
+    lr_reducing_patience: 5
+    lr_reducing_factor: 0.5
+    lr_reducing_mindelta: 0.01
+    lr_reducing_minlr: 0.00001
