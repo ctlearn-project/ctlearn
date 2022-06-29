@@ -183,9 +183,9 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
         if self.mode == "train":
             if self.prt_pos is not None:
                 labels["particletype"] = tf.keras.utils.to_categorical(
-                    particletype, num_classes=2
+                    particletype, num_classes=len(self.DL1DataReaderDL1DH.simulated_particles)
                 )
-                label = tf.keras.utils.to_categorical(particletype, num_classes=2)
+                label = tf.keras.utils.to_categorical(particletype, num_classes=len(self.DL1DataReaderDL1DH.simulated_particles))
             if self.enr_pos is not None:
                 labels["energy"] = energy.reshape((-1, 1))
                 label = energy

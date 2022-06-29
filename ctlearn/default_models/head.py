@@ -11,8 +11,10 @@ def standard_head(inputs, tasks, params):
     losses = {}
     loss_weights = {}
     metrics = {}
+    class_names = None
     if "particletype" in tasks:
-        num_classes = len(standard_head_settings["particletype"]["class_names"])
+        class_names = standard_head_settings["particletype"]["class_names"]
+        num_classes = len(class_names)
         logit = fully_connect(
             inputs,
             standard_head_settings["particletype"]["fc_head"],
@@ -65,4 +67,4 @@ def standard_head(inputs, tasks, params):
         loss_weights = loss_weights[tasks[0]]
         metrics = metrics[tasks[0]]
 
-    return logits, losses, loss_weights, metrics
+    return logits, losses, loss_weights, metrics, class_names

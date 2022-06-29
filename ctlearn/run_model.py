@@ -314,6 +314,10 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                 1: 2,  # electron
                 255: 0,  # MAGIC real data
             }
+            print(shower_primary_id_to_class)
+            shower_primary_id_to_class = t.shower_primary_id_to_class for t in reader.processor.transforms if t.name == "particletype"
+            #shower_primary_id_to_class = [t.shower_primary_id_to_class for t in reader.processor.transforms if t.name == "particletype"][0]
+            print(shower_primary_id_to_class)
             total = reader.simulated_particles["total"]
             logger.info("    Total number: {}".format(total))
             class_weight = {}
@@ -380,7 +384,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             prediction_file += f"_{random_seed}"
         prediction_file = f"{prediction_file}.h5"
         write_output(
-            prediction_file, data, rest_data, reader, predictions, config["Reco"]
+            prediction_file, data, rest_data, reader, predictions, config["Reco"], class_names
         )
 
     # clear the handlers, shutdown the logging and delete the logger

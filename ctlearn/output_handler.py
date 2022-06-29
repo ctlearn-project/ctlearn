@@ -124,7 +124,8 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
             axis=0,
         )
     if "particletype" in tasks:
-        reco["gh_score"] = np.array(predictions[:, 1])
+        for p, particle in enumerate(class_names):
+            reco[particle+"ness"] = np.array(predictions[:, p])
     # Energy regression
     if data.enr_pos:
         if data.energy_unit == "log(TeV)":
