@@ -49,4 +49,4 @@ def single_cnn_model(data, model_params):
 
         model = tf.keras.Model(network_input, output, name=network_name)
 
-    return model, network_input
+    return model, [network_input]

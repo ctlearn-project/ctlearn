@@ -16,6 +16,7 @@ import yaml
 
 import tensorflow as tf
 from tensorflow.python import debug as tf_debug
+import tf2onnx
 
 from dl1_data_handler.reader import DL1DataReaderSTAGE1, DL1DataReaderDL1DH
 from ctlearn.data_loader import KerasBatchGenerator
@@ -356,10 +357,14 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             workers=workers,
             use_multiprocessing=use_multiprocessing,
         )
-
-        model.save(model_dir)
-
         logger.info("Training and evaluating finished succesfully!")
+        model.save(model_dir)
+        logger.info("Keras model saved in {}saved_model.pb".format(model_dir))
+        logger.info("Converting Keras model into ONNX format...")
+        input_type_spec = [input._type_spec for input in backbone_inputs]
+        output_path = model_dir + model.name + ".onnx"
+        tf2onnx.convert.from_keras(model, input_signature=input_type_spec, output_path=output_path)
+        logger.info("ONNX model saved in {}".format(output_path))
 
         # Plotting training history
         training_log = pd.read_csv(model_dir + "/training_log.csv")
