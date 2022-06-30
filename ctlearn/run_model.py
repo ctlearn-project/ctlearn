@@ -160,7 +160,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         # Head model
         head_module = importlib.import_module(config["Model"]["head"]["module"])
         head_model = getattr(head_module, config["Model"]["head"]["function"])
-        logits, losses, loss_weights, metrics = head_model(
+        logits, losses, loss_weights, metrics, class_names = head_model(
             inputs=backbone_output, tasks=config["Reco"], params=model_params
         )
 
@@ -219,8 +219,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     if mode == "train":
         logger.info("Setting up training:")
-        logger.info("  Optimizer: {}".format(optimizer_name))
-        logger.info("  Learning rate: {}".format(learning_rate))
         logger.info("  Validation split: {}".format(validation_split))
 
         if not 0.0 < validation_split < 1.0:
@@ -240,7 +238,22 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                 int(num_training_examples / batch_size)
             )
         )
-
+        logger.info("  Optimizer: {}".format(optimizer_name))
+        logger.info("  Learning rate: {}".format(learning_rate))
+        lr_reducing_patience = int(config["Training"].get("lr_reducing_patience", 5))
+        logger.info(
+            "  Learning rate reducing patience: {}".format(lr_reducing_patience)
+        )
+        lr_reducing_factor = config["Training"].get("lr_reducing_factor", 0.5)
+        logger.info("  Learning rate reducing factor: {}".format(lr_reducing_factor))
+        lr_reducing_mindelta = config["Training"].get("lr_reducing_mindelta", 0.01)
+        logger.info(
+            "  Learning rate reducing min delta: {}".format(lr_reducing_mindelta)
+        )
+        lr_reducing_minlr = config["Training"].get(
+            "lr_reducing_minlr", 0.1 * learning_rate
+        )
+        logger.info("  Learning rate reducing min lr: {}".format(lr_reducing_minlr))
         verbose = int(config["Training"].get("verbose", 2))
         logger.info("  Verbosity mode: {}".format(verbose))
         workers = int(config["Training"].get("workers", 1))
@@ -249,20 +262,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         logger.info("  Number of workers: {}".format(workers))
         use_multiprocessing = True if workers > 1 else False
         logger.info("  Use of multiprocessing: {}".format(use_multiprocessing))
-        lr_reducing_patience = int(config["Training"].get("lr_reducing_patience", 5))
-        logger.info(
-            "  Learning rate reducing patience: {}".format(lr_reducing_patience)
-        )
-        lr_reducing_factor = int(config["Training"].get("lr_reducing_factor", 0.5))
-        logger.info("  Learning rate reducing factor: {}".format(lr_reducing_factor))
-        lr_reducing_mindelta = int(config["Training"].get("lr_reducing_mindelta", 0.01))
-        logger.info(
-            "  Learning rate reducing min delta: {}".format(lr_reducing_mindelta)
-        )
-        lr_reducing_minlr = int(
-            config["Training"].get("lr_reducing_minlr", 0.1 * learning_rate)
-        )
-        logger.info("  Learning rate reducing min lr: {}".format(lr_reducing_minlr))
 
         # Set up the callbacks
         monitor = "val_loss"
@@ -314,18 +313,22 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                 1: 2,  # electron
                 255: 0,  # MAGIC real data
             }
-            print(shower_primary_id_to_class)
-            shower_primary_id_to_class = t.shower_primary_id_to_class for t in reader.processor.transforms if t.name == "particletype"
-            #shower_primary_id_to_class = [t.shower_primary_id_to_class for t in reader.processor.transforms if t.name == "particletype"][0]
-            print(shower_primary_id_to_class)
+            shower_primary_id_to_class = [
+                t.shower_primary_id_to_class
+                for t in reader.processor.transforms
+                if t.name == "particletype"
+            ][0]
             total = reader.simulated_particles["total"]
             logger.info("    Total number: {}".format(total))
             class_weight = {}
             for particle_id, num_particles in reader.simulated_particles.items():
                 if particle_id != "total":
                     logger.info(
-                        "    Breakdown by {}: {}".format(
-                            shower_primary_id_to_class[particle_id], num_particles
+                        "    Breakdown by '{}' ({}) with original particle id '{}': {}".format(
+                            class_names[shower_primary_id_to_class[particle_id]],
+                            shower_primary_id_to_class[particle_id],
+                            particle_id,
+                            num_particles,
                         )
                     )
                     class_weight[shower_primary_id_to_class[particle_id]] = (
@@ -384,7 +387,13 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             prediction_file += f"_{random_seed}"
         prediction_file = f"{prediction_file}.h5"
         write_output(
-            prediction_file, data, rest_data, reader, predictions, config["Reco"], class_names
+            prediction_file,
+            data,
+            rest_data,
+            reader,
+            predictions,
+            config["Reco"],
+            class_names,
         )
 
     # clear the handlers, shutdown the logging and delete the logger
