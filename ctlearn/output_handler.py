@@ -11,7 +11,7 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
         os.makedirs(prediction_dir)
 
     # Store the information for observational data
-    if "corsika_version" not in reader._v_attrs:
+    if reader.instrument_id == "MAGIC" and reader.process_type == "Observation":
         # Dump the information of the run to hdf5 file
         run_info = {}
         run_info["run_number"] = reader._v_attrs["run_number"]
@@ -124,8 +124,8 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
             axis=0,
         )
     if "particletype" in tasks:
-        for p, particle in enumerate(class_names):
-            reco[particle+"ness"] = np.array(predictions[:, p])
+        for n, name in enumerate(data.class_names):
+            reco[name + "ness"] = np.array(predictions[:, n])
     # Energy regression
     if data.enr_pos:
         if data.energy_unit == "log(TeV)":
@@ -194,22 +194,40 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
     # Store the selected Hillas parameters (dl1b)
     if reader.parameter_list:
         tel_counter = 0
-        for tel_type in reader.telescopes:
-            for t, tel_id in enumerate(reader.telescopes[tel_type]):
-                parameters = {}
-                for p, parameter in enumerate(reader.parameter_list):
-                    parameters[parameter] = np.concatenate(
-                        (
-                            np.array(data.parameter_list)[
-                                data.batch_size :, tel_counter + t, p
-                            ],
-                            np.array(rest_data.parameter_list)[
-                                rest_data.batch_size :, tel_counter + t, p
-                            ],
-                        ),
-                        axis=0,
-                    )
-                pd.DataFrame(data=parameters).to_hdf(
-                    h5file, key=f"/dl1b/{tel_type}/tel_{tel_id}", mode="a"
+        if reader.mode == "mono":
+            tel_type = list(reader.telescopes.keys())[0]
+            tel_ids = "tel"
+            for tel_id in reader.telescopes[tel_type]:
+                tel_ids += f"_{tel_id}"
+            parameters = {}
+            for p, parameter in enumerate(reader.parameter_list):
+                parameters[parameter] = np.concatenate(
+                    (
+                        np.array(data.parameter_list)[data.batch_size :, p],
+                        np.array(rest_data.parameter_list)[rest_data.batch_size :, p],
+                    ),
+                    axis=0,
                 )
-            tel_counter += len(reader.telescopes[tel_type])
+            pd.DataFrame(data=parameters).to_hdf(
+                h5file, key=f"/dl1b/{tel_type}/{tel_ids}", mode="a"
+            )
+        else:
+            for tel_type in reader.telescopes:
+                for t, tel_id in enumerate(reader.telescopes[tel_type]):
+                    parameters = {}
+                    for p, parameter in enumerate(reader.parameter_list):
+                        parameters[parameter] = np.concatenate(
+                            (
+                                np.array(data.parameter_list)[
+                                    data.batch_size :, tel_counter + t, p
+                                ],
+                                np.array(rest_data.parameter_list)[
+                                    rest_data.batch_size :, tel_counter + t, p
+                                ],
+                            ),
+                            axis=0,
+                        )
+                    pd.DataFrame(data=parameters).to_hdf(
+                        h5file, key=f"/dl1b/{tel_type}/tel_{tel_id}", mode="a"
+                    )
+                tel_counter += len(reader.telescopes[tel_type])
