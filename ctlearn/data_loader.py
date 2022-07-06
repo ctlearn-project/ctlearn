@@ -11,6 +11,7 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
         indices,
         batch_size=64,
         mode="train",
+        class_names=None,
         shuffle=True,
         concat_telescopes=False,
     ):
@@ -19,6 +20,7 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
         self.batch_size = batch_size
         self.indices = indices
         self.mode = mode
+        self.class_names = class_names
         self.shuffle = shuffle
         self.concat_telescopes = concat_telescopes
         self.on_epoch_end()
@@ -59,7 +61,7 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
             elif "parameters" in desc["name"]:
                 self.prm_pos = i
                 self.prm_shape = desc["shape"]
-            elif "particletype" in desc["name"]:
+            elif "true_shower_primary_id" in desc["name"]:
                 self.prt_pos = i
             elif "energy" in desc["name"]:
                 self.enr_pos = i
@@ -138,7 +140,11 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
             if self.mode == "train":
                 # Fill the labels
                 if self.prt_pos is not None:
-                    particletype[i] = event[self.prt_pos]
+                    particletype[
+                        i
+                    ] = self.DL1DataReaderDL1DH.shower_primary_id_to_class[
+                        int(event[self.prt_pos])
+                    ]
                 if self.enr_pos is not None:
                     energy[i] = event[self.enr_pos]
                 if self.drc_pos is not None:
@@ -184,15 +190,15 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
             if self.prt_pos is not None:
                 labels["particletype"] = tf.keras.utils.to_categorical(
                     particletype,
-                    num_classes=len(self.DL1DataReaderDL1DH.simulated_particles) - 1,
+                    num_classes=self.DL1DataReaderDL1DH.num_classes,
                 )
                 label = tf.keras.utils.to_categorical(
                     particletype,
-                    num_classes=len(self.DL1DataReaderDL1DH.simulated_particles) - 1,
+                    num_classes=self.DL1DataReaderDL1DH.num_classes,
                 )
             if self.enr_pos is not None:
                 labels["energy"] = energy.reshape((-1, 1))
-                label = energy
+                label = energy.reshape((-1, 1))
             if self.drc_pos is not None:
                 labels["direction"] = direction
                 label = direction

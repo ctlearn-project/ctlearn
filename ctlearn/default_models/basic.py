@@ -75,17 +75,11 @@ def conv_block(inputs, params, name="cnn_block"):
 
 def fully_connect(inputs, layers=None, expected_logits_dimension=None, name=None):
 
-    if not layers:
+    if layers is None:
         layers = params["basic"]["fully_connect"]["layers"]
-        expected_logits_dimension = layers[-1]
         name = params["basic"]["fully_connect"].get("name", "default")
 
-    if layers[-1] != expected_logits_dimension:
-        print(
-            "Warning:fully_connect:layers: Last logit unit '{}' of the layers array differs from the expected_logits_dimension '{}'. The expected logits dimension '{}' will be appended.".format(
-                layers[-1], expected_logits_dimension
-            )
-        )
+    if expected_logits_dimension:
         layers.append(expected_logits_dimension)
 
     x = inputs

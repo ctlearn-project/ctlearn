@@ -37,9 +37,9 @@ Model Parameters:
             bottleneck: null
             batchnorm: false
     standard_head:
-        particletype: {class_names: ['proton', 'gamma'], fc_head: [2], weight: 1.0}
-        energy: {fc_head: [1], weight: 1.0}
-        direction: {fc_head: [2], weight: 1.0}
+        particletype: {fc_head: [], weight: 1.0}
+        energy: {fc_head: [], weight: 1.0}
+        direction: {fc_head: [], weight: 1.0}
 Training:
     validation_split: 0.05
     num_epochs: 5

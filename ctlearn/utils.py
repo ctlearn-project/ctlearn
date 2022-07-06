@@ -212,7 +212,7 @@ def setup_DL1DataReader(config, mode):
 
     if "particletype" in tasks:
         event_info.append("true_shower_primary_id")
-        transformations.append({"name": "ShowerPrimaryID"})
+
     if "energy" in tasks:
         if mc_file:
             event_info.append("true_energy")

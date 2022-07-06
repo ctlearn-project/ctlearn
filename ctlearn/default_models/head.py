@@ -11,18 +11,14 @@ def standard_head(inputs, tasks, params):
     losses = {}
     loss_weights = {}
     metrics = {}
-    class_names = None
     if "particletype" in tasks:
-        class_names = standard_head_settings["particletype"]["class_names"]
-        num_classes = len(class_names)
         logit = fully_connect(
             inputs,
             standard_head_settings["particletype"]["fc_head"],
-            expected_logits_dimension=num_classes,
+            expected_logits_dimension=params["num_classes"],
             name="particle",
         )
         logits["particletype"] = tf.keras.layers.Softmax(name="particletype")(logit)
-        # logits['particletype'] = tf.keras.utils.to_categorical(logit, num_classes=num_classes)
         losses["particletype"] = tf.keras.losses.CategoricalCrossentropy(
             reduction=tf.keras.losses.Reduction.SUM_OVER_BATCH_SIZE
         )
@@ -67,4 +63,4 @@ def standard_head(inputs, tasks, params):
         loss_weights = loss_weights[tasks[0]]
         metrics = metrics[tasks[0]]
 
-    return logits, losses, loss_weights, metrics, class_names
+    return logits, losses, loss_weights, metrics

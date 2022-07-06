@@ -41,6 +41,18 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                 )
             os.makedirs(model_dir)
 
+    # Read class names from the example identifiers file
+    class_names = None
+    if mode == "predict" and os.path.isfile(model_dir + "/example_identifiers_file.h5"):
+        example_identifiers_file = pd.HDFStore(
+            model_dir + "/example_identifiers_file.h5"
+        )
+        if "/class_names" in list(example_identifiers_file.keys()):
+            class_names = pd.read_hdf(
+                example_identifiers_file, key="/class_names"
+            ).to_dict("records")
+            class_names = [name[0] for name in class_names]
+
     # Set up logging, saving the config and optionally logging to a file
     logger = setup_logging(config, model_dir, debug, log_to_file)
 
@@ -93,6 +105,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             training_indices,
             batch_size=batch_size,
             mode=mode,
+            class_names=class_names,
             concat_telescopes=concat_telescopes,
         )
         validation_data = KerasBatchGenerator(
@@ -100,6 +113,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             validation_indices,
             batch_size=batch_size,
             mode=mode,
+            class_names=class_names,
             concat_telescopes=concat_telescopes,
         )
     elif mode == "predict":
@@ -113,6 +127,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             indices,
             batch_size=batch_size,
             mode=mode,
+            class_names=class_names,
             shuffle=False,
             concat_telescopes=concat_telescopes,
         )
@@ -128,6 +143,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             rest_indices,
             batch_size=rest,
             mode=mode,
+            class_names=class_names,
             shuffle=False,
             concat_telescopes=concat_telescopes,
         )
@@ -146,6 +162,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     # Write the model parameters in the params dictionary
     model_params = {**config["Model"], **config.get("Model Parameters", {})}
     model_params["model_directory"] = model_directory
+    model_params["num_classes"] = reader.num_classes
 
     # Open a strategy scope.
     with strategy.scope():
@@ -161,17 +178,17 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         # Head model
         head_module = importlib.import_module(config["Model"]["head"]["module"])
         head_model = getattr(head_module, config["Model"]["head"]["function"])
-        logits, losses, loss_weights, metrics, class_names = head_model(
+        logits, losses, loss_weights, metrics = head_model(
             inputs=backbone_output, tasks=config["Reco"], params=model_params
         )
 
         if "saved_model.pb" in np.array([os.listdir(model_dir)]):
-            logger.info("  Loading model from '{}'.".format(model_dir))
+            logger.info("  Loading weights from '{}'.".format(model_dir))
             model = tf.keras.models.load_model(model_dir)
         else:
             model = tf.keras.Model(backbone_inputs, logits, name="CTLearn_model")
 
-        if config["Model"].get("plot_model", False):
+        if config["Model"].get("plot_model", False) and mode == "train":
             logger.info(
                 "  Saving the backbone architecture in '{}/backbone.png'.".format(
                     model_dir
@@ -265,7 +282,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         logger.info("  Use of multiprocessing: {}".format(use_multiprocessing))
 
         # Set up the callbacks
-        monitor = "val_loss"
+        monitor = "val_loss" if reader.num_classes < 3 else "loss"
         monitor_mode = "min"
 
         # Model checkpoint callback
@@ -306,36 +323,21 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         # Scaling by total/2 helps keep the loss to a similar magnitude.
         # The sum of the weights of all examples stays the same.
         class_weight = None
-        if len(reader.simulated_particles) > 2:
+        if reader.num_classes >= 2:
             logger.info("  Apply class weights:")
-            shower_primary_id_to_class = {
-                0: 1,  # gamma
-                101: 0,  # proton
-                1: 2,  # electron
-                255: 0,  # MAGIC real data
-            }
-            shower_primary_id_to_class = [
-                t.shower_primary_id_to_class
-                for t in reader.processor.transforms
-                if t.name == "particletype"
-            ][0]
             total = reader.simulated_particles["total"]
             logger.info("    Total number: {}".format(total))
-            class_weight = {}
             for particle_id, num_particles in reader.simulated_particles.items():
                 if particle_id != "total":
                     logger.info(
                         "    Breakdown by '{}' ({}) with original particle id '{}': {}".format(
-                            class_names[shower_primary_id_to_class[particle_id]],
-                            shower_primary_id_to_class[particle_id],
+                            reader.shower_primary_id_to_name[particle_id],
+                            reader.shower_primary_id_to_class[particle_id],
                             particle_id,
                             num_particles,
                         )
                     )
-                    class_weight[shower_primary_id_to_class[particle_id]] = (
-                        1 / num_particles
-                    ) * (total / 2.0)
-            logger.info("     Class weights: {}".format(class_weight))
+            logger.info("    Class weights: {}".format(reader.class_weight))
 
         initial_epoch = 0
         if "training_log.csv" in os.listdir(model_dir):
@@ -351,7 +353,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             batch_size=batch_size,
             epochs=num_epochs,
             initial_epoch=initial_epoch,
-            class_weight=class_weight,
+            class_weight=reader.class_weight,
             callbacks=callbacks,
             verbose=verbose,
             workers=workers,
@@ -363,7 +365,9 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         logger.info("Converting Keras model into ONNX format...")
         input_type_spec = [input._type_spec for input in backbone_inputs]
         output_path = model_dir + model.name + ".onnx"
-        tf2onnx.convert.from_keras(model, input_signature=input_type_spec, output_path=output_path)
+        tf2onnx.convert.from_keras(
+            model, input_signature=input_type_spec, output_path=output_path
+        )
         logger.info("ONNX model saved in {}".format(output_path))
 
         # Plotting training history
@@ -374,11 +378,14 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                 logger.info("Plotting training history: {}".format(metric))
                 fig, ax = plt.subplots()
                 plt.plot(epochs, training_log[metric])
-                plt.plot(epochs, training_log[f"val_{metric}"])
+                legend = ["train"]
+                if f"val_{metric}" in training_log:
+                    plt.plot(epochs, training_log[f"val_{metric}"])
+                    legend.append("val")
                 plt.title(f"CTLearn training history - {metric}")
                 plt.xlabel("epoch")
                 plt.ylabel(metric)
-                plt.legend(["train", "val"], loc="upper left")
+                plt.legend(legend, loc="upper left")
                 plt.savefig(f"{model_dir}/{metric}.png")
 
     elif mode == "predict":
@@ -398,7 +405,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             reader,
             predictions,
             config["Reco"],
-            class_names,
         )
 
     # clear the handlers, shutdown the logging and delete the logger
