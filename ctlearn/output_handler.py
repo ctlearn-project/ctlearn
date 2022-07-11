@@ -49,64 +49,78 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
 
     # Store event and obsveration ids
     if data.evt_pos:
-        reco["event_id"] = np.concatenate(
-            (
-                data.event_list[data.batch_size :],
-                rest_data.event_list[rest_data.batch_size :],
-            ),
-            axis=0,
-        )
+        event_id = data.event_list[data.batch_size :]
+        if rest_data:
+            event_id = np.concatenate(
+                (
+                    event_id,
+                    rest_data.event_list[rest_data.batch_size :],
+                ),
+                axis=0,
+            )
+        reco["event_id"] = event_id
     if data.obs_pos:
-        reco["obs_id"] = np.concatenate(
-            (
-                data.obs_list[data.batch_size :],
-                rest_data.obs_list[rest_data.batch_size :],
-            ),
-            axis=0,
-        )
+        obs_id = data.obs_list[data.batch_size :]
+        if rest_data:
+            reco["obs_id"] = np.concatenate(
+                (
+                    obs_id,
+                    rest_data.obs_list[rest_data.batch_size :],
+                ),
+                axis=0,
+            )
 
     # Store the timestamp
     if data.mjd_pos:
-        reco["mjd"] = np.concatenate(
-            (
-                data.mjd_list[data.batch_size :],
-                rest_data.mjd_list[rest_data.batch_size :],
-            ),
-            axis=0,
-        )
+        mjd = data.mjd_list[data.batch_size :]
+        if rest_data:
+            reco["mjd"] = np.concatenate(
+                (
+                    mjd,
+                    rest_data.mjd_list[rest_data.batch_size :],
+                ),
+                axis=0,
+            )
     if data.milli_pos:
-        reco["milli_sec"] = np.concatenate(
-            (
-                data.milli_list[data.batch_size :],
-                rest_data.milli_list[rest_data.batch_size :],
-            ),
-            axis=0,
-        )
+        milli_sec = data.milli_list[data.batch_size :]
+        if rest_data:
+            reco["milli_sec"] = np.concatenate(
+                (
+                    milli_sec,
+                    rest_data.milli_list[rest_data.batch_size :],
+                ),
+                axis=0,
+            )
     if data.nano_pos:
-        reco["nano_sec"] = np.concatenate(
-            (
-                data.nano_list[data.batch_size :],
-                rest_data.nano_list[rest_data.batch_size :],
-            ),
-            axis=0,
-        )
+        nano_sec = data.nano_list[data.batch_size :]
+        if rest_data:
+            reco["nano_sec"] = np.concatenate(
+                (
+                    nano_sec,
+                    rest_data.nano_list[rest_data.batch_size :],
+                ),
+                axis=0,
+            )
 
     # Store pointings
     if data.pon_pos:
-        pointing_alt = np.concatenate(
-            (
-                np.array(data.pointing)[data.batch_size :, 0],
-                np.array(rest_data.pointing)[rest_data.batch_size :, 0],
-            ),
-            axis=0,
-        )
-        pointing_az = np.concatenate(
-            (
-                np.array(data.pointing)[data.batch_size :, 1],
-                np.array(rest_data.pointing)[rest_data.batch_size :, 1],
-            ),
-            axis=0,
-        )
+        pointing_alt = np.array(data.pointing)[data.batch_size :, 0]
+        pointing_az = np.array(data.pointing)[data.batch_size :, 1]
+        if rest_data:
+            pointing_alt = np.concatenate(
+                (
+                    pointing_alt,
+                    np.array(rest_data.pointing)[rest_data.batch_size :, 0],
+                ),
+                axis=0,
+            )
+            pointing_az = np.concatenate(
+                (
+                    pointing_az,
+                    np.array(rest_data.pointing)[rest_data.batch_size :, 1],
+                ),
+                axis=0,
+            )
     else:
         pointing_alt = np.array([reader.pointing[0]] * len(reader))
         pointing_az = np.array([reader.pointing[1]] * len(reader))
@@ -116,30 +130,36 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
     # Store predictions and simulation values
     # Gamma/hadron classification
     if data.prt_pos:
-        reco["true_shower_primary_id"] = np.concatenate(
-            (
-                data.prt_labels[data.batch_size :],
-                rest_data.prt_labels[rest_data.batch_size :],
-            ),
-            axis=0,
-        )
+        true_shower_primary_id = data.prt_labels[data.batch_size :]
+        if rest_data:
+            reco["true_shower_primary_id"] = np.concatenate(
+                (
+                    true_shower_primary_id,
+                    rest_data.prt_labels[rest_data.batch_size :],
+                ),
+                axis=0,
+            )
     if "particletype" in tasks:
         for n, name in enumerate(data.class_names):
             reco[name + "ness"] = np.array(predictions[:, n])
     # Energy regression
     if data.enr_pos:
         if data.energy_unit == "log(TeV)":
+            true_energy = np.power(10, data.enr_labels[data.batch_size :])
+        if rest_data:
             reco["true_energy"] = np.concatenate(
                 (
-                    np.power(10, data.enr_labels[data.batch_size :]),
+                    true_energy,
                     np.power(10, rest_data.enr_labels[rest_data.batch_size :]),
                 ),
                 axis=0,
             )
         else:
+            true_energy = data.enr_labels[data.batch_size :]
+        if rest_data:
             reco["true_energy"] = np.concatenate(
                 (
-                    data.enr_labels[data.batch_size :],
+                    true_energy,
                     rest_data.enr_labels[rest_data.batch_size :],
                 ),
                 axis=0,
@@ -151,26 +171,29 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
             reco["reco_energy"] = np.array(predictions)[:, 0]
     # Arrival direction regression
     if data.drc_pos:
-        alt = (
-            np.concatenate(
-                (
-                    data.alt_labels[data.batch_size :],
-                    rest_data.alt_labels[rest_data.batch_size :],
-                ),
-                axis=0,
+        alt = data.alt_labels[data.batch_size :]
+        az = data.az_labels[data.batch_size :]
+        if rest_data:
+            alt = (
+                np.concatenate(
+                    (
+                        alt,
+                        rest_data.alt_labels[rest_data.batch_size :],
+                    ),
+                    axis=0,
+                )
+                + pointing_alt
             )
-            + pointing_alt
-        )
-        az = (
-            np.concatenate(
-                (
-                    data.az_labels[data.batch_size :],
-                    rest_data.az_labels[rest_data.batch_size :],
-                ),
-                axis=0,
+            az = (
+                np.concatenate(
+                    (
+                        az,
+                        rest_data.az_labels[rest_data.batch_size :],
+                    ),
+                    axis=0,
+                )
+                + pointing_az
             )
-            + pointing_az
-        )
         if "corsika_version" not in reader._v_attrs:
             reco["source_alt"] = alt
             reco["source_az"] = az
@@ -201,13 +224,17 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
                 tel_ids += f"_{tel_id}"
             parameters = {}
             for p, parameter in enumerate(reader.parameter_list):
-                parameters[parameter] = np.concatenate(
-                    (
-                        np.array(data.parameter_list)[data.batch_size :, p],
-                        np.array(rest_data.parameter_list)[rest_data.batch_size :, p],
-                    ),
-                    axis=0,
-                )
+                parameter_list = np.array(data.parameter_list)[data.batch_size :, p]
+                if rest_data:
+                    parameters[parameter] = np.concatenate(
+                        (
+                            parameter_list,
+                            np.array(rest_data.parameter_list)[
+                                rest_data.batch_size :, p
+                            ],
+                        ),
+                        axis=0,
+                    )
             pd.DataFrame(data=parameters).to_hdf(
                 h5file, key=f"/dl1b/{tel_type}/{tel_ids}", mode="a"
             )
@@ -216,17 +243,19 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
                 for t, tel_id in enumerate(reader.telescopes[tel_type]):
                     parameters = {}
                     for p, parameter in enumerate(reader.parameter_list):
-                        parameters[parameter] = np.concatenate(
-                            (
-                                np.array(data.parameter_list)[
-                                    data.batch_size :, tel_counter + t, p
-                                ],
-                                np.array(rest_data.parameter_list)[
-                                    rest_data.batch_size :, tel_counter + t, p
-                                ],
-                            ),
-                            axis=0,
-                        )
+                        parameter_list = np.array(data.parameter_list)[
+                            data.batch_size :, tel_counter + t, p
+                        ]
+                        if rest_data:
+                            parameters[parameter] = np.concatenate(
+                                (
+                                    parameter_list,
+                                    np.array(rest_data.parameter_list)[
+                                        rest_data.batch_size :, tel_counter + t, p
+                                    ],
+                                ),
+                                axis=0,
+                            )
                     pd.DataFrame(data=parameters).to_hdf(
                         h5file, key=f"/dl1b/{tel_type}/tel_{tel_id}", mode="a"
                     )

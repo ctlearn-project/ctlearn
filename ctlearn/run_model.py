@@ -136,17 +136,19 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         # In prediction mode we don't want to loose the last
         # uncomplete batch, so we are creating an adiitional
         # batch generator for the remaining events.
+        rest_data = None
         rest = len(indices) % batch_size
-        rest_indices = indices[-rest:]
-        rest_data = KerasBatchGenerator(
-            reader,
-            rest_indices,
-            batch_size=rest,
-            mode=mode,
-            class_names=class_names,
-            shuffle=False,
-            concat_telescopes=concat_telescopes,
-        )
+        if rest > 0:
+            rest_indices = indices[-rest:]
+            rest_data = KerasBatchGenerator(
+                reader,
+                rest_indices,
+                batch_size=rest,
+                mode=mode,
+                class_names=class_names,
+                shuffle=False,
+                concat_telescopes=concat_telescopes,
+            )
 
     # Construct the model
     model_file = config["Model"].get("model_file", None)
@@ -392,7 +394,8 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         # Generate predictions and add to output
         logger.info("Predicting...")
         predictions = model.predict(data)
-        predictions = np.concatenate((predictions, model.predict(rest_data)), axis=0)
+        if rest_data:
+            predictions = np.concatenate((predictions, model.predict(rest_data)), axis=0)
 
         prediction_file = config["Prediction"]["prediction_file"].replace(".h5", "")
         if random_seed:
