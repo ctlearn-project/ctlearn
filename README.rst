@@ -86,10 +86,11 @@ Dependencies
 ^^^^^^^^^^^^
 
 
-* Python>=3.9
-* TensorFlow>=2.8
-* ctapipe==0.14.0
-* DL1DataHandler==0.10.6
+* Python==3.9
+* TensorFlow==2.8
+* tf2onnx==1.11
+* ctapipe==0.15.0
+* DL1DataHandler==0.10.7
 * NumPy
 * PyYAML
 * Pandas
@@ -97,6 +98,8 @@ Dependencies
 
   * Matplotlib
   * Scikit-learn
+  * pyirf
+  * ctaplot
 
 Download Data
 -------------

@@ -7,7 +7,7 @@ channels:
     - ctlearn-project
 dependencies:
     - python=3.9
-    - dl1_data_handler=0.10.6
+    - dl1_data_handler=0.10.7
     - astropy
     - matplotlib
     - numpy
