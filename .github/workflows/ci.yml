@@ -17,4 +17,13 @@ jobs:
       - name: List files in the repository
         run: |
           ls ${{ github.workspace }}
+      - name: Conda setup
+        uses: conda-incubator/setup-miniconda@v2
+        with:
+          auto-update-conda: true
+          activate-environment: "ctlearn"
+          environment-file: environment.yml
+      - run: |
+          conda info
+          conda list
       - run: echo "This job's status is ${{ job.status }}."
