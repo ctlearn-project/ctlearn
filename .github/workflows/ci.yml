@@ -27,5 +27,9 @@ jobs:
           conda info
           conda list
       - name: CTLearn installation via pip
-        run: conda activate ctlearn
+        run: |
+	  conda init bash
+	  conda activate ctlearn
+	  cd ctlearn
+	  pip install .
       - run: echo "This job's status is ${{ job.status }}."
