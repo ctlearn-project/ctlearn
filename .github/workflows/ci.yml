@@ -30,7 +30,5 @@ jobs:
           conda info
           conda list
       - name: CTLearn installation via pip
-        run: |
-	  echo $PWD
-	  echo $SHELL
+        run: echo $PWD
       - run: echo "This job's status is ${{ job.status }}."
