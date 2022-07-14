@@ -31,5 +31,6 @@ jobs:
           conda list
       - run: |
           conda activate ctlearn
-          conda list
+          cd ${{ github.workspace }}/ctlearn
+	  pip install .
       - run: echo "This job's status is ${{ job.status }}."
