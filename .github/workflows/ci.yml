@@ -30,6 +30,6 @@ jobs:
           conda info
           conda list
       - run: |
-          conda info
+          conda activate ctlearn
           conda list
       - run: echo "This job's status is ${{ job.status }}."
