@@ -35,9 +35,9 @@ Model Parameters:
                 - {filters: 128, blocks: 3}
                 - {filters: 256, blocks: 3}
     standard_head:
-        particletype: {class_names: ['proton', 'gamma'], fc_head: [512, 256, 2], weight: 1.0}
-        energy: {fc_head: [512, 256, 1], weight: 1.0}
-        direction: {fc_head: [512, 256, 2], weight: 1.0}
+        particletype: {fc_head: [512, 256], weight: 1.0}
+        energy: {fc_head: [512, 256], weight: 1.0}
+        direction: {fc_head: [512, 256], weight: 1.0}
 Training:
     validation_split: 0.1
     num_epochs: 10
@@ -46,3 +46,13 @@ Training:
     optimizer: 'Adam'
     adam_epsilon: 1.0e-8
     base_learning_rate: 0.0001
+    lr_reducing_patience: 5
+    lr_reducing_factor: 0.5
+    lr_reducing_mindelta: 0.01
+    lr_reducing_minlr: 0.00001
+
+
+
+
+
+

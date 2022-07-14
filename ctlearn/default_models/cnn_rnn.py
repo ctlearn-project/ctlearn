@@ -5,10 +5,11 @@ import tensorflow as tf
 
 LSTM_SIZE = 2048
 
+
 def cnn_rnn_model(data, model_params):
 
     # Get hyperparameters
-    dropout_rate = model_params.get('dropout_rate', 0.5)
+    dropout_rate = model_params.get("dropout_rate", 0.5)
 
     # Define the network being used. Each CNN block analyzes a single
     # telescope. The outputs for non-triggering telescopes are zeroed out
@@ -20,26 +21,32 @@ def cnn_rnn_model(data, model_params):
     # feature maps, depending on the requirements of the network head.
     # The array-level processing is then performed by the network head. The
     # logits are returned and fed into a classifier/regressor.
-    network_name = model_params.get('name', 'CNNRNN')
-    trainable_backbone = model_params.get('trainable_backbone', True)
-    pretrained_weights = model_params.get('pretrained_weights', None)
+    network_name = model_params.get("name", "CNNRNN")
+    trainable_backbone = model_params.get("trainable_backbone", True)
+    pretrained_weights = model_params.get("pretrained_weights", None)
     if pretrained_weights:
         loaded_model = tf.keras.models.load_model(pretrained_weights)
         for layer in loaded_model.layers:
-            if layer.name.endswith('_block'):
+            if layer.name.endswith("_block"):
                 model = loaded_model.get_layer(layer.name)
                 model.trainable = trainable_backbone
     else:
-        sys.path.append(model_params['model_directory'])
-        network_module = importlib.import_module(model_params['network']['module'])
-        network = getattr(network_module, model_params['network']['function'])
-        network_input = tf.keras.Input(shape=data.singleimg_shape, name=f'images')
-        network_output = network(network_input, params=model_params, name=model_params['network']['function'])
-        output = tf.keras.layers.GlobalAveragePooling2D(name=network_name+'_global_avgpool')(network_output)
-        model = tf.keras.Model(network_input, output, name=model_params['network']['function'])
+        sys.path.append(model_params["model_directory"])
+        network_module = importlib.import_module(model_params["network"]["module"])
+        network = getattr(network_module, model_params["network"]["function"])
+        network_input = tf.keras.Input(shape=data.singleimg_shape, name=f"images")
+        network_output = network(
+            network_input, params=model_params, name=model_params["network"]["function"]
+        )
+        output = tf.keras.layers.GlobalAveragePooling2D(
+            name=network_name + "_global_avgpool"
+        )(network_output)
+        model = tf.keras.Model(
+            network_input, output, name=model_params["network"]["function"]
+        )
 
-    telescope_data = tf.keras.Input(shape=data.img_shape, name=f'images')
-    telescope_triggers = tf.keras.Input(shape=(*data.trg_shape, 1), name=f'triggers')
+    telescope_data = tf.keras.Input(shape=data.img_shape, name=f"images")
+    telescope_triggers = tf.keras.Input(shape=(*data.trg_shape, 1), name=f"triggers")
 
     output = tf.keras.layers.TimeDistributed(model)(telescope_data)
     dropout = tf.keras.layers.TimeDistributed(tf.keras.layers.Dropout(rate=0.2))(output)
@@ -48,15 +55,22 @@ def cnn_rnn_model(data, model_params):
 
     outputs = tf.keras.layers.LSTM(LSTM_SIZE, name="LSTM")(mask_layer)
 
-    output_dropout = tf.keras.layers.Dropout(rate=dropout_rate, name="rnn_output_dropout")(outputs)
+    output_dropout = tf.keras.layers.Dropout(
+        rate=dropout_rate, name="rnn_output_dropout"
+    )(outputs)
 
-    fc1 = tf.keras.layers.Dense(units=1024, kernel_regularizer=tf.keras.regularizers.L2(l2=0.004), name="fc1")(output_dropout)
+    fc1 = tf.keras.layers.Dense(
+        units=1024, kernel_regularizer=tf.keras.regularizers.L2(l2=0.004), name="fc1"
+    )(output_dropout)
     dropout_1 = tf.keras.layers.Dropout(rate=dropout_rate)(fc1)
 
-    fc2 = tf.keras.layers.Dense(units=512, kernel_regularizer=tf.keras.regularizers.L2(l2=0.004), name="fc2")(dropout_1)
+    fc2 = tf.keras.layers.Dense(
+        units=512, kernel_regularizer=tf.keras.regularizers.L2(l2=0.004), name="fc2"
+    )(dropout_1)
     dropout_2 = tf.keras.layers.Dropout(rate=dropout_rate)(fc2)
 
-    cnnrnn_model = tf.keras.Model([telescope_data, telescope_triggers], dropout_2, name=network_name)
+    cnnrnn_model = tf.keras.Model(
+        [telescope_data, telescope_triggers], dropout_2, name=network_name
+    )
 
     return cnnrnn_model, [telescope_data, telescope_triggers]
-

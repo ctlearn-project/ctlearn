@@ -86,10 +86,11 @@ Dependencies
 ^^^^^^^^^^^^
 
 
-* Python>=3.8
-* TensorFlow>=2.8
-* ctapipe==0.14.0
-* DL1DataHandler==0.10.6
+* Python==3.9
+* TensorFlow==2.8
+* tf2onnx==1.11
+* ctapipe==0.15.0
+* DL1DataHandler==0.10.7
 * NumPy
 * PyYAML
 * Pandas
@@ -97,6 +98,8 @@ Dependencies
 
   * Matplotlib
   * Scikit-learn
+  * pyirf
+  * ctaplot
 
 Download Data
 -------------
@@ -167,7 +170,7 @@ Run CTLearn from the command line:
 .. code-block:: bash
 
    ctlearn [-h] [--config_file,-c CONFIG_FILE] [--input,-i INPUT] [--pattern,-p PATTERN [PATTERN ...]] [--mode,-m MODE] [--output,-o OUTPUT] [--reco,-r RECO [RECO ...]]
-                [--default_model,-d DEFAULT_MODEL] [--pretrained_weights,-w PRETRAINED_WEIGHTS] [--tel_types,-t TEL_TYPES [TEL_TYPES ...]] [--allowed_tels,-a ALLOWED_TELS [ALLOWED_TELS ...]]
+                [--default_model,-d DEFAULT_MODEL] [--cleaned_images | --no-cleaned_images] [--pretrained_weights,-w PRETRAINED_WEIGHTS] [--tel_types,-t TEL_TYPES [TEL_TYPES ...]] [--allowed_tels,-a ALLOWED_TELS [ALLOWED_TELS ...]]
                 [--size_cut,-z SIZE_CUT] [--leakage_cut,-l LEAKAGE_CUT] [--multiplicity_cut,-u MULTIPLICITY_CUT] [--num_epochs,-e NUM_EPOCHS] [--batch_size,-b BATCH_SIZE] [--random_seed,-s RANDOM_SEED]
                 [--log_to_file] [--debug]
 
@@ -187,7 +190,9 @@ optional arguments:
   ``--reco,-r RECO [RECO ...]``\
                         Reconstruction task to perform; valid options: particletype, energy, and/or direction
   ``--default_model,-d DEFAULT_MODEL``\
-                        Default CTLearn Model; valid options: TRN, TRN_cleaned, mergedTRN, mergedTRN_cleaned, CNNRNN, and CNNRNN_cleaned
+                        Default CTLearn Model; valid options: TRN (mono), mergedTRN (stereo), and CNNRNN (stereo)
+  ``--cleaned_images, --no-cleaned_images``\
+                        Flag, if the network should be trained with cleaned images (default: False)
   ``--pretrained_weights,-w PRETRAINED_WEIGHTS``\
                         Path to the pretrained weights
   ``--tel_types,-t TEL_TYPES [TEL_TYPES ...]``\

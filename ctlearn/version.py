@@ -39,6 +39,7 @@ VERSION_FILE = path.join(CURRENT_DIRECTORY, "_version_cache.py")
 GIT_COMMAND = "git"
 
 if name == "nt":
+
     def find_git_on_windows():
         """find the path to the git executable on windows"""
         # first see if git is in the path
@@ -53,11 +54,11 @@ if name == "nt":
         possible_locations = []
         # look in program files for msysgit
         if "PROGRAMFILES(X86)" in environ:
-            possible_locations.append("%s/Git/cmd/git.exe" %
-                                      environ["PROGRAMFILES(X86)"])
+            possible_locations.append(
+                "%s/Git/cmd/git.exe" % environ["PROGRAMFILES(X86)"]
+            )
         if "PROGRAMFILES" in environ:
-            possible_locations.append("%s/Git/cmd/git.exe" %
-                                      environ["PROGRAMFILES"])
+            possible_locations.append("%s/Git/cmd/git.exe" % environ["PROGRAMFILES"])
         # look for the github version of git
         if "LOCALAPPDATA" in environ:
             github_dir = "%s/GitHub" % environ["LOCALAPPDATA"]
@@ -65,8 +66,9 @@ if name == "nt":
                 for subdir in listdir(github_dir):
                     if not subdir.startswith("PortableGit"):
                         continue
-                    possible_locations.append("%s/%s/bin/git.exe" %
-                                              (github_dir, subdir))
+                    possible_locations.append(
+                        "%s/%s/bin/git.exe" % (github_dir, subdir)
+                    )
         for possible_location in possible_locations:
             if path.isfile(possible_location):
                 return possible_location
@@ -80,10 +82,12 @@ def get_git_describe_version(abbrev=7):
     """return the string output of git desribe"""
     try:
         with open(devnull, "w") as fnull:
-            arguments = [GIT_COMMAND, "describe", "--tags",
-                         "--abbrev=%d" % abbrev]
-            return check_output(arguments, cwd=CURRENT_DIRECTORY,
-                                stderr=fnull).decode("ascii").strip()
+            arguments = [GIT_COMMAND, "describe", "--tags", "--abbrev=%d" % abbrev]
+            return (
+                check_output(arguments, cwd=CURRENT_DIRECTORY, stderr=fnull)
+                .decode("ascii")
+                .strip()
+            )
     except (OSError, CalledProcessError):
         return None
 
@@ -103,7 +107,7 @@ def format_git_describe(git_str, pep440=False):
             formatted_str = git_str.replace("-g", "+git")
 
     # need to remove the "v" to have a proper python version
-    if formatted_str.startswith('v'):
+    if formatted_str.startswith("v"):
         formatted_str = formatted_str[1:]
 
     return formatted_str
@@ -112,9 +116,9 @@ def format_git_describe(git_str, pep440=False):
 def read_release_version():
     """Read version information from VERSION file"""
     if not path.exists(VERSION_FILE):
-        return 'unknown'
+        return "unknown"
     with open(VERSION_FILE) as f:
-        return literal_eval(f.read().replace('version=', '', 1))
+        return literal_eval(f.read().replace("version=", "", 1))
 
 
 def update_release_version(pep440=False):
@@ -163,11 +167,13 @@ def get_version(pep440=False):
 
     return git_version
 
+
 def get_version_pypi(abbrev=4):
     version = get_version(abbrev)
 
     # return the pure git version
-    return version.split('+')[0]
+    return version.split("+")[0]
+
 
 if __name__ == "__main__":
     print(get_version())
