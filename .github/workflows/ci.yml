@@ -33,5 +33,5 @@ jobs:
           shell: bash -leo pipefail {0}
           conda activate ctlearn
           cd ${{ github.workspace }}/ctlearn
-          pip install .
+          # pip install .
       - run: echo "This job's status is ${{ job.status }}."
