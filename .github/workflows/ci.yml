@@ -23,7 +23,6 @@ jobs:
       - name: Conda setup
         uses: conda-incubator/setup-miniconda@v2
         with:
-	  mamba-version: "*"
           auto-update-conda: true
           activate-environment: "ctlearn"
           environment-file: environment.yml
