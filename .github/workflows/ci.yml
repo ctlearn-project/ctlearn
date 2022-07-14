@@ -23,13 +23,12 @@ jobs:
       - name: Conda setup
         uses: conda-incubator/setup-miniconda@v2
         with:
+	  mamba-version: "*"
           auto-update-conda: true
           activate-environment: "ctlearn"
           environment-file: environment.yml
-      - run: |
-          conda info
-          conda list
-      - run: |
+      - name: CTLearn installation
+        run: |
           # need to use a login shell for the conda setup to work
           shell: bash -leo pipefail {0}
           conda activate ctlearn
