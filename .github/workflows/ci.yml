@@ -30,6 +30,8 @@ jobs:
           conda info
           conda list
       - run: |
+          # need to use a login shell for the conda setup to work
+          shell: bash -leo pipefail {0}
           conda activate ctlearn
           cd ${{ github.workspace }}/ctlearn
           pip install .
