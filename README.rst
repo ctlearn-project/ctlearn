@@ -8,9 +8,10 @@ CTLearn: Deep Learning for IACT Event Reconstruction
    :alt: DOI
 
 
-.. image:: https://travis-ci.com/ctlearn-project/ctlearn.svg?branch=master
-   :target: https://travis-ci.com/ctlearn-project/ctlearn
-   :alt: Build Status
+.. |ci| image:: https://github.com/ctlearn-project/ctlearn/workflows/python-package/badge.svg?branch=master
+    :target: https://github.com/ctlearn-project/ctlearn/actions?query=workflow%3ACI+branch%3Amaster
+    :alt: Test Status
+
 
 .. image:: https://img.shields.io/pypi/v/ctlearn
     :target: https://pypi.org/project/ctlearn/
