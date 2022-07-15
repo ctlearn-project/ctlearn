@@ -32,7 +32,7 @@ true_values = np.concatenate((gamma_true_values, proton_true_values))
 fpr, tpr, thresholds = sklearn.metrics.roc_curve(true_values, classifier_values)
 auc = sklearn.metrics.auc(fpr, tpr)
 
-plt.plot(fpr, tpr, lw=2, label=classifier_name+'AUC = {:.2f}'.format(auc))
+plt.plot(fpr, tpr, lw=2, label='AUC = {:.2f}'.format(auc))
 
 # Finish the plot
 plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
