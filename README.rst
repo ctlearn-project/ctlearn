@@ -8,11 +8,6 @@ CTLearn: Deep Learning for IACT Event Reconstruction
    :alt: DOI
 
 
-.. image:: https://github.com/ctlearn-project/ctlearn/workflows/python-package-conda.yml/badge.svg?branch=master
-    :target: https://github.com/ctlearn-project/ctlearn/actions?query=workflow%3Apython-package-conda+branch%3Amaster
-    :alt: Test Status
-
-
 .. image:: https://img.shields.io/pypi/v/ctlearn
     :target: https://pypi.org/project/ctlearn/
     :alt: Latest Release
