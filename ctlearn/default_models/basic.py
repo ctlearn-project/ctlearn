@@ -73,7 +73,7 @@ def conv_block(inputs, params, name="cnn_block"):
     return x
 
 
-def fully_connect(inputs, layers=None, expected_logits_dimension=None, name=None):
+def fully_connect(inputs, layers=None, params=None, expected_logits_dimension=None, name=None):
 
     if layers is None:
         layers = params["basic"]["fully_connect"]["layers"]
