@@ -9,25 +9,37 @@ import sklearn.metrics
 parser = argparse.ArgumentParser(
     description=("Plot ROC curves."))
 parser.add_argument(
-    'predictions_file',
-    help='pandas hdf file of predictions')
+    '--signal_file',
+    help='pandas hdf file of signal predictions')
+parser.add_argument(
+    '--background_file',
+    help='pandas hdf file of background predictions')
+parser.add_argument(
+    '--column_name',
+    help='name of the column to plot',
+    default="gammaness")
 parser.add_argument(
     "--output_filename",
     help="name for output plot file",
     default="roc_curves.png")
 args = parser.parse_args()
 
-gamma_classifier_values = pd.read_hdf(args.predictions_file, key='gamma')['reco_gammaness'].astype(float)
-gamma_true_values = np.ones(len(gamma_classifier_values))
-proton_classifier_values = pd.read_hdf(args.predictions_file, key='proton')['reco_gammaness'].astype(float)
-proton_true_values = np.zeros(len(proton_classifier_values))
+with pd.HDFStore(args.signal_file, mode="r") as f:
+    events = f["/dl2/reco"]
+    signal_classifier_values = np.float(events[args.column_name])
+    signal_true_values = np.ones(len(signal_classifier_values))
+
+with pd.HDFStore(args.background_file, mode="r") as f:
+    events = f["/dl2/reco"]
+    background_classifier_values = np.float(events[args.column_name])
+    background_true_values = np.zeros(len(background_classifier_values))
 
 # Make the plot
 plt.figure()
 
 # Plot the ROC curve
-classifier_values = np.concatenate((gamma_classifier_values, proton_classifier_values))
-true_values = np.concatenate((gamma_true_values, proton_true_values))
+classifier_values = np.concatenate((signal_classifier_values, background_classifier_values))
+true_values = np.concatenate((signal_true_values, background_true_values))
 
 fpr, tpr, thresholds = sklearn.metrics.roc_curve(true_values, classifier_values)
 auc = sklearn.metrics.auc(fpr, tpr)
