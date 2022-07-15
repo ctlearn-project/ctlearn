@@ -146,24 +146,24 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
     if data.enr_pos:
         if data.energy_unit == "log(TeV)":
             true_energy = np.power(10, data.enr_labels[data.batch_size :])
-        if rest_data:
-            reco["true_energy"] = np.concatenate(
-                (
-                    true_energy,
-                    np.power(10, rest_data.enr_labels[rest_data.batch_size :]),
-                ),
-                axis=0,
-            )
+            if rest_data:
+                reco["true_energy"] = np.concatenate(
+                    (
+                        true_energy,
+                        np.power(10, rest_data.enr_labels[rest_data.batch_size :]),
+                    ),
+                    axis=0,
+                )
         else:
             true_energy = data.enr_labels[data.batch_size :]
-        if rest_data:
-            reco["true_energy"] = np.concatenate(
-                (
-                    true_energy,
-                    rest_data.enr_labels[rest_data.batch_size :],
-                ),
-                axis=0,
-            )
+            if rest_data:
+                reco["true_energy"] = np.concatenate(
+                    (
+                        true_energy,
+                        rest_data.enr_labels[rest_data.batch_size :],
+                    ),
+                    axis=0,
+                )
     if "energy" in tasks:
         if data.energy_unit == "log(TeV)" or np.min(predictions) < 0.0:
             reco["reco_energy"] = np.power(10, predictions)[:, 0]
