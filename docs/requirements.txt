@@ -6,4 +6,5 @@ pip
 pyyaml
 scikit-learn
 tensorflow
+tf2onnx
 dl1_data_handler
