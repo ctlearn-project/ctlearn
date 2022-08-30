@@ -9,6 +9,7 @@
 *.pbtxt
 *.png
 *.csv
+*~
 
 # Compiled Python files
 __pycache__/
