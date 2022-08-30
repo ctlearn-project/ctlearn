@@ -27,7 +27,7 @@ Documentation
 
 * :ref:`genindex`
 * :ref:`modindex`
-*  installation
-*  usage
-*  suplementary
+* installation
+* usage
+* suplementary
 * :ref:`search`
