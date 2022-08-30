@@ -1,5 +1,5 @@
 =====================
-Supplementary Scripts
+Supplementary scripts
 =====================
 
 * **run_ctlearn_on_Wilkes3.sh** Launch CTLearn runs on Wilkes-3 via Slurm workload manager. 

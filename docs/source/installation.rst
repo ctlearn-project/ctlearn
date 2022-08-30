@@ -3,7 +3,7 @@ Installation instructions
 =========================
 
 Install a released version
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+--------------------------
 
 Download and install `Anaconda <https://www.anaconda.com/download/>`_\ , or, for a minimal installation, `Miniconda <https://conda.io/miniconda.html>`_.
 
@@ -24,7 +24,7 @@ This should automatically install all dependencies (NOTE: this may take some tim
 
 
 Installing with pip/setuptools from source for development
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+----------------------------------------------------------
 
 Clone the CTLearn repository:
 
@@ -58,8 +58,7 @@ or with pip from source:
 NOTE for developers: If you wish to fork/clone the repository and edit the code, install with ``pip -e``.
 
 Dependencies
-^^^^^^^^^^^^
-
+------------
 
 * Python==3.9
 * TensorFlow==2.8
@@ -80,7 +79,7 @@ Uninstall CTLearn
 -----------------
 
 Remove Anaconda Environment
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 First, remove the conda environment in which CTLearn is installed and all its dependencies:
 
@@ -89,7 +88,7 @@ First, remove the conda environment in which CTLearn is installed and all its de
    conda remove --name ctlearn --all
 
 Remove CTLearn
-^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~
 
 Next, completely remove CTLearn from your system:
 

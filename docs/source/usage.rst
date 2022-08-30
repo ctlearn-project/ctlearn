@@ -1,27 +1,26 @@
-=====
-Usage
-=====
+=============
+Package usage
+=============
 
-Download Data
+Download data
 -------------
 
 CTLearn can load and process data in the HDF5 PyTables format produced from simtel files by `ctapipe <https://github.com/cta-observatory/ctapipe>`_ and `DL1DataHandler <https://github.com/cta-observatory/dl1-data-handler>`_.
 
-Configure a Run
+Configure a run
 ---------------
 
 CTLearn encourages reproducible training and prediction by keeping all run settings in a single YAML configuration file, organized into the sections listed below. The `example config file <config/example_config.yml>`_ describes every available setting and its possible values in detail. Predefined default CTLearn models are shipped with the installation and can be constructed via ``--default_model,-d`` from the command line.
 
 Logging
-^^^^^^^
+~~~~~~~
 
 Specify model directory to store TensorFlow checkpoints and summaries, a timestamped copy of the run configuration, and optionally a timestamped file with logging output.
 
 Data
-^^^^
+~~~~
 
 Describe the dataset to use and relevant settings for loading and processing it. The parameters in this section are used to initialize a DL1DataReader, which loads the data files, maps the images from vectors to arrays, applies preprocessing, and returns the data as an iterator. Data can be loaded in two modes:
-
 
 * Mono: single images of one telescope type
 * Stereo: events of one or multiple telescope types
@@ -30,12 +29,12 @@ Parameters in this section include telescope IDs to select, auxiliary parameters
 Pre-processing is performed using the DL1DataHandler Transform class.
 
 Input
-^^^^^
+~~~~~
 
 Set parameters of the KerasBatchGenerator that converts the loaded, processed data into generator of batches for the Keras application. Stereoscopic images can be concatenated via the ``concat_telescopes`` flag.
 
 Model
-^^^^^
+~~~~~
 
 CTLearn works with any TensorFlow-Keras model obeying the signature of a backbone_model (``backbone, backbone_inputs = backbone_model(data, model_params)`` where ``backbone`` is a TensorFlow-Keras (sub)model with model inputs ``backbone_inputs``, ``data`` is a KerasBatchGenerator, and ``model_params`` is a dictionary of model parameters) and a head_model (``logits, losses, loss_weights, metrics = head_model(backbone_output, tasks, model_params)`` where ``backbone_output`` is an output of a TensorFlow-Keras backbone model, ``tasks`` is a list of reconstruction tasks, ``model_params`` is a dictionary of model parameters, and ``logits``, ``losses``, ``loss_weights``, ``metrics`` are lists of self-explanatory outputs correspondent to the selected tasks).
 
@@ -44,26 +43,26 @@ To use a custom model, provide in this section the directory containing a Python
 In addition, CTLearn includes two main models for gamma/hadron classification, energy and arrival direction regression. ``SingleCNN`` analyzes single telescope images using a convolutional neural network (CNN) or multiple residual blocks of convolutional layers (ResNet). Stereoscopic images can be concatenated beforehand (in the ``Input`` config section) to be analyzed by the ``SingleCNN`` model. ``CNN-RNN`` performs array-level reconstruction by feeding the output of a CNN or a ResNet for each telescope into either a recurrent neural network (RNN). All models are built on generic functions from ``basic.py`` and ``resnet_engine.py``. In addition, three different attention mechanisms are implemented in ``attention.py``.
 
 Model Parameters
-^^^^^^^^^^^^^^^^
+~~~~~~~~~~~~~~~~
 
 This section in its entirety is directly included as the model ``params``\ , enabling arbitrary configuration parameters to be passed to the provided model.
 
 Training
-^^^^^^^^
+~~~~~~~~
 
 Set training parameters such as the training/validation split, the number of epochs to run, as well as hyperparameters including the base learning rate and optimizer.
 
 Prediction
-^^^^^^^^^^
+~~~~~~~~~~
 
 Specify prediction settings such as the path to write the prediction file and whether to save the labels and example identifiers along with the predictions.
 
 TensorFlow
-^^^^^^^^^^
+~~~~~~~~~~
 
 Set whether to run TensorFlow in debug mode.
 
-Run a Model
+Run a model
 -----------
 
 Run CTLearn from the command line:

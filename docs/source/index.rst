@@ -22,12 +22,13 @@ CTLearn: Deep Learning for IACT Event Reconstruction
    :maxdepth: 2
    :caption: Contents:
 
+   installation
+   usage
+   suplementary
+
 Documentation
 ==================
 
 * :ref:`genindex`
 * :ref:`modindex`
-* installation
-* usage
-* suplementary
 * :ref:`search`
