@@ -1,5 +1,5 @@
 """
-Build IRFS and sensitivity from CTLearn DL2-like files using pyirf.
+Build IRFs and sensitivity curves from CTLearn DL2-like files using pyirf.
 Edited from pyirf examples (Credits Noethe et al.):
 https://github.com/cta-observatory/pyirf/blob/master/examples/calculate_eventdisplay_irfs.py
 """
@@ -100,7 +100,7 @@ def main():
 
     parser = argparse.ArgumentParser(
         description=(
-            "Build IRFS and sensitivity from CTLearn DL2-like files using pyirf."
+            "Build IRFs and sensitivity curves from CTLearn DL2-like files using pyirf."
         )
     )
     parser.add_argument(

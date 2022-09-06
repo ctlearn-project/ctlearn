@@ -132,3 +132,47 @@ View training progress in real time with TensorBoard:
 .. code-block:: bash
 
    tensorboard --logdir=/path/to/my/model_dir
+
+Build IRFs
+----------
+
+Build IRFs and sensitivity curves from CTLearn DL2-like files using pyirf:
+
+.. code-block:: bash
+
+   build_irf [-h] [--input INPUT [INPUT ...]] [--pattern PATTERN [PATTERN ...]] [--output OUTPUT] [--energy_range ENERGY_RANGE [ENERGY_RANGE ...]]
+                 [--theta_range THETA_RANGE [THETA_RANGE ...]] [--obstime OBSTIME] [--alpha ALPHA] [--max_bg_radius MAX_BG_RADIUS] [--max_gh_cut_eff MAX_GH_CUT_EFF]
+                 [--gh_cut_eff_step GH_CUT_EFF_STEP] [--init_gh_cut_eff INIT_GH_CUT_EFF] [--quality_cuts QUALITY_CUTS] [--size_cut SIZE_CUT [SIZE_CUT ...]]
+                 [--leakage_cut LEAKAGE_CUT [LEAKAGE_CUT ...]]
+
+optional arguments:
+  ``-h, --help``\
+                        show this help message and exit
+  ``--input,-i INPUT [INPUT ...]``\
+                        Input directories; default is ./
+  ``--pattern,-p PATTERN [PATTERN ...], -p PATTERN [PATTERN ...]``\
+                        Pattern to mask unwanted files from the data input directory; default is *.h5
+  ``--output,-o OUTPUT``\
+                        Output file; default is ./pyirf.fits.gz
+  ``--energy_range,-e ENERGY_RANGE [ENERGY_RANGE ...]``\
+                        Energy range in TeV; default is [0.03, 30.0]
+  ``--theta_range,-t THETA_RANGE [THETA_RANGE ...]``\
+                        Theta cut range in deg; default is [0.05, 0.3]
+  ``--obstime OBSTIME``\
+                        Observation time in hours; default is 50
+  ``--alpha ALPHA``\
+                        Scaling between on and off region; default is 0.2
+  ``--max_bg_radius MAX_BG_RADIUS``\
+                        Maximum background radius in deg; default is 1.0
+  ``--max_gh_cut_eff MAX_GH_CUT_EFF``\
+                        Maximum gamma/hadron cut efficiency; default is 0.9
+  ``--gh_cut_eff_step GH_CUT_EFF_STEP``\
+                        Gamma/hadron cut efficiency step; default is 0.01
+  ``--init_gh_cut_eff INIT_GH_CUT_EFF``\
+                        Initial gamma/hadron cut efficiency; default is 0.4
+  ``--quality_cuts,-c QUALITY_CUTS``\
+                        String of the quality cuts
+  ``--size_cut,-z SIZE_CUT [SIZE_CUT ...]``\
+                        Minimum size values
+  ``--leakage_cut,-l LEAKAGE_CUT [LEAKAGE_CUT ...]``\
+                        Maximum leakage2 intensity values
