@@ -150,7 +150,7 @@ optional arguments:
                         show this help message and exit
   ``--input,-i INPUT [INPUT ...]``\
                         Input directories; default is ./
-  ``--pattern,-p PATTERN [PATTERN ...], -p PATTERN [PATTERN ...]``\
+  ``--pattern,-p PATTERN [PATTERN ...]``\
                         Pattern to mask unwanted files from the data input directory; default is *.h5
   ``--output,-o OUTPUT``\
                         Output file; default is ./pyirf.fits.gz
