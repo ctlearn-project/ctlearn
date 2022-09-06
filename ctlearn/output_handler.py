@@ -62,45 +62,49 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
     if data.obs_pos:
         obs_id = data.obs_list[data.batch_size :]
         if rest_data:
-            reco["obs_id"] = np.concatenate(
+            obs_id = np.concatenate(
                 (
                     obs_id,
                     rest_data.obs_list[rest_data.batch_size :],
                 ),
                 axis=0,
             )
+        reco["obs_id"] = obs_id
 
     # Store the timestamp
     if data.mjd_pos:
         mjd = data.mjd_list[data.batch_size :]
         if rest_data:
-            reco["mjd"] = np.concatenate(
+            mjd = np.concatenate(
                 (
                     mjd,
                     rest_data.mjd_list[rest_data.batch_size :],
                 ),
                 axis=0,
             )
+        reco["mjd"] = mjd
     if data.milli_pos:
         milli_sec = data.milli_list[data.batch_size :]
         if rest_data:
-            reco["milli_sec"] = np.concatenate(
+            milli_sec = np.concatenate(
                 (
                     milli_sec,
                     rest_data.milli_list[rest_data.batch_size :],
                 ),
                 axis=0,
             )
+        reco["milli_sec"] = milli_sec
     if data.nano_pos:
         nano_sec = data.nano_list[data.batch_size :]
         if rest_data:
-            reco["nano_sec"] = np.concatenate(
+            nano_sec = np.concatenate(
                 (
                     nano_sec,
                     rest_data.nano_list[rest_data.batch_size :],
                 ),
                 axis=0,
             )
+        reco["nano_sec"] = nano_sec
 
     # Store pointings
     if data.pon_pos:
@@ -121,6 +125,7 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
                 ),
                 axis=0,
             )
+
     else:
         pointing_alt = np.array([reader.pointing[0]] * len(reader))
         pointing_az = np.array([reader.pointing[1]] * len(reader))
@@ -132,13 +137,14 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
     if data.prt_pos:
         true_shower_primary_id = data.prt_labels[data.batch_size :]
         if rest_data:
-            reco["true_shower_primary_id"] = np.concatenate(
+            true_shower_primary_id = np.concatenate(
                 (
                     true_shower_primary_id,
                     rest_data.prt_labels[rest_data.batch_size :],
                 ),
                 axis=0,
             )
+        reco["true_shower_primary_id"] = true_shower_primary_id
     if "particletype" in tasks:
         for n, name in enumerate(data.class_names):
             reco[name + "ness"] = np.array(predictions[:, n])
@@ -147,23 +153,25 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
         if data.energy_unit == "log(TeV)":
             true_energy = np.power(10, data.enr_labels[data.batch_size :])
             if rest_data:
-                reco["true_energy"] = np.concatenate(
+                true_energy = np.concatenate(
                     (
                         true_energy,
                         np.power(10, rest_data.enr_labels[rest_data.batch_size :]),
                     ),
                     axis=0,
                 )
+            reco["true_energy"] = true_energy
         else:
             true_energy = data.enr_labels[data.batch_size :]
             if rest_data:
-                reco["true_energy"] = np.concatenate(
+                true_energy = np.concatenate(
                     (
                         true_energy,
                         rest_data.enr_labels[rest_data.batch_size :],
                     ),
                     axis=0,
                 )
+            reco["true_energy"] = true_energy
     if "energy" in tasks:
         if data.energy_unit == "log(TeV)" or np.min(predictions) < 0.0:
             reco["reco_energy"] = np.power(10, predictions)[:, 0]
@@ -218,15 +226,15 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
     if reader.parameter_list:
         tel_counter = 0
         if reader.mode == "mono":
-            tel_type = list(reader.telescopes.keys())[0]
+            tel_type = list(reader.selected_telescopes.keys())[0]
             tel_ids = "tel"
-            for tel_id in reader.telescopes[tel_type]:
+            for tel_id in reader.selected_telescopes[tel_type]:
                 tel_ids += f"_{tel_id}"
             parameters = {}
             for p, parameter in enumerate(reader.parameter_list):
                 parameter_list = np.array(data.parameter_list)[data.batch_size :, p]
                 if rest_data:
-                    parameters[parameter] = np.concatenate(
+                    parameter_list = np.concatenate(
                         (
                             parameter_list,
                             np.array(rest_data.parameter_list)[
@@ -235,19 +243,20 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
                         ),
                         axis=0,
                     )
+                parameters[parameter] = parameter_list
             pd.DataFrame(data=parameters).to_hdf(
                 h5file, key=f"/dl1b/{tel_type}/{tel_ids}", mode="a"
             )
         else:
-            for tel_type in reader.telescopes:
-                for t, tel_id in enumerate(reader.telescopes[tel_type]):
+            for tel_type in reader.selected_telescopes:
+                for t, tel_id in enumerate(reader.selected_telescopes[tel_type]):
                     parameters = {}
                     for p, parameter in enumerate(reader.parameter_list):
                         parameter_list = np.array(data.parameter_list)[
                             data.batch_size :, tel_counter + t, p
                         ]
                         if rest_data:
-                            parameters[parameter] = np.concatenate(
+                            parameter_list = np.concatenate(
                                 (
                                     parameter_list,
                                     np.array(rest_data.parameter_list)[
@@ -256,7 +265,8 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
                                 ),
                                 axis=0,
                             )
+                        parameters[parameter] = parameter_list
                     pd.DataFrame(data=parameters).to_hdf(
                         h5file, key=f"/dl1b/{tel_type}/tel_{tel_id}", mode="a"
                     )
-                tel_counter += len(reader.telescopes[tel_type])
+                tel_counter += len(reader.selected_telescopes[tel_type])
