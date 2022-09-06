@@ -17,12 +17,16 @@ CTLearn: Deep Learning for IACT Event Reconstruction
 * Code, feature requests, bug reports, pull requests: https://github.com/ctlearn-project/ctlearn
 * Documentation: https://ctlearn.readthedocs.io
 * License: BSD-3
-	   
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
-Indices and tables
+   installation
+   usage
+   suplementary
+
+Documentation
 ==================
 
 * :ref:`genindex`
