@@ -57,19 +57,19 @@ log = logging.getLogger("pyirf")
 
 # Map the particle ids to the particle information
 particles = {
-    1: {
+    0: {
         "name": "gamma",
         "target_spectrum": CRAB_HEGRA,
         "mc_header": pd.DataFrame(),
         "events": QTable(),
     },
-    0: {
+    101: {
         "name": "proton",
         "target_spectrum": IRFDOC_PROTON_SPECTRUM,
         "mc_header": pd.DataFrame(),
         "events": QTable(),
     },
-    2: {
+    1: {
         "name": "electron",
         "target_spectrum": IRFDOC_ELECTRON_SPECTRUM,
         "mc_header": pd.DataFrame(),
@@ -77,6 +77,12 @@ particles = {
     },
 }
 
+# Map column names
+name_mapping = {
+    "gammaness": "gh_score",
+    "source_alt": "true_alt",
+    "source_az": "true_az",
+}
 # Map units
 unit_mapping = {
     "true_energy": u.TeV,
@@ -100,27 +106,27 @@ def main():
     parser.add_argument(
         "--input",
         "-i",
-        help="Input directories",
+        help="Input directories; default is ./",
         default=["./"],
         nargs="+",
     )
     parser.add_argument(
         "--pattern",
         "-p",
-        help="Pattern to mask unwanted files from the data input directory",
+        help="Pattern to mask unwanted files from the data input directory; default is *.h5",
         default=["*.h5"],
         nargs="+",
     )
     parser.add_argument(
         "--output",
         "-o",
-        help="Output file",
-        default="pyirf.fits.gz",
+        help="Output file; default is ./pyirf.fits.gz",
+        default="./pyirf.fits.gz",
     )
     parser.add_argument(
         "--energy_range",
         "-e",
-        help="Energy range in TeV",
+        help="Energy range in TeV; default is [0.03, 30.0]",
         default = [0.03, 30.0],
         nargs="+",
         type=float,
@@ -128,39 +134,39 @@ def main():
     parser.add_argument(
         "--theta_range",
         "-t",
-        help="Theta cut range in deg",
+        help="Theta cut range in deg; default is [0.05, 0.3]",
         default = [0.05, 0.3],
         nargs="+",
         type=float,
     )
     parser.add_argument(
         "--obstime",
-        help="Observation time in hours",
+        help="Observation time in hours; default is 50",
         default=50,
     )
     parser.add_argument(
         "--alpha",
-        help="Scaling between on and off region",
+        help="Scaling between on and off region; default is 0.2",
         default=0.2,
     )
     parser.add_argument(
         "--max_bg_radius",
-        help="Maximum background radius in deg",
+        help="Maximum background radius in deg; default is 1.0",
         default=1.0,
     )
     parser.add_argument(
         "--max_gh_cut_eff",
-        help="Maximum gamma/hadron cut efficiency",
+        help="Maximum gamma/hadron cut efficiency; default is 0.9",
         default=0.9,
     )
     parser.add_argument(
         "--gh_cut_eff_step",
-        help="Gamma/hadron cut efficiency step",
+        help="Gamma/hadron cut efficiency step; default is 0.01",
         default=0.01,
     )
     parser.add_argument(
         "--init_gh_cut_eff",
-        help="Initial gamma/hadron cut efficiency",
+        help="Initial gamma/hadron cut efficiency; default is 0.4",
         default=0.4,
     )
     parser.add_argument(
@@ -210,6 +216,8 @@ def main():
     MIN_THETA_CUT = args.theta_range[0] * u.deg
     MAX_THETA_CUT = args.theta_range[-1] * u.deg
 
+    global_tel_ids = []
+    n_showers_factor = 1
     for input in args.input:
         abs_file_dir = os.path.abspath(input)
         for pattern in args.pattern:
@@ -218,17 +226,27 @@ def main():
                 continue
 
             for file in np.sort(files):
+                tel_ids = []
                 with pd.HDFStore(file, mode="r") as f:
                     file_keys = list(f.keys())
                     events = f["/dl2/reco"]
+                    events = events.rename(columns=name_mapping)
                     particle_type = int(events["true_shower_primary_id"][0])
                     drop_cols = ["event_id", "obs_id", "true_shower_primary_id"]
                     for k in [key for key in file_keys if key.startswith("/dl1b/")]:
+                        tel_ids_string = k.split("/")[-1].replace("tel_", "")
+                        n_showers_factor = len(tel_ids_string.split("_"))
+                        tel_ids.append(int(tel_ids_string))
                         parameters = f[k].rename(
                             lambda x: f'{k.split("/")[-1]}_' + x, axis="columns"
                         )
                         drop_cols.extend(parameters.keys())
                         events = pd.concat([events, parameters], axis=1)
+                    if not global_tel_ids:
+                        global_tel_ids = tel_ids
+                    else:
+                        if global_tel_ids != tel_ids:
+                            raise ValueError(f"Tel ids inconsistent. '{global_tel_ids}' is not equal to '{tel_ids}' from '{file}'.")
 
                     # Apply quality cuts
                     mask = None
@@ -238,16 +256,16 @@ def main():
                     if args.size_cut:
                         for s, size in enumerate(args.size_cut):
                             if mask:
-                                mask += f"& tel_{s+1}_hillas_intensity > {size} "
+                                mask += f"& tel_{global_tel_ids[s]}_hillas_intensity > {size} "
                             else:
-                                mask = f"tel_{s+1}_hillas_intensity > {size} "
+                                mask = f"tel_{global_tel_ids[s]}_hillas_intensity > {size} "
                     if args.leakage_cut:
                         for l, leakage in enumerate(args.leakage_cut):
                             if mask:
-                                mask += f"& tel_{l+1}_leakage_intensity_width_2 > {leakage} "
+                                mask += f"& tel_{global_tel_ids[l]}_leakage_intensity_width_2 > {leakage} "
                             else:
                                 mask = (
-                                    f"tel_{l+1}_leakage_intensity_width_2 > {leakage} "
+                                    f"tel_{global_tel_ids[l]}_leakage_intensity_width_2 > {leakage} "
                                 )
                     if mask:
                         events.query(mask, inplace=True)
@@ -278,7 +296,7 @@ def main():
         log.info(f'Simulated {p["name"]} Events:')
 
         simulation_info = SimulatedEventsInfo(
-            n_showers=int(p["mc_header"]["num_showers"].sum()),
+            n_showers=int(n_showers_factor * p["mc_header"]["n_showers"].sum()),
             energy_min=u.Quantity(p["mc_header"]["energy_range_min"].min(), u.TeV),
             energy_max=u.Quantity(p["mc_header"]["energy_range_max"].max(), u.TeV),
             spectral_index=p["mc_header"]["spectral_index"][0],
@@ -307,9 +325,9 @@ def main():
         log.info(simulation_info)
         log.info("")
 
-    gammas = particles[1]["events"]
+    gammas = particles[0]["events"]
     # background table composed of both electrons and protons
-    background = table.vstack([particles[0]["events"], particles[2]["events"]])
+    background = table.vstack([particles[101]["events"], particles[1]["events"]])
 
     INITIAL_GH_CUT = np.quantile(gammas["gh_score"], (1 - INITIAL_GH_CUT_EFFICENCY))
     log.info(f"Using fixed G/H cut of {INITIAL_GH_CUT} to calculate theta cuts")
