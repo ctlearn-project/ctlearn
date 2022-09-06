@@ -663,6 +663,10 @@ def main():
                             config["Data"]["multiplicity_selection"] = {
                                 "Subarray": args.multiplicity_cut
                             }
+                        if args.batch_size:
+                            if "Input" not in config:
+                                config["Input"] = {}
+                            config["Input"]["batch_size_per_worker"] = args.batch_size
                         if args.output:
                             config["Logging"] = {}
                             config["Logging"]["model_directory"] = args.output
@@ -684,6 +688,7 @@ def main():
                             file.split("/")[-1]
                             .replace("_S_", "_E_")
                             .replace("dl1", "dl2")
+                            .replace("DL1", "DL2")
                         )
                         prediction_path = file.replace(f'{file.split("/")[-1]}', "")
                         if args.prediction_directory:
@@ -720,6 +725,10 @@ def main():
                     config["Data"]["multiplicity_selection"] = {
                         "Subarray": args.multiplicity_cut
                     }
+                if args.batch_size:
+                    if "Input" not in config:
+                        config["Input"] = {}
+                    config["Input"]["batch_size_per_worker"] = args.batch_size
                 if args.output:
                     config["Logging"] = {}
                     config["Logging"]["model_directory"] = args.output
