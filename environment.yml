@@ -17,6 +17,7 @@ dependencies:
     - scikit-learn
     - pip:
         - ctaplot
+        - numba>=0.56.2
         - tensorflow>=2.9,<2.10
         - tf2onnx>=1.12
         - pydot
