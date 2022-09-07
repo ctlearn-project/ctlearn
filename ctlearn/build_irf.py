@@ -238,10 +238,11 @@ def main():
                         n_showers_factor = len(tel_ids_string.split("_"))
                         tel_ids.append(int(tel_ids_string))
                         parameters = f[k].rename(
-                            lambda x: f'{k.split("/")[-1]}_' + x, axis="columns"
+                            lambda x: f'tel_{int(tel_ids_string)}_' + x, axis="columns"
                         )
                         drop_cols.extend(parameters.keys())
                         events = pd.concat([events, parameters], axis=1)
+
                     if not global_tel_ids:
                         global_tel_ids = tel_ids
                     else:
@@ -262,10 +263,10 @@ def main():
                     if args.leakage_cut:
                         for l, leakage in enumerate(args.leakage_cut):
                             if mask:
-                                mask += f"& tel_{global_tel_ids[l]}_leakage_intensity_width_2 > {leakage} "
+                                mask += f"& tel_{global_tel_ids[l]}_leakage_intensity_width_2 < {leakage} "
                             else:
                                 mask = (
-                                    f"tel_{global_tel_ids[l]}_leakage_intensity_width_2 > {leakage} "
+                                    f"tel_{global_tel_ids[l]}_leakage_intensity_width_2 < {leakage} "
                                 )
                     if mask:
                         events.query(mask, inplace=True)
