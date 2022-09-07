@@ -30,12 +30,12 @@ bins = np.linspace(0, 1, 100)
 if args.signal_file:
     with pd.HDFStore(args.signal_file, mode="r") as f:
         events = f["/dl2/reco"]
-        signal_classifier_values = np.float(events[args.column_name])
+        signal_classifier_values = events[args.column_name]
         plt.hist(signal_classifier_values, bins, alpha=0.5, label='Signal')
 if args.background_file:
     with pd.HDFStore(args.background_file, mode="r") as f:
         events = f["/dl2/reco"]
-        background_classifier_values = np.float(events[args.column_name])
+        background_classifier_values = events[args.column_name]
         plt.hist(background_classifier_values, bins, alpha=0.5, label='Bkg')
 
 plt.xlabel(f'Classifier value ({args.column_name})')
@@ -44,5 +44,6 @@ plt.title('Histogram of classifier values')
 
 plt.legend(loc='upper center')
 
+print(f"Histogram of classifier values saved in '{args.output_filename}'.")
 plt.savefig(args.output_filename, bbox_inches='tight')
 

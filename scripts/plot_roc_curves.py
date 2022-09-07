@@ -26,12 +26,12 @@ args = parser.parse_args()
 
 with pd.HDFStore(args.signal_file, mode="r") as f:
     events = f["/dl2/reco"]
-    signal_classifier_values = np.float(events[args.column_name])
+    signal_classifier_values = events[args.column_name]
     signal_true_values = np.ones(len(signal_classifier_values))
 
 with pd.HDFStore(args.background_file, mode="r") as f:
     events = f["/dl2/reco"]
-    background_classifier_values = np.float(events[args.column_name])
+    background_classifier_values = events[args.column_name]
     background_true_values = np.zeros(len(background_classifier_values))
 
 # Make the plot
@@ -57,4 +57,5 @@ plt.title('Receiver Operating Characteristic')
 
 plt.legend(loc='lower right')
 
+print(f"ROC curve saved in '{args.output_filename}'.")
 plt.savefig(args.output_filename, bbox_inches='tight')

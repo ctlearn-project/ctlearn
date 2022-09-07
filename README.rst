@@ -18,7 +18,7 @@ CTLearn: Deep Learning for IACT Event Reconstruction
    :alt: CTLearn Logo
 
 
-CTLearn is a package under active development to run deep learning models to analyze data from all major current and future arrays of Imaging Atmospheric Cherenkov Telescopes (IACTs). CTLearn can load data from `CTA <https://www.cta-observatory.org/>`_ (Cherenkov Telescope Array), `FACT <https://www.isdc.unige.ch/fact/>`_\ , `H.E.S.S. <https://www.mpi-hd.mpg.de/hfm/HESS/>`_\ , `MAGIC <https://magic.mpp.mpg.de/>`_\ , and `VERITAS <https://veritas.sao.arizona.edu/>`_ telescopes processed by `ctapipe <https://github.com/cta-observatory/ctapipe>`_ or `DL1DataHandler <https://github.com/cta-observatory/dl1-data-handler>`_.
+CTLearn is a package under active development to run deep learning models to analyze data from all major current and future arrays of Imaging Atmospheric Cherenkov Telescopes (IACTs). CTLearn can load DL1 data from `CTA <https://www.cta-observatory.org/>`_ (Cherenkov Telescope Array), `FACT <https://www.isdc.unige.ch/fact/>`_\ , `H.E.S.S. <https://www.mpi-hd.mpg.de/hfm/HESS/>`_\ , `MAGIC <https://magic.mpp.mpg.de/>`_\ , and `VERITAS <https://veritas.sao.arizona.edu/>`_ telescopes processed by `ctapipe <https://github.com/cta-observatory/ctapipe>`_ or `DL1DataHandler <https://github.com/cta-observatory/dl1-data-handler>`_.
 
 * Code, feature requests, bug reports, pull requests: https://github.com/ctlearn-project/ctlearn
 * Documentation: https://ctlearn.readthedocs.io
@@ -34,7 +34,7 @@ necessary package channels, and install CTLearn specified version and its depend
 
 .. code-block:: bash
 
-   CTLEARN_VER=0.6.1
+   CTLEARN_VER=0.6.2
    wget https://raw.githubusercontent.com/ctlearn-project/ctlearn/v$CTLEARN_VER/environment.yml
    conda env create -n [ENVIRONMENT_NAME] -f environment.yml
    conda activate [ENVIRONMENT_NAME]

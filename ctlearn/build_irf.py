@@ -1,5 +1,5 @@
 """
-Build IRFS and sensitivity from CTLearn DL2-like files using pyirf.
+Build IRFs and sensitivity curves from CTLearn DL2-like files using pyirf.
 Edited from pyirf examples (Credits Noethe et al.):
 https://github.com/cta-observatory/pyirf/blob/master/examples/calculate_eventdisplay_irfs.py
 """
@@ -100,7 +100,7 @@ def main():
 
     parser = argparse.ArgumentParser(
         description=(
-            "Build IRFS and sensitivity from CTLearn DL2-like files using pyirf."
+            "Build IRFs and sensitivity curves from CTLearn DL2-like files using pyirf."
         )
     )
     parser.add_argument(
@@ -238,10 +238,11 @@ def main():
                         n_showers_factor = len(tel_ids_string.split("_"))
                         tel_ids.append(int(tel_ids_string))
                         parameters = f[k].rename(
-                            lambda x: f'{k.split("/")[-1]}_' + x, axis="columns"
+                            lambda x: f'tel_{int(tel_ids_string)}_' + x, axis="columns"
                         )
                         drop_cols.extend(parameters.keys())
                         events = pd.concat([events, parameters], axis=1)
+
                     if not global_tel_ids:
                         global_tel_ids = tel_ids
                     else:
@@ -262,10 +263,10 @@ def main():
                     if args.leakage_cut:
                         for l, leakage in enumerate(args.leakage_cut):
                             if mask:
-                                mask += f"& tel_{global_tel_ids[l]}_leakage_intensity_width_2 > {leakage} "
+                                mask += f"& tel_{global_tel_ids[l]}_leakage_intensity_width_2 < {leakage} "
                             else:
                                 mask = (
-                                    f"tel_{global_tel_ids[l]}_leakage_intensity_width_2 > {leakage} "
+                                    f"tel_{global_tel_ids[l]}_leakage_intensity_width_2 < {leakage} "
                                 )
                     if mask:
                         events.query(mask, inplace=True)
