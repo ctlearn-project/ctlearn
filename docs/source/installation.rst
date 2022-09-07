@@ -64,16 +64,17 @@ Dependencies
 * TensorFlow>=2.9
 * tf2onnx>=1.12
 * ctapipe==0.16.0
+* ctaplot
 * DL1DataHandler==0.10.8
+* numba>=0.56.2
 * NumPy
 * PyYAML
+* pyirf>=0.7
 * Pandas
 * Libraries used only in plotting scripts (optional)
 
   * Matplotlib
   * Scikit-learn
-  * pyirf
-  * ctaplot
 
 Uninstall CTLearn
 -----------------
