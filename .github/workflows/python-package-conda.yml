@@ -3,17 +3,20 @@ name: CTLearn installation as a Python package using Conda
 on: [push]
 
 jobs:
-  build-linux:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: ${{ matrix.os }}
     strategy:
       max-parallel: 5
+      matrix:
+	os: [ubuntu-latest, macOS-latest]
+	python-v: [3.9] 
 
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Python 3.9
+    - name: Set up Python ${{ matrix.python-v }}
       uses: actions/setup-python@v3
       with:
-        python-version: 3.9
+        python-version: ${{ matrix.python-v }}
     - name: Add conda to system path
       run: |
         # $CONDA is an environment variable pointing to the root of the miniconda directory
