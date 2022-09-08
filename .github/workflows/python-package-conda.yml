@@ -1,4 +1,4 @@
-name: Python Package using Conda
+name: CTLearn installation as a Python package using Conda
 
 on: [push]
 
