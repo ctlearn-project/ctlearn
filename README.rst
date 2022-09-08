@@ -72,3 +72,16 @@ Please cite the corresponding version using the DOIs below if this software pack
 * 0.4.0 : |zendoi040|
 * 0.4.0-legacy : |zendoi040l|
 * 0.3.1 : |zendoi031|
+
+Team
+----
+| [![Ari Brill](https://github.com/aribrill.png?size=100)](https://github.com/aribrill) | [![Bryan Kim](https://github.com/bryankim96.png?size=100)](https://github.com/bryankim96) | [![Tjark Miener](https://github.com/TjarkMiener.png?size=100)](https://github.com/TjarkMiener) | [![Daniel Nieto](https://github.com/nietootein.png?size=100)](https://github.com/nietootein) |
+| ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| [Ari Brill](https://github.com/aribrill)                                              | [Bryan Kim](https://github.com/bryankim96)                                                | [Tjark Miener](https://github.com/TjarkMiener)                                                 | [Daniel Nieto](https://github.com/nietootein)                                                |
+
+Alumni
+------
+| [![Jaime Sevilla](https://github.com/Jsevillamol.png?size=100)](https://github.com/Jsevillamol) | [![Héctor Rueda](https://github.com/hrueda25.png?size=100)](https://github.com/hrueda25) | [![Juan Redondo Pizarro](https://github.com/jredondopizarro.png?size=100)](https://github.com/jredondopizarro) | [![LucaRomanato](https://github.com/LucaRomanato.png?size=100)](https://github.com/LucaRomanato) | [![Sahil Yadav](https://github.com/sahilyadav27.png?size=100)](https://github.com/sahilyadav27) | [![Sergio García Heredia](https://github.com/sgh14.png?size=100)](https://github.com/sgh14) |
+| ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| [Jaime Sevilla](https://github.com/Jsevillamol)                                                 | [Héctor Rueda](https://github.com/hrueda25)                                              | [Juan Redondo Pizarro](https://github.com/jredondopizarro)                                                     | [Luca Romanato](https://github.com/LucaRomanato)                                                 | [Sahil Yadav](https://github.com/sahilyadav27)                                                  | [Sergio García Heredia](https://github.com/sgh14)                                           |                   
+
