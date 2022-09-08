@@ -112,7 +112,7 @@ Collaborators
 .. list-table::
    :header-rows: 1
 
-   * - .. image:: https://github.com/qi-feng.png?size=100
+   * - .. image:: https://github.com/qi-feng.png?size=10
         :target: https://github.com/qi-feng
         :alt: Qi Feng
 
