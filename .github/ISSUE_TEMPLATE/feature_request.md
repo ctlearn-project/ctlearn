@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest an new feature in ctapipe
+about: Suggest an new feature in CTLearn
 title: ''
 labels: enhancement
 assignees: ''
