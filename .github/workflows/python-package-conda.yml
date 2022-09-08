@@ -5,6 +5,7 @@ on: [push]
 jobs:
   builds:
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
