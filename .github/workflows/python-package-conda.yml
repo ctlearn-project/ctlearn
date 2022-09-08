@@ -6,15 +6,16 @@ jobs:
   builds:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
+	pyv: [3.8, 3.9]
     runs-on: ${{ matrix.os }}
     
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Python 3.9
+    - name: Set up Python ${{ matrix.pyv }}
       uses: actions/setup-python@v3
       with:
-        python-version: 3.9
+        python-version: ${{ matrix.pyv }}
     - name: Add conda to system path
       run: |
         # $CONDA is an environment variable pointing to the root of the miniconda directory
