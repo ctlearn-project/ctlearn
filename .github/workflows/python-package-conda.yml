@@ -3,13 +3,13 @@ name: CTLearn installation as a Python package using Conda
 on: [push]
 
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
+  builds:
     strategy:
       max-parallel: 5
       matrix:
 	os: [ubuntu-latest, macos-latest]
 	python-v: [3.8, 3.9] 
+    runs-on: ${{ matrix.os }}
 
     steps:
     - uses: actions/checkout@v3
