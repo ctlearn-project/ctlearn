@@ -2,10 +2,10 @@
 CTLearn: Deep Learning for IACT Event Reconstruction
 ====================================================
 
-
 .. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.3342952.svg
    :target: https://doi.org/10.5281/zenodo.3342952
    :alt: DOI
+
 
 
 .. image:: https://img.shields.io/pypi/v/ctlearn
@@ -13,12 +13,15 @@ CTLearn: Deep Learning for IACT Event Reconstruction
     :alt: Latest Release
 
 
+
 .. image:: images/CTLearnTextCTinBox_WhiteBkgd.png
    :target: images/CTLearnTextCTinBox_WhiteBkgd.png
    :alt: CTLearn Logo
 
 
+
 CTLearn is a package under active development to run deep learning models to analyze data from all major current and future arrays of Imaging Atmospheric Cherenkov Telescopes (IACTs). CTLearn can load DL1 data from `CTA <https://www.cta-observatory.org/>`_ (Cherenkov Telescope Array), `FACT <https://www.isdc.unige.ch/fact/>`_\ , `H.E.S.S. <https://www.mpi-hd.mpg.de/hfm/HESS/>`_\ , `MAGIC <https://magic.mpp.mpg.de/>`_\ , and `VERITAS <https://veritas.sao.arizona.edu/>`_ telescopes processed by `ctapipe <https://github.com/cta-observatory/ctapipe>`_ or `DL1DataHandler <https://github.com/cta-observatory/dl1-data-handler>`_.
+
 
 * Code, feature requests, bug reports, pull requests: https://github.com/ctlearn-project/ctlearn
 * Documentation: https://ctlearn.readthedocs.io
@@ -41,6 +44,7 @@ necessary package channels, and install CTLearn specified version and its depend
    pip install ctlearn==$CTLEARN_VER
    ctlearn -h
 
+
 This should automatically install all dependencies (NOTE: this may take some time, as by default MKL is included as a dependency of NumPy and it is very large).
 
 See the documentation for further information like `installation instructions for developers <https://ctlearn.readthedocs.io/en/stable/installation.html#installing-with-pip-setuptools-from-source-for-development>`_, `package usage <https://ctlearn.readthedocs.io/en/stable/usage.html>`_, and `dependencies <https://ctlearn.readthedocs.io/en/stable/installation.html#dependencies>`_ among other topics.
@@ -52,18 +56,26 @@ Please cite the corresponding version using the DOIs below if this software pack
 
 .. |zendoi060| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.6842323.svg
    :target: https://doi.org/10.5281/zenodo.6842323
+
 .. |zendoi052| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.5947837.svg
    :target: https://doi.org/10.5281/zenodo.5947837
+
 .. |zendoi051| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.5772815.svg
    :target: https://doi.org/10.5281/zenodo.5772815
+
 .. |zendoi050| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.4576196.svg
    :target: https://doi.org/10.5281/zenodo.4576196
+
 .. |zendoi040| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.3345947.svg
    :target: https://doi.org/10.5281/zenodo.3345947
+
 .. |zendoi040l| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.3342954.svg
    :target: https://doi.org/10.5281/zenodo.3342954
+
 .. |zendoi031| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.3342953.svg
    :target: https://doi.org/10.5281/zenodo.3342953
+
+
 
 * 0.6.0 : |zendoi050|
 * 0.5.2 : |zendoi050|
@@ -75,13 +87,76 @@ Please cite the corresponding version using the DOIs below if this software pack
 
 Team
 ----
-| [![Ari Brill](https://github.com/aribrill.png?size=100)](https://github.com/aribrill) | [![Bryan Kim](https://github.com/bryankim96.png?size=100)](https://github.com/bryankim96) | [![Tjark Miener](https://github.com/TjarkMiener.png?size=100)](https://github.com/TjarkMiener) | [![Daniel Nieto](https://github.com/nietootein.png?size=100)](https://github.com/nietootein) |
-| ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| [Ari Brill](https://github.com/aribrill)                                              | [Bryan Kim](https://github.com/bryankim96)                                                | [Tjark Miener](https://github.com/TjarkMiener)                                                 | [Daniel Nieto](https://github.com/nietootein)                                                |
+
+.. list-table::
+   :header-rows: 1
+
+   * - 
+     .. image:: https://github.com/aribrill.png?size=100
+        :target: https://github.com/aribrill
+        :alt: Ari Brill
+     
+     - 
+     .. image:: https://github.com/bryankim96.png?size=100
+        :target: https://github.com/bryankim96
+        :alt: Bryan Kim
+     
+     - 
+     .. image:: https://github.com/TjarkMiener.png?size=100
+        :target: https://github.com/TjarkMiener
+        :alt: Tjark Miener
+     
+     - 
+     .. image:: https://github.com/nietootein.png?size=100
+        :target: https://github.com/nietootein
+        :alt: Daniel Nieto
+     
+   * - `Ari Brill <https://github.com/aribrill>`_
+     - `Bryan Kim <https://github.com/bryankim96>`_
+     - `Tjark Miener <https://github.com/TjarkMiener>`_
+     - `Daniel Nieto <https://github.com/nietootein>`_
+
 
 Alumni
 ------
-| [![Jaime Sevilla](https://github.com/Jsevillamol.png?size=100)](https://github.com/Jsevillamol) | [![Héctor Rueda](https://github.com/hrueda25.png?size=100)](https://github.com/hrueda25) | [![Juan Redondo Pizarro](https://github.com/jredondopizarro.png?size=100)](https://github.com/jredondopizarro) | [![LucaRomanato](https://github.com/LucaRomanato.png?size=100)](https://github.com/LucaRomanato) | [![Sahil Yadav](https://github.com/sahilyadav27.png?size=100)](https://github.com/sahilyadav27) | [![Sergio García Heredia](https://github.com/sgh14.png?size=100)](https://github.com/sgh14) |
-| ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| [Jaime Sevilla](https://github.com/Jsevillamol)                                                 | [Héctor Rueda](https://github.com/hrueda25)                                              | [Juan Redondo Pizarro](https://github.com/jredondopizarro)                                                     | [Luca Romanato](https://github.com/LucaRomanato)                                                 | [Sahil Yadav](https://github.com/sahilyadav27)                                                  | [Sergio García Heredia](https://github.com/sgh14)                                           |                   
+
+.. list-table::
+   :header-rows: 1
+
+   * - 
+     .. image:: https://github.com/Jsevillamol.png?size=100
+        :target: https://github.com/Jsevillamol
+        :alt: Jaime Sevilla
+     
+     - 
+     .. image:: https://github.com/hrueda25.png?size=100
+        :target: https://github.com/hrueda25
+        :alt: Héctor Rueda
+     
+     - 
+     .. image:: https://github.com/jredondopizarro.png?size=100
+        :target: https://github.com/jredondopizarro
+        :alt: Juan Redondo Pizarro
+     
+     - 
+     .. image:: https://github.com/LucaRomanato.png?size=100
+        :target: https://github.com/LucaRomanato
+        :alt: LucaRomanato
+     
+     - 
+     .. image:: https://github.com/sahilyadav27.png?size=100
+        :target: https://github.com/sahilyadav27
+        :alt: Sahil Yadav
+     
+     - 
+     .. image:: https://github.com/sgh14.png?size=100
+        :target: https://github.com/sgh14
+        :alt: Sergio García Heredia
+     
+   * - `Jaime Sevilla <https://github.com/Jsevillamol>`_
+     - `Héctor Rueda <https://github.com/hrueda25>`_
+     - `Juan Redondo Pizarro <https://github.com/jredondopizarro>`_
+     - `Luca Romanato <https://github.com/LucaRomanato>`_
+     - `Sahil Yadav <https://github.com/sahilyadav27>`_
+     - `Sergio García Heredia <https://github.com/sgh14>`_
 
