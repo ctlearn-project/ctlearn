@@ -3,13 +3,13 @@
     "@type": "SoftwareSourceCode",
     "license": "https://spdx.org/licenses/BSD-3-Clause",
     "codeRepository": "git+https://github.com/ctlearn-project/ctlearn.git",
-    "contIntegration": "https://app.travis-ci.com/github/ctlearn-project/ctlearn",
+    "contIntegration": "https://github.com/ctlearn-project/ctlearn/actions/workflows",
     "datePublished": "2018-03-18",
-    "dateModified": "2022-03-30",
-    "downloadUrl": "https://zenodo.org/record/5947837/files/ctlearn-project/ctlearn-v0.6.0.zip",
+    "dateModified": "2022-09-08",
+    "downloadUrl": "https://zenodo.org/record/5947837/files/ctlearn-project/ctlearn-v0.6.2.zip",
     "issueTracker": "https://github.com/ctlearn-project/ctlearn/issues",
     "name": "CTLearn: Deep learning for imaging atmospheric Cherenkov telescopes event reconstruction",
-    "version": "0.6.0",
+    "version": "0.6.2",
     "identifier": "10.5281/zenodo.3342952",
     "description": "CTLearn is a high-level Python package providing a backend for training deep learning models for the reconstruction of imaging atmospheric Cherenkov telescope events using TensorFlow.",
     "applicationCategory": "Astronomy",
@@ -37,11 +37,15 @@
     "softwareRequirements": [
         "Python 3",
         "TensorFlow 2",
+	"tf2onnx"
         "ctapipe",
+	"ctaplot",
         "DL1DataHandler",
-        "pyIRF",
+	"numba",
         "NumPy",
         "PyYAML"
+        "pyIRF",
+	"Pandas",
     ],
     "author": [
         {
