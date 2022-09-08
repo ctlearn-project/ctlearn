@@ -1,13 +1,16 @@
-name: Python Package using Conda
+name: CTLearn installation as a Python package using Conda
 
 on: [push]
 
 jobs:
-  build-linux:
-    runs-on: ubuntu-latest
+  builds:
     strategy:
-      max-parallel: 5
-
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        pythonv: [3.8, 3.9]
+    runs-on: ${{ matrix.os }}
+    
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python 3.9
@@ -21,14 +24,6 @@ jobs:
     - name: Install dependencies
       run: |
         conda env update --file environment.yml --name base
-    - name: Lint with flake8
+    - name: Install CTLearn
       run: |
-        conda install flake8
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: Test with pytest
-      run: |
-        conda install pytest
-        pytest
+        pip install .
