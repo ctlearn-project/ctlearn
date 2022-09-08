@@ -56,25 +56,18 @@ Please cite the corresponding version using the DOIs below if this software pack
 
 .. |zendoi060| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.6842323.svg
    :target: https://doi.org/10.5281/zenodo.6842323
-
 .. |zendoi052| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.5947837.svg
    :target: https://doi.org/10.5281/zenodo.5947837
-
 .. |zendoi051| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.5772815.svg
    :target: https://doi.org/10.5281/zenodo.5772815
-
 .. |zendoi050| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.4576196.svg
    :target: https://doi.org/10.5281/zenodo.4576196
-
 .. |zendoi040| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.3345947.svg
    :target: https://doi.org/10.5281/zenodo.3345947
-
 .. |zendoi040l| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.3342954.svg
    :target: https://doi.org/10.5281/zenodo.3342954
-
 .. |zendoi031| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.3342953.svg
    :target: https://doi.org/10.5281/zenodo.3342953
-
 
 
 * 0.6.0 : |zendoi050|
@@ -91,23 +84,19 @@ Team
 .. list-table::
    :header-rows: 1
 
-   * - 
-     .. image:: https://github.com/aribrill.png?size=100
+   * - .. image:: https://github.com/aribrill.png?size=100
         :target: https://github.com/aribrill
         :alt: Ari Brill
      
-     - 
-     .. image:: https://github.com/bryankim96.png?size=100
+     - .. image:: https://github.com/bryankim96.png?size=100
         :target: https://github.com/bryankim96
         :alt: Bryan Kim
      
-     - 
-     .. image:: https://github.com/TjarkMiener.png?size=100
+     - .. image:: https://github.com/TjarkMiener.png?size=100
         :target: https://github.com/TjarkMiener
         :alt: Tjark Miener
      
-     - 
-     .. image:: https://github.com/nietootein.png?size=100
+     - .. image:: https://github.com/nietootein.png?size=100
         :target: https://github.com/nietootein
         :alt: Daniel Nieto
      
@@ -123,33 +112,27 @@ Alumni
 .. list-table::
    :header-rows: 1
 
-   * - 
-     .. image:: https://github.com/Jsevillamol.png?size=100
+   * - .. image:: https://github.com/Jsevillamol.png?size=100
         :target: https://github.com/Jsevillamol
         :alt: Jaime Sevilla
      
-     - 
-     .. image:: https://github.com/hrueda25.png?size=100
+     - .. image:: https://github.com/hrueda25.png?size=100
         :target: https://github.com/hrueda25
         :alt: Héctor Rueda
      
-     - 
-     .. image:: https://github.com/jredondopizarro.png?size=100
+     - .. image:: https://github.com/jredondopizarro.png?size=100
         :target: https://github.com/jredondopizarro
         :alt: Juan Redondo Pizarro
      
-     - 
-     .. image:: https://github.com/LucaRomanato.png?size=100
+     - .. image:: https://github.com/LucaRomanato.png?size=100
         :target: https://github.com/LucaRomanato
         :alt: LucaRomanato
      
-     - 
-     .. image:: https://github.com/sahilyadav27.png?size=100
+     - .. image:: https://github.com/sahilyadav27.png?size=100
         :target: https://github.com/sahilyadav27
         :alt: Sahil Yadav
      
-     - 
-     .. image:: https://github.com/sgh14.png?size=100
+     - .. image:: https://github.com/sgh14.png?size=100
         :target: https://github.com/sgh14
         :alt: Sergio García Heredia
      
@@ -159,4 +142,3 @@ Alumni
      - `Luca Romanato <https://github.com/LucaRomanato>`_
      - `Sahil Yadav <https://github.com/sahilyadav27>`_
      - `Sergio García Heredia <https://github.com/sgh14>`_
-
