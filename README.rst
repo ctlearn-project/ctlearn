@@ -106,6 +106,24 @@ Team
      - `Daniel Nieto <https://github.com/nietootein>`_
 
 
+Collaborators
+-------------
+
+.. list-table::
+   :header-rows: 1
+
+   * - .. image:: https://github.com/qi-feng.png?size=100
+        :target: https://github.com/qi-feng
+        :alt: Qi Feng
+
+     - .. image:: https://github.com/rlopezcoto.png?size=100
+        :target: https://github.com/rlopezcoto
+        :alt: Ruben Lopez-Coto
+
+   * - `Qi Feng <https://github.com/qi-feng>`_
+     - `Ruben Lopez-Coto <https://github.com/rlopezcoto>`_
+
+
 Alumni
 ------
 
