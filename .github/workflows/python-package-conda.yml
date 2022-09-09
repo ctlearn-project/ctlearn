@@ -23,7 +23,7 @@ jobs:
         echo $CONDA/bin >> $GITHUB_PATH
     - name: Add conda to system library path
       run: |
-        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$CONDA/lib
+        export LD_LIBRARY_PATH=$CONDA/lib:$LD_LIBRARY_PATH
     - name: Install dependencies
       run: |
         conda env update --file environment.yml --name base
