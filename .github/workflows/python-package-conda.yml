@@ -27,9 +27,9 @@ jobs:
     - name: Add Conda to system library path
       run: |
         echo $CONDA/lib
-	ls $CONDA/lib
-	echo $CONDA/envs/base/lib
-	ls $CONDA/envs/base/lib
+        ls $CONDA/lib
+        echo $CONDA/envs/base/lib
+        ls $CONDA/envs/base/lib
         export LD_LIBRARY_PATH=$CONDA/envs/base/lib:$CONDA/lib:$LD_LIBRARY_PATH
     - name: Install CTLearn
       run: |
