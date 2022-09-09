@@ -110,7 +110,9 @@ Collaborators
 .. list-table::
    :header-rows: 1
 
-   * - X
+   * - .. image:: https://github.com/qi-feng.png?size=100
+        :target: https://github.com/qi-feng
+        :alt: Qi Feng
 
      - .. image:: https://github.com/rlopezcoto.png?size=100
         :target: https://github.com/rlopezcoto
