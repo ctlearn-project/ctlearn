@@ -63,11 +63,19 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     # Create a MirroredStrategy.
     strategy = tf.distribute.MirroredStrategy()
-    atexit.register(strategy._extended._collective_ops._pool.close)  # type: ignore
+    # atexit.register(strategy._extended._collective_ops._pool.close)  # type: ignore
     logger.info("Number of devices: {}".format(strategy.num_replicas_in_sync))
 
     # Set up the DL1DataReader
     config["Data"], data_format = setup_DL1DataReader(config, mode)
+    config["Data"]["parameter_list"] = [
+                "hillas_intensity",
+                "hillas_skewness",
+                "hillas_kurtosis",
+                "hillas_r",
+                "hillas_phi",
+                "hillas_length",
+            ]
     # Create data reader
     logger.info("Loading data:")
     logger.info("  For a large dataset, this may take a while...")
@@ -162,7 +170,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     sys.path.append(model_directory)
     logger.info("  Constructing model from config.")
     # Write the model parameters in the params dictionary
-    model_params = {**config["Model"], **config.get("Model Parameters", {})}
+    model_params = {**config["Model"], **config["Data"],  **config.get("Model Parameters", {})}
     model_params["model_directory"] = model_directory
     model_params["num_classes"] = reader.num_classes
 
@@ -176,7 +184,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         )
         backbone, backbone_inputs = backbone_model(data, model_params)
         backbone_output = backbone(backbone_inputs)
-
         # Head model
         head_module = importlib.import_module(config["Model"]["head"]["module"])
         head_model = getattr(head_module, config["Model"]["head"]["function"])
