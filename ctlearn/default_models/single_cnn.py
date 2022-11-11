@@ -30,7 +30,7 @@ def single_cnn_model(data, model_params):
                 filters=init_layer["filters"],
                 kernel_size=init_layer["kernel_size"],
                 strides=init_layer["strides"],
-                name=network_name + "_conv1_conv",
+                name=backbone_name + "_conv1_conv",
             )(network_input)
         # x = tf.pad(x, tf.constant([[1, 1], [1, 1]]), name='pool1_pad')
         init_max_pool = model_params.get("init_max_pool", False)
@@ -38,7 +38,7 @@ def single_cnn_model(data, model_params):
             network_input = tf.keras.layers.MaxPool2D(
                 pool_size=init_max_pool["size"],
                 strides=init_max_pool["strides"],
-                name=network_name + "_pool1_pool",
+                name=backbone_name + "_pool1_pool",
             )(network_input)
 
         engine_output = engine(network_input, params=model_params, name=backbone_name)
