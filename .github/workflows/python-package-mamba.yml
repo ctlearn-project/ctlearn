@@ -1,0 +1,25 @@
+name: CTLearn installation as a Python package using Mamba
+
+on: [push]
+
+jobs:
+  builds:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        pythonv: ['3.9']
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install Conda environment from environment.yml
+      uses: mamba-org/provision-with-micromamba@main
+      with:
+	environment-file: environment.yml
+	python=${{ matrix.pythonv }}
+    - name: Run Python
+      shell: bash -l {0}
+      run: |
+        python -c "import numpy"
+	
