@@ -30,5 +30,6 @@ jobs:
         export LD_LIBRARY_PATH=$CONDA/lib:$LD_LIBRARY_PATH
         echo $LD_LIBRARY_PATH
     - name: Install CTLearn
+      shell: bash -leo pipefail {0}
       run: |
         pip install .
