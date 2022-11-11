@@ -8,7 +8,7 @@ def single_cnn_model(data, model_params):
 
     # Load neural network model
     network_input = tf.keras.Input(shape=data.img_shape, name=f"images")
-    network_name = model_params.get("name", "CNN") + "_block"
+    backbone_name = model_params.get("name", "CNN") + "_block"
     trainable_backbone = model_params.get("trainable_backbone", True)
     pretrained_weights = model_params.get("pretrained_weights", None)
     if pretrained_weights:
@@ -19,8 +19,8 @@ def single_cnn_model(data, model_params):
                 model.trainable = trainable_backbone
     else:
         sys.path.append(model_params["model_directory"])
-        network_module = importlib.import_module(model_params["network"]["module"])
-        network = getattr(network_module, model_params["network"]["function"])
+        engine_module = importlib.import_module(model_params["engine"]["module"])
+        engine = getattr(engine_module, model_params["engine"]["function"])
 
         # The original ResNet implementation use this padding, but we pad the images in the ImageMapper.
         # x = tf.pad(telescope_data, tf.constant([[3, 3], [3, 3]]), name='conv1_pad')
@@ -41,12 +41,12 @@ def single_cnn_model(data, model_params):
                 name=network_name + "_pool1_pool",
             )(network_input)
 
-        network_output = network(network_input, params=model_params, name=network_name)
+        engine_output = engine(network_input, params=model_params, name=network_name)
 
         output = tf.keras.layers.GlobalAveragePooling2D(
-            name=network_name + "_global_avgpool"
-        )(network_output)
+            name=backbone_name + "_global_avgpool"
+        )(engine_output)
 
-        model = tf.keras.Model(network_input, output, name=network_name)
+        singlecnn_model = tf.keras.Model(network_input, output, name=backbone_name)
 
-    return model, [network_input]
+    return singlecnn_model, [network_input]

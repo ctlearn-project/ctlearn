@@ -15,16 +15,16 @@ def stacked_res_blocks(inputs, params, name=None):
       Output tensor for the ResNet architecture.
     """
     # Get custom hyperparameters
-    residual_block = params["resnet_engine"]["stacked_res_blocks"].get(
+    residual_block = params["resnet"]["stacked_res_blocks"].get(
         "residual_block", "bottleneck"
     )
     filters_list = [
         layer["filters"]
-        for layer in params["resnet_engine"]["stacked_res_blocks"]["architecture"]
+        for layer in params["resnet"]["stacked_res_blocks"]["architecture"]
     ]
     blocks_list = [
         layer["blocks"]
-        for layer in params["resnet_engine"]["stacked_res_blocks"]["architecture"]
+        for layer in params["resnet"]["stacked_res_blocks"]["architecture"]
     ]
     attention = params.get("attention", None)
 

@@ -22,11 +22,11 @@ Input:
 Model:
     name: 'ThinResNet'
     backbone: {module: 'single_cnn', function: 'single_cnn_model'}
-    network: {module: 'resnet_engine', function: 'stacked_res_blocks'}
+    engine: {module: 'resnet', function: 'stacked_res_blocks'}
     head: {module: 'head', function: 'standard_head'}
 Model Parameters:
     attention: {mechanism: 'Squeeze-and-Excitation', ratio: 16}
-    resnet_engine:
+    resnet:
         stacked_res_blocks:
             residual_block: 'bottleneck'
             architecture:
