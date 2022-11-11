@@ -8,7 +8,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        pythonv: ['3.10']
+        pythonv: ['3.9']
     runs-on: ${{ matrix.os }}
     
     steps:
