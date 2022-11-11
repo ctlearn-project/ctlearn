@@ -23,6 +23,7 @@ jobs:
         echo $CONDA/bin >> $GITHUB_PATH
     - name: Install dependencies
       run: |
+        conda update -n base -c defaults conda
         conda env update --file environment.yml --name base
     - name: Add Conda to system library path
       run: |
