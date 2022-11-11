@@ -301,8 +301,8 @@ Model:
     # Module and function for the CTLearn backbone.
     # Valid options:
     #   - {module: 'basic', function: 'conv_block'}
-    #   - {module: 'resnet_engine', function: 'stacked_res_blocks'}
-    network: {module: 'basic', function: 'conv_block'}
+    #   - {module: 'resnet', function: 'stacked_res_blocks'}
+    engine: {module: 'basic', function: 'conv_block'}
 
     # Optional arguments for the first Conv2D and MaxPool layer
     # before the selected model.
@@ -363,7 +363,7 @@ Model Parameters:
             # array-level models.
             batchnorm: false
 
-        fc_head:
+        fully_connect:
             # Required list of integers.
             # Number of units for each fully-connected head dense layer.
             layers: [1024, 512, 256, 128, 64]
@@ -397,7 +397,7 @@ Model Parameters:
         # Decay parameter for batch normalization layers.
         batchnorm_decay: 0.99
 
-    resnet_engine:
+    resnet:
         stacked_res_blocks:
             # Optional string. Default: 'bottleneck'
             # Type of the residual block.
@@ -472,106 +472,22 @@ Training:
     # Base learning rate before scaling or annealing.
     base_learning_rate: 0.001
 
+    # Optional integer and floats.
+    # Reducing the learning rate after the network stops learning.
+    lr_reducing_patience: 5
+    lr_reducing_factor: 0.5
+    lr_reducing_mindelta: 0.01
+    lr_reducing_minlr: 0.00001
+
 Prediction:
 
     # Required string if running in predict mode.
     # Name of the file to save predictions.
-    file: 'ctlearn_prediction'
+    prediction_file: ./ctlearn_prediction.h5
 
     # A dict of either a list of data file paths,
     # or a path to a file listing data file paths, one per line.
     # Required dict of list or string if running in predict mode.
     prediction_file_lists: 
-        'prediction_file_list1': '/tmp/dataset/prediction_file_list1.txt'
-        'prediction_file_list2': '/tmp/dataset/prediction_file_list2.txt'
-
-    # Save the true labels along with the predictions.
-    # Optional Boolearn. Default: false
-    save_labels: false
-
-    # Save the example identifiers along with the predictions.
-    # Mono mode: obs_id, event_id, tel_id
-    # Stereo mode: obs_id, event_id
-    # Optional Boolearn. Default: false
-    save_identifiers: false
-
-# Optional: used in run_multiple_configurations.py only
-Multiple Configurations Settings:
-    # Required string.
-    # Path to file to save configuration combination for each run for reference.
-    run_combinations_path: '/tmp/run_combinations.yml'
-
-    # Optional integer. Default: 1
-    # Number of grouped range values to generate. All range values with null
-    # num_values are grouped so that random values are generated for each
-    # combination of parameters, not for each parameter separately. Ignored for
-    # ungrouped range values, that is, where num_values is specified.
-    num_grouped_range_values: 5
-
-# Optional: used in run_multiple_configurations.py only
-# Each item in this section has the form
-# <config_nickname>:
-#   config: list of the keys to access the config parameter in config file
-#   value_type: one of
-#       - 'list': values is a list of possible values
-#       - 'range': values is a dictionary as described below
-#       - 'grouped': values is a dictionary of <group_name>: value
-#   values: list or dictionary as specified by the value_type
-#
-# The values section for a config option with value_type 'range' has the form:
-# values:
-#   lower_bound: Required integer. Lower bound of the range.
-#   upper_bound: Required integer. Upper bound of the range.
-#   spacing: Required string. Valid options:
-#       - 'log': generate values uniformly using logarithmic spacing
-#       - 'linear': generate values uniformly using linear spacing
-#   selection: Required string. Valid options:
-#       - 'random': Select values at random from a uniform distribution
-#       - 'grid': Select values from an evenly-spaced grid
-#   num_values: Required integer or null. Number of values to generate. All
-#       range configs with num_values null are grouped together with
-#       num_grouped_range_values the total number of values generated. The
-#       recommended usage in most cases is to specify num_values for grid
-#       selection and set to null for random selection.
-Multiple Configurations Values:
-    learning_rate:
-        config: ['Training', 'base_learning_rate']
-        value_type: 'range'
-        values:
-            lower_bound: 1.0e-6
-            upper_bound: 1.0e-3
-            spacing: 'log'
-            selection: 'random'
-            num_values: null
-    multiplicity_cut:
-        config: ['Data', 'selection_string']
-        value_type: 'list'
-        values:
-            - 'true_energy < 1.0'
-            - 'true_energy >= 1.0'
-    telescope_type:
-        config: ['Data', 'selected_telescope_type']
-        value_type: 'grouped'
-        values:
-            'LST_LST_LSTCam': 'LST_LST_LSTCam'
-            'MST_MST_NectarCam': 'MST_MST_NectarCam'
-    selected_telescopes:
-        config: ['Data', 'selected_telescope_ids']
-        value_type: 'grouped'
-        values:
-            'LST_LST_LSTCam': [1, 2, 3, 4]
-            'MST_MST_NectarCam': [30, 31, 32, 33]
-    network_type:
-        config: ['Model', 'model']
-        value_type: 'grouped'
-        values:
-            CNN_RNN:
-                module: 'cnn_rnn'
-                function: 'cnn_rnn_model'
-    # Not yet implemented!
-    telescope_sorting:
-        config: ['Data', 'transforms']
-        value_type: 'grouped'
-        values:
-            CNN_RNN: [{name: SortImages, args: {'order': 'size'}}]
-            variable_input: null
+        prediction_file_list1.h5: /tmp/dataset/prediction_file_list1.txt
+        prediction_file_list2.h5: /tmp/dataset/prediction_file_list2.txt
