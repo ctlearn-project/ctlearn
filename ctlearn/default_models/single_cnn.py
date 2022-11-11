@@ -41,7 +41,7 @@ def single_cnn_model(data, model_params):
                 name=network_name + "_pool1_pool",
             )(network_input)
 
-        engine_output = engine(network_input, params=model_params, name=network_name)
+        engine_output = engine(network_input, params=model_params, name=backbone_name)
 
         output = tf.keras.layers.GlobalAveragePooling2D(
             name=backbone_name + "_global_avgpool"

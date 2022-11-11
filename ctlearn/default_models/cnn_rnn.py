@@ -35,7 +35,7 @@ def cnn_rnn_model(data, model_params):
         engine_module = importlib.import_module(model_params["engine"]["module"])
         engine = getattr(engine_module, model_params["engine"]["function"])
         network_input = tf.keras.Input(shape=data.singleimg_shape, name=f"images")
-        engine_output = network(
+        engine_output = engine(
             network_input, params=model_params, name=model_params["engine"]["function"]
         )
         output = tf.keras.layers.GlobalAveragePooling2D(
@@ -70,7 +70,7 @@ def cnn_rnn_model(data, model_params):
     dropout_2 = tf.keras.layers.Dropout(rate=dropout_rate)(fc2)
 
     cnnrnn_model = tf.keras.Model(
-        [telescope_data, telescope_triggers], dropout_2, name=network_name
+        [telescope_data, telescope_triggers], dropout_2, name=backbone_name
     )
 
     return cnnrnn_model, [telescope_data, telescope_triggers]
