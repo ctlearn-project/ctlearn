@@ -21,7 +21,7 @@ def cnn_rnn_model(data, model_params):
     # feature maps, depending on the requirements of the network head.
     # The array-level processing is then performed by the network head. The
     # logits are returned and fed into a classifier/regressor.
-    network_name = model_params.get("name", "CNNRNN")
+    backbone_name = model_params.get("name", "CNNRNN")
     trainable_backbone = model_params.get("trainable_backbone", True)
     pretrained_weights = model_params.get("pretrained_weights", None)
     if pretrained_weights:
@@ -32,17 +32,17 @@ def cnn_rnn_model(data, model_params):
                 model.trainable = trainable_backbone
     else:
         sys.path.append(model_params["model_directory"])
-        network_module = importlib.import_module(model_params["network"]["module"])
-        network = getattr(network_module, model_params["network"]["function"])
+        engine_module = importlib.import_module(model_params["engine"]["module"])
+        engine = getattr(engine_module, model_params["engine"]["function"])
         network_input = tf.keras.Input(shape=data.singleimg_shape, name=f"images")
-        network_output = network(
-            network_input, params=model_params, name=model_params["network"]["function"]
+        engine_output = engine(
+            network_input, params=model_params, name=model_params["engine"]["function"]
         )
         output = tf.keras.layers.GlobalAveragePooling2D(
-            name=network_name + "_global_avgpool"
-        )(network_output)
+            name=backbone_name + "_global_avgpool"
+        )(engine_output)
         model = tf.keras.Model(
-            network_input, output, name=model_params["network"]["function"]
+            network_input, output, name=model_params["engine"]["function"]
         )
 
     telescope_data = tf.keras.Input(shape=data.img_shape, name=f"images")
@@ -70,7 +70,7 @@ def cnn_rnn_model(data, model_params):
     dropout_2 = tf.keras.layers.Dropout(rate=dropout_rate)(fc2)
 
     cnnrnn_model = tf.keras.Model(
-        [telescope_data, telescope_triggers], dropout_2, name=network_name
+        [telescope_data, telescope_triggers], dropout_2, name=backbone_name
     )
 
     return cnnrnn_model, [telescope_data, telescope_triggers]

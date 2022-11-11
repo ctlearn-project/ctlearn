@@ -62,5 +62,5 @@
     ],
     "title": "CTLearn: Deep learning for imaging atmospheric Cherenkov telescopes event reconstruction",
     "upload_type": "software",
-    "version": "0.6.2"
+    "version": "0.7.0"
 }
