@@ -3,11 +3,13 @@ name: CI
 on: [push]
 
 jobs:
-  build-linux:
-    runs-on: ubuntu-22.04
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-22.04, macos-latest]
+    runs-on: ${{ matrix.os }}
     strategy:
       max-parallel: 5
-
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python 3.10
