@@ -1,4 +1,4 @@
-name: Python Package using Conda
+name: CI
 
 on: [push]
 
@@ -30,7 +30,7 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Install with pip
       run: |
-        pip install -e . --global-option=build_ext --global-option="-L$CONDA/lib"
+        pip install -e .
     - name: Test with pytest
       run: |
         conda install pytest
