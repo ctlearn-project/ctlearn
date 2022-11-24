@@ -7,12 +7,12 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-22.04]
-	pyv: [3.9, '3.10']
+	pyv: [3.9, 3.10]
       max-parallel: 5
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Python 3.10
+    - name: Set up Python ${{ matrix.pyv }}
       uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.pyv }}
