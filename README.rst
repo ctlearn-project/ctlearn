@@ -12,7 +12,7 @@ CTLearn: Deep Learning for IACT Event Reconstruction
     :target: https://pypi.org/project/ctlearn/
     :alt: Latest Release
 
-
+[![Python Package using Conda](https://github.com/ctlearn-project/ctlearn/actions/workflows/python-package-conda.yml/badge.svg?branch=master)](https://github.com/ctlearn-project/ctlearn/actions/workflows/python-package-conda.yml)
 
 .. image:: images/CTLearnTextCTinBox_WhiteBkgd.png
    :target: images/CTLearnTextCTinBox_WhiteBkgd.png
