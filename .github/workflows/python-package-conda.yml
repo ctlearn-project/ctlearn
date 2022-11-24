@@ -7,6 +7,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-22.04]
+	pyv: [3.9, '3.10']
       max-parallel: 5
     runs-on: ${{ matrix.os }}
     steps:
@@ -14,7 +15,7 @@ jobs:
     - name: Set up Python 3.10
       uses: actions/setup-python@v3
       with:
-        python-version: '3.10'
+        python-version: ${{ matrix.pyv }}
     - name: Add conda to system path
       run: |
         # $CONDA is an environment variable pointing to the root of the miniconda directory
