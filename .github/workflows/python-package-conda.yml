@@ -1,19 +1,21 @@
-name: Python Package using Conda
+name: CI
 
 on: [push]
 
 jobs:
-  build-linux:
-    runs-on: ubuntu-latest
+  build:
     strategy:
+      matrix:
+        os: [ubuntu-22.04]
+        pyv: [3.9, '3.10']
       max-parallel: 5
-
+    runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v3
-    - name: Set up Python 3.9
+    - name: Set up Python ${{ matrix.pyv }}
       uses: actions/setup-python@v3
       with:
-        python-version: 3.9
+        python-version: ${{ matrix.pyv }}
     - name: Add conda to system path
       run: |
         # $CONDA is an environment variable pointing to the root of the miniconda directory
@@ -28,6 +30,9 @@ jobs:
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    - name: Install with pip
+      run: |
+        pip install -e .
     - name: Test with pytest
       run: |
         conda install pytest
