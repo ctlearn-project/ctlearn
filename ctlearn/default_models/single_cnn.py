@@ -22,8 +22,8 @@ def single_cnn_model(data, model_params):
         sys.path.append(model_params["model_directory"])
         engine_cnn_module_img = importlib.import_module(model_params["engine_cnn"]["module"])
         engine_mlp_module_param = importlib.import_module(model_params["engine_prm"]["module"])
-        engine_img = getattr(engine_cnn_module_img, model_params["engine_cnn"]["function"])
-        engine_param = getattr(engine_mlp_module_param, model_params["engine_prm"]["function"])
+        engine_cnn = getattr(engine_cnn_module_img, model_params["engine_cnn"]["function"])
+        engine_mlp = getattr(engine_mlp_module_param, model_params["engine_prm"]["function"])
 
         # The original ResNet implementation use this padding, but we pad the images in the ImageMapper.
         # x = tf.pad(telescope_data, tf.constant([[3, 3], [3, 3]]), name='conv1_pad')
@@ -44,14 +44,14 @@ def single_cnn_model(data, model_params):
                 name=backbone_name + "_pool1_pool",
             )(network_input_img)
 
-        engine_output_img = engine_img(network_input_img, params=model_params, name=backbone_name)
-        engine_output_param = engine_param(network_input_param, params=model_params, name=backbone_name)
+        engine_output_cnn = engine_cnn(network_input_img, params=model_params, name=backbone_name)
+        engine_output_mlp = engine_mlp(network_input_param, params=model_params, name=backbone_name)
 
-        output_img = tf.keras.layers.GlobalAveragePooling2D(
+        output_cnn = tf.keras.layers.GlobalAveragePooling2D(
             name=backbone_name + "_global_avgpool"
-        )(engine_output_img)
-        output_param = tf.keras.layers.Flatten()(engine_output_param)
-        concat = tf.keras.layers.Concatenate()([output_img, output_param])
+        )(engine_output_cnn)
+        output_mlp = tf.keras.layers.Flatten()(engine_output_mlp)
+        concat = tf.keras.layers.Concatenate()([output_cnn, output_mlp])
         
         singlecnn_model = tf.keras.Model(inputs=[network_input_img, network_input_param], outputs = [concat], name=backbone_name)
         
