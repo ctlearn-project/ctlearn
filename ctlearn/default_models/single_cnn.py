@@ -7,7 +7,7 @@ import tensorflow as tf
 def single_cnn_model(data, model_params):
 
     # Load neural network model
-    network_input = tf.keras.Input(shape=data.img_shape, name=f"images")
+    network_input_img = tf.keras.Input(shape=data.img_shape, name=f"images")
     network_input_param = tf.keras.Input(shape=data.prm_shape, name=f"parameters")
     backbone_name = model_params.get("name", "CNN") + "_block"
     trainable_backbone = model_params.get("trainable_backbone", True)
@@ -20,40 +20,40 @@ def single_cnn_model(data, model_params):
                 model.trainable = trainable_backbone
     else:
         sys.path.append(model_params["model_directory"])
-        engine_module = importlib.import_module(model_params["engine_cnn"]["module"])
-        engine_module_param = importlib.import_module(model_params["engine_prm"]["module"])
-        engine = getattr(engine_module, model_params["engine_cnn"]["function"])
-        engine_param = getattr(engine_module_param, model_params["engine_prm"]["function"])
+        engine_cnn_module_img = importlib.import_module(model_params["engine_cnn"]["module"])
+        engine_mlp_module_param = importlib.import_module(model_params["engine_prm"]["module"])
+        engine_img = getattr(engine_cnn_module_img, model_params["engine_cnn"]["function"])
+        engine_param = getattr(engine_mlp_module_param, model_params["engine_prm"]["function"])
 
         # The original ResNet implementation use this padding, but we pad the images in the ImageMapper.
         # x = tf.pad(telescope_data, tf.constant([[3, 3], [3, 3]]), name='conv1_pad')
         init_layer = model_params.get("init_layer", False)
         if init_layer:
-            network_input = tf.keras.layers.Conv2D(
+            network_input_img = tf.keras.layers.Conv2D(
                 filters=init_layer["filters"],
                 kernel_size=init_layer["kernel_size"],
                 strides=init_layer["strides"],
                 name=backbone_name + "_conv1_conv",
-            )(network_input)
+            )(network_input_img)
         # x = tf.pad(x, tf.constant([[1, 1], [1, 1]]), name='pool1_pad')
         init_max_pool = model_params.get("init_max_pool", False)
         if init_max_pool:
-            network_input = tf.keras.layers.MaxPool2D(
+            network_input_img = tf.keras.layers.MaxPool2D(
                 pool_size=init_max_pool["size"],
                 strides=init_max_pool["strides"],
                 name=backbone_name + "_pool1_pool",
-            )(network_input)
+            )(network_input_img)
 
-        engine_output = engine(network_input, params=model_params, name=backbone_name)
+        engine_output_img = engine_img(network_input_img, params=model_params, name=backbone_name)
         engine_output_param = engine_param(network_input_param, params=model_params, name=backbone_name)
 
-        output = tf.keras.layers.GlobalAveragePooling2D(
+        output_img = tf.keras.layers.GlobalAveragePooling2D(
             name=backbone_name + "_global_avgpool"
-        )(engine_output)
+        )(engine_output_img)
         output_param = tf.keras.layers.Flatten()(engine_output_param)
-        concat = tf.keras.layers.Concatenate()([output, output_param])
+        concat = tf.keras.layers.Concatenate()([output_img, output_param])
         
-        singlecnn_model = tf.keras.Model(inputs=[network_input, network_input_param], outputs = [concat], name=backbone_name)
+        singlecnn_model = tf.keras.Model(inputs=[network_input_img, network_input_param], outputs = [concat], name=backbone_name)
         
 
-    return singlecnn_model, [network_input, network_input_param]
+    return singlecnn_model, [network_input_img, network_input_param]
