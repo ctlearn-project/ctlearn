@@ -45,13 +45,13 @@ Logging:
     # Path to directory to store TensorFlow model checkpoints and summary plots.
     # A timestamped copy of the configuration file will also be put here.
     # Required string.
-    model_directory: '/home/sahil/deeplearning'
+    #model_directory: '/home/sahil/deeplearning'
 
 Data:
     # Either a list of data file paths,
     # or a path to a file listing data file paths, one per line.
     # Required list or string.
-    file_list: '/home/sahil/deeplearning/file_list.txt'
+    #file_list: '/home/sahil/deeplearning/file_list.txt'
 
     # Type of examples to load.
     # Optional string. Default: 'mono'
@@ -303,7 +303,7 @@ Model:
     #   - {module: 'basic', function: 'conv_block'}
     #   - {module: 'resnet', function: 'stacked_res_blocks'}
     engine_cnn: {module: 'basic', function: 'conv_block'}
-    engine_prm: {module: 'basic', function: 'fully_connect'}
+    engine_mlp: {module: 'basic', function: 'fully_connect'}
     # Optional arguments for the first Conv2D and MaxPool layer
     # before the selected model.
     #init_layer: {filters: 64, kernel_size: 7, strides: 1}
