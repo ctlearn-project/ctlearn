@@ -8,6 +8,7 @@ def single_cnn_model(data, model_params):
 
     # Load neural network model
     network_input = tf.keras.Input(shape=data.img_shape, name=f"images")
+    network_input_param = tf.keras.Input(shape=data.prm_shape, name=f"parameters")
     backbone_name = model_params.get("name", "CNN") + "_block"
     trainable_backbone = model_params.get("trainable_backbone", True)
     pretrained_weights = model_params.get("pretrained_weights", None)
@@ -19,8 +20,10 @@ def single_cnn_model(data, model_params):
                 model.trainable = trainable_backbone
     else:
         sys.path.append(model_params["model_directory"])
-        engine_module = importlib.import_module(model_params["engine"]["module"])
-        engine = getattr(engine_module, model_params["engine"]["function"])
+        engine_module = importlib.import_module(model_params["engine_cnn"]["module"])
+        engine_module_param = importlib.import_module(model_params["engine_prm"]["module"])
+        engine = getattr(engine_module, model_params["engine_cnn"]["function"])
+        engine_param = getattr(engine_module_param, model_params["engine_prm"]["function"])
 
         # The original ResNet implementation use this padding, but we pad the images in the ImageMapper.
         # x = tf.pad(telescope_data, tf.constant([[3, 3], [3, 3]]), name='conv1_pad')
@@ -42,11 +45,15 @@ def single_cnn_model(data, model_params):
             )(network_input)
 
         engine_output = engine(network_input, params=model_params, name=backbone_name)
+        engine_output_param = engine_param(network_input_param, params=model_params, name=backbone_name)
 
         output = tf.keras.layers.GlobalAveragePooling2D(
             name=backbone_name + "_global_avgpool"
         )(engine_output)
+        output_param = tf.keras.layers.Flatten()(engine_output_param)
+        concat = tf.keras.layers.Concatenate()([output, output_param])
+        
+        singlecnn_model = tf.keras.Model(inputs=[network_input, network_input_param], outputs = [concat], name=backbone_name)
+        
 
-        singlecnn_model = tf.keras.Model(network_input, output, name=backbone_name)
-
-    return singlecnn_model, [network_input]
+    return singlecnn_model, [network_input, network_input_param]
