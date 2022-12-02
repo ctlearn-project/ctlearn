@@ -20,10 +20,10 @@ def single_cnn_model(data, model_params):
                 model.trainable = trainable_backbone
     else:
         sys.path.append(model_params["model_directory"])
-        engine_cnn_module_img = importlib.import_module(model_params["engine_cnn"]["module"])
-        engine_mlp_module_param = importlib.import_module(model_params["engine_prm"]["module"])
-        engine_cnn = getattr(engine_cnn_module_img, model_params["engine_cnn"]["function"])
-        engine_mlp = getattr(engine_mlp_module_param, model_params["engine_prm"]["function"])
+        engine_cnn_module = importlib.import_module(model_params["engine_cnn"]["module"])
+        engine_mlp_module = importlib.import_module(model_params["engine_mlp"]["module"])
+        engine_cnn = getattr(engine_cnn_module, model_params["engine_cnn"]["function"])
+        engine_mlp = getattr(engine_mlp_module, model_params["engine_mlp"]["function"])
 
         # The original ResNet implementation use this padding, but we pad the images in the ImageMapper.
         # x = tf.pad(telescope_data, tf.constant([[3, 3], [3, 3]]), name='conv1_pad')
