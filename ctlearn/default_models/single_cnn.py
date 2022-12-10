@@ -3,24 +3,30 @@ import sys
 
 import tensorflow as tf
 
-def single_cnn_model(data, model_params):
+def single_nn_model(data, model_params):
 
     # Load neural network model
     network_input, network_output = [], []
     if data.img_shape != None:
         network_input_img = tf.keras.Input(shape=data.img_shape, name=f"images")
         network_input.append(network_input_img)
-        backbone_name = model_params.get("name", "CNN") + "_block"
-        trainable_backbone = model_params.get("trainable_backbone", True)
-        pretrained_weights = model_params.get("pretrained_weights", None)
-        if pretrained_weights:
-            loaded_model = tf.keras.models.load_model(pretrained_weights)
-            for layer in loaded_model.layers:
-                if layer.name.endswith("_block"):
-                    model = loaded_model.get_layer(layer.name)
-                    model.trainable = trainable_backbone
-        else:
-            sys.path.append(model_params["model_directory"])
+    
+    if data.prm_shape != None and data.mode == "train":
+        network_input_prm = tf.keras.Input(shape=data.prm_shape, name=f"parameters")
+        network_input.append(network_input_prm)
+        
+    backbone_name = model_params.get("name", "SingleNN") + "_backbone"
+    trainable_backbone = model_params.get("trainable_backbone", True)
+    pretrained_weights = model_params.get("pretrained_weights", None)
+    if pretrained_weights:
+        loaded_model = tf.keras.models.load_model(pretrained_weights)
+        for layer in loaded_model.layers:
+            if "_backbone" in layer.name:
+                singlenn_model = loaded_model.get_layer(layer.name)
+                singlenn_model.trainable = trainable_backbone
+    else:
+        sys.path.append(model_params["model_directory"])
+        if data.img_shape != None:
             engine_cnn_module = importlib.import_module(model_params["engine_cnn"]["module"])
             engine_cnn = getattr(engine_cnn_module, model_params["engine_cnn"]["function"])
             # The original ResNet implementation use this padding, but we pad the images in the ImageMapper.
@@ -46,15 +52,13 @@ def single_cnn_model(data, model_params):
                 name=backbone_name + "_global_avgpool"
             )(engine_output_cnn)
 
-    if data.prm_shape != None and data.mode == "train":
-        network_input_prm = tf.keras.Input(shape=data.prm_shape, name=f"parameters")
-        network_input.append(network_input_prm)
-        engine_mlp_module = importlib.import_module(model_params["engine_mlp"]["module"])
-        engine_mlp = getattr(engine_mlp_module, model_params["engine_mlp"]["function"])
-        engine_output_mlp = engine_mlp(network_input_prm, params=model_params, name=backbone_name)
-        network_output = output_mlp = tf.keras.layers.Flatten()(engine_output_mlp)
-        if data.img_shape != None:
-            network_output = tf.keras.layers.Concatenate()([output_cnn, output_mlp])
+        if data.prm_shape != None and data.mode == "train":
+            engine_mlp_module = importlib.import_module(model_params["engine_mlp"]["module"])
+            engine_mlp = getattr(engine_mlp_module, model_params["engine_mlp"]["function"])
+            engine_output_mlp = engine_mlp(network_input_prm, params=model_params, name=backbone_name)
+            network_output = output_mlp = tf.keras.layers.Flatten()(engine_output_mlp)
+            if data.img_shape != None:
+                network_output = tf.keras.layers.Concatenate()([output_cnn, output_mlp])
             
-    singlecnn_model = tf.keras.Model(network_input, network_output, name=backbone_name)
-    return singlecnn_model, network_input
+        singlenn_model = tf.keras.Model(network_input, network_output, name=backbone_name)
+    return singlenn_model, network_input
