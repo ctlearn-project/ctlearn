@@ -4,7 +4,7 @@ import sys
 import tensorflow as tf
 
 
-def single_cnn_model(data, model_params):
+def single_nn_model(data, model_params):
 
     # Load neural network model
     network_input, network_output = [], []
@@ -23,8 +23,8 @@ def single_cnn_model(data, model_params):
         loaded_model = tf.keras.models.load_model(pretrained_weights)
         for layer in loaded_model.layers:
             if "_backbone" in layer.name:
-                singlecnn_model = loaded_model.get_layer(layer.name)
-                singlecnn_model.trainable = trainable_backbone
+                singlenn_model = loaded_model.get_layer(layer.name)
+                singlenn_model.trainable = trainable_backbone
     else:
         sys.path.append(model_params["model_directory"])
         if data.img_shape != None:
@@ -73,7 +73,7 @@ def single_cnn_model(data, model_params):
             if data.img_shape != None:
                 network_output = tf.keras.layers.Concatenate()([output_cnn, output_mlp])
 
-        singlecnn_model = tf.keras.Model(
+        singlenn_model = tf.keras.Model(
             network_input, network_output, name=backbone_name
         )
-    return singlecnn_model, network_input
+    return singlenn_model, network_input
