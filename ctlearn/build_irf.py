@@ -97,7 +97,6 @@ unit_mapping = {
 
 
 def main():
-
     parser = argparse.ArgumentParser(
         description=(
             "Build IRFs and sensitivity curves from CTLearn DL2-like files using pyirf."
@@ -127,7 +126,7 @@ def main():
         "--energy_range",
         "-e",
         help="Energy range in TeV; default is [0.03, 30.0]",
-        default = [0.03, 30.0],
+        default=[0.03, 30.0],
         nargs="+",
         type=float,
     )
@@ -135,7 +134,7 @@ def main():
         "--theta_range",
         "-t",
         help="Theta cut range in deg; default is [0.05, 0.3]",
-        default = [0.05, 0.3],
+        default=[0.05, 0.3],
         nargs="+",
         type=float,
     )
@@ -155,7 +154,7 @@ def main():
         default=0.0,
     )
     parser.add_argument(
-        "--fov_offset_min",
+        "--fov_offset_max",
         help="Maximum distance from the fov center in deg for background events to be taken into account; default is 1.0",
         default=1.0,
     )
@@ -244,7 +243,7 @@ def main():
                         n_showers_factor = len(tel_ids_string.split("_"))
                         tel_ids.append(int(tel_ids_string))
                         parameters = f[k].rename(
-                            lambda x: f'tel_{int(tel_ids_string)}_' + x, axis="columns"
+                            lambda x: f"tel_{int(tel_ids_string)}_" + x, axis="columns"
                         )
                         drop_cols.extend(parameters.keys())
                         events = pd.concat([events, parameters], axis=1)
@@ -253,7 +252,9 @@ def main():
                         global_tel_ids = tel_ids
                     else:
                         if global_tel_ids != tel_ids:
-                            raise ValueError(f"Tel ids inconsistent. '{global_tel_ids}' is not equal to '{tel_ids}' from '{file}'.")
+                            raise ValueError(
+                                f"Tel ids inconsistent. '{global_tel_ids}' is not equal to '{tel_ids}' from '{file}'."
+                            )
 
                     # Apply quality cuts
                     mask = None
@@ -271,9 +272,7 @@ def main():
                             if mask:
                                 mask += f"& tel_{global_tel_ids[l]}_leakage_intensity_width_2 < {leakage} "
                             else:
-                                mask = (
-                                    f"tel_{global_tel_ids[l]}_leakage_intensity_width_2 < {leakage} "
-                                )
+                                mask = f"tel_{global_tel_ids[l]}_leakage_intensity_width_2 < {leakage} "
                     if mask:
                         events.query(mask, inplace=True)
                     events = events.drop(drop_cols, axis=1)
@@ -287,13 +286,8 @@ def main():
 
                     # Sims info
                     mc_header = f["/info/mc_header"]
+
                     # Check if ringwobbles then set the viewcone radius to zero
-                    if (
-                        particles[particle_type]["name"] == "gamma"
-                        and np.around(mc_header["max_viewcone_radius"][0], decimals=1)
-                        == 0.4
-                    ):
-                        mc_header["max_viewcone_radius"][0] = 0
                     particles[particle_type]["mc_header"] = pd.concat(
                         [particles[particle_type]["mc_header"], mc_header],
                         ignore_index=True,
@@ -308,7 +302,11 @@ def main():
             energy_max=u.Quantity(p["mc_header"]["energy_range_max"].max(), u.TeV),
             spectral_index=p["mc_header"]["spectral_index"][0],
             max_impact=u.Quantity(p["mc_header"]["max_scatter_range"].max(), u.m),
-            viewcone=u.Quantity(p["mc_header"]["max_viewcone_radius"][0], u.deg),
+            viewcone=u.Quantity(
+                p["mc_header"]["max_viewcone_radius"][0]
+                - p["mc_header"]["min_viewcone_radius"][0],
+                u.deg,
+            ),
         )
         p["simulation_info"] = simulation_info
         p["simulated_spectrum"] = PowerLaw.from_simulation(simulation_info, T_OBS)
@@ -341,14 +339,10 @@ def main():
 
     # event display uses much finer bins for the theta cut than
     # for the sensitivity
-    theta_bins = add_overflow_bins(
-        create_bins_per_decade(MIN_ENERGY, MAX_ENERGY, 50)
-    )
+    theta_bins = add_overflow_bins(create_bins_per_decade(MIN_ENERGY, MAX_ENERGY, 50))
     # same bins as event display uses
     sensitivity_bins = add_overflow_bins(
-        create_bins_per_decade(
-            MIN_ENERGY, MAX_ENERGY, bins_per_decade=5
-        )
+        create_bins_per_decade(MIN_ENERGY, MAX_ENERGY, bins_per_decade=5)
     )
 
     # theta cut is 68 percent containmente of the gammas
