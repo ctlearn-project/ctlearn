@@ -21,4 +21,4 @@ dependencies:
         - tensorflow>=2.9,<2.10
         - tf2onnx>=1.12
         - pydot
-        - pyirf>=0.7
+        - pyirf>=0.8

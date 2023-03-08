@@ -150,8 +150,13 @@ def main():
         default=0.2,
     )
     parser.add_argument(
-        "--max_bg_radius",
-        help="Maximum background radius in deg; default is 1.0",
+        "--fov_offset_min",
+        help="Minimum distance from the fov center for background events to be taken into account; default is 0.0",
+        default=0.0,
+    )
+    parser.add_argument(
+        "--fov_offset_min",
+        help="Maximum distance from the fov center in deg for background events to be taken into account; default is 1.0",
         default=1.0,
     )
     parser.add_argument(
@@ -203,7 +208,8 @@ def main():
     ALPHA = args.alpha
 
     # Radius to use for calculating bg rate
-    MAX_BG_RADIUS = args.max_bg_radius * u.deg
+    FOV_OFFSET_MIN = args.fov_offset_min * u.deg
+    FOV_OFFSET_MAX = args.fov_offset_max * u.deg
     MAX_GH_CUT_EFFICIENCY = args.max_gh_cut_eff
     GH_CUT_EFFICIENCY_STEP = args.gh_cut_eff_step
 
@@ -390,7 +396,8 @@ def main():
         op=operator.ge,
         theta_cuts=theta_cuts,
         alpha=ALPHA,
-        background_radius=MAX_BG_RADIUS,
+        fov_offset_min=FOV_OFFSET_MIN,
+        fov_offset_max=FOV_OFFSET_MAX,
     )
 
     # now that we have the optimized gh cuts, we recalculate the theta
