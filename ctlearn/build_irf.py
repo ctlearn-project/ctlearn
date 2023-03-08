@@ -407,7 +407,7 @@ def main():
     gammas["selected"] = gammas["selected_theta"] & gammas["selected_gh"]
 
     # scale relative sensitivity by Crab flux to get the flux sensitivity
-    spectrum = particles[1]["target_spectrum"]
+    spectrum = particles[0]["target_spectrum"]
     sensitivity["flux_sensitivity"] = sensitivity["relative_sensitivity"] * spectrum(
         sensitivity["reco_energy_center"]
     )
