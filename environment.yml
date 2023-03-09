@@ -7,7 +7,7 @@ channels:
     - ctlearn-project
 dependencies:
     - python=3.10
-    - dl1_data_handler=0.10.8
+    - dl1_data_handler=0.10.9
     - astropy
     - matplotlib
     - numpy
@@ -18,7 +18,7 @@ dependencies:
     - pip:
         - ctaplot
         - numba>=0.56.2
-        - tensorflow>=2.9,<2.10
-        - tf2onnx>=1.12
+        - tensorflow>=2.10,<2.11
+        - tf2onnx>=1.13
         - pydot
-        - pyirf>=0.7
+        - pyirf
