@@ -125,8 +125,8 @@ def main():
     parser.add_argument(
         "--energy_range",
         "-e",
-        help="Energy range in TeV; default is [0.03, 30.0]",
-        default=[0.03, 30.0],
+        help="Energy range in TeV; default is [0.02, 20.0]",
+        default=[0.02, 20.0],
         nargs="+",
         type=float,
     )
