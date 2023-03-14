@@ -125,8 +125,8 @@ def main():
     parser.add_argument(
         "--energy_range",
         "-e",
-        help="Energy range in TeV; default is [0.03, 30.0]",
-        default=[0.03, 30.0],
+        help="Energy range in TeV; default is [0.02, 20.0]",
+        default=[0.02, 20.0],
         nargs="+",
         type=float,
     )
@@ -442,7 +442,7 @@ def main():
     for label, mask in masks.items():
         effective_area = effective_area_per_energy(
             gammas[mask],
-            particles[1]["simulation_info"],
+            particles[0]["simulation_info"],
             true_energy_bins=true_energy_bins,
         )
         hdus.append(
