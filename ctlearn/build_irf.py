@@ -442,7 +442,7 @@ def main():
     for label, mask in masks.items():
         effective_area = effective_area_per_energy(
             gammas[mask],
-            particles[1]["simulation_info"],
+            particles[0]["simulation_info"],
             true_energy_bins=true_energy_bins,
         )
         hdus.append(
