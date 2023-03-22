@@ -4,7 +4,7 @@
     "license": "https://spdx.org/licenses/BSD-3-Clause",
     "codeRepository": "git+https://github.com/ctlearn-project/ctlearn.git",
     "contIntegration": "https://github.com/ctlearn-project/ctlearn/actions",
-    "datePublished": "2018-03-18",
+    "datePublished": "2022-11-25",
     "dateModified": "2022-11-25",
     "downloadUrl": "https://zenodo.org/record/5947837/files/ctlearn-project/ctlearn-v0.7.0.zip",
     "issueTracker": "https://github.com/ctlearn-project/ctlearn/issues",
