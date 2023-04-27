@@ -63,6 +63,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     # Create a MirroredStrategy.
     strategy = tf.distribute.MirroredStrategy()
+    atexit.register(strategy._extended._collective_ops._pool.close)  # type: ignore
     logger.info("Number of devices: {}".format(strategy.num_replicas_in_sync))
 
     # Set up the DL1DataReader
