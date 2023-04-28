@@ -51,10 +51,10 @@
     ],
     "language": "eng",
     "license": "BSD-3-Clause",
-    "publication_date": "2018-03-18",
+    "publication_date": "2022-11-25",
     "related_identifiers": [
         {
-            "identifier": "git+https://github.com/ctlearn-project/ctlearn.git",
+            "identifier": "https://github.com/ctlearn-project/ctlearn",
             "relation": "isDerivedFrom",
             "resource_type": "software",
             "scheme": "url"
