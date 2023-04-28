@@ -8,13 +8,15 @@ Data:
             'NectarCam': 'bilinear_interpolation'
             'CHEC': 'oversampling'
             'SCTCam': 'oversampling'
+            'LSTSiPMCam': 'bilinear_interpolation'
             'MAGICCam': 'bilinear_interpolation'
         padding:
             'LSTCam': 2
             'FlashCam': 2
             'NectarCam': 2
             'CHEC': 0
-            'SCTCam': 0             
+            'SCTCam': 0
+            'LSTSiPMCam': 2
             'MAGICCam': 2
 Input:
     batch_size_per_worker: 16

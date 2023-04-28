@@ -25,10 +25,7 @@ def standard_head(inputs, tasks, params):
         loss_weights["particletype"] = standard_head_settings["particletype"]["weight"]
         metrics["particletype"] = [
             tf.keras.metrics.CategoricalAccuracy(name="accuracy"),
-            tf.keras.metrics.Precision(name="precision"),
-            tf.keras.metrics.Recall(name="recall"),
             tf.keras.metrics.AUC(name="auc"),
-            tf.keras.metrics.AUC(name="prc", curve="PR"),  # precision-recall curve
         ]
     if "energy" in tasks:
         logits["energy"] = fully_connect(
