@@ -1,0 +1,10 @@
+/models/
+/__pycache__/
+/misc/
+/test/
+/data/
+/wandb/
+/checkpoints/
+data_files/gamma-diffuse-lite.txt
+config_files/train-test-predictors.sh
+plot_samples.py

@@ -1,0 +1,187 @@
+################################### DATA ###################################
+Training_dataset:
+    Data_format: 'dl1dh'
+    Reco: ['energy', 'direction'] # 'particletype', 
+    Data:
+        file_list: 'data_files/gamma-train.txt'
+        mode: 'mono' # 'stereo'
+        selected_telescope_types: ['LST_MAGIC_MAGICCam']
+        shuffle: true
+        seed: 1234
+        image_channels: ['image'] # , 'peak_time']
+        mapping_settings:
+            camera_types: ['MAGICCam']
+            mapping_method:
+                'MAGICCam': 'image_shifting'
+            padding:
+                'MAGICCam': 2
+            # interpolation_image_shape:
+            #     'LSTCam': [60, 60, 1]
+            mask_interpolation: false
+        parameter_selection: 
+            - {col_name: "hillas_intensity", min_value: 200.0} # 200.0}
+            - {col_name: "leakage_intensity_width_2", max_value: 0.1} # 0.0}
+    Input:
+        shuffle: true
+        batch_size: 512
+Validation_dataset:
+    Data_format: 'dl1dh'
+    Reco: ['particletype', 'energy', 'direction']
+    Data:
+        file_list: 'data_files/gamma-validate.txt'
+        mode: 'mono' # 'stereo'
+        selected_telescope_types: ['LST_MAGIC_MAGICCam']
+        shuffle: true
+        seed: 1234
+        image_channels: ['image'] # , 'peak_time']
+        mapping_settings:
+            camera_types: ['MAGICCam']
+            mapping_method:
+                'MAGICCam': 'image_shifting'
+            padding:
+                'MAGICCam': 2
+            # interpolation_image_shape:
+            #     'LSTCam': [60, 60, 1]
+            mask_interpolation: false
+        parameter_selection: 
+            - {col_name: "hillas_intensity", min_value: 200.0} # 200.0}
+            - {col_name: "leakage_intensity_width_2", max_value: 0.1} # 0.0}
+    Input:
+        shuffle: true
+        batch_size: 512
+################################### MODELS ###################################
+Predictor:
+    # Possible keys:
+    # - predefined_model_path: [string: path to a predefined model --> set to false if there isn't any]
+    # - config_path: [string: path to the config.yml file used by CTLearn in case there isn't any predefined model]
+    predefined_model_path: 'models/predictor-gamma'
+    config_path: 'config_files/predictor-gamma.yml'
+Generator:
+    # Possible keys:
+    # - predefined_model_path: [string: path to a predefined model --> set to false if there isn't any]
+    # - latent_dim: [int: length of the noise input vector]
+    # - upsampling: [bool: whether to use upsampling or deconvolution layers]
+    # - spectral_normalization: [bool: whether to apply spectral normalization to layers]
+    # - layers:
+    #        dense: [dict: dictionary with parameters accepted by layers.Dense]
+    #        reshape: [dict: dictionary with parameters accepted by layers.Reshape]
+    #        upsample_blocks: [
+    #                  {filters: [int: number of filters],
+    #                   kernel_size: [3, 3] if upsampling else [4, 4],
+    #                   strides: [1, 1] if upsampling else [2, 2],
+    #                   up_size: [2, 2], # This parameter is only avaliable if upsampling is true
+    #                   padding: "same",
+    #                   use_batchnorm: true,
+    #                   use_bias: false,
+    #                   use_dropout: false,
+    #                   drop_value: 0.3,
+    #                   kernel_initializer: 'orthogonal'}
+    #        ]
+    #        cropping: [dict: dictionary with parameters accepted by layer.Cropping2D]
+    # - loss:
+    #       name: 'bce' # keyword associated with the desired loss ('bce', 'least_squares', 'wasserstein')
+    #       weights: [1, 1, 1, 1] # [d_weight, particle_weight, energy_weight, direction_weight]
+    #       label_smoothing: 0.1 # smoothed_d_labels = d_labels*(1-label_smoothing)
+    # - optimizer:
+    #       name: 'adam' # keyword associated with the desired optimizer ('adam', 'rms')
+    #       parameters: [dict: parameters accepted by the corresponding tf implementation of the optimizer]
+    predefined_model_path: false #'models/generator_13'
+    latent_dim: 512
+    upsampling: true
+    spectral_normalization: false
+    layers:
+        dense: {units: 4608, use_bias: false, kernel_initializer: orthogonal}
+        reshape: {target_shape: [3, 3, 512]}
+        upsample_blocks: [
+            {filters: 256}, # Upsample to (6, 6, 256)
+            {filters: 128}, # Upsample to (12, 12, 128)
+            {filters: 64}, # Upsample to (24, 24, 64)
+            {filters: 1, use_batchnorm: false} # Upsample to (48, 48, 1)
+        ]
+        cropping: {cropping: [[2, 3], [2, 3]]} # Crop to (43, 43, 2)
+    loss: 
+        name: wasserstein
+        weights: [1, 0.4, 0.4, 0.4]
+    optimizer:
+        name: 'adam'
+        parameters: {learning_rate: 0.0002, beta_1: 0.5, beta_2: 0.9}
+Discriminator:
+    # Possible keys:
+    # - predefined_model_path: [string: path to a predefined model --> set to false if there isn't any]
+    # - spectral_normalization: [bool: whether to apply spectral normalization to layers]
+    # - layers:
+    #        zeropadding: [dict: dictionary with parameters accepted by layers.ZeroPadding2D]
+    #        conv_blocks: [
+    #             {filters: [int: number of filters],
+    #              kernel_size: [5, 5],
+    #              strides: [2, 2],
+    #              padding: "same",
+    #              use_batchnorm: false,
+    #              use_bias: true,
+    #              use_dropout: false,
+    #              drop_value: 0.3,
+    #              kernel_initializer: 'orthogonal'}
+    #        ]
+    # - loss:
+    #       name: 'bce' # keyword associated with the desired loss ('bce', 'least_squares', 'wasserstein')
+    #       label_smoothing: 0.1 # smoothed_labels = labels*(1-label_smoothing)
+    # - optimizer:
+    #       name: 'adam' # keyword associated with the desired optimizer ('adam', 'rms')
+    #       parameters: [dict: parameters accepted by the corresponding tf implementation of the optimizer]
+    predefined_model_path: false #'models/discriminator_13'
+    spectral_normalization: false
+    layers:
+        zeropadding: {padding: [[2, 3], [2, 3]]}
+        conv_blocks: [
+            {filters: 128, use_batchnorm: false}, # Downsample to (24, 24, 128)
+            {filters: 256, use_dropout: true}, # Downsample to (12, 12, 256)
+            {filters: 512, use_dropout: true}, # Downsample to (6, 6, 512)
+            {filters: 1024} # Downsample to (3, 3, 1024)
+        ]
+    loss: 
+        name: wasserstein
+    optimizer:
+        name: 'adam'
+        parameters: {learning_rate: 0.0002, beta_1: 0.5, beta_2: 0.9}
+GANs:
+    # Possible keys:
+    # - discriminator_steps: 1 # discriminator training steps for bacth
+    # - generator_steps: 1 # generator training steps for bacth
+    # - gp_weight: 10 # gradient penalty weight --> set to 0 or false to avoid gradient penalty
+    # - epochs: [int: training epochs]
+    discriminator_steps: 5
+    generator_steps: 1
+    gp_weight: 10
+    epochs: 100
+Callback:
+    # Possible keys:
+    # - particle_type_classifier_config:
+    #   - predefined_model_path: [string: path to a predefined model --> set to false if there isn't any]
+    #   - config_path: [string: path to the config.yml file used by CTLearn in case there isn't any predefined model]
+    # - energy_regressor_config:
+    #   - predefined_model_path: [string: path to a predefined model --> set to false if there isn't any]
+    #   - config_path: [string: path to the config.yml file used by CTLearn in case there isn't any predefined model]
+    # - direction_regressor_config:
+    #   - predefined_model_path: [string: path to a predefined model --> set to false if there isn't any]
+    #   - config_path: [string: path to the config.yml file used by CTLearn in case there isn't any predefined model]
+    # - epochs: 1 # Number of epochs between every checkpoint
+    # - nrows: 5 # Number of rows in the grid of generated images
+    # - ncols: 5 # Number of columns in the grid of generated images
+    # - images_dir: 'images' # Directory to save the generated images and loss plot
+    # - models_dir: 'models' # Directory to save the models
+    # - initial_epoch: 0 # Intial epoch, used only when resuming training
+    particle_type_classifier_config:
+        predefined_model_path: 'models/predictor-particletype'
+        config_path: 'config_files/predictor-particletype.yml'
+    energy_regressor_config:
+        predefined_model_path: 'models/predictor-energy-gamma'
+        config_path: 'config_files/predictor-energy-gamma.yml'
+    direction_regressor_config:
+        predefined_model_path: 'models/predictor-direction-gamma'
+        config_path: 'config_files/predictor-direction-gamma.yml'
+    epochs: 4
+    nrows: 5
+    ncols: 10
+    images_dir: checkpoints/gamma_1/images
+    models_dir: checkpoints/gamma_1/models
+    initial_epoch: 0
