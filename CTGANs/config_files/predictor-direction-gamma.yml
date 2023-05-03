@@ -1,0 +1,84 @@
+Logging:
+    model_directory: 'models/predictor-direction-gamma'
+Data_format: 'dl1dh'
+Reco: ['direction'] # 'energy', 'direction', 'particletype', 
+Data:
+    file_list: 'data_files/gamma-train.txt' # TODO: train.txt
+    mode: 'mono' # 'stereo'
+    selected_telescope_types: ['LST_MAGIC_MAGICCam']
+    shuffle: true
+    seed: 1234
+    image_channels: ['image'] # , 'peak_time']
+    mapping_settings:
+        camera_types: ['MAGICCam']
+        mapping_method:
+            'MAGICCam': 'image_shifting'
+        padding:
+            'MAGICCam': 2
+        # interpolation_image_shape:
+        #     'LSTCam': [60, 60, 1]
+        mask_interpolation: false
+    parameter_selection: 
+        - {col_name: "hillas_intensity", min_value: 50.0} # 200.0}
+        - {col_name: "leakage_intensity_width_2", max_value: 0.2} # 0.0}
+Input:
+    shuffle: true
+    batch_size_per_worker: 64
+    concat_telescopes: false # true
+Model:
+    #sudo apt install graphviz
+    plot_model: false
+    name: 'ThinResNet'
+    backbone: {module: 'single_cnn', function: 'single_cnn_model'}
+    network: {module: 'resnet_engine', function: 'stacked_res_blocks'}
+    head: {module: 'head', function: 'standard_head'}
+    pretrained_weights: null
+Model Parameters:
+    attention: {mechanism: 'Squeeze-and-Excitation', ratio: 16}
+    basic:
+        conv_block:
+            layers:
+                - {filters: 32, kernel_size: 3}
+                - {filters: 32, kernel_size: 3}
+                - {filters: 64, kernel_size: 3}
+                - {filters: 128, kernel_size: 3}
+            max_pool: {size: 2, strides: 2}
+            bottleneck: null
+            batchnorm: false
+        fully_connect:
+            layers: [1024, 512, 256, 128, 64]
+            batchnorm: false
+        conv_head:
+            layers:
+                - {filters: 64, kernel_size: 3}
+                - {filters: 128, kernel_size: 3}
+                - {filters: 256, kernel_size: 3}
+            final_avg_pool: true
+            batchnorm: false
+        batchnorm_decay: 0.99
+    resnet_engine:
+        name: 'ThinResNet'
+        stacked_res_blocks:
+            residual_block: 'bottleneck'
+            architecture:
+                - {filters: 48, blocks: 2}
+                - {filters: 96, blocks: 3}
+                - {filters: 128, blocks: 3}
+                - {filters: 256, blocks: 3}
+    standard_head:
+        particletype: {class_names: ['proton', 'gamma'], fc_head: [512, 256, 2], weight: 1.0}
+        energy: {fc_head: [512, 256, 1], weight: 1.0}
+        direction: {fc_head: [512, 256, 2], weight: 1.0}
+Training:
+    validation_split: 0.05
+    num_epochs: 5
+    verbose: 2
+    workers: 1
+    optimizer: 'Adam'
+    adam_epsilon: 1.0e-8
+    base_learning_rate: 0.0001
+    #callbacks:
+    #    - {EarlyStopping: {monitor: 'loss', patience: 3, restore_best_weights: True}}
+    #scale_learning_rate: false
+    #variables_to_train: null
+
