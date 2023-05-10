@@ -1,6 +1,6 @@
 Data:
     mode: 'mono'
-    image_channels: ['image', 'peak_time']
+    waveform: 'raw'
     mapping_settings:
         mapping_method:
             'LSTCam': 'bilinear_interpolation'
@@ -24,7 +24,7 @@ Input:
 Model:
     name: 'ThinResNet'
     backbone: {module: 'single_cnn', function: 'single_cnn_model'}
-    engine_img: {module: 'resnet', function: 'stacked_res_blocks'}
+    engine_wvf: {module: 'resnet', function: 'stacked_res_blocks'}
     head: {module: 'head', function: 'standard_head'}
 Model Parameters:
     attention: {mechanism: 'Squeeze-and-Excitation', ratio: 16}

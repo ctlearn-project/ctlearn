@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 
-def squeeze_excite_block(inputs, ratio=16, trainable=True, name=None):
+def squeeze_excite_block(inputs, ratio=16, trainable=True, waveform=False, name=None):
     """A channel & spatial squeeze-excite block.
     Arguments:
       inputs: input tensor.
@@ -15,16 +15,22 @@ def squeeze_excite_block(inputs, ratio=16, trainable=True, name=None):
     """
 
     cse = channel_squeeze_excite_block(
-        inputs=inputs, ratio=ratio, trainable=trainable, name=name + "_cse"
+        inputs=inputs,
+        ratio=ratio,
+        trainable=trainable,
+        waveform=waveform,
+        name=name + "_cse",
     )
     sse = spatial_squeeze_excite_block(
-        inputs=inputs, trainable=trainable, name=name + "_sse"
+        inputs=inputs, trainable=trainable, waveform=waveform, name=name + "_sse"
     )
 
     return tf.keras.layers.Add(name=name + "_add")([cse, sse])
 
 
-def channel_squeeze_excite_block(inputs, ratio=4, trainable=True, name=None):
+def channel_squeeze_excite_block(
+    inputs, ratio=4, trainable=True, waveform=False, name=None
+):
     """A channel-wise squeeze-excite block.
     Arguments:
       inputs: input tensor.
@@ -36,9 +42,14 @@ def channel_squeeze_excite_block(inputs, ratio=4, trainable=True, name=None):
 
     filters = inputs.get_shape().as_list()[-1]
 
-    cse = tf.keras.layers.GlobalAveragePooling2D(keepdims=True, name=name + "_avgpool")(
-        inputs
-    )
+    if waveform:
+        cse = tf.keras.layers.GlobalAveragePooling3D(
+            keepdims=True, name=name + "_avgpool"
+        )(inputs)
+    else:
+        cse = tf.keras.layers.GlobalAveragePooling2D(
+            keepdims=True, name=name + "_avgpool"
+        )(inputs)
     cse = tf.keras.layers.Dense(
         units=tf.math.divide(filters, ratio),
         activation="relu",
@@ -52,7 +63,7 @@ def channel_squeeze_excite_block(inputs, ratio=4, trainable=True, name=None):
     return tf.keras.layers.Multiply(name=name + "_mult")([inputs, cse])
 
 
-def spatial_squeeze_excite_block(inputs, trainable=True, name=None):
+def spatial_squeeze_excite_block(inputs, trainable=True, waveform=False, name=None):
     """A spatial squeeze-excite block.
     Arguments:
       inputs: input tensor.
@@ -60,13 +71,21 @@ def spatial_squeeze_excite_block(inputs, trainable=True, name=None):
     returns:
       Output tensor for the spatial squeeze-excite block.
     """
-
-    sse = tf.keras.layers.Conv2D(
-        filters=1,
-        kernel_size=1,
-        activation=tf.nn.sigmoid,
-        trainable=trainable,
-        name=name + "_spatial_conv",
-    )(inputs)
+    if waveform:
+        sse = tf.keras.layers.Conv3D(
+            filters=1,
+            kernel_size=1,
+            activation=tf.nn.sigmoid,
+            trainable=trainable,
+            name=name + "_spatial_conv",
+        )(inputs)
+    else:
+        sse = tf.keras.layers.Conv2D(
+            filters=1,
+            kernel_size=1,
+            activation=tf.nn.sigmoid,
+            trainable=trainable,
+            name=name + "_spatial_conv",
+        )(inputs)
 
     return tf.keras.layers.Multiply(name=name + "_mult")([inputs, sse])

@@ -25,7 +25,6 @@ from ctlearn.utils import *
 
 
 def run_model(config, mode="train", debug=False, log_to_file=False):
-
     # Load options relating to logging and checkpointing
     root_model_dir = model_dir = config["Logging"]["model_directory"]
 
@@ -168,7 +167,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     # Open a strategy scope.
     with strategy.scope():
-
         # Backbone model
         backbone_module = importlib.import_module(config["Model"]["backbone"]["module"])
         backbone_model = getattr(
@@ -366,11 +364,12 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         logger.info("Keras model saved in {}saved_model.pb".format(model_dir))
         logger.info("Converting Keras model into ONNX format...")
         input_type_spec = [input._type_spec for input in backbone_inputs]
-        output_path = model_dir + model.name + ".onnx"
+        output_path = f"{model_dir}/{model.name}.onnx"
+
         tf2onnx.convert.from_keras(
             model, input_signature=input_type_spec, output_path=output_path
         )
-        logger.info("ONNX model saved in {}".format(output_path))
+        logger.info("ONNX model saved in '{}'".format(output_path))
 
         # Plotting training history
         training_log = pd.read_csv(model_dir + "/training_log.csv")
@@ -395,7 +394,9 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         logger.info("Predicting...")
         predictions = model.predict(data)
         if rest_data:
-            predictions = np.concatenate((predictions, model.predict(rest_data)), axis=0)
+            predictions = np.concatenate(
+                (predictions, model.predict(rest_data)), axis=0
+            )
 
         prediction_file = config["Prediction"]["prediction_file"].replace(".h5", "")
         if random_seed:
@@ -418,7 +419,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
 
 def main():
-
     parser = argparse.ArgumentParser(
         description=("Train/Predict with a CTLearn model.")
     )
@@ -460,7 +460,7 @@ def main():
     parser.add_argument(
         "--default_model",
         "-d",
-        help="Default CTLearn Model; valid options: TRN (mono), mergedTRN (stereo), and CNNRNN (stereo)",
+        help="Default CTLearn Model; valid options: SingleCNN, TRN, rawwaveSingleCNN, rawwaveTRN, calwaveSingleCNN, calwaveTRN (mono), mergedTRN, and CNNRNN (stereo)",
     )
     parser.add_argument(
         "--cleaned_images",
@@ -479,7 +479,7 @@ def main():
     parser.add_argument(
         "--tel_types",
         "-t",
-        help="Selection of telescope types; valid option: LST_LST_LSTCam, LST_MAGIC_MAGICCam, MST_MST_FlashCam, MST_MST_NectarCam, SST_SCT_SCTCam, and/or SST_ASTRI_ASTRICam",
+        help="Selection of telescope types; valid option: LST_LST_LSTCam, LST_LST_LSTSiPMCam, LST_MAGIC_MAGICCam, MST_MST_FlashCam, MST_MST_NectarCam, SST_SCT_SCTCam, and/or SST_ASTRI_ASTRICam",
         nargs="+",
     )
     parser.add_argument(
@@ -603,7 +603,6 @@ def main():
     random_seed = config["Data"].get("seed", 1234)
 
     if "train" in args.mode:
-
         # Shuffle the data in train mode as default
         if "shuffle" not in config["Data"]:
             config["Data"]["shuffle"] = True
@@ -642,7 +641,6 @@ def main():
                     if not files:
                         continue
                     for file in files:
-
                         with open(args.config_file, "r") as config_file:
                             config = yaml.safe_load(config_file)
 
