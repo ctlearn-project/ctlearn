@@ -1,6 +1,7 @@
 Data:
     mode: 'mono'
     waveform: 'calibrated'
+    waveform_sequence_length: 10
     mapping_settings:
         mapping_method:
             'LSTCam': 'bilinear_interpolation'
