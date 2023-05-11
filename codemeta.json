@@ -43,9 +43,9 @@
         "DL1DataHandler",
         "numba",
         "NumPy",
-        "PyYAML"
+        "PyYAML",
         "pyIRF",
-        "Pandas",
+        "Pandas"
     ],
     "author": [
         {
