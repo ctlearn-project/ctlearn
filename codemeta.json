@@ -9,7 +9,9 @@
     "downloadUrl": "https://zenodo.org/record/5947837/files/ctlearn-project/ctlearn-v0.7.0.zip",
     "issueTracker": "https://github.com/ctlearn-project/ctlearn/issues",
     "name": "CTLearn: Deep learning for imaging atmospheric Cherenkov telescopes event reconstruction",
+    "readme": "https://ctlearn.readthedocs.io",
     "version": "0.7.0",
+    "softwareVersion": "0.7.0",
     "identifier": "10.5281/zenodo.3342952",
     "description": "CTLearn is a high-level Python package providing a backend for training deep learning models for the reconstruction of imaging atmospheric Cherenkov telescope events using TensorFlow.",
     "applicationCategory": "Astronomy",
@@ -37,15 +39,15 @@
     "softwareRequirements": [
         "Python 3",
         "TensorFlow 2",
-	"tf2onnx"
+        "tf2onnx",
         "ctapipe",
-	"ctaplot",
+        "ctaplot",
         "DL1DataHandler",
-	"numba",
+        "numba",
         "NumPy",
-        "PyYAML"
+        "PyYAML",
         "pyIRF",
-	"Pandas",
+        "Pandas"
     ],
     "author": [
         {
@@ -104,6 +106,29 @@
                 "@type": "Organization",
                 "name": "Facultad de Ingeniería Informática, Universidad Complutense de Madrid, Madrid, Spain"
             }
+        }
+    ],
+    "maintainer": [
+        {
+            "@type": "Person",
+            "@id": "https://orcid.org/0000-0003-3343-0755",
+            "givenName": "Daniel",
+            "familyName": "Nieto",
+            "email": "d.nieto@ucm.es",
+            "affiliation": {
+                "@type": "Organization",
+		"name": "Instituto de Física de Partículas y del Cosmos, Departamento de EMFTEL, Universidad Complutense de Madrid, Madrid, Spain "
+            }
+	},
+        {
+             "@type": "Person",
+             "@id": "https://orcid.org/0000-0003-1821-7964",
+             "givenName": "Tjark",
+             "familyName": "Miener",
+             "affiliation": {
+                 "@type": "Organization",
+                 "name": "Instituto de Física de Partículas y del Cosmos, Departamento de EMFTEL, Universidad Complutense de Madrid, Madrid, Spain "
+             }
         }
     ]
 }
