@@ -119,6 +119,16 @@
                 "@type": "Organization",
 		"name": "Instituto de Física de Partículas y del Cosmos, Departamento de EMFTEL, Universidad Complutense de Madrid, Madrid, Spain "
             }
+	},
+        {
+             "@type": "Person",
+             "@id": "https://orcid.org/0000-0003-1821-7964",
+             "givenName": "Tjark",
+             "familyName": "Miener",
+             "affiliation": {
+                 "@type": "Organization",
+                 "name": "Instituto de Física de Partículas y del Cosmos, Departamento de EMFTEL, Universidad Complutense de Madrid, Madrid, Spain "
+             }
         }
     ]
 }
