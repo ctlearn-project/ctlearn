@@ -37,15 +37,15 @@
     "softwareRequirements": [
         "Python 3",
         "TensorFlow 2",
-	"tf2onnx"
+        "tf2onnx",
         "ctapipe",
-	"ctaplot",
+        "ctaplot",
         "DL1DataHandler",
-	"numba",
+        "numba",
         "NumPy",
         "PyYAML"
         "pyIRF",
-	"Pandas",
+        "Pandas",
     ],
     "author": [
         {
