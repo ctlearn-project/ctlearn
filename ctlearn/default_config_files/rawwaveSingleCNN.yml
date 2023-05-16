@@ -2,6 +2,7 @@ Data:
     mode: 'mono'
     waveform: 'raw'
     waveform_sequence_length: 10
+    waveform_format: 'timechannel_first'
     mapping_settings:
         mapping_method:
             'LSTCam': 'bilinear_interpolation'
