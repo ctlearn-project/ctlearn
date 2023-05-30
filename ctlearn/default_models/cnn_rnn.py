@@ -27,7 +27,7 @@ def cnn_rnn_model(data, model_params):
     if pretrained_weights:
         loaded_model = tf.keras.models.load_model(pretrained_weights)
         for layer in loaded_model.layers:
-            if layer.name.endswith("_block"):
+            if layer.name.endswith("_backbone"):
                 model = loaded_model.get_layer(layer.name)
                 model.trainable = trainable_backbone
     else:
