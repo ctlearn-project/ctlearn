@@ -85,7 +85,9 @@ def setup_DL1DataReader(config, mode):
             )
 
     mc_file = True
+    dl1bparameter_names = None
     with tables.open_file(config["Data"]["file_list"][0], mode="r") as f:
+        # Retrieve the data format of the hdf5 file
         if "CTA PRODUCT DATA MODEL NAME" in f.root._v_attrs:
             data_format = "stage1"
         elif "dl1_data_handler_version" in f.root._v_attrs:
@@ -94,8 +96,16 @@ def setup_DL1DataReader(config, mode):
             raise ValueError(
                 "Data format is not implemented in the DL1DH reader. Available data formats are 'stage1' and 'dl1dh'."
             )
+        # Check weather the file is MC simulation or real observational data
         if data_format == "dl1dh" and "source_name" in f.root._v_attrs:
             mc_file = False
+        # Retrieve the name convention for the dl1b parameters
+        if data_format == "dl1dh":
+            first_tablename = next(f.root.Parameters0._f_iter_nodes()).name
+            dl1bparameter_names = f.root.Parameters0._f_get_child(f"{first_tablename}").colnames
+        else:
+            first_tablename = next(f.root.dl1.event.telescope.parameters._f_iter_nodes()).name
+            dl1bparameter_names = f.root.dl1.event.telescope.parameters._f_get_child(f"{first_tablename}").colnames
 
     allow_overwrite = config["Data"].get("allow_overwrite", True)
     if "allow_overwrite" in config["Data"]:
@@ -108,32 +118,8 @@ def setup_DL1DataReader(config, mode):
     transformations = []
     event_info = []
     if data_format == "dl1dh":
-        if "parameter_list" not in config["Data"] and mode == "predict":
-            config["Data"]["parameter_list"] = [
-                "hillas_intensity",
-                "log_hillas_intensity",
-                "hillas_x",
-                "hillas_y",
-                "hillas_r",
-                "hillas_phi",
-                "hillas_length",
-                "hillas_width",
-                "hillas_psi",
-                "hillas_skewness",
-                "leakage_intensity_width_1",
-                "leakage_intensity_width_2",
-                "morphology_num_islands",
-                "impact",
-                "log_impact",
-                "maxheight",
-                "log_maxheight",
-                "cherenkovdensity",
-                "log_hillasintensity_over_cherenkovdensity",
-                "cherenkovradius",
-                "impact_over_cherenkovradius",
-                "p1grad",
-                "sqrt_p1grad_p1grad",
-            ]
+        if "parameter_list" not in config["Data"] and dl1bparameter_names is not None and mode == "predict":
+            config["Data"]["parameter_list"] = dl1bparameter_names
         # Parse list of event selection filters
         event_selection = {}
         for s in config["Data"].get("event_selection", {}):
@@ -164,47 +150,8 @@ def setup_DL1DataReader(config, mode):
                 }
             )
     else:
-        if "parameter_list" not in config["Data"] and mode == "predict":
-            config["Data"]["parameter_list"] = [
-                "hillas_intensity",
-                "hillas_fov_lon",
-                "hillas_fov_lat",
-                "hillas_r",
-                "hillas_phi",
-                "hillas_length",
-                "hillas_length_uncertainty",
-                "hillas_width",
-                "hillas_width_uncertainty",
-                "hillas_psi",
-                "hillas_skewness",
-                "hillas_kurtosis",
-                "timing_slope",
-                "timing_intercept",
-                "timing_deviation",
-                "leakage_pixels_width_1",
-                "leakage_pixels_width_2",
-                "leakage_intensity_width_1",
-                "leakage_intensity_width_2",
-                "concentration_cog",
-                "concentration_core",
-                "concentration_pixel",
-                "morphology_n_pixels",
-                "morphology_n_islands",
-                "morphology_n_medium_islands",
-                "morphology_n_large_islands",
-                "intensity_max",
-                "intensity_min",
-                "intensity_mean",
-                "intensity_std",
-                "intensity_skewness",
-                "intensity_kurtosis",
-                "peak_time_max",
-                "peak_time_min",
-                "peak_time_mean",
-                "peak_time_std",
-                "peak_time_skewness",
-                "peak_time_kurtosis",
-            ]
+        if "parameter_list" not in config["Data"] and dl1bparameter_names is not None and mode == "predict":
+            config["Data"]["parameter_list"] = dl1bparameter_names
         if "direction" in tasks:
             event_info.append("true_alt")
             event_info.append("true_az")
