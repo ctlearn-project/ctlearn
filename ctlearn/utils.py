@@ -101,7 +101,8 @@ def setup_DL1DataReader(config, mode):
             mc_file = False
         # Retrieve the name convention for the dl1b parameters
         if data_format == "dl1dh":
-            dl1bparameter_names = f.root.Parameters0.LST_MAGIC_MAGICCam.colnames
+            first_tablename = next(f.root.Parameters0._f_iter_nodes()).name
+            dl1bparameter_names = f.root.Parameters0._f_get_child(f"{first_tablename}").colnames
         else:
             first_tablename = next(f.root.dl1.event.telescope.parameters._f_iter_nodes()).name
             dl1bparameter_names = f.root.dl1.event.telescope.parameters._f_get_child(f"{first_tablename}").colnames
