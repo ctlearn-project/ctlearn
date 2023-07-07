@@ -24,7 +24,7 @@ def conv_block(inputs, params, name="cnn_block"):
     bottleneck_filters = params["basic"]["conv_block"]["bottleneck"]
     batchnorm = params["basic"]["conv_block"].get("batchnorm", False)
     attention = params.get("attention")
-    waveform = len(inputs.get_shape().as_list()) == 5
+    waveform3D = len(inputs.get_shape().as_list()) == 5
 
     x = inputs
     if batchnorm:
@@ -34,11 +34,10 @@ def conv_block(inputs, params, name="cnn_block"):
         zip(filters_list, kernel_sizes, numbers_list)
     ):
         for nr in range(number):
-            if waveform:
-                x = tf_layers.ConvLSTM2D(
+            if waveform3D:
+                x = tf_layers.Conv3D(
                     filters=filters,
                     kernel_size=kernel_size,
-                    return_sequences=True,
                     padding="same",
                     activation=tf.nn.relu,
                     name=f"{name}_conv_{i+1}_{nr+1}",
@@ -52,7 +51,7 @@ def conv_block(inputs, params, name="cnn_block"):
                     name=f"{name}_conv_{i+1}_{nr+1}",
                 )(x)
         if max_pool:
-            if waveform:
+            if waveform3D:
                 x = tf_layers.MaxPool3D(
                     pool_size=max_pool["size"],
                     strides=max_pool["strides"],
@@ -69,11 +68,10 @@ def conv_block(inputs, params, name="cnn_block"):
 
     # bottleneck layer
     if bottleneck_filters:
-        if waveform:
-            x = tf_layers.ConvLSTM2D(
+        if waveform3D:
+            x = tf_layers.Conv3D(
                 filters=bottleneck_filters,
                 kernel_size=1,
-                return_sequences=True,
                 padding="same",
                 activation=tf.nn.relu,
                 name=f"{name}_bottleneck",
@@ -94,14 +92,14 @@ def conv_block(inputs, params, name="cnn_block"):
     if attention is not None:
         if attention["mechanism"] == "Squeeze-and-Excitation":
             x = squeeze_excite_block(
-                x, attention["ratio"], waveform=waveform, name=f"{name}_se"
+                x, attention["ratio"], waveform3D=waveform3D, name=f"{name}_se"
             )
         elif attention["mechanism"] == "Channel-Squeeze-and-Excitation":
             x = channel_squeeze_excite_block(
-                x, attention["ratio"], waveform=waveform, name=f"{name}_cse"
+                x, attention["ratio"], waveform3D=waveform3D, name=f"{name}_cse"
             )
         elif attention["mechanism"] == "Spatial-Squeeze-and-Excitation":
-            x = spatial_squeeze_excite_block(x, waveform=waveform, name=f"{name}_sse")
+            x = spatial_squeeze_excite_block(x, waveform3D=waveform3D, name=f"{name}_sse")
 
     return x
 
@@ -119,8 +117,7 @@ def fully_connect(
     x = inputs
     for i, units in enumerate(layers):
         if i != len(layers) - 1:
-            x = tf_layers.Dense(units=units, name="fc_{}_{}".format(name, i + 1))(x)
-            x = tf_layers.ReLU(name="fc_{}_{}_relu".format(name, i + 1))(x)
+            x = tf_layers.Dense(units=units, activation=tf.nn.relu, name="fc_{}_{}".format(name, i + 1))(x)
         else:
             x = tf_layers.Dense(units=units, name=name)(x)
 
@@ -139,15 +136,14 @@ def conv_head(inputs, params):
     ]
     final_avg_pool = params["basic"]["conv_head"].get("final_avg_pool", True)
     batchnorm = params["basic"]["conv_head"].get("batchnorm", False)
-    waveform = len(inputs.get_shape().as_list()) == 5
+    waveform3D = len(inputs.get_shape().as_list()) == 5
 
     x = inputs
     for i, (filters, kernel_size) in enumerate(zip(filters_list, kernel_sizes)):
-        if waveform:
-            x = tf_layers.ConvLSTM2D(
+        if waveform3D:
+            x = tf_layers.Conv3D(
                 filters=filters,
                 kernel_size=kernel_size,
-                return_sequences=True,
                 padding="same",
                 activation=tf.nn.relu,
                 name="conv_{}".format(i + 1),
@@ -165,7 +161,7 @@ def conv_head(inputs, params):
 
     # Average over remaining width and length
     if final_avg_pool:
-        if waveform:
+        if waveform3D:
             x = tf_layers.AveragePooling3D(
                 pool_size=x.get_shape().as_list()[1], strides=1, name="global_avg_pool"
             )(x)

@@ -1,8 +1,8 @@
 Data:
     mode: 'mono'
     waveform: 'calibrated'
-    waveform_sequence_length: 10
-    waveform_format: 'timechannel_first'
+    waveform_sequence_length: 5
+    waveform_format: 'timechannel_last'
     mapping_settings:
         mapping_method:
             'LSTCam': 'bilinear_interpolation'
@@ -21,7 +21,7 @@ Data:
             'LSTSiPMCam': 2
             'MAGICCam': 2
 Input:
-    batch_size_per_worker: 64
+    batch_size_per_worker: 8
     concat_telescopes: false
 Model:
     name: 'SingleCNN'
@@ -45,7 +45,7 @@ Model Parameters:
         energy: {fc_head: [512, 256], weight: 1.0}
         direction: {fc_head: [512, 256], weight: 1.0}
 Training:
-    validation_split: 0.1
+    validation_split: 0.05
     num_epochs: 10
     verbose: 2
     workers: 1
