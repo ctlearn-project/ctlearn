@@ -463,16 +463,10 @@ def main():
         help="Default CTLearn Model; valid options: SingleCNN, TRN, rawwaveSingleCNN, rawwaveTRN, calwaveSingleCNN, calwaveTRN (mono), mergedTRN, and CNNRNN (stereo)",
     )
     parser.add_argument(
-        "--cleaned_images",
+        "--clean",
         default=False,
         action=argparse.BooleanOptionalAction,
-        help="Flag, if the network should be trained with cleaned images",
-    )
-    parser.add_argument(
-        "--cleaned_waveforms",
-        default=False,
-        action=argparse.BooleanOptionalAction,
-        help="Flag, if the network should be trained with cleaned waveforms",
+        help="Flag, if the network should be trained with cleaned images and waveforms",
     )
     parser.add_argument(
         "--pretrained_weights", "-w", help="Path to the pretrained weights"
@@ -536,15 +530,13 @@ def main():
     if args.reco:
         config["Reco"] = args.reco
 
-    if args.cleaned_images:
-        config["Data"]["image_channels"] = [
-            "cleaned_" + channel for channel in config["Data"]["image_channels"]
-        ]
-
-    if args.cleaned_waveforms:
-        config["Data"]["waveform"] = [
-            "cleaned_" + channel for channel in config["Data"]["waveform"]
-        ]
+    if args.clean:
+        if "image_channels" in config["Data"]:
+            config["Data"]["image_channels"] = [
+                "cleaned_" + channel for channel in config["Data"]["image_channels"]
+            ]
+        if "waveform" in config["Data"]:
+            config["Data"]["waveform"] = "cleaned_" + config["Data"]["waveform"]
 
     if args.tel_types:
         config["Data"]["selected_telescope_types"] = args.tel_types
@@ -657,16 +649,14 @@ def main():
 
                         if args.reco:
                             config["Reco"] = args.reco
-                        if args.cleaned_images:
-                            config["Data"]["image_channels"] = [
-                                "cleaned_" + channel
-                                for channel in config["Data"]["image_channels"]
-                            ]
-                        if args.cleaned_waveforms:
-                            config["Data"]["waveform"] = [
-                                "cleaned_" + channel
-                                for channel in config["Data"]["waveform"]
-                            ]
+                        if args.clean:
+                            if "image_channels" in config["Data"]:
+                                config["Data"]["image_channels"] = [
+                                    "cleaned_" + channel
+                                    for channel in config["Data"]["image_channels"]
+                                ]
+                            if "waveform" in config["Data"]:
+                                config["Data"]["waveform"] = "cleaned_" + config["Data"]["waveform"]
                         if args.tel_types:
                             config["Data"]["selected_telescope_types"] = args.tel_types
                         if args.allowed_tels:
@@ -724,16 +714,14 @@ def main():
                     config = yaml.safe_load(config_file)
                 if args.reco:
                     config["Reco"] = args.reco
-                if args.cleaned_images:
-                    config["Data"]["image_channels"] = [
-                        "cleaned_" + channel
-                        for channel in config["Data"]["image_channels"]
-                    ]
-                if args.cleaned_waveforms:
-                    config["Data"]["waveform"] = [
-                        "cleaned_" + channel
-                        for channel in config["Data"]["waveform"]
-                    ]
+                if args.clean:
+                    if "image_channels" in config["Data"]:
+                        config["Data"]["image_channels"] = [
+                            "cleaned_" + channel
+                            for channel in config["Data"]["image_channels"]
+                        ]
+                    if "waveform" in config["Data"]:
+                        config["Data"]["waveform"] = "cleaned_" + config["Data"]["waveform"]
                 if args.tel_types:
                     config["Data"]["selected_telescope_types"] = args.tel_types
                 if args.allowed_tels:
