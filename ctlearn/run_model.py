@@ -469,6 +469,12 @@ def main():
         help="Flag, if the network should be trained with cleaned images",
     )
     parser.add_argument(
+        "--cleaned_waveforms",
+        default=False,
+        action=argparse.BooleanOptionalAction,
+        help="Flag, if the network should be trained with cleaned waveforms",
+    )
+    parser.add_argument(
         "--pretrained_weights", "-w", help="Path to the pretrained weights"
     )
     parser.add_argument(
@@ -533,6 +539,11 @@ def main():
     if args.cleaned_images:
         config["Data"]["image_channels"] = [
             "cleaned_" + channel for channel in config["Data"]["image_channels"]
+        ]
+
+    if args.cleaned_waveforms:
+        config["Data"]["waveform"] = [
+            "cleaned_" + channel for channel in config["Data"]["waveform"]
         ]
 
     if args.tel_types:
@@ -651,6 +662,11 @@ def main():
                                 "cleaned_" + channel
                                 for channel in config["Data"]["image_channels"]
                             ]
+                        if args.cleaned_waveforms:
+                            config["Data"]["waveform"] = [
+                                "cleaned_" + channel
+                                for channel in config["Data"]["waveform"]
+                            ]
                         if args.tel_types:
                             config["Data"]["selected_telescope_types"] = args.tel_types
                         if args.allowed_tels:
@@ -712,6 +728,11 @@ def main():
                     config["Data"]["image_channels"] = [
                         "cleaned_" + channel
                         for channel in config["Data"]["image_channels"]
+                    ]
+                if args.cleaned_waveforms:
+                    config["Data"]["waveform"] = [
+                        "cleaned_" + channel
+                        for channel in config["Data"]["waveform"]
                     ]
                 if args.tel_types:
                     config["Data"]["selected_telescope_types"] = args.tel_types
