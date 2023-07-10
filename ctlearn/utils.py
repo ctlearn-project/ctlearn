@@ -60,7 +60,9 @@ def setup_DL1DataReader(config, mode):
         if not isinstance(config["Data"]["file_list"], list):
             raise ValueError(
                 "Invalid file list '{}'. "
-                "Must be list or path to file".format(config["Data"]["file_list"])
+                "Must be list or path to file or directory".format(
+                    config["Data"]["file_list"]
+                )
             )
     else:
         file_list = config["Prediction"]["prediction_file_lists"][
@@ -76,10 +78,16 @@ def setup_DL1DataReader(config, mode):
             config["Data"]["file_list"] = data_files
         elif file_list.endswith(".h5"):
             config["Data"]["file_list"] = [file_list]
+
+        if os.path.isdir(file_list):
+            config["Data"]["file_list"] = np.sort(
+                np.array([file_list+x for x in os.listdir(file_list) if x.endswith(".h5")])
+            ).tolist()
+
         if not isinstance(config["Data"]["file_list"], list):
             raise ValueError(
                 "Invalid prediction file list '{}'. "
-                "Must be list or path to file".format(file_list)
+                "Must be list or path to file or directory".format(file_list)
             )
 
     mc_file = True

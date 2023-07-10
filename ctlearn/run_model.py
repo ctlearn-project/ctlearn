@@ -52,6 +52,9 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             ).to_dict("records")
             class_names = [name[0] for name in class_names]
 
+    # Set up the DL1DataReader
+    config["Data"], data_format = setup_DL1DataReader(config, mode)
+
     # Set up logging, saving the config and optionally logging to a file
     logger = setup_logging(config, model_dir, debug, log_to_file)
 
@@ -65,8 +68,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     atexit.register(strategy._extended._collective_ops._pool.close)  # type: ignore
     logger.info("Number of devices: {}".format(strategy.num_replicas_in_sync))
 
-    # Set up the DL1DataReader
-    config["Data"], data_format = setup_DL1DataReader(config, mode)
     # Create data reader
     logger.info("Loading data:")
     logger.info("  For a large dataset, this may take a while...")
