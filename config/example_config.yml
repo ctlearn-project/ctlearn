@@ -329,8 +329,8 @@ Model:
     plot_model: false
 
     # Optional boolean. Default: false
-    # Convert Keras model to ONNX format
-    convert2onnx: false
+    # Save Keras model to ONNX format
+    save2onnx: false
 
 
 # The options in this and the Model section are passed in a dictionary
