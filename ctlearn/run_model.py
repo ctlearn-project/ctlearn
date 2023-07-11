@@ -16,7 +16,6 @@ import yaml
 
 import tensorflow as tf
 from tensorflow.python import debug as tf_debug
-import tf2onnx
 
 from dl1_data_handler.reader import DL1DataReaderSTAGE1, DL1DataReaderDL1DH
 from ctlearn.data_loader import KerasBatchGenerator
@@ -65,7 +64,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     # Create a MirroredStrategy.
     strategy = tf.distribute.MirroredStrategy()
-    atexit.register(strategy._extended._collective_ops._pool.close)  # type: ignore
+    atexit.register(strategy._extended._collective_ops._lock.locked) # type: ignore
     logger.info("Number of devices: {}".format(strategy.num_replicas_in_sync))
 
     # Create data reader
@@ -363,14 +362,19 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         logger.info("Training and evaluating finished succesfully!")
         model.save(model_dir)
         logger.info("Keras model saved in {}saved_model.pb".format(model_dir))
-        logger.info("Converting Keras model into ONNX format...")
-        input_type_spec = [input._type_spec for input in backbone_inputs]
-        output_path = f"{model_dir}/{model.name}.onnx"
 
-        tf2onnx.convert.from_keras(
-            model, input_signature=input_type_spec, output_path=output_path
-        )
-        logger.info("ONNX model saved in '{}'".format(output_path))
+        # Saving model weights in onnx format
+        if config["Model"].get("save2onnx", False):
+            logger.info("Converting Keras model into ONNX format...")
+            logger.info("Make sure tf2onnx is installed in your enviroment!")
+            import tf2onnx
+
+            input_type_spec = [input._type_spec for input in backbone_inputs]
+            output_path = f"{model_dir}/{model.name}.onnx"
+            tf2onnx.convert.from_keras(
+                model, input_signature=input_type_spec, output_path=output_path
+            )
+            logger.info("ONNX model saved in {}".format(output_path))
 
         # Plotting training history
         training_log = pd.read_csv(model_dir + "/training_log.csv")
@@ -512,6 +516,11 @@ def main():
         help="Log to a file in model directory instead of terminal",
     )
     parser.add_argument(
+        "--save2onnx",
+        action="store_true",
+        help="Save model in an ONNX file",
+    )
+    parser.add_argument(
         "--debug", action="store_true", help="Print debug/logger messages"
     )
 
@@ -585,6 +594,10 @@ def main():
     if args.pretrained_weights:
         config["Model"]["pretrained_weights"] = args.pretrained_weights
         config["Model"]["trainable_backbone"] = False
+
+    # Set the option to save model into ONNX file from the command line
+    if args.save2onnx:
+        config["Model"]["save2onnx"] = args.save2onnx
 
     # Overwrite the number of epochs, batch size and random seed in the config file
     if args.num_epochs:
