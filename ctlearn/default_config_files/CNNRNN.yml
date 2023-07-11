@@ -24,7 +24,7 @@ Input:
 Model:
     name: 'CNNRNN'
     backbone: {module: 'cnn_rnn', function: 'cnn_rnn_model'}
-    engine: {module: 'basic', function: 'conv_block'}
+    engine_img: {module: 'basic', function: 'conv_block'}
     head: {module: 'head', function: 'standard_head'}
 Model Parameters:
     attention: {mechanism: 'Squeeze-and-Excitation', ratio: 16}

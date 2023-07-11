@@ -5,7 +5,6 @@ import pandas as pd
 
 
 def write_output(h5file, data, rest_data, reader, predictions, tasks):
-
     prediction_dir = h5file.replace(f'{h5file.split("/")[-1]}', "")
     if not os.path.exists(prediction_dir):
         os.makedirs(prediction_dir)
