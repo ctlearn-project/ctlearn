@@ -1,4 +1,5 @@
 import tensorflow as tf
+import tensorflow.keras.layers as tf_layers
 from ctlearn.default_models.attention import (
     squeeze_excite_block,
     channel_squeeze_excite_block,
@@ -27,6 +28,7 @@ def stacked_res_blocks(inputs, params, name=None):
         for layer in params["resnet"]["stacked_res_blocks"]["architecture"]
     ]
     attention = params.get("attention", None)
+    waveform3D = len(inputs.get_shape().as_list()) == 5
 
     x = stack_fn(
         inputs,
@@ -35,6 +37,7 @@ def stacked_res_blocks(inputs, params, name=None):
         residual_block,
         stride=1,
         attention=attention,
+        waveform3D=waveform3D,
         name=name + "_conv2",
     )
     for i, (filters, blocks) in enumerate(zip(filters_list[1:], blocks_list[1:])):
@@ -44,13 +47,21 @@ def stacked_res_blocks(inputs, params, name=None):
             blocks,
             residual_block,
             attention=attention,
+            waveform3D=waveform3D,
             name=name + "_conv" + str(i + 3),
         )
     return x
 
 
 def stack_fn(
-    inputs, filters, blocks, residual_block, stride=2, attention=None, name=None
+    inputs,
+    filters,
+    blocks,
+    residual_block,
+    stride=2,
+    attention=None,
+    waveform3D=False,
+    name=None,
 ):
     """Function to stack residual blocks.
     Arguments:
@@ -60,6 +71,7 @@ def stack_fn(
       residual_block: string, type of residual block.
       stride: default 2, stride of the first layer in the first block.
       attention: config parameters for the attention mechanism.
+      waveform3D: boolean, type and shape of input data.
       name: string, stack label.
     Returns:
       Output tensor for the stacked blocks.
@@ -71,7 +83,12 @@ def stack_fn(
     }
 
     x = res_blocks[residual_block](
-        inputs, filters, stride=stride, attention=attention, name=name + "_block1"
+        inputs,
+        filters,
+        stride=stride,
+        attention=attention,
+        waveform3D=waveform3D,
+        name=name + "_block1",
     )
     for i in range(2, blocks + 1):
         x = res_blocks[residual_block](
@@ -79,6 +96,7 @@ def stack_fn(
             filters,
             conv_shortcut=False,
             attention=attention,
+            waveform3D=waveform3D,
             name=name + "_block" + str(i),
         )
 
@@ -92,6 +110,7 @@ def basic_residual_block(
     stride=1,
     conv_shortcut=True,
     attention=None,
+    waveform3D=False,
     name=None,
 ):
     """Function to build a basic residual block.
@@ -103,45 +122,75 @@ def basic_residual_block(
       conv_shortcut: default True, use convolution shortcut if True,
           otherwise identity shortcut.
       attention: config parameters for the attention mechanism.
+      waveform3D: boolean, type and shape of input data.
       name: string, block label.
     Returns:
       Output tensor for the residual block.
     """
 
     if conv_shortcut:
-        shortcut = tf.keras.layers.Conv2D(
-            filters=filters, kernel_size=1, strides=stride, name=name + "_0_conv"
-        )(inputs)
+        if waveform3D:
+            shortcut = tf_layers.Conv3D(
+                filters=filters,
+                kernel_size=1,
+                strides=stride,
+                name=name + "_0_conv",
+            )(inputs)
+        else:
+            shortcut = tf_layers.Conv2D(
+                filters=filters, kernel_size=1, strides=stride, name=name + "_0_conv"
+            )(inputs)
     else:
         shortcut = inputs
-
-    x = tf.keras.layers.Conv2D(
-        filters=filters,
-        kernel_size=kernel_size,
-        strides=stride,
-        padding="same",
-        activation=tf.nn.relu,
-        name=name + "_1_conv",
-    )(inputs)
-    x = tf.keras.layers.Conv2D(
-        filters=filters,
-        kernel_size=kernel_size,
-        padding="same",
-        activation=tf.nn.relu,
-        name=name + "_2_conv",
-    )(x)
+    if waveform3D:
+        x = tf_layers.Conv3D(
+            filters=filters,
+            kernel_size=kernel_size,
+            strides=stride,
+            padding="same",
+            activation=tf.nn.relu,
+            name=name + "_1_conv",
+        )(inputs)
+        x = tf_layers.Conv3D(
+            filters=filters,
+            kernel_size=kernel_size,
+            strides=stride,
+            padding="same",
+            activation=tf.nn.relu,
+            name=name + "_2_conv",
+        )(x)
+    else:
+        x = tf_layers.Conv2D(
+            filters=filters,
+            kernel_size=kernel_size,
+            strides=stride,
+            padding="same",
+            activation=tf.nn.relu,
+            name=name + "_1_conv",
+        )(inputs)
+        x = tf_layers.Conv2D(
+            filters=filters,
+            kernel_size=kernel_size,
+            padding="same",
+            activation=tf.nn.relu,
+            name=name + "_2_conv",
+        )(x)
 
     # Attention mechanism
     if attention is not None:
         if attention["mechanism"] == "Squeeze-and-Excitation":
-            x = squeeze_excite_block(x, attention["ratio"], name=name + "_se")
+            x = squeeze_excite_block(
+                x, attention["ratio"], waveform3D=waveform3D, name=name + "_se"
+            )
         elif attention["mechanism"] == "Channel-Squeeze-and-Excitation":
-            x = channel_squeeze_excite_block(x, attention["ratio"], name=name + "_cse")
+            x = channel_squeeze_excite_block(
+                x, attention["ratio"], waveform3D=waveform3D, name=name + "_cse"
+            )
         elif attention["mechanism"] == "Spatial-Squeeze-and-Excitation":
-            x = spatial_squeeze_excite_block(x, name=name + "_sse")
+            x = spatial_squeeze_excite_block(x, waveform3D=waveform3D, name=name + "_sse")
 
-    x = tf.keras.layers.Add(name=name + "_add")([shortcut, x])
-    x = tf.keras.layers.ReLU(name=name + "_out")(x)
+    x = tf_layers.Add(name=name + "_add")([shortcut, x])
+    x = tf_layers.ReLU(name=name + "_out")(x)
 
     return x
 
@@ -153,6 +202,7 @@ def bottleneck_residual_block(
     stride=1,
     conv_shortcut=True,
     attention=None,
+    waveform3D=False,
     name=None,
 ):
     """Function to build a bottleneck residual block.
@@ -163,49 +213,84 @@ def bottleneck_residual_block(
       stride: default 1, stride of the first layer.
       conv_shortcut: default True, use convolution shortcut if True,
           otherwise identity shortcut.
-      squeeze_excite_ratio: default 0, squeeze excite ratio for the
-          attention mechanism.
+      attention: config parameters for the attention mechanism.
+      waveform3D: boolean, type and shape of input data.
       name: string, block label.
     Returns:
       Output tensor for the stacked blocks.
     """
 
     if conv_shortcut:
-        shortcut = tf.keras.layers.Conv2D(
-            filters=4 * filters, kernel_size=1, strides=stride, name=name + "_0_conv"
-        )(inputs)
+        if waveform3D:
+            shortcut = tf_layers.Conv3D(
+                filters=4 * filters,
+                kernel_size=1,
+                strides=stride,
+                name=name + "_0_conv",
+            )(inputs)
+        else:
+            shortcut = tf_layers.Conv2D(
+                filters=4 * filters,
+                kernel_size=1,
+                strides=stride,
+                name=name + "_0_conv",
+            )(inputs)
     else:
         shortcut = inputs
 
-    x = tf.keras.layers.Conv2D(
-        filters=filters,
-        kernel_size=1,
-        strides=stride,
-        activation=tf.nn.relu,
-        name=name + "_1_conv",
-    )(inputs)
-
-    x = tf.keras.layers.Conv2D(
-        filters=filters,
-        kernel_size=kernel_size,
-        padding="same",
-        activation=tf.nn.relu,
-        name=name + "_2_conv",
-    )(x)
-    x = tf.keras.layers.Conv2D(
-        filters=4 * filters, kernel_size=1, name=name + "_3_conv"
-    )(x)
+    if waveform3D:
+        x = tf_layers.Conv3D(
+            filters=filters,
+            kernel_size=1,
+            strides=stride,
+            activation=tf.nn.relu,
+            name=name + "_1_conv",
+        )(inputs)
+        x = tf_layers.Conv3D(
+            filters=filters,
+            kernel_size=kernel_size,
+            padding="same",
+            activation=tf.nn.relu,
+            name=name + "_2_conv",
+        )(x)
+        x = tf_layers.Conv3D(
+            filters=4 * filters,
+            kernel_size=1,
+            name=name + "_3_conv",
+        )(x)
+    else:
+        x = tf_layers.Conv2D(
+            filters=filters,
+            kernel_size=1,
+            strides=stride,
+            activation=tf.nn.relu,
+            name=name + "_1_conv",
+        )(inputs)
+        x = tf_layers.Conv2D(
+            filters=filters,
+            kernel_size=kernel_size,
+            padding="same",
+            activation=tf.nn.relu,
+            name=name + "_2_conv",
+        )(x)
+        x = tf_layers.Conv2D(filters=4 * filters, kernel_size=1, name=name + "_3_conv")(
+            x
+        )
 
     # Attention mechanism
     if attention is not None:
         if attention["mechanism"] == "Squeeze-and-Excitation":
-            x = squeeze_excite_block(x, attention["ratio"], name=name + "_se")
+            x = squeeze_excite_block(
+                x, attention["ratio"], waveform3D=waveform3D, name=name + "_se"
+            )
         elif attention["mechanism"] == "Channel-Squeeze-and-Excitation":
-            x = channel_squeeze_excite_block(x, attention["ratio"], name=name + "_cse")
+            x = channel_squeeze_excite_block(
+                x, attention["ratio"], waveform3D=waveform3D, name=name + "_cse"
+            )
         elif attention["mechanism"] == "Spatial-Squeeze-and-Excitation":
-            x = spatial_squeeze_excite_block(x, name=name + "_sse")
+            x = spatial_squeeze_excite_block(x, waveform3D=waveform3D, name=name + "_sse")
 
-    x = tf.keras.layers.Add(name=name + "_add")([shortcut, x])
-    x = tf.keras.layers.ReLU(name=name + "_out")(x)
+    x = tf_layers.Add(name=name + "_add")([shortcut, x])
+    x = tf_layers.ReLU(name=name + "_out")(x)
 
     return x

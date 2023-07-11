@@ -23,7 +23,6 @@ from ctlearn.utils import *
 
 
 def run_model(config, mode="train", debug=False, log_to_file=False):
-
     # Load options relating to logging and checkpointing
     root_model_dir = model_dir = config["Logging"]["model_directory"]
 
@@ -51,6 +50,9 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             ).to_dict("records")
             class_names = [name[0] for name in class_names]
 
+    # Set up the DL1DataReader
+    config["Data"], data_format = setup_DL1DataReader(config, mode)
+
     # Set up logging, saving the config and optionally logging to a file
     logger = setup_logging(config, model_dir, debug, log_to_file)
 
@@ -63,8 +65,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     strategy = tf.distribute.MirroredStrategy()
     logger.info("Number of devices: {}".format(strategy.num_replicas_in_sync))
 
-    # Set up the DL1DataReader
-    config["Data"], data_format = setup_DL1DataReader(config, mode)
     # Create data reader
     logger.info("Loading data:")
     logger.info("  For a large dataset, this may take a while...")
@@ -165,7 +165,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     # Open a strategy scope.
     with strategy.scope():
-
         # Backbone model
         backbone_module = importlib.import_module(config["Model"]["backbone"]["module"])
         backbone_model = getattr(
@@ -397,7 +396,9 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         logger.info("Predicting...")
         predictions = model.predict(data)
         if rest_data:
-            predictions = np.concatenate((predictions, model.predict(rest_data)), axis=0)
+            predictions = np.concatenate(
+                (predictions, model.predict(rest_data)), axis=0
+            )
 
         prediction_file = config["Prediction"]["prediction_file"].replace(".h5", "")
         if random_seed:
@@ -420,7 +421,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
 
 def main():
-
     parser = argparse.ArgumentParser(
         description=("Train/Predict with a CTLearn model.")
     )
@@ -462,13 +462,13 @@ def main():
     parser.add_argument(
         "--default_model",
         "-d",
-        help="Default CTLearn Model; valid options: TRN (mono), mergedTRN (stereo), and CNNRNN (stereo)",
+        help="Default CTLearn Model; valid options: SingleCNN, TRN, rawwaveSingleCNN, rawwaveTRN, calwaveSingleCNN, calwaveTRN (mono), mergedTRN, and CNNRNN (stereo)",
     )
     parser.add_argument(
-        "--cleaned_images",
+        "--clean",
         default=False,
         action=argparse.BooleanOptionalAction,
-        help="Flag, if the network should be trained with cleaned images",
+        help="Flag, if the network should be trained with cleaned images and waveforms",
     )
     parser.add_argument(
         "--pretrained_weights", "-w", help="Path to the pretrained weights"
@@ -481,7 +481,7 @@ def main():
     parser.add_argument(
         "--tel_types",
         "-t",
-        help="Selection of telescope types; valid option: LST_LST_LSTCam, LST_MAGIC_MAGICCam, MST_MST_FlashCam, MST_MST_NectarCam, SST_SCT_SCTCam, and/or SST_ASTRI_ASTRICam",
+        help="Selection of telescope types; valid option: LST_LST_LSTCam, LST_LST_LSTSiPMCam, LST_MAGIC_MAGICCam, MST_MST_FlashCam, MST_MST_NectarCam, SST_SCT_SCTCam, and/or SST_ASTRI_ASTRICam",
         nargs="+",
     )
     parser.add_argument(
@@ -532,10 +532,13 @@ def main():
     if args.reco:
         config["Reco"] = args.reco
 
-    if args.cleaned_images:
-        config["Data"]["image_channels"] = [
-            "cleaned_" + channel for channel in config["Data"]["image_channels"]
-        ]
+    if args.clean:
+        if "image_channels" in config["Data"]:
+            config["Data"]["image_channels"] = [
+                "cleaned_" + channel for channel in config["Data"]["image_channels"]
+            ]
+        if "waveform" in config["Data"]:
+            config["Data"]["waveform"] = "cleaned_" + config["Data"]["waveform"]
 
     if args.tel_types:
         config["Data"]["selected_telescope_types"] = args.tel_types
@@ -605,7 +608,6 @@ def main():
     random_seed = config["Data"].get("seed", 1234)
 
     if "train" in args.mode:
-
         # Shuffle the data in train mode as default
         if "shuffle" not in config["Data"]:
             config["Data"]["shuffle"] = True
@@ -644,17 +646,19 @@ def main():
                     if not files:
                         continue
                     for file in files:
-
                         with open(args.config_file, "r") as config_file:
                             config = yaml.safe_load(config_file)
 
                         if args.reco:
                             config["Reco"] = args.reco
-                        if args.cleaned_images:
-                            config["Data"]["image_channels"] = [
-                                "cleaned_" + channel
-                                for channel in config["Data"]["image_channels"]
-                            ]
+                        if args.clean:
+                            if "image_channels" in config["Data"]:
+                                config["Data"]["image_channels"] = [
+                                    "cleaned_" + channel
+                                    for channel in config["Data"]["image_channels"]
+                                ]
+                            if "waveform" in config["Data"]:
+                                config["Data"]["waveform"] = "cleaned_" + config["Data"]["waveform"]
                         if args.tel_types:
                             config["Data"]["selected_telescope_types"] = args.tel_types
                         if args.allowed_tels:
@@ -712,11 +716,14 @@ def main():
                     config = yaml.safe_load(config_file)
                 if args.reco:
                     config["Reco"] = args.reco
-                if args.cleaned_images:
-                    config["Data"]["image_channels"] = [
-                        "cleaned_" + channel
-                        for channel in config["Data"]["image_channels"]
-                    ]
+                if args.clean:
+                    if "image_channels" in config["Data"]:
+                        config["Data"]["image_channels"] = [
+                            "cleaned_" + channel
+                            for channel in config["Data"]["image_channels"]
+                        ]
+                    if "waveform" in config["Data"]:
+                        config["Data"]["waveform"] = "cleaned_" + config["Data"]["waveform"]
                 if args.tel_types:
                     config["Data"]["selected_telescope_types"] = args.tel_types
                 if args.allowed_tels:

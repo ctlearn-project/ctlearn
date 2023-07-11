@@ -31,6 +31,7 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
         self.trg_pos, self.trg_shape = None, None
         self.pon_pos = None
         self.pointing = []
+        self.wvf_pos, self.wvf_shape = None, None
         self.img_pos, self.img_shape = None, None
         self.prm_pos, self.prm_shape = None, None
         self.parameter_list = []
@@ -55,6 +56,9 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
                 self.trg_shape = desc["shape"]
             elif "pointing" in desc["name"]:
                 self.pon_pos = i
+            elif "waveform" in desc["name"]:
+                self.wvf_pos = i
+                self.wvf_shape = desc["shape"]
             elif "image" in desc["name"]:
                 self.img_pos = i
                 self.img_shape = desc["shape"]
@@ -113,6 +117,8 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
         "Generates data containing batch_size samples"
         if self.trg_pos is not None:
             triggers = np.empty((self.batch_size, *self.trg_shape))
+        if self.wvf_pos is not None:
+            waveforms = np.empty((self.batch_size, *self.wvf_shape))
         if self.img_pos is not None:
             images = np.empty((self.batch_size, *self.img_shape))
         if self.prm_pos is not None:
@@ -132,6 +138,8 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
             # Fill the features
             if self.trg_pos is not None:
                 triggers[i] = event[self.trg_pos]
+            if self.wvf_pos is not None:
+                waveforms[i] = event[self.wvf_pos]
             if self.img_pos is not None:
                 images[i] = np.reshape(event[self.img_pos], self.img_shape)
             if self.prm_pos is not None:
@@ -180,6 +188,8 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
         features = {}
         if self.trg_pos is not None:
             features["triggers"] = triggers
+        if self.wvf_pos is not None:
+            features["waveforms"] = waveforms
         if self.img_pos is not None:
             features["images"] = images
         if self.prm_pos is not None:

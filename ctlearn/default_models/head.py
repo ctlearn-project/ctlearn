@@ -1,9 +1,9 @@
 import tensorflow as tf
+import tensorflow.keras.layers as tf_layers
 from ctlearn.default_models.basic import fully_connect
 
 
 def standard_head(inputs, tasks, params):
-
     # Get the settings for the standard head
     standard_head_settings = params["standard_head"]
 
@@ -18,7 +18,7 @@ def standard_head(inputs, tasks, params):
             expected_logits_dimension=params["num_classes"],
             name="particle",
         )
-        logits["particletype"] = tf.keras.layers.Softmax(name="particletype")(logit)
+        logits["particletype"] = tf_layers.Softmax(name="particletype")(logit)
         losses["particletype"] = tf.keras.losses.CategoricalCrossentropy(
             reduction=tf.keras.losses.Reduction.SUM_OVER_BATCH_SIZE
         )
