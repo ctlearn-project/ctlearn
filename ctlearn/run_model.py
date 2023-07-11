@@ -362,12 +362,13 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         logger.info("Keras model saved in {}saved_model.pb".format(model_dir))
 
         # Saving model weights in onnx format
-        if config["Model"].get("convert2onnx", False):
+        if config["Model"].get("save2onnx", False):
             logger.info("Converting Keras model into ONNX format...")
+            logger.info("Make sure tf2onnx is installed in your enviroment!")
             import tf2onnx
 
             input_type_spec = [input._type_spec for input in backbone_inputs]
-            output_path = model_dir + model.name + ".onnx"
+            output_path = f"{model_dir}/{model.name}.onnx"
             tf2onnx.convert.from_keras(
                 model, input_signature=input_type_spec, output_path=output_path
             )
@@ -513,6 +514,11 @@ def main():
         help="Log to a file in model directory instead of terminal",
     )
     parser.add_argument(
+        "--save2onnx",
+        action="store_true",
+        help="Save model in an ONNX file",
+    )
+    parser.add_argument(
         "--debug", action="store_true", help="Print debug/logger messages"
     )
 
@@ -586,6 +592,10 @@ def main():
     if args.pretrained_weights:
         config["Model"]["pretrained_weights"] = args.pretrained_weights
         config["Model"]["trainable_backbone"] = False
+
+    # Set the option to save model into ONNX file from the command line
+    if args.save2onnx:
+        config["Model"]["save2onnx"] = args.save2onnx
 
     # Overwrite the number of epochs, batch size and random seed in the config file
     if args.num_epochs:
