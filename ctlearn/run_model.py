@@ -41,9 +41,11 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     # Read class names from the example identifiers file
     class_names = None
-    if mode == "predict" and os.path.isfile(model_dir + "/example_identifiers_file.h5"):
+    if mode == "predict" and os.path.isfile(
+        root_model_dir + "/example_identifiers_file.h5"
+    ):
         example_identifiers_file = pd.HDFStore(
-            model_dir + "/example_identifiers_file.h5"
+            root_model_dir + "/example_identifiers_file.h5"
         )
         if "/class_names" in list(example_identifiers_file.keys()):
             class_names = pd.read_hdf(
@@ -64,7 +66,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     # Create a MirroredStrategy.
     strategy = tf.distribute.MirroredStrategy()
-    atexit.register(strategy._extended._collective_ops._lock.locked) # type: ignore
+    atexit.register(strategy._extended._collective_ops._lock.locked)  # type: ignore
     logger.info("Number of devices: {}".format(strategy.num_replicas_in_sync))
 
     # Create data reader
@@ -670,7 +672,9 @@ def main():
                                     for channel in config["Data"]["image_channels"]
                                 ]
                             if "waveform" in config["Data"]:
-                                config["Data"]["waveform"] = "cleaned_" + config["Data"]["waveform"]
+                                config["Data"]["waveform"] = (
+                                    "cleaned_" + config["Data"]["waveform"]
+                                )
                         if args.tel_types:
                             config["Data"]["selected_telescope_types"] = args.tel_types
                         if args.allowed_tels:
@@ -735,7 +739,9 @@ def main():
                             for channel in config["Data"]["image_channels"]
                         ]
                     if "waveform" in config["Data"]:
-                        config["Data"]["waveform"] = "cleaned_" + config["Data"]["waveform"]
+                        config["Data"]["waveform"] = (
+                            "cleaned_" + config["Data"]["waveform"]
+                        )
                 if args.tel_types:
                     config["Data"]["selected_telescope_types"] = args.tel_types
                 if args.allowed_tels:
