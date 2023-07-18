@@ -125,8 +125,8 @@ def main():
     parser.add_argument(
         "--energy_range",
         "-e",
-        help="Energy range in TeV; default is [0.02, 20.0]",
-        default=[0.02, 20.0],
+        help="Energy range in TeV; default is [0.03, 30.0]",
+        default=[0.03, 30.0],
         nargs="+",
         type=float,
     )
@@ -191,6 +191,16 @@ def main():
         "-l",
         help="Maximum leakage2 intensity values",
         nargs="+",
+        type=float,
+    )
+    parser.add_argument(
+        "--energy_dependent_gh_efficiency",
+        help="Gamma/hadron efficiency cut for an energy dependent energy cut. Valid options: [0.0, 1.0]",
+        type=float,
+    )
+    parser.add_argument(
+        "--global_gh_cut",
+        help="Gamma/hadron cut for a global cut. Valid options: [0.0, 1.0]",
         type=float,
     )
 
@@ -334,8 +344,11 @@ def main():
     # background table composed of both electrons and protons
     background = table.vstack([particles[101]["events"], particles[1]["events"]])
 
-    INITIAL_GH_CUT = np.quantile(gammas["gh_score"], (1 - INITIAL_GH_CUT_EFFICENCY))
-    log.info(f"Using fixed G/H cut of {INITIAL_GH_CUT} to calculate theta cuts")
+    mask_theta_cuts = np.full(len(gammas["theta"]), True)
+    if not bool(args.energy_dependent_gh_efficiency) or bool(args.global_gh_cut):
+        INITIAL_GH_CUT = np.quantile(gammas["gh_score"], (1 - INITIAL_GH_CUT_EFFICENCY))
+        log.info(f"Using fixed G/H cut of {INITIAL_GH_CUT} to calculate theta cuts")
+        mask_theta_cuts = gammas["gh_score"] >= INITIAL_GH_CUT
 
     # event display uses much finer bins for the theta cut than
     # for the sensitivity
@@ -349,7 +362,7 @@ def main():
     # for now with a fixed global, unoptimized score cut
     # the cut is calculated in the same bins as the sensitivity,
     # but then interpolated to 10x the resolution.
-    mask_theta_cuts = gammas["gh_score"] >= INITIAL_GH_CUT
+
     theta_cuts_coarse = calculate_percentile_cut(
         gammas["theta"][mask_theta_cuts],
         gammas["reco_energy"][mask_theta_cuts],
@@ -375,37 +388,185 @@ def main():
             ),
         }
     )
-
-    log.info("Optimizing G/H separation cut for best sensitivity")
-    gh_cut_efficiencies = np.arange(
-        GH_CUT_EFFICIENCY_STEP,
-        MAX_GH_CUT_EFFICIENCY + GH_CUT_EFFICIENCY_STEP / 2,
-        GH_CUT_EFFICIENCY_STEP,
-    )
-    sensitivity, gh_cuts = optimize_gh_cut(
-        gammas,
-        background,
-        reco_energy_bins=sensitivity_bins,
-        gh_cut_efficiencies=gh_cut_efficiencies,
-        op=operator.ge,
-        theta_cuts=theta_cuts,
-        alpha=ALPHA,
-        fov_offset_min=FOV_OFFSET_MIN,
-        fov_offset_max=FOV_OFFSET_MAX,
+    # binnings for the irfs
+    true_energy_bins = add_overflow_bins(
+        create_bins_per_decade(MIN_ENERGY, MAX_ENERGY, 5)
     )
 
-    # now that we have the optimized gh cuts, we recalculate the theta
-    # cut as 68 percent containment on the events surviving these cuts.
-    log.info("Recalculating theta cut for optimized GH Cuts")
-    for tab in (gammas, background):
-        tab["selected_gh"] = evaluate_binned_cut(
-            tab["gh_score"], tab["reco_energy"], gh_cuts, operator.ge
+    reco_energy_bins = add_overflow_bins(
+        create_bins_per_decade(MIN_ENERGY, MAX_ENERGY, 5)
+    )
+
+    gh_center = bin_center(reco_energy_bins)
+    inter_center = bin_center(sensitivity_bins)
+
+    if args.energy_dependent_gh_efficiency:
+
+        log.info(
+            f"Performing a energy dependant G/H cut using gamma efficiency of {args.energy_dependent_gh_efficiency}"
+        )
+        gh_cuts_coarse = calculate_percentile_cut(
+            gammas["gh_score"],
+            gammas["reco_energy"],
+            bins=sensitivity_bins,
+            min_value=0.05,
+            max_value=0.95,
+            fill_value=gammas["gh_score"].max(),
+            percentile=100 * (1 - args.energy_dependent_gh_efficiency),
+            smoothing=None,
+            min_events=100,
         )
 
-    gammas["selected_theta"] = evaluate_binned_cut(
-        gammas["theta"], gammas["reco_energy"], theta_cuts, operator.le
-    )
-    gammas["selected"] = gammas["selected_theta"] & gammas["selected_gh"]
+        gh_cuts = table.QTable(
+            {
+                "low": reco_energy_bins[:-1],
+                "high": reco_energy_bins[1:],
+                "center": gh_center,
+                "cut": np.interp(
+                    np.log10(gh_center / u.TeV),
+                    np.log10(inter_center / u.TeV),
+                    gh_cuts_coarse["cut"],
+                ),
+            }
+        )
+
+        for tab in (gammas, background):
+            tab["selected_gh"] = evaluate_binned_cut(
+                tab["gh_score"], tab["reco_energy"], gh_cuts, operator.ge
+            )
+
+        gammas["selected_theta"] = evaluate_binned_cut(
+            gammas["theta"], gammas["reco_energy"], theta_cuts, operator.le
+        )
+        gammas["selected"] = gammas["selected_theta"] & gammas["selected_gh"]
+
+        sensitivities = []
+
+        gammas_hist = create_histogram_table(
+            gammas[gammas["selected"]], sensitivity_bins, "reco_energy"
+        )
+
+        background_hist = estimate_background(
+            events=background[background["selected_gh"]],
+            reco_energy_bins=sensitivity_bins,
+            theta_cuts=theta_cuts,
+            alpha=ALPHA,
+            fov_offset_min=FOV_OFFSET_MIN,
+            fov_offset_max=FOV_OFFSET_MAX,
+        )
+
+        sensitivity_coarse = calculate_sensitivity(
+            gammas_hist, background_hist, alpha=ALPHA
+        )
+        sensitivities.append(sensitivity_coarse)
+
+        sensitivity = sensitivities[0].copy()
+        for bin_id in range(len(sensitivity_bins) - 1):
+            sensitivities_bin = [
+                s["relative_sensitivity"][bin_id] for s in sensitivities
+            ]
+
+        if not np.all(np.isnan(sensitivities_bin)):
+            # nanargmin won't return the index of nan entries
+            best = np.nanargmin(sensitivities_bin)
+        else:
+            # if all are invalid, just use the first one
+            best = 0
+
+        sensitivity[bin_id] = sensitivities[best][bin_id]
+
+    elif args.global_gh_cut and bool(args.energy_dependent_gh_efficiency):
+        log.info(
+            "Both a global G/H cut and a energy dependant G/H cut were selected. The energy dependant G/H cut was performed"
+        )
+
+    elif args.global_gh_cut and not bool(args.energy_dependent_gh_efficiency):
+
+        log.info("Using a global G/H cut of " f"{args.global_gh_cut}")
+
+        for tab in (gammas, background):
+            tab["selected_gh"] = tab["gh_score"] > args.global_gh_cut
+
+        gh_cuts = table.QTable(
+            {
+                "low": reco_energy_bins[:-1],
+                "high": reco_energy_bins[1:],
+                "center": gh_center,
+                "cut": np.full(len(reco_energy_bins) - 1, args.global_gh_cut),
+            }
+        )
+
+        gammas["selected_theta"] = evaluate_binned_cut(
+            gammas["theta"], gammas["reco_energy"], theta_cuts, operator.le
+        )
+        gammas["selected"] = gammas["selected_theta"] & gammas["selected_gh"]
+
+        sensitivities = []
+
+        gammas_hist = create_histogram_table(
+            gammas[gammas["selected"]], sensitivity_bins, "reco_energy"
+        )
+
+        background_hist = estimate_background(
+            events=background[background["selected_gh"]],
+            reco_energy_bins=sensitivity_bins,
+            theta_cuts=theta_cuts,
+            alpha=ALPHA,
+            fov_offset_min=FOV_OFFSET_MIN,
+            fov_offset_max=FOV_OFFSET_MAX,
+        )
+
+        sensitivity_coarse = calculate_sensitivity(
+            gammas_hist, background_hist, alpha=ALPHA
+        )
+        sensitivities.append(sensitivity_coarse)
+
+        sensitivity = sensitivities[0].copy()
+        for bin_id in range(len(sensitivity_bins) - 1):
+            sensitivities_bin = [
+                s["relative_sensitivity"][bin_id] for s in sensitivities
+            ]
+
+        if not np.all(np.isnan(sensitivities_bin)):
+            # nanargmin won't return the index of nan entries
+            best = np.nanargmin(sensitivities_bin)
+        else:
+            # if all are invalid, just use the first one
+            best = 0
+
+        sensitivity[bin_id] = sensitivities[best][bin_id]
+
+    else:
+        log.info("Optimizing G/H separation cut for best sensitivity")
+        gh_cut_efficiencies = np.arange(
+            GH_CUT_EFFICIENCY_STEP,
+            MAX_GH_CUT_EFFICIENCY + GH_CUT_EFFICIENCY_STEP / 2,
+            GH_CUT_EFFICIENCY_STEP,
+        )
+        sensitivity, gh_cuts = optimize_gh_cut(
+            gammas,
+            background,
+            reco_energy_bins=sensitivity_bins,
+            gh_cut_efficiencies=gh_cut_efficiencies,
+            op=operator.ge,
+            theta_cuts=theta_cuts,
+            alpha=ALPHA,
+            fov_offset_min=FOV_OFFSET_MIN,
+            fov_offset_max=FOV_OFFSET_MAX,
+        )
+
+        # now that we have the optimized gh cuts, we recalculate the theta
+        # cut as 68 percent containment on the events surviving these cuts.
+        log.info("Recalculating theta cut for optimized GH Cuts")
+        for tab in (gammas, background):
+            tab["selected_gh"] = evaluate_binned_cut(
+                tab["gh_score"], tab["reco_energy"], gh_cuts, operator.ge
+            )
+
+        gammas["selected_theta"] = evaluate_binned_cut(
+            gammas["theta"], gammas["reco_energy"], theta_cuts, operator.le
+        )
+        gammas["selected"] = gammas["selected_theta"] & gammas["selected_gh"]
 
     # scale relative sensitivity by Crab flux to get the flux sensitivity
     spectrum = particles[0]["target_spectrum"]
@@ -428,13 +589,6 @@ def main():
         "_ONLY_THETA": gammas["selected_theta"],
     }
 
-    # binnings for the irfs
-    true_energy_bins = add_overflow_bins(
-        create_bins_per_decade(MIN_ENERGY, MAX_ENERGY, 10)
-    )
-    reco_energy_bins = add_overflow_bins(
-        create_bins_per_decade(MIN_ENERGY, MAX_ENERGY, 5)
-    )
     fov_offset_bins = [0, 0.5] * u.deg
     source_offset_bins = np.arange(0, 1 + 1e-4, 1e-3) * u.deg
     energy_migration_bins = np.geomspace(0.2, 5, 200)
