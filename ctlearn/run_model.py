@@ -286,6 +286,11 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         # Set up the callbacks
         monitor = "val_loss" if reader.num_classes < 3 else "loss"
         monitor_mode = "min"
+        initial_value_threshold = None
+        if "training_log.csv" in os.listdir(model_dir):
+            initial_value_threshold = pd.read_csv(model_dir + "/training_log.csv")[
+                monitor
+            ].min()
 
         # Model checkpoint callback
         model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
@@ -294,6 +299,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             verbose=1,
             mode=monitor_mode,
             save_best_only=True,
+            initial_value_threshold=initial_value_threshold,
         )
         # Tensorboard callback
         tensorboard_callback = tf.keras.callbacks.TensorBoard(
@@ -341,13 +347,12 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                     )
             logger.info("    Class weights: {}".format(reader.class_weight))
 
+        # Train and evaluate the model
         initial_epoch = 0
         if "training_log.csv" in os.listdir(model_dir):
             initial_epoch = (
                 pd.read_csv(model_dir + "/training_log.csv")["epoch"].iloc[-1] + 1
             )
-
-        # Train and evaluate the model
         logger.info("Training and evaluating...")
         history = model.fit(
             x=data,
