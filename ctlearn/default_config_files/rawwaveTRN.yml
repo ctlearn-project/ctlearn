@@ -28,7 +28,7 @@ Input:
 Model:
     name: 'ThinResNetWave'
     backbone: {module: 'single_cnn', function: 'single_cnn_model'}
-    engine_wvf: {module: 'resnet', function: 'stacked_res_blocks'}
+    waveform_engine: {module: 'resnet', function: 'stacked_res_blocks'}
     head: {module: 'head', function: 'standard_head'}
 Model Parameters:
     attention: {mechanism: 'Squeeze-and-Excitation', ratio: 16}

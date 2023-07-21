@@ -27,7 +27,7 @@ Input:
 Model:
     name: 'SingleCNN'
     backbone: {module: 'single_cnn', function: 'single_cnn_model'}
-    engine_wvf: {module: 'basic', function: 'conv_block'}
+    waveform_engine: {module: 'basic', function: 'conv_block'}
     head: {module: 'head', function: 'standard_head'}
 Model Parameters:
     attention: {mechanism: 'Squeeze-and-Excitation', ratio: 16}
