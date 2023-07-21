@@ -90,11 +90,11 @@ Data:
     # The recommended way of applying quality cuts to the data.
     # Only available for mono analysis at the moment.
     # Optional dict.
-    parameter_selection: 
+    parameter_selection:
         - {col_name: "hillas_intensity", min_value: 50.0}
         - {col_name: "leakage_intensity_width_2", max_value: 0.2}
 
-    # Not the recommended way of applying quality cuts to the data. 
+    # Not the recommended way of applying quality cuts to the data:
     # PyTables cut condition to apply selection cuts to events.
     # Optional string. Default: don't apply any cuts
     # See https://www.pytables.org/usersguide/condition_syntax.html
@@ -151,11 +151,33 @@ Data:
     # Optional integer. Default: use default random initialization.
     seed: 1234
 
-    # Image channels to load.
-    # Optional list of strings. Default: ['image']
-    # Valid options are 'image', 'peak_time' 'cleaned_image' and 'clean_peak_time', or whichever columns are in
-    # the telescope tables of your data files.
-    image_channels: ['image', 'peak_time']
+    # Waveform settings to load.
+    # Optional dicts. Default: None
+    #  - Valid options for 'waveform_type' are 'raw' (R0) or 'calibrated' (R1).
+    #  - 'waveform_sequence_length' is an integer corresponding to the length
+    #    of the sequence around the shower maximum
+    #  - Valid options for 'waveform_format' are 'timechannel_first' or 'timechannel_last'.
+    #  - 'waveform_r0pedsub' is a boolean weather to calculate and subtract the pedestal level
+    #    per pixel outside the sequence aound the shower maximum (only selectable for R0).
+    waveform_settings:
+            waveform_type: 'raw'
+            waveform_sequence_length: 5
+            waveform_format: 'timechannel_last'
+            waveform_r0pedsub: True
+
+    # Image settings to load.
+    # Optional dicts. Default: None
+    #  - Valid options for 'image_channels' are 'image', 'peak_time' 'cleaned_image' and 'clean_peak_time',
+    #    or whichever columns are in the telescope tables of your data files.
+    image_settings:
+        image_channels: ['image', 'peak_time']
+
+    # Parameter settings to load.
+    # Optional dicts. Default: None
+    #  - Valid options for 'parameter_list' are 'image', 'peak_time' 'cleaned_image' and 'clean_peak_time',
+    #    or whichever columns are in the telescope tables of your data files.
+    #parameter_settings:
+    #    parameter_list: ['hillas_intensity', 'leakage_intensity_width_2']
 
     # Settings passed directly as arguments to ImageMapper.
     # Optional dictionary. Default: {}

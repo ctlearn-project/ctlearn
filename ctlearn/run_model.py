@@ -548,12 +548,15 @@ def main():
         config["Reco"] = args.reco
 
     if args.clean:
-        if "image_channels" in config["Data"]:
-            config["Data"]["image_channels"] = [
-                "cleaned_" + channel for channel in config["Data"]["image_channels"]
+        if "image_settings" in config["Data"]:
+            config["Data"]["image_settings"]["image_channels"] = [
+                "cleaned_" + channel
+                for channel in config["Data"]["image_settings"]["image_channels"]
             ]
-        if "waveform" in config["Data"]:
-            config["Data"]["waveform"] = "cleaned_" + config["Data"]["waveform"]
+        if "waveform_settings" in config["Data"]:
+            config["Data"]["waveform_settings"]["waveform_type"] = (
+                "cleaned_" + config["Data"]["waveform_settings"]["waveform_type"]
+            )
 
     if args.tel_types:
         config["Data"]["selected_telescope_types"] = args.tel_types
@@ -671,14 +674,19 @@ def main():
                         if args.reco:
                             config["Reco"] = args.reco
                         if args.clean:
-                            if "image_channels" in config["Data"]:
-                                config["Data"]["image_channels"] = [
+                            if "image_settings" in config["Data"]:
+                                config["Data"]["image_settings"]["image_channels"] = [
                                     "cleaned_" + channel
-                                    for channel in config["Data"]["image_channels"]
+                                    for channel in config["Data"]["image_settings"][
+                                        "image_channels"
+                                    ]
                                 ]
                             if "waveform" in config["Data"]:
-                                config["Data"]["waveform"] = (
-                                    "cleaned_" + config["Data"]["waveform"]
+                                config["Data"]["waveform_settings"]["waveform_type"] = (
+                                    "cleaned_"
+                                    + config["Data"]["waveform_settings"][
+                                        "waveform_type"
+                                    ]
                                 )
                         if args.tel_types:
                             config["Data"]["selected_telescope_types"] = args.tel_types
@@ -738,14 +746,17 @@ def main():
                 if args.reco:
                     config["Reco"] = args.reco
                 if args.clean:
-                    if "image_channels" in config["Data"]:
-                        config["Data"]["image_channels"] = [
+                    if "image_settings" in config["Data"]:
+                        config["Data"]["image_settings"]["image_channels"] = [
                             "cleaned_" + channel
-                            for channel in config["Data"]["image_channels"]
+                            for channel in config["Data"]["image_settings"][
+                                "image_channels"
+                            ]
                         ]
                     if "waveform" in config["Data"]:
-                        config["Data"]["waveform"] = (
-                            "cleaned_" + config["Data"]["waveform"]
+                        config["Data"]["waveform_settings"]["waveform_type"] = (
+                            "cleaned_"
+                            + config["Data"]["waveform_settings"]["waveform_type"]
                         )
                 if args.tel_types:
                     config["Data"]["selected_telescope_types"] = args.tel_types

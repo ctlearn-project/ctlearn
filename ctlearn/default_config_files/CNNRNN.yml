@@ -1,6 +1,7 @@
 Data:
     mode: 'stereo'
-    image_channels: ['image', 'peak_time']
+    image_settings:
+        image_channels: ['image', 'peak_time']
     mapping_settings:
         mapping_method:
             'LSTCam': 'bilinear_interpolation'

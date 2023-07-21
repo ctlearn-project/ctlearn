@@ -1,8 +1,10 @@
 Data:
     mode: 'mono'
-    waveform: 'raw'
-    waveform_sequence_length: 5
-    waveform_format: 'timechannel_last'
+    waveform_settings:
+            waveform_type: 'raw'
+            waveform_sequence_length: 5
+            waveform_format: 'timechannel_last'
+            waveform_r0pedsub: True
     mapping_settings:
         mapping_method:
             'LSTCam': 'bilinear_interpolation'

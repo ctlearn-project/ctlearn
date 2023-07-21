@@ -81,7 +81,9 @@ def setup_DL1DataReader(config, mode):
 
         if os.path.isdir(file_list):
             config["Data"]["file_list"] = np.sort(
-                np.array([file_list+x for x in os.listdir(file_list) if x.endswith(".h5")])
+                np.array(
+                    [file_list + x for x in os.listdir(file_list) if x.endswith(".h5")]
+                )
             ).tolist()
 
         if not isinstance(config["Data"]["file_list"], list):
@@ -108,10 +110,16 @@ def setup_DL1DataReader(config, mode):
         # Retrieve the name convention for the dl1b parameters
         if data_format == "dl1dh":
             first_tablename = next(f.root.Parameters0._f_iter_nodes()).name
-            dl1bparameter_names = f.root.Parameters0._f_get_child(f"{first_tablename}").colnames
+            dl1bparameter_names = f.root.Parameters0._f_get_child(
+                f"{first_tablename}"
+            ).colnames
         else:
-            first_tablename = next(f.root.dl1.event.telescope.parameters._f_iter_nodes()).name
-            dl1bparameter_names = f.root.dl1.event.telescope.parameters._f_get_child(f"{first_tablename}").colnames
+            first_tablename = next(
+                f.root.dl1.event.telescope.parameters._f_iter_nodes()
+            ).name
+            dl1bparameter_names = f.root.dl1.event.telescope.parameters._f_get_child(
+                f"{first_tablename}"
+            ).colnames
 
     allow_overwrite = config["Data"].get("allow_overwrite", True)
     if "allow_overwrite" in config["Data"]:
@@ -124,8 +132,12 @@ def setup_DL1DataReader(config, mode):
     transformations = []
     event_info = []
     if data_format == "dl1dh":
-        if "parameter_list" not in config["Data"] and dl1bparameter_names is not None and mode == "predict":
-            config["Data"]["parameter_list"] = dl1bparameter_names
+        if (
+            "parameter_settings" not in config["Data"]
+            and dl1bparameter_names is not None
+            and mode == "predict"
+        ):
+            config["Data"]["parameter_settings"]["parameter_list"] = dl1bparameter_names
         # Parse list of event selection filters
         event_selection = {}
         for s in config["Data"].get("event_selection", {}):
@@ -156,8 +168,12 @@ def setup_DL1DataReader(config, mode):
                 }
             )
     else:
-        if "parameter_list" not in config["Data"] and dl1bparameter_names is not None and mode == "predict":
-            config["Data"]["parameter_list"] = dl1bparameter_names
+        if (
+            "parameter_settings" not in config["Data"]
+            and dl1bparameter_names is not None
+            and mode == "predict"
+        ):
+            config["Data"]["parameter_settings"]["parameter_list"] = dl1bparameter_names
         if "direction" in tasks:
             event_info.append("true_alt")
             event_info.append("true_az")
