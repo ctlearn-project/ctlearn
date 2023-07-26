@@ -29,6 +29,7 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
         # Features
         self.singleimg_shape = None
         self.trg_pos, self.trg_shape = None, None
+        self.trgpatch_pos, self.trgpatch_shape = None, None
         self.pon_pos = None
         self.pointing = []
         self.wvf_pos, self.wvf_shape = None, None
@@ -42,16 +43,14 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
         self.mjd_list, self.milli_list, self.nano_list = [], [], []
         # Labels
         self.prt_pos, self.enr_pos, self.drc_pos = None, None, None
-        self.prt_labels, self.enr_labels, self.alt_labels, self.az_labels = (
-            [],
-            [],
-            [],
-            [],
-        )
+        self.prt_labels = []
+        self.enr_labels = []
+        self.alt_labels, self.az_labels = [], []
+        self.trgpatch_labels = []
         self.energy_unit = None
 
         for i, desc in enumerate(self.DL1DataReaderDL1DH.example_description):
-            if "trigger" in desc["name"]:
+            if "HWtrigger" in desc["name"]:
                 self.trg_pos = i
                 self.trg_shape = desc["shape"]
             elif "pointing" in desc["name"]:
@@ -59,6 +58,9 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
             elif "waveform" in desc["name"]:
                 self.wvf_pos = i
                 self.wvf_shape = desc["shape"]
+            elif "trigger_patch" in desc["name"]:
+                self.trgpatch_pos = i
+                self.trgpatch_shape = desc["shape"]
             elif "image" in desc["name"]:
                 self.img_pos = i
                 self.img_shape = desc["shape"]
@@ -131,6 +133,10 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
                 energy = np.empty((self.batch_size))
             if self.drc_pos is not None:
                 direction = np.empty((self.batch_size, 2))
+            if self.trgpatch_pos is not None:
+                trigger_patches_true_image_sum = np.empty(
+                    (self.batch_size, *self.trgpatch_shape)
+                )
 
         # Generate data
         for i, index in enumerate(batch_indices):
@@ -157,6 +163,8 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
                     energy[i] = event[self.enr_pos]
                 if self.drc_pos is not None:
                     direction[i] = event[self.drc_pos]
+                if self.trgpatch_pos is not None:
+                    trigger_patches_true_image_sum[i] = event[self.trgpatch_pos]
             else:
                 # Save all labels for the prediction phase
                 if self.prt_pos is not None:
@@ -166,6 +174,8 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
                 if self.drc_pos is not None:
                     self.alt_labels.append(event[self.drc_pos][0])
                     self.az_labels.append(event[self.drc_pos][1])
+                if self.trgpatch_pos is not None:
+                    self.trgpatch_labels.append(event[self.trgpatch_pos])
                 # Save pointing
                 if self.pon_pos is not None:
                     self.pointing.append(event[self.pon_pos])
@@ -212,6 +222,9 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
             if self.drc_pos is not None:
                 labels["direction"] = direction
                 label = direction
+            if self.trgpatch_pos is not None:
+                labels["aitrigger"] = trigger_patches_true_image_sum
+                label = trigger_patches_true_image_sum
 
         # Temp fix till keras support class weights for multiple outputs or I wrote custom loss
         # https://github.com/keras-team/keras/issues/11735

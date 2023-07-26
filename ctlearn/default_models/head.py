@@ -51,6 +51,18 @@ def standard_head(inputs, tasks, params):
         )
         loss_weights["direction"] = standard_head_settings["direction"]["weight"]
         metrics["direction"] = tf.keras.metrics.MeanAbsoluteError(name="mae_direction")
+    if "aitrigger" in tasks:
+        logits["aitrigger"] = fully_connect(
+            inputs,
+            standard_head_settings["aitrigger"]["fc_head"],
+            expected_logits_dimension=1,
+            name="aitrigger",
+        )
+        losses["aitrigger"] = tf.keras.losses.MeanAbsoluteError(
+            reduction=tf.keras.losses.Reduction.SUM_OVER_BATCH_SIZE
+        )
+        loss_weights["aitrigger"] = standard_head_settings["aitrigger"]["weight"]
+        metrics["aitrigger"] = tf.keras.metrics.MeanAbsoluteError(name="mae_aitrigger")
 
     # Temp fix till keras support class weights for multiple outputs or I wrote custom loss
     # https://github.com/keras-team/keras/issues/11735

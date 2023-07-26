@@ -331,7 +331,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         # Scaling by total/2 helps keep the loss to a similar magnitude.
         # The sum of the weights of all examples stays the same.
         class_weight = None
-        if reader.num_classes >= 2:
+        if reader.num_classes >= 2 and "aitrigger" not in config["Reco"]:
             logger.info("  Apply class weights:")
             total = reader.simulated_particles["total"]
             logger.info("    Total number: {}".format(total))
@@ -466,7 +466,7 @@ def main():
     parser.add_argument(
         "--reco",
         "-r",
-        help="Reconstruction task to perform; valid options: particletype, energy, and/or direction",
+        help="Reconstruction task to perform; valid options: particletype, energy, direction and/or aitrigger",
         nargs="+",
     )
     parser.add_argument(

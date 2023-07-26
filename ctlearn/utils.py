@@ -178,6 +178,13 @@ def setup_DL1DataReader(config, mode):
             event_info.append("true_alt")
             event_info.append("true_az")
             transformations.append({"name": "DeltaAltAz_fix_subarray"})
+        if "trigger_settings" in config["Data"]:
+            config["Data"]["trigger_settings"]["include_nsb_patches"] = False
+            if "aitrigger" not in config["Data"]["trigger_settings"]:
+                config["Data"]["trigger_settings"]["aitrigger"] = False
+            if "aitrigger" in tasks:
+                config["Data"]["trigger_settings"]["aitrigger"] = True
+                config["Data"]["trigger_settings"]["include_nsb_patches"] = True
 
     if "particletype" in tasks:
         event_info.append("true_shower_primary_id")
