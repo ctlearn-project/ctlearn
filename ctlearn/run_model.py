@@ -30,7 +30,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     random_seed = None
     if config["Logging"].get("add_seed", False):
         random_seed = config["Data"]["seed"]
-        model_dir += f"/seed_{random_seed}"
+        model_dir += f"/seed_{random_seed}/"
         if not os.path.exists(model_dir):
             if mode == "predict":
                 raise ValueError(
@@ -184,9 +184,9 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             inputs=backbone_output, tasks=config["Reco"], params=model_params
         )
 
-        if "saved_model.pb" in np.array([os.listdir(model_dir)]):
-            logger.info("  Loading weights from '{}'.".format(model_dir))
-            model = tf.keras.models.load_model(model_dir)
+        if "ctlearn_model" in np.array([os.listdir(model_dir)]):
+            logger.info(f"  Loading weights from '{model_dir}/ctlearn_model/'.")
+            model = tf.keras.models.load_model(f"{model_dir}/ctlearn_model/")
         else:
             model = tf.keras.Model(backbone_inputs, logits, name="CTLearn_model")
 
@@ -294,7 +294,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
         # Model checkpoint callback
         model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
-            filepath=model_dir,
+            filepath=f"{model_dir}/ctlearn_model/",
             monitor=monitor,
             verbose=1,
             mode=monitor_mode,
@@ -307,7 +307,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         )
         # CSV logger callback
         csv_logger_callback = tf.keras.callbacks.CSVLogger(
-            filename=model_dir + "/training_log.csv", append=True
+            filename=f"{model_dir}/training_log.csv", append=True
         )
         # Learning rate reducing callback
         lr_reducing_callback = tf.keras.callbacks.ReduceLROnPlateau(
@@ -367,8 +367,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             use_multiprocessing=use_multiprocessing,
         )
         logger.info("Training and evaluating finished succesfully!")
-        model.save(model_dir)
-        logger.info("Keras model saved in {}saved_model.pb".format(model_dir))
 
         # Saving model weights in onnx format
         if config["Model"].get("save2onnx", False):
@@ -377,7 +375,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             import tf2onnx
 
             input_type_spec = [input._type_spec for input in backbone_inputs]
-            output_path = f"{model_dir}/{model.name}.onnx"
+            output_path = f"{model_dir}/ctlearn_model/{model.name}.onnx"
             tf2onnx.convert.from_keras(
                 model, input_signature=input_type_spec, output_path=output_path
             )
