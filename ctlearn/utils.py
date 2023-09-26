@@ -137,7 +137,7 @@ def setup_DL1DataReader(config, mode):
             and dl1bparameter_names is not None
             and mode == "predict"
         ):
-            config["Data"]["parameter_settings"]["parameter_list"] = dl1bparameter_names
+            config["Data"]["parameter_settings"] = {"parameter_list": dl1bparameter_names}
         # Parse list of event selection filters
         event_selection = {}
         for s in config["Data"].get("event_selection", {}):
@@ -173,7 +173,7 @@ def setup_DL1DataReader(config, mode):
             and dl1bparameter_names is not None
             and mode == "predict"
         ):
-            config["Data"]["parameter_settings"]["parameter_list"] = dl1bparameter_names
+            config["Data"]["parameter_settings"] = {"parameter_list": dl1bparameter_names}
         if "direction" in tasks:
             event_info.append("true_alt")
             event_info.append("true_az")
