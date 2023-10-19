@@ -9,6 +9,7 @@ Data:
             'LSTCam': 'bilinear_interpolation'
             'FlashCam': 'bilinear_interpolation'
             'NectarCam': 'bilinear_interpolation'
+            'DigiCam': 'bilinear_interpolation'
             'CHEC': 'oversampling'
             'SCTCam': 'oversampling'
             'LSTSiPMCam': 'bilinear_interpolation'
@@ -17,6 +18,7 @@ Data:
             'LSTCam': 2
             'FlashCam': 2
             'NectarCam': 2
+            'DigiCam': 2
             'CHEC': 0
             'SCTCam': 0
             'LSTSiPMCam': 2

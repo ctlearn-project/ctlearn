@@ -489,7 +489,7 @@ def main():
     parser.add_argument(
         "--tel_types",
         "-t",
-        help="Selection of telescope types; valid option: LST_LST_LSTCam, LST_LST_LSTSiPMCam, LST_MAGIC_MAGICCam, MST_MST_FlashCam, MST_MST_NectarCam, SST_SCT_SCTCam, and/or SST_ASTRI_ASTRICam",
+        help="Selection of telescope types; valid option: LST_LST_LSTCam, LST_LST_LSTSiPMCam, LST_MAGIC_MAGICCam, MST_MST_FlashCam, MST_MST_NectarCam, SST_1M_DigiCam, SST_SCT_SCTCam, and/or SST_ASTRI_ASTRICam",
         nargs="+",
     )
     parser.add_argument(
