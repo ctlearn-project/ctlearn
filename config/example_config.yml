@@ -66,8 +66,9 @@ Data:
     #   - 'LST_MAGIC_MAGICCam': MAGIC Telescopes
     #   - 'MST_MST_FlashCam': MST Telescope with FlashCAM Camera
     #   - 'MST_MST_NectarCam': MST Telescope with NectarCAM Camera
+    #   - 'SST_1M_DigiCam4': SST1M Telescope with DigiCam Camera
     #   - 'SST_SCT_SCTCam': SCT Telescope and Camera
-    #   - 'SST_ASTRI_ASTRICam': SST-2M ASTRI Telescope and CHECH Camera
+    #   - 'SST_ASTRI_ASTRICam': SST-2M ASTRI Telescope and CECH Camera
     # Camera images from the following telescopes can be read, but writers
     # for the data are not yet available:
     #   - FACT, HESS-I, HESS-II, VERITAS
@@ -215,6 +216,7 @@ Data:
             'LSTCam': 'bilinear_interpolation'
             'FlashCam': 'bilinear_interpolation'
             'NectarCam': 'bilinear_interpolation'
+            'DigiCam': 'bilinear_interpolation'
             'SCTCam': 'oversampling'
             'CHEC': 'oversampling'
             'MAGICCam': 'bilinear_interpolation'
@@ -227,6 +229,7 @@ Data:
             'LSTCam': 2
             'FlashCam': 1
             'NectarCam': 2
+            'DigiCam': 2
             'SCTCam': 0
             'CHEC': 0
             'MAGICCam': 2

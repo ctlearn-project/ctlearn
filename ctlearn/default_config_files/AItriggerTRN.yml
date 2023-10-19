@@ -41,6 +41,7 @@ Data:
             'LSTCam': 'axial_addressing'
             'FlashCam': 'axial_addressing'
             'NectarCam': 'axial_addressing'
+            'DigiCam': 'axial_addressing'
             'CHEC': 'oversampling'
             'SCTCam': 'oversampling'
             'LSTSiPMCam': 'axial_addressing'
@@ -49,6 +50,7 @@ Data:
             'LSTCam': 2
             'FlashCam': 2
             'NectarCam': 2
+            'DigiCam': 2
             'CHEC': 0
             'SCTCam': 0
             'LSTSiPMCam': 2
