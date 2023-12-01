@@ -2,7 +2,8 @@ Data:
     mode: 'mono'
     waveform_settings:
         waveform_type: 'calibrated'
-        waveform_sequence_length: 5
+        waveform_sequence_length: 20
+        waveform_max_from_simulation: False
         waveform_format: 'timechannel_last'
     mapping_settings:
         mapping_method:
@@ -44,18 +45,18 @@ Model Parameters:
             bottleneck: null
             batchnorm: false
     standard_head:
-        particletype: {fc_head: [512, 256], weight: 1.0}
+        type: {fc_head: [512, 256], weight: 1.0}
         energy: {fc_head: [512, 256], weight: 1.0}
         direction: {fc_head: [512, 256], weight: 1.0}
 Training:
-    validation_split: 0.05
+    validation_split: 0.1
     num_epochs: 10
     verbose: 2
     workers: 1
     optimizer: 'Adam'
     adam_epsilon: 1.0e-8
-    base_learning_rate: 0.0001
+    base_learning_rate: 0.00001
     lr_reducing_patience: 5
     lr_reducing_factor: 0.5
     lr_reducing_mindelta: 0.01
-    lr_reducing_minlr: 0.00001
+    lr_reducing_minlr: 0.000001

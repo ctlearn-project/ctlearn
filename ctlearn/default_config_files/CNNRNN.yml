@@ -42,11 +42,11 @@ Model Parameters:
             bottleneck: null
             batchnorm: false
     standard_head:
-        particletype: {fc_head: [], weight: 1.0}
+        type: {fc_head: [], weight: 1.0}
         energy: {fc_head: [], weight: 1.0}
         direction: {fc_head: [], weight: 1.0}
 Training:
-    validation_split: 0.05
+    validation_split: 0.1
     num_epochs: 5
     verbose: 2
     workers: 1
