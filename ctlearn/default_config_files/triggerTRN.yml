@@ -1,58 +1,33 @@
 Data:
     mode: 'mono'
     trigger_settings:
-        trigger_patch_size:
-            'LSTSiPMCam': [30, 30]
+        number_of_trigger_patches: [7, 7]
+        reco_cherenkov_photons: False
         include_nsb_patches: True
-        trigger_patches:
-            'LSTSiPMCam':
-                - {x: 30, y: 30}
-                - {x: 30, y: 45}
-                - {x: 30, y: 60}
-                - {x: 30, y: 75}
-                - {x: 30, y: 90}
-                - {x: 45, y: 30}
-                - {x: 45, y: 45}
-                - {x: 45, y: 60}
-                - {x: 45, y: 75}
-                - {x: 45, y: 90}
-                - {x: 60, y: 30}
-                - {x: 60, y: 45}
-                - {x: 60, y: 60} #center
-                - {x: 60, y: 75}
-                - {x: 60, y: 90}
-                - {x: 75, y: 30}
-                - {x: 75, y: 45}
-                - {x: 75, y: 60}
-                - {x: 75, y: 75}
-                - {x: 75, y: 90}
-                - {x: 90, y: 30}
-                - {x: 90, y: 45}
-                - {x: 90, y: 60}
-                - {x: 90, y: 75}
-                - {x: 90, y: 90}
+        trigger_patch_from_simulation: True
     waveform_settings:
         waveform_type: 'raw'
         waveform_sequence_length: 5
+        waveform_max_from_simulation: True
         waveform_format: 'timechannel_last'
         waveform_r0pedsub: True
     mapping_settings:
         mapping_method:
-            'LSTCam': 'axial_addressing'
-            'FlashCam': 'axial_addressing'
-            'NectarCam': 'axial_addressing'
-            'DigiCam': 'axial_addressing'
+            'LSTCam': 'image_shifting'
+            'FlashCam': 'image_shifting'
+            'NectarCam': 'image_shifting'
+            'DigiCam': 'image_shifting'
             'CHEC': 'oversampling'
             'SCTCam': 'oversampling'
-            'LSTSiPMCam': 'axial_addressing'
-            'MAGICCam': 'axial_addressing'
+            'LSTSiPMCam': 'image_shifting'
+            'MAGICCam': 'image_shifting'
         padding:
             'LSTCam': 2
             'FlashCam': 2
             'NectarCam': 2
             'DigiCam': 2
-            'CHEC': 0
-            'SCTCam': 0
+            'CHEC': 2
+            'SCTCam': 2
             'LSTSiPMCam': 2
             'MAGICCam': 2
 Input:
@@ -74,10 +49,10 @@ Model Parameters:
                 - {filters: 128, blocks: 3}
                 - {filters: 256, blocks: 3}
     standard_head:
-        particletype: {fc_head: [512, 256], weight: 1.0}
+        type: {fc_head: [512, 256], weight: 1.0}
         energy: {fc_head: [512, 256], weight: 1.0}
         direction: {fc_head: [512, 256], weight: 1.0}
-        aitrigger: {fc_head: [512, 256], weight: 1.0}
+        cherenkov_photons: {fc_head: [512, 256], weight: 1.0}
 Training:
     validation_split: 0.05
     num_epochs: 10

@@ -1,0 +1,69 @@
+Data:
+    mode: 'mono'
+    trigger_settings:
+        number_of_trigger_patches: [7, 7]
+        reco_cherenkov_photons: False
+        include_nsb_patches: True
+        trigger_patch_from_simulation: True
+    waveform_settings:
+        waveform_type: 'raw'
+        waveform_sequence_length: 5
+        waveform_max_from_simulation: True
+        waveform_format: 'timechannel_last'
+        waveform_r0pedsub: True
+    mapping_settings:
+        mapping_method:
+            'LSTCam': 'image_shifting'
+            'FlashCam': 'image_shifting'
+            'NectarCam': 'image_shifting'
+            'DigiCam': 'image_shifting'
+            'CHEC': 'oversampling'
+            'SCTCam': 'oversampling'
+            'LSTSiPMCam': 'image_shifting'
+            'MAGICCam': 'image_shifting'
+        padding:
+            'LSTCam': 2
+            'FlashCam': 2
+            'NectarCam': 2
+            'DigiCam': 2
+            'CHEC': 2
+            'SCTCam': 2
+            'LSTSiPMCam': 2
+            'MAGICCam': 2
+Input:
+    batch_size_per_worker: 8
+    concat_telescopes: false
+Model:
+    name: 'SingleCNN'
+    backbone: {module: 'single_cnn', function: 'single_cnn_model'}
+    waveform_engine: {module: 'basic', function: 'conv_block'}
+    head: {module: 'head', function: 'standard_head'}
+Model Parameters:
+    attention: {mechanism: 'Squeeze-and-Excitation', ratio: 16}
+    basic:
+        conv_block:
+            layers:
+                - {filters: 32, kernel_size: 3, number: 1}
+                - {filters: 32, kernel_size: 3, number: 1}
+                - {filters: 64, kernel_size: 3, number: 1}
+                - {filters: 128, kernel_size: 3, number: 1}
+            max_pool: {size: 2, strides: 2}
+            bottleneck: null
+            batchnorm: false
+    standard_head:
+        type: {fc_head: [512, 256], weight: 1.0}
+        energy: {fc_head: [512, 256], weight: 1.0}
+        direction: {fc_head: [512, 256], weight: 1.0}
+        cherenkov_photons: {fc_head: [512, 256], weight: 1.0}
+Training:
+    validation_split: 0.05
+    num_epochs: 10
+    verbose: 2
+    workers: 1
+    optimizer: 'Adam'
+    adam_epsilon: 1.0e-8
+    base_learning_rate: 0.0001
+    lr_reducing_patience: 5
+    lr_reducing_factor: 0.5
+    lr_reducing_mindelta: 0.01
+    lr_reducing_minlr: 0.00001

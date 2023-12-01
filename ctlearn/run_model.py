@@ -331,7 +331,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         # Scaling by total/2 helps keep the loss to a similar magnitude.
         # The sum of the weights of all examples stays the same.
         class_weight = None
-        if reader.num_classes >= 2 and "aitrigger" not in config["Reco"]:
+        if reader.num_classes >= 2 and not reader.reco_cherenkov_photons:
             logger.info("  Apply class weights:")
             total = reader.simulated_particles["total"]
             logger.info("    Total number: {}".format(total))
@@ -464,7 +464,7 @@ def main():
     parser.add_argument(
         "--reco",
         "-r",
-        help="Reconstruction task to perform; valid options: particletype, energy, direction and/or aitrigger",
+        help="Reconstruction task to perform; valid options: type, energy, direction and/or cherenkov_photons",
         nargs="+",
     )
     parser.add_argument(
@@ -679,7 +679,7 @@ def main():
                                         "image_channels"
                                     ]
                                 ]
-                            if "waveform" in config["Data"]:
+                            if "waveform_settings" in config["Data"]:
                                 config["Data"]["waveform_settings"]["waveform_type"] = (
                                     "cleaned_"
                                     + config["Data"]["waveform_settings"][
@@ -751,7 +751,7 @@ def main():
                                 "image_channels"
                             ]
                         ]
-                    if "waveform" in config["Data"]:
+                    if "waveform_settings" in config["Data"]:
                         config["Data"]["waveform_settings"]["waveform_type"] = (
                             "cleaned_"
                             + config["Data"]["waveform_settings"]["waveform_type"]

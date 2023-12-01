@@ -178,15 +178,15 @@ def setup_DL1DataReader(config, mode):
             event_info.append("true_alt")
             event_info.append("true_az")
             transformations.append({"name": "DeltaAltAz_fix_subarray"})
-        if "trigger_settings" in config["Data"]:
-            config["Data"]["trigger_settings"]["include_nsb_patches"] = False
-            if "aitrigger" not in config["Data"]["trigger_settings"]:
-                config["Data"]["trigger_settings"]["aitrigger"] = False
-            if "aitrigger" in tasks:
-                config["Data"]["trigger_settings"]["aitrigger"] = True
-                config["Data"]["trigger_settings"]["include_nsb_patches"] = True
+        if "cherenkov_photons" in tasks:
+            if "trigger_settings" in config["Data"]:
+                config["Data"]["trigger_settings"]["reco_cherenkov_photons"] = True
+            else:
+                raise ValueError(
+                    "Required trigger settings are not provided for the regression of Cherenkov photons."
+                )
 
-    if "particletype" in tasks:
+    if "type" in tasks:
         event_info.append("true_shower_primary_id")
 
     if "energy" in tasks:

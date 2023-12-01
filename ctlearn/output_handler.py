@@ -144,7 +144,7 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
                 axis=0,
             )
         reco["true_shower_primary_id"] = true_shower_primary_id
-    if "particletype" in tasks:
+    if "type" in tasks:
         for n, name in enumerate(data.class_names):
             reco[name + "ness"] = np.array(predictions[:, n])
     # Energy regression
