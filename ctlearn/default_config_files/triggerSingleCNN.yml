@@ -39,7 +39,6 @@ Model:
     waveform_engine: {module: 'basic', function: 'conv_block'}
     head: {module: 'head', function: 'standard_head'}
 Model Parameters:
-    attention: {mechanism: 'Squeeze-and-Excitation', ratio: 16}
     basic:
         conv_block:
             layers:

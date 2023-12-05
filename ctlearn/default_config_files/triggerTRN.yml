@@ -39,7 +39,6 @@ Model:
     waveform_engine: {module: 'resnet', function: 'stacked_res_blocks'}
     head: {module: 'head', function: 'standard_head'}
 Model Parameters:
-    attention: {mechanism: 'Squeeze-and-Excitation', ratio: 16}
     resnet:
         stacked_res_blocks:
             residual_block: 'bottleneck'
