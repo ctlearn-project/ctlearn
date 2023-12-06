@@ -212,6 +212,19 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
         reco["reco_alt"] = np.array(predictions[:, 0]) + pointing_alt
         reco["reco_az"] = np.array(predictions[:, 1]) + pointing_az
 
+    if data.trgpatch_pos:
+        cherenkov_photons = data.trgpatch_labels[data.batch_size :]
+        if rest_data:
+            cherenkov_photons = np.concatenate(
+                (
+                    cherenkov_photons,
+                    rest_data.trgpatch_labels[rest_data.batch_size :],
+                ),
+                axis=0,
+            )
+        reco["true_cherenkov_photons"] = cherenkov_photons
+    if "cherenkov_photons" in tasks:
+        reco["reco_cherenkov_photons"] = np.array(predictions)[:, 0]
     # Dump the dl2 data to hdf5 file
     pd.DataFrame(data=reco).to_hdf(h5file, key=f"/dl2/reco", mode="a")
 

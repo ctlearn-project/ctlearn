@@ -137,7 +137,6 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
                 trigger_patches_true_image_sum = np.empty(
                     (self.batch_size, *self.trgpatch_shape)
                 )
-
         # Generate data
         for i, index in enumerate(batch_indices):
             event = self.DL1DataReaderDL1DH[index]
@@ -175,7 +174,7 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
                     self.alt_labels.append(event[self.drc_pos][0])
                     self.az_labels.append(event[self.drc_pos][1])
                 if self.trgpatch_pos is not None:
-                    self.trgpatch_labels.append(event[self.trgpatch_pos])
+                    self.trgpatch_labels.append(np.float32(event[self.trgpatch_pos]))
                 # Save pointing
                 if self.pon_pos is not None:
                     self.pointing.append(event[self.pon_pos])
@@ -208,7 +207,7 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
         labels = {}
         if self.mode == "train":
             if self.prt_pos is not None:
-                labels["particletype"] = tf.keras.utils.to_categorical(
+                labels["type"] = tf.keras.utils.to_categorical(
                     particletype,
                     num_classes=self.DL1DataReaderDL1DH.num_classes,
                 )
@@ -222,8 +221,8 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
             if self.drc_pos is not None:
                 labels["direction"] = direction
                 label = direction
-            if self.trgpatch_pos is not None:
-                labels["aitrigger"] = trigger_patches_true_image_sum
+            if self.trgpatch_pos is not None and self.DL1DataReaderDL1DH.reco_cherenkov_photons:
+                labels["cherenkov_photons"] = trigger_patches_true_image_sum
                 label = trigger_patches_true_image_sum
 
         # Temp fix till keras support class weights for multiple outputs or I wrote custom loss
