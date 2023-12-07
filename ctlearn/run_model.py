@@ -118,6 +118,11 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             concat_telescopes=concat_telescopes,
         )
     elif mode == "predict":
+        if "trigger_settings" in config["Data"]:
+            if config["Data"]["trigger_settings"]["include_nsb_patches"] == "all":
+                logger.info("  Predicting on NSB trigger patches. Simulation info irrelevant.")
+            elif config["Data"]["trigger_settings"]["include_nsb_patches"] == "off":
+                logger.info("  Predicting on trigger patches.")
         logger.info(
             "  Simulation info for pyirf.simulations.SimulatedEventsInfo: {}".format(
                 reader.simulation_info
@@ -479,6 +484,12 @@ def main():
         help="Flag, if the network should be trained with cleaned images and waveforms",
     )
     parser.add_argument(
+        "--nsb",
+        default=False,
+        action=argparse.BooleanOptionalAction,
+        help="Flag, if the network should predict on NSB trigger patches",
+    )
+    parser.add_argument(
         "--pretrained_weights", "-w", help="Path to the pretrained weights"
     )
     parser.add_argument(
@@ -686,6 +697,11 @@ def main():
                                         "waveform_type"
                                     ]
                                 )
+                        if "trigger_settings" in config["Data"]:
+                            if args.nsb:
+                                config["Data"]["trigger_settings"]["include_nsb_patches"] = "all"
+                            else:
+                                config["Data"]["trigger_settings"]["include_nsb_patches"] = "off"
                         if args.tel_types:
                             config["Data"]["selected_telescope_types"] = args.tel_types
                         if args.allowed_tels:
@@ -756,6 +772,11 @@ def main():
                             "cleaned_"
                             + config["Data"]["waveform_settings"]["waveform_type"]
                         )
+                if "trigger_settings" in config["Data"]:
+                    if args.nsb:
+                        config["Data"]["trigger_settings"]["include_nsb_patches"] = "all"
+                    else:
+                        config["Data"]["trigger_settings"]["include_nsb_patches"] = "off"
                 if args.tel_types:
                     config["Data"]["selected_telescope_types"] = args.tel_types
                 if args.allowed_tels:

@@ -226,16 +226,19 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
     if "cherenkov_photons" in tasks:
         reco["reco_cherenkov_photons"] = np.array(predictions)[:, 0]
     # Dump the dl2 data to hdf5 file
-    pd.DataFrame(data=reco).to_hdf(h5file, key=f"/dl2/reco", mode="a")
+    if reader.include_nsb_patches is None:
+        pd.DataFrame(data=reco).to_hdf(h5file, key=f"/dl2/reco", mode="a")
+    else:
+        pd.DataFrame(data=reco).to_hdf(h5file, key=f"/trigger/reco", mode="a")
 
     # Store the simulation information for pyirf
-    if reader.simulation_info:
+    if reader.simulation_info and reader.include_nsb_patches != "all":
         pd.DataFrame(data=reader.simulation_info, index=[0]).to_hdf(
             h5file, key=f"/info/mc_header", mode="a"
         )
 
     # Store the selected Hillas parameters (dl1b)
-    if reader.parameter_list:
+    if reader.parameter_list and reader.include_nsb_patches != "all":
         tel_counter = 0
         if reader.mode == "mono":
             tel_type = list(reader.selected_telescopes.keys())[0]
