@@ -35,10 +35,10 @@ def single_cnn_model(data, model_params):
         if data.wvf_pos is not None:
             backbone_name_wvf = backbone_name + "_wvf"
             engine_wvf_module = importlib.import_module(
-                model_params["engine_wvf"]["module"]
+                model_params["waveform_engine"]["module"]
             )
             engine_wvf = getattr(
-                engine_wvf_module, model_params["engine_wvf"]["function"]
+                engine_wvf_module, model_params["waveform_engine"]["function"]
             )
             if init_layer:
                 if waveform3D:
@@ -86,10 +86,10 @@ def single_cnn_model(data, model_params):
         if data.img_pos is not None:
             backbone_name_img = backbone_name + "_img"
             engine_img_module = importlib.import_module(
-                model_params["engine_img"]["module"]
+                model_params["image_engine"]["module"]
             )
             engine_img = getattr(
-                engine_img_module, model_params["engine_img"]["function"]
+                engine_img_module, model_params["image_engine"]["function"]
             )
             if init_layer:
                 network_input_img = tf_layers.Conv2D(
