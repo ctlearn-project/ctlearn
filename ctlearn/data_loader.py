@@ -169,10 +169,10 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
                 if self.prt_pos is not None:
                     self.prt_labels.append(np.float32(event[self.prt_pos]))
                 if self.enr_pos is not None:
-                    self.enr_labels.append(event[self.enr_pos][0])
+                    self.enr_labels.append(np.float32(event[self.enr_pos][0]))
                 if self.drc_pos is not None:
-                    self.alt_labels.append(event[self.drc_pos][0])
-                    self.az_labels.append(event[self.drc_pos][1])
+                    self.alt_labels.append(np.float32(event[self.drc_pos][0]))
+                    self.az_labels.append(np.float32(event[self.drc_pos][1]))
                 if self.trgpatch_pos is not None:
                     self.trgpatch_labels.append(np.float32(event[self.trgpatch_pos]))
                 # Save pointing

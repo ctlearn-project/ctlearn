@@ -174,7 +174,7 @@ def setup_DL1DataReader(config, mode):
             and mode == "predict"
         ):
             config["Data"]["parameter_settings"] = {"parameter_list": dl1bparameter_names}
-        if "direction" in tasks:
+        if "direction" in tasks or mode == "predict":
             event_info.append("true_alt")
             event_info.append("true_az")
             transformations.append({"name": "DeltaAltAz_fix_subarray"})
@@ -186,10 +186,10 @@ def setup_DL1DataReader(config, mode):
                     "Required trigger settings are not provided for the regression of Cherenkov photons."
                 )
 
-    if "type" in tasks:
+    if "type" in tasks or mode == "predict":
         event_info.append("true_shower_primary_id")
 
-    if "energy" in tasks:
+    if "energy" in tasks or mode == "predict":
         if mc_file:
             event_info.append("true_energy")
         transformations.append({"name": "MCEnergy"})
