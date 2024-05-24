@@ -30,6 +30,7 @@ but being much more lightwheight
 from subprocess import check_output, CalledProcessError
 from os import path, name, devnull, environ, listdir
 from ast import literal_eval
+import git
 
 __all__ = ("get_version", "get_version_pypi")
 
@@ -82,6 +83,12 @@ def get_git_describe_version(abbrev=7):
     """return the string output of git desribe"""
     try:
         with open(devnull, "w") as fnull:
+
+
+            repo = git.Repo("/usr/share/info")
+
+            tagList=repo.git.ls_remote("--tags", "origin")
+            print(tagList)
             arguments = ['git', '--info-path']
             print('HOLA1')
             cmd = 'git describe --tags --match [0-9]*'.split()
