@@ -94,7 +94,7 @@ def get_git_describe_version(abbrev=7):
 
 def format_git_describe(git_str, pep440=False):
     """format the result of calling 'git describe' as a python version"""
-
+    print('hola2')
     if "-" not in git_str:  # currently at a tag
         formatted_str = git_str
     else:
@@ -158,11 +158,11 @@ def get_version(pep440=False):
 
     The file VERSION will need to be changed manually.
     """
-
+    print('hola')
     raw_git_version = get_git_describe_version()
     if not raw_git_version:  # not a git repository
         return read_release_version()
-
+    print(raw_git_version)
     git_version = format_git_describe(raw_git_version, pep440=pep440)
 
     return git_version
