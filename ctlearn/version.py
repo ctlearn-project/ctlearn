@@ -30,7 +30,6 @@ but being much more lightwheight
 from subprocess import check_output, CalledProcessError
 from os import path, name, devnull, environ, listdir
 from ast import literal_eval
-import git
 
 __all__ = ("get_version", "get_version_pypi")
 
@@ -79,16 +78,31 @@ if name == "nt":
     GIT_COMMAND = find_git_on_windows()
 
 
+def list_all_tags_for_remote_git_repo():
+    """
+    Given a repository, list all tags for that repository
+    without cloning it.
+    This function use "git ls-remote", so the
+    "git" command line program must be available.
+    """
+    result = subprocess.run([
+        "git", "ls-remote", "--tags"
+    ], stdout=subprocess.PIPE, text=True)
+    # Process the output to extract tag names
+    output_lines = result.stdout.splitlines()
+    tags = [
+        line.split("refs/tags/")[-1] for line in output_lines
+        if "refs/tags/" in line and "^{}" not in line
+    ]
+    return tags
+
+
 def get_git_describe_version(abbrev=7):
     """return the string output of git desribe"""
     try:
         with open(devnull, "w") as fnull:
 
-
-            repo = git.Repo("/usr/share/info")
-
-            tagList=repo.git.ls_remote("--tags", "origin")
-            print(tagList)
+            print(list_all_tags_for_remote_git_repo())
             arguments = ['git', '--info-path']
             print('HOLA1')
             cmd = 'git describe --tags --match [0-9]*'.split()
