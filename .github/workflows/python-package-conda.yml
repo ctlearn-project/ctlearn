@@ -22,6 +22,8 @@ jobs:
         echo $CONDA/bin >> $GITHUB_PATH
     - name: Install dependencies
       run: |
+        conda install -y python=${{ matrix.pyv }}
+        echo $CONDA/bin >> $GITHUB_PATH
         conda env update --file environment.yml --name base
     - name: Lint with flake8
       run: |
