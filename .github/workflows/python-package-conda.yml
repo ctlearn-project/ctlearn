@@ -11,7 +11,7 @@ jobs:
       max-parallel: 5
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.pyv }}
       run: |
         conda install -y python=${{ matrix.pyv }}
