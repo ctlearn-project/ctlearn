@@ -95,8 +95,6 @@ def get_current_version():
     
     ]
     last_tag = tags[-1][1:]
-
-    print(last_tag)
     return last_tag
 
 
