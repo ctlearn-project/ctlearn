@@ -166,7 +166,9 @@ def get_version(pep440=False):
     print('hola')
     raw_git_version = get_git_describe_version()
     print(raw_git_version)
+    print(not raw_git_version)
     if not raw_git_version:  # not a git repository
+        print('entro')
         return read_release_version()
     print(raw_git_version)
     git_version = format_git_describe(raw_git_version, pep440=pep440)
