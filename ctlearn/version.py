@@ -85,7 +85,7 @@ def get_git_describe_version(abbrev=7):
         with open(devnull, "w") as fnull:
             arguments = [GIT_COMMAND, "describe", "--tags", "--abbrev=%d" % abbrev]
             print(CURRENT_DIRECTORY)
-            print(check_output(arguments, cwd=CURRENT_DIRECTORY, stderr=fnull).decode("ascii"))
+            print(check_output(arguments, cwd=CURRENT_DIRECTORY, stderr=fnull).decode("ascii").strip())
             return (
                 check_output(arguments, cwd=CURRENT_DIRECTORY, stderr=fnull)
                 .decode("ascii")
