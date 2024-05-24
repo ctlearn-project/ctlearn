@@ -7,7 +7,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-22.04]
-        pyv: ['3.10']
+        pyv: [3.9, '3.10', 3.11]
       max-parallel: 5
     runs-on: ${{ matrix.os }}
     steps:
@@ -22,7 +22,7 @@ jobs:
         echo $CONDA/bin >> $GITHUB_PATH
     - name: Install dependencies
       run: |
-        conda install -y python=3.10
+        conda install -y python=${{ matrix.pyv }}
         echo $CONDA/bin >> $GITHUB_PATH
         conda env update --file environment.yml --name base
     - name: Lint with flake8
