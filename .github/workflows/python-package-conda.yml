@@ -7,7 +7,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-22.04]
-        pyv: [3.10]
+        pyv: ['3.10']
       max-parallel: 5
     runs-on: ${{ matrix.os }}
     steps:
