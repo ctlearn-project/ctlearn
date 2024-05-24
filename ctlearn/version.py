@@ -85,6 +85,7 @@ def get_git_describe_version(abbrev=7):
             arguments = [GIT_COMMAND, "describe", "--tags", "--abbrev=%d" % abbrev]
             cmd = 'git describe --tags --match [0-9]*'.split()
             print(check_output(cmd, shell=True).decode().strip())
+            print('HOLA')
             return (
                 check_output("git describe --tags", cwd=CURRENT_DIRECTORY, stderr=fnull)
                 .decode("ascii")
