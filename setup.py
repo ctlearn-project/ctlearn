@@ -3,7 +3,6 @@ from os import path
 from ctlearn.version import *
 
 here = path.abspath(path.dirname(__file__))
-print(__file__)
 print(here)
 with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
