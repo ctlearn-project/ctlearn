@@ -27,7 +27,7 @@ https://github.com/warner/python-versioneer
 but being much more lightwheight
 
 """
-from subprocess import check_output, CalledProcessError
+from subprocess import check_output, CalledProcessError, run, PIPE
 from os import path, name, devnull, environ, listdir
 from ast import literal_eval
 
@@ -78,23 +78,36 @@ if name == "nt":
     GIT_COMMAND = find_git_on_windows()
 
 
+def get_current_version():
+    """
+    Given a repository, list all tags for that repository
+    without cloning it and get the current version.
+    """
+    result = run([
+        "git", "ls-remote", "--tags"
+    ], stdout= PIPE, text=True)
+
+    output_lines = result.stdout.splitlines()
+    
+    tags = [
+        line.split("refs/tags/")[-1] for line in output_lines
+        if "refs/tags/" in line and "^{}" not in line
+    
+    ]
+    last_tag = tags[-1][1:]
+    return last_tag
+
+
 def get_git_describe_version(abbrev=7):
     """return the string output of git desribe"""
     try:
-        with open(devnull, "w") as fnull:
-            arguments = [GIT_COMMAND, "describe", "--tags", "--abbrev=%d" % abbrev]
-            return (
-                check_output(arguments, cwd=CURRENT_DIRECTORY, stderr=fnull)
-                .decode("ascii")
-                .strip()
-            )
+        return get_current_version()
     except (OSError, CalledProcessError):
         return None
 
 
 def format_git_describe(git_str, pep440=False):
     """format the result of calling 'git describe' as a python version"""
-
     if "-" not in git_str:  # currently at a tag
         formatted_str = git_str
     else:
@@ -158,11 +171,9 @@ def get_version(pep440=False):
 
     The file VERSION will need to be changed manually.
     """
-
     raw_git_version = get_git_describe_version()
     if not raw_git_version:  # not a git repository
         return read_release_version()
-
     git_version = format_git_describe(raw_git_version, pep440=pep440)
 
     return git_version
