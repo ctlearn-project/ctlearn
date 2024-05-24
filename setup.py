@@ -8,7 +8,7 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(name='ctlearn',
-      version="0.7.0",
+      version=get_version_pypi(),
       author="CTLearn Team",
       author_email="d.nieto@ucm.es",
       description='Deep learning analysis framework for Imaging Atmospheric Cherenkov Telescopes, especially the Cherenkov Telescope Array (CTA) and the MAGIC telescopes.',
