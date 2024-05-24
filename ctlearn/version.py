@@ -27,10 +27,9 @@ https://github.com/warner/python-versioneer
 but being much more lightwheight
 
 """
-from subprocess import check_output, CalledProcessError
+from subprocess import check_output, CalledProcessError, run, PIPE
 from os import path, name, devnull, environ, listdir
 from ast import literal_eval
-import subprocess
 
 __all__ = ("get_version", "get_version_pypi")
 
@@ -79,23 +78,26 @@ if name == "nt":
     GIT_COMMAND = find_git_on_windows()
 
 
-def list_all_tags_for_remote_git_repo():
+def get_current_version():
     """
     Given a repository, list all tags for that repository
-    without cloning it.
-    This function use "git ls-remote", so the
-    "git" command line program must be available.
+    without cloning it and get the current version.
     """
-    result = subprocess.run([
+    result = run([
         "git", "ls-remote", "--tags"
-    ], stdout=subprocess.PIPE, text=True)
-    # Process the output to extract tag names
+    ], stdout= PIPE, text=True)
+
     output_lines = result.stdout.splitlines()
+    
     tags = [
         line.split("refs/tags/")[-1] for line in output_lines
         if "refs/tags/" in line and "^{}" not in line
+    
     ]
-    return tags
+    last_tag = tags[-1][1:]
+
+    print(last_tag)
+    return last_tag
 
 
 def get_git_describe_version(abbrev=7):
@@ -104,17 +106,13 @@ def get_git_describe_version(abbrev=7):
         with open(devnull, "w") as fnull:
 
             print(list_all_tags_for_remote_git_repo())
-            arguments = ['git', '--info-path']
-            print('HOLA1')
-            cmd = 'git describe --tags --match [0-9]*'.split()
-            # print(check_output(cmd, shell=True).decode().strip())
-            print('HOLA')
-            print(check_output(arguments, cwd=CURRENT_DIRECTORY, stderr=fnull).decode("ascii").strip())
-            return (
-                check_output(arguments, cwd=CURRENT_DIRECTORY, stderr=fnull)
-                .decode("ascii")
-                .strip()
-            )
+            #arguments = [GIT_COMMAND, "describe", "--tags", "--abbrev=%d" % abbrev]
+            #return (
+             #   check_output(arguments, cwd=CURRENT_DIRECTORY, stderr=fnull)
+              #  .decode("ascii")
+               # .strip()
+            #)
+            return get_current_version()
     except (OSError, CalledProcessError):
         return None
 
