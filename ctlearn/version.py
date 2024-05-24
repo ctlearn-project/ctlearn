@@ -80,12 +80,9 @@ if name == "nt":
 
 def get_git_describe_version(abbrev=7):
     """return the string output of git desribe"""
-    print('hola3')
     try:
         with open(devnull, "w") as fnull:
             arguments = [GIT_COMMAND, "describe", "--tags", "--abbrev=%d" % abbrev]
-            print(CURRENT_DIRECTORY)
-            print(check_output(arguments, cwd=CURRENT_DIRECTORY, stderr=fnull).decode("ascii").strip())
             return (
                 check_output(arguments, cwd=CURRENT_DIRECTORY, stderr=fnull)
                 .decode("ascii")
@@ -97,7 +94,6 @@ def get_git_describe_version(abbrev=7):
 
 def format_git_describe(git_str, pep440=False):
     """format the result of calling 'git describe' as a python version"""
-    print('hola2')
     if "-" not in git_str:  # currently at a tag
         formatted_str = git_str
     else:
@@ -118,9 +114,6 @@ def format_git_describe(git_str, pep440=False):
 
 def read_release_version():
     """Read version information from VERSION file"""
-    print('hola4')
-    print(VERSION_FILE)
-    print(path.exists(VERSION_FILE))
     if not path.exists(VERSION_FILE):
         return "unknown"
     with open(VERSION_FILE) as f:
@@ -164,14 +157,9 @@ def get_version(pep440=False):
 
     The file VERSION will need to be changed manually.
     """
-    print('hola')
     raw_git_version = get_git_describe_version()
-    print(raw_git_version)
-    print(not raw_git_version)
     if not raw_git_version:  # not a git repository
-        print('entro')
         return read_release_version()
-    print(raw_git_version)
     git_version = format_git_describe(raw_git_version, pep440=pep440)
 
     return git_version
