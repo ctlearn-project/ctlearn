@@ -117,7 +117,9 @@ def format_git_describe(git_str, pep440=False):
 
 def read_release_version():
     """Read version information from VERSION file"""
+    print('hola4')
     print(VERSION_FILE)
+    print(path.exists(VERSION_FILE))
     if not path.exists(VERSION_FILE):
         return "unknown"
     with open(VERSION_FILE) as f:
