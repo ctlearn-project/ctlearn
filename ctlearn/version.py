@@ -30,6 +30,7 @@ but being much more lightwheight
 from subprocess import check_output, CalledProcessError
 from os import path, name, devnull, environ, listdir
 from ast import literal_eval
+import subprocess
 
 __all__ = ("get_version", "get_version_pypi")
 
