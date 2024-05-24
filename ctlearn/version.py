@@ -82,7 +82,7 @@ def get_git_describe_version(abbrev=7):
     """return the string output of git desribe"""
     try:
         with open(devnull, "w") as fnull:
-            arguments = [git, 'describe', '--tags', '--abbrev=%d' % abbrev]
+            arguments = ['git', 'describe', '--tags', '--abbrev=%d' % abbrev]
             cmd = 'git describe --tags --match [0-9]*'.split()
             print(check_output(cmd, shell=True).decode().strip())
             print('HOLA')
