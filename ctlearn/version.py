@@ -34,6 +34,7 @@ from ast import literal_eval
 __all__ = ("get_version", "get_version_pypi")
 
 CURRENT_DIRECTORY = path.dirname(path.abspath(__file__))
+print(__file__)
 VERSION_FILE = path.join(CURRENT_DIRECTORY, "_version_cache.py")
 
 GIT_COMMAND = "git"
