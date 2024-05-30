@@ -23,7 +23,7 @@ Data:
             'MAGICCam': 2
 Input:
     batch_size_per_worker: 64
-    concat_telescopes: true
+    stack_telescope_images: true
 Model:
     name: 'ThinResNet'
     backbone: {module: 'single_cnn', function: 'single_cnn_model'}

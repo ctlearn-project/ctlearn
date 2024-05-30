@@ -11,13 +11,13 @@
 
 # List of reconstruction tasks. For now it's recommended to you single task learning.
 # Valid options:
-#     - 'particletype'
+#     - 'type'
 #     - 'energy'
 #     - 'direction'
 # These options have to be in consonance with the 'event_info' and 
 # 'transforms' in 'Data'.
 # Requirements/recommendations:
-#   - 'particletype':
+#   - 'type':
 #       event_info:
 #           - 'true_shower_primary_id'
 #       transforms:
@@ -292,10 +292,10 @@ Input:
     # Optional integer. Default: 1
     batch_size_per_worker: 32
 
-    # Whether to concatenate the stereo images from an event to feed it
+    # Whether to stack the stereo images from an event to feed it
     # to a monoscopic model.
     # Optional boolean. Default: false
-    concat_telescopes: false
+    stack_telescope_images: false
 
 # Settings for the TensorFlow model. The options in this and the
 # Model Parameters section are passed to the Estimator model_fn
@@ -467,7 +467,7 @@ Model Parameters:
     # For the classification task, the class names are passed into the dict
     # in order of class label (0 to n-1).
     standard_head:
-        particletype: {class_names: ['proton', 'gamma'], fc_head: [512, 256, 2], weight: 1.0}
+        type: {class_names: ['proton', 'gamma'], fc_head: [512, 256, 2], weight: 1.0}
         energy: {fc_head: [512, 256, 1], weight: 1.0}
         direction: {fc_head: [512, 256, 2], weight: 1.0}
 

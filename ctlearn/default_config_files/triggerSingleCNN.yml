@@ -32,7 +32,7 @@ Data:
             'MAGICCam': 2
 Input:
     batch_size_per_worker: 8
-    concat_telescopes: false
+    stack_telescope_images: false
 Model:
     name: 'SingleCNN'
     backbone: {module: 'single_cnn', function: 'single_cnn_model'}

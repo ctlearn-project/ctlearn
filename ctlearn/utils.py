@@ -194,8 +194,8 @@ def setup_DL1DataReader(config, mode):
             event_info.append("true_energy")
         transformations.append({"name": "MCEnergy"})
 
-    concat_telescopes = config["Input"].get("concat_telescopes", False)
-    if config["Data"]["mode"] == "stereo" and not concat_telescopes:
+    stack_telescope_images = config["Input"].get("stack_telescope_images", False)
+    if config["Data"]["mode"] == "stereo" and not stack_telescope_images:
         for tel_desc in selected_telescope_types:
             transformations.append(
                 {

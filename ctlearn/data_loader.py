@@ -13,7 +13,7 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
         mode="train",
         class_names=None,
         shuffle=True,
-        concat_telescopes=False,
+        stack_telescope_images=False,
     ):
         "Initialization"
         self.DL1DataReaderDL1DH = DL1DataReaderDL1DH
@@ -22,7 +22,7 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
         self.mode = mode
         self.class_names = class_names
         self.shuffle = shuffle
-        self.concat_telescopes = concat_telescopes
+        self.stack_telescope_images = stack_telescope_images
         self.on_epoch_end()
 
         # Decrypt the example description
@@ -93,7 +93,7 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
                 self.img_shape[3],
             )
         # Reshape inputs into proper dimensions for the stereo analysis with merged models
-        if self.concat_telescopes:
+        if self.stack_telescope_images:
             self.img_shape = (
                 self.img_shape[1],
                 self.img_shape[2],

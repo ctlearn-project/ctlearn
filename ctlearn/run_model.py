@@ -86,7 +86,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         config["Input"] = {}
     batch_size_per_worker = config["Input"].get("batch_size_per_worker", 64)
     batch_size = batch_size_per_worker * strategy.num_replicas_in_sync
-    concat_telescopes = config["Input"].get("concat_telescopes", False)
+    stack_telescope_images = config["Input"].get("stack_telescope_images", False)
 
     if mode == "train":
         if "Training" not in config:
@@ -107,7 +107,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             batch_size=batch_size,
             mode=mode,
             class_names=class_names,
-            concat_telescopes=concat_telescopes,
+            stack_telescope_images=stack_telescope_images,
         )
         validation_data = KerasBatchGenerator(
             reader,
@@ -115,7 +115,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             batch_size=batch_size,
             mode=mode,
             class_names=class_names,
-            concat_telescopes=concat_telescopes,
+            stack_telescope_images=stack_telescope_images,
         )
     elif mode == "predict":
         if "trigger_settings" in config["Data"]:
@@ -135,7 +135,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             mode=mode,
             class_names=class_names,
             shuffle=False,
-            concat_telescopes=concat_telescopes,
+            stack_telescope_images=stack_telescope_images,
         )
 
         # Keras is only considering the last complete batch.
@@ -153,7 +153,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                 mode=mode,
                 class_names=class_names,
                 shuffle=False,
-                concat_telescopes=concat_telescopes,
+                stack_telescope_images=stack_telescope_images,
             )
 
     # Construct the model
@@ -475,7 +475,7 @@ def main():
     parser.add_argument(
         "--default_model",
         "-d",
-        help="Default CTLearn Model; valid options: SingleCNN, TRN, rawwaveSingleCNN, rawwaveTRN, calwaveSingleCNN, calwaveTRN (mono), mergedTRN, and CNNRNN (stereo)",
+        help="Default CTLearn Model; valid options: SingleCNN, TRN, rawwaveSingleCNN, rawwaveTRN, calwaveSingleCNN, calwaveTRN (mono), stackedTRN, and CNNRNN (stereo)",
     )
     parser.add_argument(
         "--clean",

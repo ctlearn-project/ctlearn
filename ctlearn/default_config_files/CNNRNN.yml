@@ -23,7 +23,7 @@ Data:
             'MAGICCam': 2
 Input:
     batch_size_per_worker: 16
-    concat_telescopes: false
+    stack_telescope_images: false
 Model:
     name: 'CNNRNN'
     backbone: {module: 'cnn_rnn', function: 'cnn_rnn_model'}

@@ -31,7 +31,7 @@ Pre-processing is performed using the DL1DataHandler Transform class.
 Input
 ~~~~~
 
-Set parameters of the KerasBatchGenerator that converts the loaded, processed data into generator of batches for the Keras application. Stereoscopic images can be concatenated via the ``concat_telescopes`` flag.
+Set parameters of the KerasBatchGenerator that converts the loaded, processed data into generator of batches for the Keras application. Stereoscopic images can be stacked via the ``stack_telescope_images`` flag.
 
 Model
 ~~~~~
@@ -40,7 +40,7 @@ CTLearn works with any TensorFlow-Keras model obeying the signature of a backbon
 
 To use a custom model, provide in this section the directory containing a Python file that implements the model and the module name (that is, the file name minus the .py extension) and name of the model function within the module.
 
-In addition, CTLearn includes two main models for gamma/hadron classification, energy and arrival direction regression. ``SingleCNN`` analyzes single telescope images using a convolutional neural network (CNN) or multiple residual blocks of convolutional layers (ResNet). Stereoscopic images can be concatenated beforehand (in the ``Input`` config section) to be analyzed by the ``SingleCNN`` model. ``CNN-RNN`` performs array-level reconstruction by feeding the output of a CNN or a ResNet for each telescope into either a recurrent neural network (RNN). All models are built on generic functions from ``basic.py`` and ``resnet_engine.py``. In addition, three different attention mechanisms are implemented in ``attention.py``.
+In addition, CTLearn includes two main models for gamma/hadron classification, energy and arrival direction regression. ``SingleCNN`` analyzes single telescope images using a convolutional neural network (CNN) or multiple residual blocks of convolutional layers (ResNet). Stereoscopic images can be stacked beforehand (in the ``Input`` config section) to be analyzed by the ``SingleCNN`` model. ``CNN-RNN`` performs array-level reconstruction by feeding the output of a CNN or a ResNet for each telescope into either a recurrent neural network (RNN). All models are built on generic functions from ``basic.py`` and ``resnet_engine.py``. In addition, three different attention mechanisms are implemented in ``attention.py``.
 
 Model Parameters
 ~~~~~~~~~~~~~~~~
@@ -90,7 +90,7 @@ optional arguments:
   ``--reco,-r RECO [RECO ...]``\
                         Reconstruction task to perform; valid options: particletype, energy, and/or direction
   ``--default_model,-d DEFAULT_MODEL``\
-                        Default CTLearn Model; valid options: TRN (mono), mergedTRN (stereo), and CNNRNN (stereo)
+                        Default CTLearn Model; valid options: TRN (mono), stackedTRN (stereo), and CNNRNN (stereo)
   ``--clean, --no-clean``\
                         Flag, if the network should be trained with cleaned images (default: False)
   ``--pretrained_weights,-w PRETRAINED_WEIGHTS``\
