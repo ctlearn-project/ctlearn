@@ -30,7 +30,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     random_seed = None
     if config["Logging"].get("add_seed", False):
         random_seed = config["Data"]["seed"]
-        model_dir += f"/seed_{random_seed}"
+        model_dir += f"/seed_{random_seed}/"
         if not os.path.exists(model_dir):
             if mode == "predict":
                 raise ValueError(
@@ -86,7 +86,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         config["Input"] = {}
     batch_size_per_worker = config["Input"].get("batch_size_per_worker", 64)
     batch_size = batch_size_per_worker * strategy.num_replicas_in_sync
-    concat_telescopes = config["Input"].get("concat_telescopes", False)
+    stack_telescope_images = config["Input"].get("stack_telescope_images", False)
 
     if mode == "train":
         if "Training" not in config:
@@ -107,7 +107,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             batch_size=batch_size,
             mode=mode,
             class_names=class_names,
-            concat_telescopes=concat_telescopes,
+            stack_telescope_images=stack_telescope_images,
         )
         validation_data = KerasBatchGenerator(
             reader,
@@ -115,9 +115,14 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             batch_size=batch_size,
             mode=mode,
             class_names=class_names,
-            concat_telescopes=concat_telescopes,
+            stack_telescope_images=stack_telescope_images,
         )
     elif mode == "predict":
+        if "trigger_settings" in config["Data"]:
+            if config["Data"]["trigger_settings"]["include_nsb_patches"] == "all":
+                logger.info("  Predicting on NSB trigger patches. Simulation info irrelevant.")
+            elif config["Data"]["trigger_settings"]["include_nsb_patches"] == "off":
+                logger.info("  Predicting on trigger patches.")
         logger.info(
             "  Simulation info for pyirf.simulations.SimulatedEventsInfo: {}".format(
                 reader.simulation_info
@@ -130,7 +135,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             mode=mode,
             class_names=class_names,
             shuffle=False,
-            concat_telescopes=concat_telescopes,
+            stack_telescope_images=stack_telescope_images,
         )
 
         # Keras is only considering the last complete batch.
@@ -148,7 +153,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                 mode=mode,
                 class_names=class_names,
                 shuffle=False,
-                concat_telescopes=concat_telescopes,
+                stack_telescope_images=stack_telescope_images,
             )
 
     # Construct the model
@@ -184,9 +189,9 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             inputs=backbone_output, tasks=config["Reco"], params=model_params
         )
 
-        if "saved_model.pb" in np.array([os.listdir(model_dir)]):
-            logger.info("  Loading weights from '{}'.".format(model_dir))
-            model = tf.keras.models.load_model(model_dir)
+        if "ctlearn_model" in np.array([os.listdir(model_dir)]):
+            logger.info(f"  Loading weights from '{model_dir}/ctlearn_model/'.")
+            model = tf.keras.models.load_model(f"{model_dir}/ctlearn_model/")
         else:
             model = tf.keras.Model(backbone_inputs, logits, name="CTLearn_model")
 
@@ -294,7 +299,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
         # Model checkpoint callback
         model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
-            filepath=model_dir,
+            filepath=f"{model_dir}/ctlearn_model/",
             monitor=monitor,
             verbose=1,
             mode=monitor_mode,
@@ -307,7 +312,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         )
         # CSV logger callback
         csv_logger_callback = tf.keras.callbacks.CSVLogger(
-            filename=model_dir + "/training_log.csv", append=True
+            filename=f"{model_dir}/training_log.csv", append=True
         )
         # Learning rate reducing callback
         lr_reducing_callback = tf.keras.callbacks.ReduceLROnPlateau(
@@ -331,7 +336,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         # Scaling by total/2 helps keep the loss to a similar magnitude.
         # The sum of the weights of all examples stays the same.
         class_weight = None
-        if reader.num_classes >= 2:
+        if reader.num_classes >= 2 and not reader.reco_cherenkov_photons:
             logger.info("  Apply class weights:")
             total = reader.simulated_particles["total"]
             logger.info("    Total number: {}".format(total))
@@ -367,8 +372,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             use_multiprocessing=use_multiprocessing,
         )
         logger.info("Training and evaluating finished succesfully!")
-        model.save(model_dir)
-        logger.info("Keras model saved in {}saved_model.pb".format(model_dir))
 
         # Saving model weights in onnx format
         if config["Model"].get("save2onnx", False):
@@ -377,7 +380,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             import tf2onnx
 
             input_type_spec = [input._type_spec for input in backbone_inputs]
-            output_path = f"{model_dir}/{model.name}.onnx"
+            output_path = f"{model_dir}/ctlearn_model/{model.name}.onnx"
             tf2onnx.convert.from_keras(
                 model, input_signature=input_type_spec, output_path=output_path
             )
@@ -466,19 +469,25 @@ def main():
     parser.add_argument(
         "--reco",
         "-r",
-        help="Reconstruction task to perform; valid options: particletype, energy, and/or direction",
+        help="Reconstruction task to perform; valid options: type, energy, direction and/or cherenkov_photons",
         nargs="+",
     )
     parser.add_argument(
         "--default_model",
         "-d",
-        help="Default CTLearn Model; valid options: SingleCNN, TRN, rawwaveSingleCNN, rawwaveTRN, calwaveSingleCNN, calwaveTRN (mono), mergedTRN, and CNNRNN (stereo)",
+        help="Default CTLearn Model; valid options: SingleCNN, TRN, rawwaveSingleCNN, rawwaveTRN, calwaveSingleCNN, calwaveTRN (mono), stackedTRN, and CNNRNN (stereo)",
     )
     parser.add_argument(
         "--clean",
         default=False,
         action=argparse.BooleanOptionalAction,
         help="Flag, if the network should be trained with cleaned images and waveforms",
+    )
+    parser.add_argument(
+        "--nsb",
+        default=False,
+        action=argparse.BooleanOptionalAction,
+        help="Flag, if the network should predict on NSB trigger patches",
     )
     parser.add_argument(
         "--pretrained_weights", "-w", help="Path to the pretrained weights"
@@ -491,7 +500,7 @@ def main():
     parser.add_argument(
         "--tel_types",
         "-t",
-        help="Selection of telescope types; valid option: LST_LST_LSTCam, LST_LST_LSTSiPMCam, LST_MAGIC_MAGICCam, MST_MST_FlashCam, MST_MST_NectarCam, SST_SCT_SCTCam, and/or SST_ASTRI_ASTRICam",
+        help="Selection of telescope types; valid option: LST_LST_LSTCam, LST_LST_LSTSiPMCam, LST_MAGIC_MAGICCam, MST_MST_FlashCam, MST_MST_NectarCam, SST_1M_DigiCam, SST_SCT_SCTCam, and/or SST_ASTRI_ASTRICam",
         nargs="+",
     )
     parser.add_argument(
@@ -548,12 +557,15 @@ def main():
         config["Reco"] = args.reco
 
     if args.clean:
-        if "image_channels" in config["Data"]:
-            config["Data"]["image_channels"] = [
-                "cleaned_" + channel for channel in config["Data"]["image_channels"]
+        if "image_settings" in config["Data"]:
+            config["Data"]["image_settings"]["image_channels"] = [
+                "cleaned_" + channel
+                for channel in config["Data"]["image_settings"]["image_channels"]
             ]
-        if "waveform" in config["Data"]:
-            config["Data"]["waveform"] = "cleaned_" + config["Data"]["waveform"]
+        if "waveform_settings" in config["Data"]:
+            config["Data"]["waveform_settings"]["waveform_type"] = (
+                "cleaned_" + config["Data"]["waveform_settings"]["waveform_type"]
+            )
 
     if args.tel_types:
         config["Data"]["selected_telescope_types"] = args.tel_types
@@ -671,15 +683,25 @@ def main():
                         if args.reco:
                             config["Reco"] = args.reco
                         if args.clean:
-                            if "image_channels" in config["Data"]:
-                                config["Data"]["image_channels"] = [
+                            if "image_settings" in config["Data"]:
+                                config["Data"]["image_settings"]["image_channels"] = [
                                     "cleaned_" + channel
-                                    for channel in config["Data"]["image_channels"]
+                                    for channel in config["Data"]["image_settings"][
+                                        "image_channels"
+                                    ]
                                 ]
-                            if "waveform" in config["Data"]:
-                                config["Data"]["waveform"] = (
-                                    "cleaned_" + config["Data"]["waveform"]
+                            if "waveform_settings" in config["Data"]:
+                                config["Data"]["waveform_settings"]["waveform_type"] = (
+                                    "cleaned_"
+                                    + config["Data"]["waveform_settings"][
+                                        "waveform_type"
+                                    ]
                                 )
+                        if "trigger_settings" in config["Data"]:
+                            if args.nsb:
+                                config["Data"]["trigger_settings"]["include_nsb_patches"] = "all"
+                            else:
+                                config["Data"]["trigger_settings"]["include_nsb_patches"] = "off"
                         if args.tel_types:
                             config["Data"]["selected_telescope_types"] = args.tel_types
                         if args.allowed_tels:
@@ -738,15 +760,23 @@ def main():
                 if args.reco:
                     config["Reco"] = args.reco
                 if args.clean:
-                    if "image_channels" in config["Data"]:
-                        config["Data"]["image_channels"] = [
+                    if "image_settings" in config["Data"]:
+                        config["Data"]["image_settings"]["image_channels"] = [
                             "cleaned_" + channel
-                            for channel in config["Data"]["image_channels"]
+                            for channel in config["Data"]["image_settings"][
+                                "image_channels"
+                            ]
                         ]
-                    if "waveform" in config["Data"]:
-                        config["Data"]["waveform"] = (
-                            "cleaned_" + config["Data"]["waveform"]
+                    if "waveform_settings" in config["Data"]:
+                        config["Data"]["waveform_settings"]["waveform_type"] = (
+                            "cleaned_"
+                            + config["Data"]["waveform_settings"]["waveform_type"]
                         )
+                if "trigger_settings" in config["Data"]:
+                    if args.nsb:
+                        config["Data"]["trigger_settings"]["include_nsb_patches"] = "all"
+                    else:
+                        config["Data"]["trigger_settings"]["include_nsb_patches"] = "off"
                 if args.tel_types:
                     config["Data"]["selected_telescope_types"] = args.tel_types
                 if args.allowed_tels:

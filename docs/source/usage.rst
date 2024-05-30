@@ -31,7 +31,7 @@ Pre-processing is performed using the DL1DataHandler Transform class.
 Input
 ~~~~~
 
-Set parameters of the KerasBatchGenerator that converts the loaded, processed data into generator of batches for the Keras application. Stereoscopic images can be concatenated via the ``concat_telescopes`` flag.
+Set parameters of the KerasBatchGenerator that converts the loaded, processed data into generator of batches for the Keras application. Stereoscopic images can be stacked via the ``stack_telescope_images`` flag.
 
 Model
 ~~~~~
@@ -40,7 +40,7 @@ CTLearn works with any TensorFlow-Keras model obeying the signature of a backbon
 
 To use a custom model, provide in this section the directory containing a Python file that implements the model and the module name (that is, the file name minus the .py extension) and name of the model function within the module.
 
-In addition, CTLearn includes two main models for gamma/hadron classification, energy and arrival direction regression. ``SingleCNN`` analyzes single telescope images using a convolutional neural network (CNN) or multiple residual blocks of convolutional layers (ResNet). Stereoscopic images can be concatenated beforehand (in the ``Input`` config section) to be analyzed by the ``SingleCNN`` model. ``CNN-RNN`` performs array-level reconstruction by feeding the output of a CNN or a ResNet for each telescope into either a recurrent neural network (RNN). All models are built on generic functions from ``basic.py`` and ``resnet_engine.py``. In addition, three different attention mechanisms are implemented in ``attention.py``.
+In addition, CTLearn includes two main models for gamma/hadron classification, energy and arrival direction regression. ``SingleCNN`` analyzes single telescope images using a convolutional neural network (CNN) or multiple residual blocks of convolutional layers (ResNet). Stereoscopic images can be stacked beforehand (in the ``Input`` config section) to be analyzed by the ``SingleCNN`` model. ``CNN-RNN`` performs array-level reconstruction by feeding the output of a CNN or a ResNet for each telescope into either a recurrent neural network (RNN). All models are built on generic functions from ``basic.py`` and ``resnet_engine.py``. In addition, three different attention mechanisms are implemented in ``attention.py``.
 
 Model Parameters
 ~~~~~~~~~~~~~~~~
@@ -70,9 +70,9 @@ Run CTLearn from the command line:
 .. code-block:: bash
 
    ctlearn [-h] [--config_file,-c CONFIG_FILE] [--input,-i INPUT] [--pattern,-p PATTERN [PATTERN ...]] [--mode,-m MODE] [--output,-o OUTPUT] [--reco,-r RECO [RECO ...]]
-                [--default_model,-d DEFAULT_MODEL] [--cleaned_images | --no-cleaned_images] [--pretrained_weights,-w PRETRAINED_WEIGHTS] [--tel_types,-t TEL_TYPES [TEL_TYPES ...]] [--allowed_tels,-a ALLOWED_TELS [ALLOWED_TELS ...]]
+                [--default_model,-d DEFAULT_MODEL] [--clean | --no-clean] [--pretrained_weights,-w PRETRAINED_WEIGHTS] [--prediction_directory,-y PREDICTION_DIRECTORY] [--tel_types,-t TEL_TYPES [TEL_TYPES ...]] [--allowed_tels,-a ALLOWED_TELS [ALLOWED_TELS ...]]
                 [--size_cut,-z SIZE_CUT] [--leakage_cut,-l LEAKAGE_CUT] [--multiplicity_cut,-u MULTIPLICITY_CUT] [--num_epochs,-e NUM_EPOCHS] [--batch_size,-b BATCH_SIZE] [--random_seed,-s RANDOM_SEED]
-                [--log_to_file] [--debug]
+                [--log_to_file] [--save2onnx] [--debug]
 
 optional arguments:
   ``-h, --help``\
@@ -90,13 +90,15 @@ optional arguments:
   ``--reco,-r RECO [RECO ...]``\
                         Reconstruction task to perform; valid options: particletype, energy, and/or direction
   ``--default_model,-d DEFAULT_MODEL``\
-                        Default CTLearn Model; valid options: TRN (mono), mergedTRN (stereo), and CNNRNN (stereo)
-  ``--cleaned_images, --no-cleaned_images``\
+                        Default CTLearn Model; valid options: TRN (mono), stackedTRN (stereo), and CNNRNN (stereo)
+  ``--clean, --no-clean``\
                         Flag, if the network should be trained with cleaned images (default: False)
   ``--pretrained_weights,-w PRETRAINED_WEIGHTS``\
                         Path to the pretrained weights
+  ``--prediction_directory,-y PREDICTION_DIRECTORY``\
+                        Path to store the CTLearn predictions (optional)
   ``--tel_types,-t TEL_TYPES [TEL_TYPES ...]``\
-                        Selection of telescope types; valid option: LST_LST_LSTCam, LST_MAGIC_MAGICCam, MST_MST_FlashCam, MST_MST_NectarCam, SST_SCT_SCTCam, and/or SST_ASTRI_ASTRICam
+                        Selection of telescope types; valid option: LST_LST_LSTCam, LST_MAGIC_MAGICCam, MST_MST_FlashCam, MST_MST_NectarCam, SST_1M_DigiCam, SST_SCT_SCTCam, and/or SST_ASTRI_ASTRICam
   ``--allowed_tels,-a ALLOWED_TELS [ALLOWED_TELS ...]``\
                         List of allowed tel_ids, others will be ignored. Selected tel_ids will be ignored, when their telescope type is not selected
   ``--size_cut,-z SIZE_CUT``\
@@ -113,6 +115,8 @@ optional arguments:
                         Selection of random seed (4 digits)
   ``--log_to_file``\
                         Log to a file in model directory instead of terminal
+  ``--save2onnx``\
+                        Save model in an ONNX file
   ``--debug``\
                         Print debug/logger messages
 

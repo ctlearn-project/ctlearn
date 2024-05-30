@@ -25,26 +25,26 @@ def cnn_rnn_model(data, model_params):
     trainable_backbone = model_params.get("trainable_backbone", True)
     pretrained_weights = model_params.get("pretrained_weights", None)
     if pretrained_weights:
-        loaded_model = tf.keras.models.load_model(pretrained_weights)
+        loaded_model = tf.keras.models.load_model(f"{pretrained_weights}/ctlearn_model/")
         for layer in loaded_model.layers:
             if layer.name.endswith("_block"):
                 model = loaded_model.get_layer(layer.name)
                 model.trainable = trainable_backbone
     else:
         sys.path.append(model_params["model_directory"])
-        engine_module = importlib.import_module(model_params["engine_img"]["module"])
-        engine = getattr(engine_module, model_params["engine_img"]["function"])
+        engine_module = importlib.import_module(model_params["image_engine"]["module"])
+        engine = getattr(engine_module, model_params["image_engine"]["function"])
         network_input = tf.keras.Input(shape=data.singleimg_shape, name=f"images")
         engine_output = engine(
             network_input,
             params=model_params,
-            name=model_params["engine_img"]["function"],
+            name=model_params["image_engine"]["function"],
         )
         output = tf_layers.GlobalAveragePooling2D(
             name=backbone_name + "_global_avgpool"
         )(engine_output)
         model = tf.keras.Model(
-            network_input, output, name=model_params["engine_img"]["function"]
+            network_input, output, name=model_params["image_engine"]["function"]
         )
 
     telescope_data = tf.keras.Input(shape=data.img_shape, name=f"images")

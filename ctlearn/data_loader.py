@@ -13,7 +13,7 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
         mode="train",
         class_names=None,
         shuffle=True,
-        concat_telescopes=False,
+        stack_telescope_images=False,
     ):
         "Initialization"
         self.DL1DataReaderDL1DH = DL1DataReaderDL1DH
@@ -22,13 +22,14 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
         self.mode = mode
         self.class_names = class_names
         self.shuffle = shuffle
-        self.concat_telescopes = concat_telescopes
+        self.stack_telescope_images = stack_telescope_images
         self.on_epoch_end()
 
         # Decrypt the example description
         # Features
         self.singleimg_shape = None
         self.trg_pos, self.trg_shape = None, None
+        self.trgpatch_pos, self.trgpatch_shape = None, None
         self.pon_pos = None
         self.pointing = []
         self.wvf_pos, self.wvf_shape = None, None
@@ -42,16 +43,14 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
         self.mjd_list, self.milli_list, self.nano_list = [], [], []
         # Labels
         self.prt_pos, self.enr_pos, self.drc_pos = None, None, None
-        self.prt_labels, self.enr_labels, self.alt_labels, self.az_labels = (
-            [],
-            [],
-            [],
-            [],
-        )
+        self.prt_labels = []
+        self.enr_labels = []
+        self.alt_labels, self.az_labels = [], []
+        self.trgpatch_labels = []
         self.energy_unit = None
 
         for i, desc in enumerate(self.DL1DataReaderDL1DH.example_description):
-            if "trigger" in desc["name"]:
+            if "HWtrigger" in desc["name"]:
                 self.trg_pos = i
                 self.trg_shape = desc["shape"]
             elif "pointing" in desc["name"]:
@@ -59,6 +58,9 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
             elif "waveform" in desc["name"]:
                 self.wvf_pos = i
                 self.wvf_shape = desc["shape"]
+            elif "trigger_patch" in desc["name"]:
+                self.trgpatch_pos = i
+                self.trgpatch_shape = desc["shape"]
             elif "image" in desc["name"]:
                 self.img_pos = i
                 self.img_shape = desc["shape"]
@@ -91,7 +93,7 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
                 self.img_shape[3],
             )
         # Reshape inputs into proper dimensions for the stereo analysis with merged models
-        if self.concat_telescopes:
+        if self.stack_telescope_images:
             self.img_shape = (
                 self.img_shape[1],
                 self.img_shape[2],
@@ -131,7 +133,10 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
                 energy = np.empty((self.batch_size))
             if self.drc_pos is not None:
                 direction = np.empty((self.batch_size, 2))
-
+            if self.trgpatch_pos is not None:
+                trigger_patches_true_image_sum = np.empty(
+                    (self.batch_size, *self.trgpatch_shape)
+                )
         # Generate data
         for i, index in enumerate(batch_indices):
             event = self.DL1DataReaderDL1DH[index]
@@ -157,15 +162,19 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
                     energy[i] = event[self.enr_pos]
                 if self.drc_pos is not None:
                     direction[i] = event[self.drc_pos]
+                if self.trgpatch_pos is not None:
+                    trigger_patches_true_image_sum[i] = event[self.trgpatch_pos]
             else:
                 # Save all labels for the prediction phase
                 if self.prt_pos is not None:
                     self.prt_labels.append(np.float32(event[self.prt_pos]))
                 if self.enr_pos is not None:
-                    self.enr_labels.append(event[self.enr_pos][0])
+                    self.enr_labels.append(np.float32(event[self.enr_pos][0]))
                 if self.drc_pos is not None:
-                    self.alt_labels.append(event[self.drc_pos][0])
-                    self.az_labels.append(event[self.drc_pos][1])
+                    self.alt_labels.append(np.float32(event[self.drc_pos][0]))
+                    self.az_labels.append(np.float32(event[self.drc_pos][1]))
+                if self.trgpatch_pos is not None:
+                    self.trgpatch_labels.append(np.float32(event[self.trgpatch_pos]))
                 # Save pointing
                 if self.pon_pos is not None:
                     self.pointing.append(event[self.pon_pos])
@@ -198,7 +207,7 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
         labels = {}
         if self.mode == "train":
             if self.prt_pos is not None:
-                labels["particletype"] = tf.keras.utils.to_categorical(
+                labels["type"] = tf.keras.utils.to_categorical(
                     particletype,
                     num_classes=self.DL1DataReaderDL1DH.num_classes,
                 )
@@ -212,6 +221,9 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
             if self.drc_pos is not None:
                 labels["direction"] = direction
                 label = direction
+            if self.trgpatch_pos is not None and self.DL1DataReaderDL1DH.reco_cherenkov_photons:
+                labels["cherenkov_photons"] = trigger_patches_true_image_sum
+                label = trigger_patches_true_image_sum
 
         # Temp fix till keras support class weights for multiple outputs or I wrote custom loss
         # https://github.com/keras-team/keras/issues/11735

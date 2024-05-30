@@ -11,13 +11,13 @@
 
 # List of reconstruction tasks. For now it's recommended to you single task learning.
 # Valid options:
-#     - 'particletype'
+#     - 'type'
 #     - 'energy'
 #     - 'direction'
 # These options have to be in consonance with the 'event_info' and 
 # 'transforms' in 'Data'.
 # Requirements/recommendations:
-#   - 'particletype':
+#   - 'type':
 #       event_info:
 #           - 'true_shower_primary_id'
 #       transforms:
@@ -66,8 +66,9 @@ Data:
     #   - 'LST_MAGIC_MAGICCam': MAGIC Telescopes
     #   - 'MST_MST_FlashCam': MST Telescope with FlashCAM Camera
     #   - 'MST_MST_NectarCam': MST Telescope with NectarCAM Camera
+    #   - 'SST_1M_DigiCam4': SST1M Telescope with DigiCam Camera
     #   - 'SST_SCT_SCTCam': SCT Telescope and Camera
-    #   - 'SST_ASTRI_ASTRICam': SST-2M ASTRI Telescope and CHECH Camera
+    #   - 'SST_ASTRI_ASTRICam': SST-2M ASTRI Telescope and CHEC Camera
     # Camera images from the following telescopes can be read, but writers
     # for the data are not yet available:
     #   - FACT, HESS-I, HESS-II, VERITAS
@@ -90,11 +91,11 @@ Data:
     # The recommended way of applying quality cuts to the data.
     # Only available for mono analysis at the moment.
     # Optional dict.
-    parameter_selection: 
+    parameter_selection:
         - {col_name: "hillas_intensity", min_value: 50.0}
         - {col_name: "leakage_intensity_width_2", max_value: 0.2}
 
-    # Not the recommended way of applying quality cuts to the data. 
+    # Not the recommended way of applying quality cuts to the data:
     # PyTables cut condition to apply selection cuts to events.
     # Optional string. Default: don't apply any cuts
     # See https://www.pytables.org/usersguide/condition_syntax.html
@@ -151,11 +152,33 @@ Data:
     # Optional integer. Default: use default random initialization.
     seed: 1234
 
-    # Image channels to load.
-    # Optional list of strings. Default: ['image']
-    # Valid options are 'image', 'peak_time' 'cleaned_image' and 'clean_peak_time', or whichever columns are in
-    # the telescope tables of your data files.
-    image_channels: ['image', 'peak_time']
+    # Waveform settings to load.
+    # Optional dicts. Default: None
+    #  - Valid options for 'waveform_type' are 'raw' (R0) or 'calibrated' (R1).
+    #  - 'waveform_sequence_length' is an integer corresponding to the length
+    #    of the sequence around the shower maximum
+    #  - Valid options for 'waveform_format' are 'timechannel_first' or 'timechannel_last'.
+    #  - 'waveform_r0pedsub' is a boolean weather to calculate and subtract the pedestal level
+    #    per pixel outside the sequence aound the shower maximum (only selectable for R0).
+    waveform_settings:
+            waveform_type: 'raw'
+            waveform_sequence_length: 5
+            waveform_format: 'timechannel_last'
+            waveform_r0pedsub: True
+
+    # Image settings to load.
+    # Optional dicts. Default: None
+    #  - Valid options for 'image_channels' are 'image', 'peak_time' 'cleaned_image' and 'clean_peak_time',
+    #    or whichever columns are in the telescope tables of your data files.
+    image_settings:
+        image_channels: ['image', 'peak_time']
+
+    # Parameter settings to load.
+    # Optional dicts. Default: None
+    #  - Valid options for 'parameter_list' are 'image', 'peak_time' 'cleaned_image' and 'clean_peak_time',
+    #    or whichever columns are in the telescope tables of your data files.
+    #parameter_settings:
+    #    parameter_list: ['hillas_intensity', 'leakage_intensity_width_2']
 
     # Settings passed directly as arguments to ImageMapper.
     # Optional dictionary. Default: {}
@@ -193,6 +216,7 @@ Data:
             'LSTCam': 'bilinear_interpolation'
             'FlashCam': 'bilinear_interpolation'
             'NectarCam': 'bilinear_interpolation'
+            'DigiCam': 'bilinear_interpolation'
             'SCTCam': 'oversampling'
             'CHEC': 'oversampling'
             'MAGICCam': 'bilinear_interpolation'
@@ -205,6 +229,7 @@ Data:
             'LSTCam': 2
             'FlashCam': 1
             'NectarCam': 2
+            'DigiCam': 2
             'SCTCam': 0
             'CHEC': 0
             'MAGICCam': 2
@@ -267,10 +292,10 @@ Input:
     # Optional integer. Default: 1
     batch_size_per_worker: 32
 
-    # Whether to concatenate the stereo images from an event to feed it
+    # Whether to stack the stereo images from an event to feed it
     # to a monoscopic model.
     # Optional boolean. Default: false
-    concat_telescopes: false
+    stack_telescope_images: false
 
 # Settings for the TensorFlow model. The options in this and the
 # Model Parameters section are passed to the Estimator model_fn
@@ -442,7 +467,7 @@ Model Parameters:
     # For the classification task, the class names are passed into the dict
     # in order of class label (0 to n-1).
     standard_head:
-        particletype: {class_names: ['proton', 'gamma'], fc_head: [512, 256, 2], weight: 1.0}
+        type: {class_names: ['proton', 'gamma'], fc_head: [512, 256, 2], weight: 1.0}
         energy: {fc_head: [512, 256, 1], weight: 1.0}
         direction: {fc_head: [512, 256, 2], weight: 1.0}
 

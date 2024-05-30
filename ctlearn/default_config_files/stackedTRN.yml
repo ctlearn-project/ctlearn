@@ -1,10 +1,7 @@
 Data:
-    mode: 'mono'
-    waveform_settings:
-        waveform_type: 'calibrated'
-        waveform_sequence_length: 20
-        waveform_max_from_simulation: False
-        waveform_format: 'timechannel_last'
+    mode: 'stereo'
+    image_settings:
+        image_channels: ['image', 'peak_time']
     mapping_settings:
         mapping_method:
             'LSTCam': 'bilinear_interpolation'
@@ -25,12 +22,12 @@ Data:
             'LSTSiPMCam': 2
             'MAGICCam': 2
 Input:
-    batch_size_per_worker: 8
-    stack_telescope_images: false
+    batch_size_per_worker: 64
+    stack_telescope_images: true
 Model:
-    name: 'ThinResNetWave'
+    name: 'ThinResNet'
     backbone: {module: 'single_cnn', function: 'single_cnn_model'}
-    waveform_engine: {module: 'resnet', function: 'stacked_res_blocks'}
+    image_engine: {module: 'resnet', function: 'stacked_res_blocks'}
     head: {module: 'head', function: 'standard_head'}
 Model Parameters:
     attention: {mechanism: 'Squeeze-and-Excitation', ratio: 16}
@@ -53,8 +50,14 @@ Training:
     workers: 1
     optimizer: 'Adam'
     adam_epsilon: 1.0e-8
-    base_learning_rate: 0.00001
+    base_learning_rate: 0.0001
     lr_reducing_patience: 5
     lr_reducing_factor: 0.5
     lr_reducing_mindelta: 0.01
-    lr_reducing_minlr: 0.000001
+    lr_reducing_minlr: 0.00001
+
+
+
+
+
+

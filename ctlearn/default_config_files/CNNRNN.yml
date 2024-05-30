@@ -1,11 +1,13 @@
 Data:
     mode: 'stereo'
-    image_channels: ['image', 'peak_time']
+    image_settings:
+        image_channels: ['image', 'peak_time']
     mapping_settings:
         mapping_method:
             'LSTCam': 'bilinear_interpolation'
             'FlashCam': 'bilinear_interpolation'
             'NectarCam': 'bilinear_interpolation'
+            'DigiCam': 'bilinear_interpolation'
             'CHEC': 'oversampling'
             'SCTCam': 'oversampling'
             'LSTSiPMCam': 'bilinear_interpolation'
@@ -14,17 +16,18 @@ Data:
             'LSTCam': 2
             'FlashCam': 2
             'NectarCam': 2
+            'DigiCam': 2
             'CHEC': 0
             'SCTCam': 0
             'LSTSiPMCam': 2
             'MAGICCam': 2
 Input:
     batch_size_per_worker: 16
-    concat_telescopes: false
+    stack_telescope_images: false
 Model:
     name: 'CNNRNN'
     backbone: {module: 'cnn_rnn', function: 'cnn_rnn_model'}
-    engine_img: {module: 'basic', function: 'conv_block'}
+    image_engine: {module: 'basic', function: 'conv_block'}
     head: {module: 'head', function: 'standard_head'}
 Model Parameters:
     attention: {mechanism: 'Squeeze-and-Excitation', ratio: 16}
@@ -39,11 +42,11 @@ Model Parameters:
             bottleneck: null
             batchnorm: false
     standard_head:
-        particletype: {fc_head: [], weight: 1.0}
+        type: {fc_head: [], weight: 1.0}
         energy: {fc_head: [], weight: 1.0}
         direction: {fc_head: [], weight: 1.0}
 Training:
-    validation_split: 0.05
+    validation_split: 0.1
     num_epochs: 5
     verbose: 2
     workers: 1
