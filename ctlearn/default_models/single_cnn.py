@@ -20,7 +20,7 @@ def single_cnn_model(data, model_params):
     trainable_backbone = model_params.get("trainable_backbone", True)
     pretrained_weights = model_params.get("pretrained_weights", None)
     if pretrained_weights:
-        loaded_model = tf.keras.models.load_model(pretrained_weights)
+        loaded_model = tf.keras.models.load_model(f"{pretrained_weights}/ctlearn_model/")
         for layer in loaded_model.layers:
             if layer.name.endswith("_block"):
                 model = loaded_model.get_layer(layer.name)
