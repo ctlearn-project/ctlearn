@@ -59,9 +59,9 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/<package-name>  # Replace <package-name> with your PyPI project name
+      url: https://pypi.org/p/ctlearn  # Replace <package-name> with your PyPI project name
     permissions:
-      id-token: "AgEIcHlwaS5vcmcCJDJkMWJjNmUyLTdkNWUtNGQzZS04ZDkzLTYyOGU2YjJhOWFhNAACD1sxLFsiY3RsZWFybiJdXQACLFsyLFsiMjU0MmQzNTMtMjQ5NS00M2RjLWJhMmItZmRhZDZkZWFhYjhmIl1dAAAGIOo3BSZXBeOwWxTXANSTZddhRmGJf7wH9JZU2vQs0ejZ"  # IMPORTANT: mandatory for trusted publishing
+      id-token: write
     steps:
     - name: Download all the dists
       uses: actions/download-artifact@v3
