@@ -42,8 +42,8 @@ jobs:
         pip install
         build
         --user
-    #- name: Build a binary wheel and a source tarball
-    #  run: python3 -m build
+    - name: Build a binary wheel and a source tarball
+      run: python3 -m build
     - name: Store the distribution packages
       uses: actions/upload-artifact@v3
       with:
@@ -53,15 +53,16 @@ jobs:
   publish-to-pypi:
     name: >-
       Publish Python 🐍 distribution 📦 to PyPI
-    #if: startsWith(github.ref, 'refs/tags/')  # only publish to PyPI on tag pushes
+    if: startsWith(github.ref, 'refs/tags/')  # only publish to PyPI on tag pushes
     needs:
     - build
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/p/ctlearn  # Replace <package-name> with your PyPI project name
+      url: https://pypi.org/p/ctlearn # Replace <package-name> with your PyPI project name
     permissions:
-      id-token: write
+      id-token: write  # IMPORTANT: mandatory for trusted publishing
+
     steps:
     - name: Download all the dists
       uses: actions/download-artifact@v3
