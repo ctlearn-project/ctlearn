@@ -59,8 +59,8 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install numpy
           pip install setuptools wheel
+          conda env update --file environment.yml --name base      
       - name: Build package
         run: |
           python setup.py sdist bdist_wheel  # Could also be python -m build
