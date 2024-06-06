@@ -45,7 +45,7 @@ necessary package channels, and install CTLearn specified version and its depend
    ctlearn -h
 
 
-This should automatically install all dependencies (NOTE: this may take some time, as by default MKL is included as a dependency of NumPy and it is very large).
+This should automatically install all dependencies (NOTE: this may take some time, as by default MKL is included as a dependency of NumPy and it is very large). If you are working on the IT-clusters, please use 'environment-cluster.yml' instead of 'environment.yml' in the instructions above.
 
 See the documentation for further information like `installation instructions for developers <https://ctlearn.readthedocs.io/en/latest/installation.html#installing-with-pip-setuptools-from-source-for-development>`_, `package usage <https://ctlearn.readthedocs.io/en/stable/usage.html>`_, and `dependencies <https://ctlearn.readthedocs.io/en/stable/installation.html#dependencies>`_ among other topics.
 
