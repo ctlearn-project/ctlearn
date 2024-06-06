@@ -82,7 +82,7 @@ def get_git_describe_version(abbrev=0):
     """return the string output of git desribe"""
     try:
         with open(devnull, "w") as fnull:
-            repo_url = "https://github.com/cta-observatory/dl1-data-handler/"
+            repo_url = "https://github.com/ctlearn-project/ctlearn"
             output_lines = subprocess.check_output(
                 [
                     "git",
