@@ -27,7 +27,7 @@ https://github.com/warner/python-versioneer
 but being much more lightwheight
 
 """
-from subprocess import check_output, CalledProcessError, run, PIPE
+import subprocess as subprocess
 from os import path, name, devnull, environ, listdir
 from ast import literal_eval
 
@@ -44,11 +44,11 @@ if name == "nt":
         """find the path to the git executable on windows"""
         # first see if git is in the path
         try:
-            check_output(["where", "/Q", "git"])
+            subprocess.check_output(["where", "/Q", "git"])
             # if this command succeeded, git is in the path
             return "git"
         # catch the exception thrown if git was not found
-        except CalledProcessError:
+        except subprocess.CalledProcessError:
             pass
         # There are several locations git.exe may be hiding
         possible_locations = []
@@ -78,36 +78,32 @@ if name == "nt":
     GIT_COMMAND = find_git_on_windows()
 
 
-def get_current_version():
-    """
-    Given a repository, list all tags for that repository
-    without cloning it and get the current version.
-    """
-    result = run([
-        "git", "ls-remote", "--tags"
-    ], stdout= PIPE, text=True)
-
-    output_lines = result.stdout.splitlines()
-    
-    tags = [
-        line.split("refs/tags/")[-1] for line in output_lines
-        if "refs/tags/" in line and "^{}" not in line
-    
-    ]
-    last_tag = tags[-1][1:]
-    return last_tag
-
-
-def get_git_describe_version(abbrev=7):
+def get_git_describe_version(abbrev=0):
     """return the string output of git desribe"""
     try:
-        return get_current_version()
-    except (OSError, CalledProcessError):
+        with open(devnull, "w") as fnull:
+            repo_url = "https://github.com/cta-observatory/dl1-data-handler/"
+            output_lines = subprocess.check_output(
+                [
+                    "git",
+                    "ls-remote",
+                    "--tags",
+                    "--refs",
+                    "--sort=version:refname",
+                    repo_url,
+                ],
+                encoding="utf-8",
+            ).splitlines()
+            last_line_ref = output_lines[-1].rpartition("/")[-1]
+            return (last_line_ref)
+
+    except (OSError, subprocess.CalledProcessError):
         return None
 
 
 def format_git_describe(git_str, pep440=False):
     """format the result of calling 'git describe' as a python version"""
+
     if "-" not in git_str:  # currently at a tag
         formatted_str = git_str
     else:
@@ -171,9 +167,11 @@ def get_version(pep440=False):
 
     The file VERSION will need to be changed manually.
     """
+
     raw_git_version = get_git_describe_version()
     if not raw_git_version:  # not a git repository
         return read_release_version()
+
     git_version = format_git_describe(raw_git_version, pep440=pep440)
 
     return git_version
