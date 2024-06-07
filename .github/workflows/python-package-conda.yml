@@ -38,7 +38,7 @@ jobs:
         conda install pytest
         pytest
     - name: Publish conda package from PyPI package
-      uses: actions/conda-skeleton-publish@v1
+      uses: silvxlabs/conda-skeleton-publish@v1
       with:
         pypi_package: "ctlearn"
         python_version: "3.10"
