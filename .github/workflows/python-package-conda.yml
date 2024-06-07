@@ -37,11 +37,11 @@ jobs:
       run: |
         conda install pytest
         pytest
-    - name: Build and upload the conda packages
-      uses: openalea/action-build-publish-anaconda@main
+    - name: publish-to-conda
+      uses: paskino/conda-package-publish-action@master
       with:
-        conda: conda
-        python: ${{ matrix.pyv }}
-        token: ${{ secrets.ANACONDA_TOKEN }}
-        label: main
-        buildoptions: '--no-test'
+        subDir: '.'
+        channels: 'conda-forge -c ccpi -c paskino'
+        AnacondaToken: ${{ secrets.ANACONDA_TOKEN }}
+        convert_win: true
+        convert_osx: true
