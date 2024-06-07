@@ -37,6 +37,10 @@ jobs:
         conda install pytest
         pytest
     - name: Build and upload the conda packages
-      uses: openalea/github-action-conda-build/.github/workflows/conda-package-build.yml@main
-      secrets: 
-        anaconda_token: ${{ secrets.ANACONDA_TOKEN }}
+      uses: openalea/action-build-publish-anaconda@main
+      with:
+        conda: conda
+        python: ${{ matrix.pyv }}
+        token: ${{ secrets.ANACONDA_TOKEN }}
+        label: main
+        buildoptions: '--no-test'
