@@ -36,3 +36,14 @@ jobs:
       run: |
         conda install pytest
         pytest
+    - name: Build and upload the conda packages
+      uses: uibcdf/action-build-and-upload-conda-packages@v1.3.0
+      with:
+        meta_yaml_dir: devtools/conda-build
+        python-version: ${{ matrix.pyv }} # Values previously defined in `matrix`
+        platform_linux-64: true
+        platform_osx-64: true
+        platform_win-64: true
+        user: uibcdf
+        label: auto
+        token: ${{ secrets.ANACONDA_TOKEN }}
