@@ -37,11 +37,11 @@ jobs:
       run: |
         conda install pytest
         pytest
-    - name: publish-to-conda
-      uses: paskino/conda-package-publish-action@master
+    - name: Publish conda package from PyPI package
+      uses: actions/conda-skeleton-publish@v1
       with:
-        subDir: '.'
-        channels: 'conda-forge -c ccpi -c paskino'
-        AnacondaToken: ${{ secrets.ANACONDA_TOKEN }}
-        convert_win: true
-        convert_osx: true
+        pypi_package: "ctlearn"
+        python_version: "3.10"
+        upload_channel: "conda-forge"
+        access_token: ${{ secrets.ANACONDA_TOKEN }}
+        stable: true
