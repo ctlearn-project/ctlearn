@@ -21,7 +21,7 @@ requirements:
     - pytables >=3.8
     - pandas
     - tensorflow ==2.15
-    - ctlearn-project::dl1_data_handler
+    #- ctlearn-project::dl1_data_handler
   host:
     - python #==3.12
     - numpy >=1.20
@@ -32,7 +32,7 @@ requirements:
     - pytables >=3.8
     - pandas
     - tensorflow ==2.15
-    - ctlearn-project::dl1_data_handler
+    #- ctlearn-project::dl1_data_handler
   run:
     - python #==3.12
     - numpy >=1.20
@@ -43,7 +43,7 @@ requirements:
     - pytables >=3.8
     - pandas
     - tensorflow ==2.15
-    - ctlearn-project::dl1_data_handler
+    #- ctlearn-project::dl1_data_handler
 
   test:
     imports:
