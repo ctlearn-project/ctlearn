@@ -2,13 +2,13 @@
 
 package:
   name: ctlearn
-  version: { data.get('version') }}
+  version: {{ data.get('version') }}
 source:
   path: ..
+
 build:
-  noarch: generic
-  number: '0'
-  string: py311_0
+  #noarch: generic
+  number: 0
 requirements:
   build:
     - absl-py 2.1.0 pyhd8ed1ab_0
@@ -556,7 +556,8 @@ requirements:
     - scipy
     - tensorflow ==2.15
   test:
-    - imports
+    imports:
+      - ctlearn
 about:
   home: https://github.com/ctlearn-project/ctlearn/
   license: BSD3-Clause
