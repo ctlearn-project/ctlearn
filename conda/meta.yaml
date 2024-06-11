@@ -21,7 +21,7 @@ requirements:
     - pytables >=3.8
     - pandas
     - tensorflow ==2.15
-    - dl1_data_handler
+    - dl1-data-handler
   host:
     - python #==3.12
     - numpy >=1.20
@@ -32,7 +32,7 @@ requirements:
     - pytables >=3.8
     - pandas
     - tensorflow ==2.15
-    - dl1_data_handler
+    - dl1-data-handler
   run:
     - python #==3.12
     - numpy >=1.20
@@ -43,7 +43,7 @@ requirements:
     - pytables >=3.8
     - pandas
     - tensorflow ==2.15
-    - dl1_data_handler
+    - dl1-data-handler
 
   test:
     imports:
