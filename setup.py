@@ -30,7 +30,5 @@ setup(name='ctlearn',
         'console_scripts': ['ctlearn=ctlearn.run_model:main',
                             'build_irf=ctlearn.build_irf:main'],
       },
-      include_package_data=True,
-      dependencies=[],
       dependency_links=[],
-      zip_safe=False)
+      zip_safe=True)
