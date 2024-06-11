@@ -1,7 +1,3 @@
-# This file created by conda-build 24.5.1
-# meta.yaml template originally from:
-# Origin b'https://github.com/ctlearn-project/ctlearn', commit b'4501e2fb17e8bf3dc9665e825df94bfad92b031b'
-# ------------------------------------------------
 {% set data = load_setup_py_data() %}
 
 package:
