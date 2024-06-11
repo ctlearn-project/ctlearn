@@ -2,12 +2,13 @@
 # meta.yaml template originally from:
 # Origin b'https://github.com/ctlearn-project/ctlearn', commit b'4501e2fb17e8bf3dc9665e825df94bfad92b031b'
 # ------------------------------------------------
+{% set data = load_setup_py_data() %}
 
 package:
   name: ctlearn
-  version: 0.8.0
+  version: { data.get('version') }}
 source:
-  path: /Users/tjarkmiener/Desktop/ctlearn_workshop/ctlearn-workshops/ctlearn
+  path: ..
 build:
   noarch: generic
   number: '0'
