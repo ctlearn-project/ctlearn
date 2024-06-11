@@ -9,8 +9,9 @@ source:
 build:
   #noarch: generic
   number: 0
+  
 requirements:
- build:
+  build:
     - python #==3.12
     - numpy >=1.20
     - astropy
