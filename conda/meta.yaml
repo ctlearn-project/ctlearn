@@ -21,7 +21,7 @@ requirements:
     - ctapipe ==0.20.0
     - pytables >=3.8
     - pandas
-    - tensorflow ==2.15
+    #- tensorflow ==2.15
     #- ctlearn-project::dl1_data_handler
   host:
     - python #==3.12
@@ -33,7 +33,7 @@ requirements:
     - ctapipe ==0.20.0
     - pytables >=3.8
     - pandas
-    - tensorflow ==2.15
+    #- tensorflow ==2.15
     #- ctlearn-project::dl1_data_handler
   run:
     - python #==3.12
@@ -45,7 +45,7 @@ requirements:
     - ctapipe ==0.20.0
     - pytables >=3.8
     - pandas
-    - tensorflow ==2.15
+    #- tensorflow ==2.15
     #- ctlearn-project::dl1_data_handler
 
   test:
