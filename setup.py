@@ -2,7 +2,9 @@ from setuptools import setup, find_packages
 from os import path
 
 def getVersionFromFile():
+    print('entro')
     file = open("versionBackup.txt").readlines()
+    print(file)
     for line in file:
         for word in line.split():
             print('hola')
