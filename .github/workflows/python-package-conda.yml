@@ -66,7 +66,7 @@ jobs:
     - name: Get version
       run: |
         output=$(python versionScript.py)
-        echo "{version}={$output}" >> $GITHUB_OUTPUT
+        echo "version=$output" >> $GITHUB_OUTPUT
         #echo "::set-output name=version::$output"
       id: step1  
     - name: Write
