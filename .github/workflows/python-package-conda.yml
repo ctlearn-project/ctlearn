@@ -67,7 +67,6 @@ jobs:
       run: |
         output=$(python versionScript.py)
         echo "version=$output" >> $GITHUB_OUTPUT
-        #echo "::set-output name=version::$output"
       id: step1  
     - name: Write
       uses: 1arp/create-a-file-action@0.4.5
