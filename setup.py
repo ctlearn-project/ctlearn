@@ -5,6 +5,7 @@ def getVersionFromFile():
     file = open("versionBackup.txt").readlines()
     for line in file:
         for word in line.split():
+            print('hola')
             print(word)
             return word
 
