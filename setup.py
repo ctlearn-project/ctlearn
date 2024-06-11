@@ -1,6 +1,11 @@
 from setuptools import setup, find_packages
 from os import path
-from ctlearn.version import *
+
+def getVersionFromFile():
+    file = open("versionBackup.txt").readlines()
+    for line in file:
+        for word in line.split():
+            return word
 
 here = path.abspath(path.dirname(__file__))
 
@@ -8,7 +13,7 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(name='ctlearn',
-      version=get_version_pypi(),
+      version=getVersionFromFile(),
       author="CTLearn Team",
       author_email="d.nieto@ucm.es",
       description='Deep learning analysis framework for Imaging Atmospheric Cherenkov Telescopes, especially the Cherenkov Telescope Array (CTA) and the MAGIC telescopes.',
