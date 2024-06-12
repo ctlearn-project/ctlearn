@@ -34,7 +34,7 @@ jobs:
     - name: Publish package distributions to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
 
- condapublish:
+  condapublish:
     strategy:
       matrix:
         os: [ubuntu-22.04]
