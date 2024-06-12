@@ -33,3 +33,58 @@ jobs:
         python setup.py sdist bdist_wheel  # Could also be python -m build
     - name: Publish package distributions to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
+
+ condapublish:
+    strategy:
+      matrix:
+        os: [ubuntu-22.04]
+        pyv: ["3.10"]
+      max-parallel: 5
+    runs-on: ${{ matrix.os }}
+    permissions:
+      id-token: write
+      contents: write
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Set up Python ${{ matrix.pyv }}
+      run: |
+        conda install -y python=${{ matrix.pyv }}
+    - name: Add conda to system path
+      run: |
+        # $CONDA is an environment variable pointing to the root of the miniconda directory
+        echo $CONDA/bin >> $GITHUB_PATH
+    - name: Install dependencies
+      run: |
+        conda env update --file environment.yml --name base
+        sudo apt-get install python3-numpy
+    - name: Get version
+      run: |
+        output=$(python versionScript.py)
+        echo "version=$output" >> $GITHUB_OUTPUT
+      id: step1  
+    - name: Write
+      uses: 1arp/create-a-file-action@0.4.5
+      with:
+        path: '.'
+        isAbsolutePath: true
+        file: 'versionBackup.txt'
+        content: |
+          ${{ steps.step1.outputs.version }}
+          
+    - name: Push changes    
+      run: |
+        git config --global user.email "rcervino@ucm.es"
+        git config --global user.name "rcervinoucm"
+        git status
+        git add .
+        git commit -m "version update" --allow-empty
+        git push -u origin master
+        
+    - name: publish-to-conda
+      uses: fcakyon/conda-publish-action@v1.3
+      with:
+        subdir: 'conda'
+        anacondatoken: ${{ secrets.ANACONDA_TOKEN }}
+
