@@ -105,7 +105,8 @@ def setup_DL1DataReader(config, mode):
                 "Data format is not implemented in the DL1DH reader. Available data formats are 'stage1' and 'dl1dh'."
             )
         # Check weather the file is MC simulation or real observational data
-        if data_format == "dl1dh" and "source_name" in f.root._v_attrs:
+        if f.root._v_attrs['CTA PROCESS TYPE'] == 'Observation':
+        # if data_format == "dl1dh" and "source_name" in f.root._v_attrs:
             mc_file = False
         # Retrieve the name convention for the dl1b parameters
         if data_format == "dl1dh":
@@ -175,9 +176,10 @@ def setup_DL1DataReader(config, mode):
         ):
             config["Data"]["parameter_settings"] = {"parameter_list": dl1bparameter_names}
         if "direction" in tasks or mode == "predict":
-            event_info.append("true_alt")
-            event_info.append("true_az")
-            transformations.append({"name": "DeltaAltAz_fix_subarray"})
+            if mc_file:
+                event_info.append("true_alt")
+                event_info.append("true_az")
+                transformations.append({"name": "DeltaAltAz_fix_subarray"})
         if "cherenkov_photons" in tasks:
             if "trigger_settings" in config["Data"]:
                 config["Data"]["trigger_settings"]["reco_cherenkov_photons"] = True
@@ -187,12 +189,13 @@ def setup_DL1DataReader(config, mode):
                 )
 
     if "type" in tasks or mode == "predict":
-        event_info.append("true_shower_primary_id")
+        if mc_file:
+            event_info.append("true_shower_primary_id")
 
     if "energy" in tasks or mode == "predict":
         if mc_file:
             event_info.append("true_energy")
-        transformations.append({"name": "MCEnergy"})
+            transformations.append({"name": "MCEnergy"})
 
     stack_telescope_images = config["Input"].get("stack_telescope_images", False)
     if config["Data"]["mode"] == "stereo" and not stack_telescope_images:
