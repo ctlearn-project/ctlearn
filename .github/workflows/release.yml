@@ -61,7 +61,7 @@ jobs:
         sudo apt-get install python3-numpy
     - name: Get version
       run: |
-        output=$(python versionScript.py)
+        output=$(python .github/versionScript.py)
         echo "version=$output" >> $GITHUB_OUTPUT
       id: step1  
     - name: Write
@@ -69,7 +69,7 @@ jobs:
       with:
         path: '.'
         isAbsolutePath: true
-        file: 'versionBackup.txt'
+        file: '.github/versionBackup.txt'
         content: |
           ${{ steps.step1.outputs.version }}
           
