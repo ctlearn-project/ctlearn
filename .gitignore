@@ -14,7 +14,8 @@
 # Compiled Python files
 __pycache__/
 *.py[cod]
-
+.DS_Store
+ctlearn/.DS_Store
 ctlearn.egg-info/
 
 # Sphinx documentation

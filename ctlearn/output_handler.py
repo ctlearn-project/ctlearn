@@ -9,35 +9,6 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
     if not os.path.exists(prediction_dir):
         os.makedirs(prediction_dir)
 
-    # Store the information for observational data
-    if reader.instrument_id == "MAGIC" and reader.process_type == "Observation":
-        # Dump the information of the run to hdf5 file
-        run_info = {}
-        run_info["run_number"] = reader._v_attrs["run_number"]
-        run_info["magic_number"] = reader._v_attrs["magic_number"]
-        run_info["num_events"] = reader._v_attrs["num_events"]
-        run_info["run_start_mjd"] = reader._v_attrs["run_start_mjd"]
-        run_info["run_start_ms"] = reader._v_attrs["run_start_ms"]
-        run_info["run_start_ns"] = reader._v_attrs["run_start_ns"]
-        run_info["run_stop_mjd"] = reader._v_attrs["run_stop_mjd"]
-        run_info["run_stop_ms"] = reader._v_attrs["run_stop_ms"]
-        run_info["run_stop_ns"] = reader._v_attrs["run_stop_ns"]
-        pd.DataFrame(data=run_info, index=[0]).to_hdf(
-            h5file, key=f"/info/run", mode="a"
-        )
-        # Dump the information of the obsveration to hdf5 file
-        obs_info = {}
-        obs_info["source_name"] = reader._v_attrs["source_name"]
-        obs_info["project_name"] = reader._v_attrs["project_name"]
-        obs_info["observation_mode"] = reader._v_attrs["observation_mode"]
-        obs_info["source_dec"] = reader._v_attrs["source_dec"]
-        obs_info["source_ra"] = reader._v_attrs["source_ra"]
-        obs_info["telescope_dec"] = reader._v_attrs["telescope_dec"]
-        obs_info["telescope_ra"] = reader._v_attrs["telescope_ra"]
-        pd.DataFrame(data=obs_info, index=[0]).to_hdf(
-            h5file, key=f"/info/obs", mode="a"
-        )
-
     # Store dl2 data
     reco = {}
     if os.path.isfile(h5file):
@@ -69,41 +40,6 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
                 axis=0,
             )
         reco["obs_id"] = obs_id
-
-    # Store the timestamp
-    if data.mjd_pos:
-        mjd = data.mjd_list[data.batch_size :]
-        if rest_data:
-            mjd = np.concatenate(
-                (
-                    mjd,
-                    rest_data.mjd_list[rest_data.batch_size :],
-                ),
-                axis=0,
-            )
-        reco["mjd"] = mjd
-    if data.milli_pos:
-        milli_sec = data.milli_list[data.batch_size :]
-        if rest_data:
-            milli_sec = np.concatenate(
-                (
-                    milli_sec,
-                    rest_data.milli_list[rest_data.batch_size :],
-                ),
-                axis=0,
-            )
-        reco["milli_sec"] = milli_sec
-    if data.nano_pos:
-        nano_sec = data.nano_list[data.batch_size :]
-        if rest_data:
-            nano_sec = np.concatenate(
-                (
-                    nano_sec,
-                    rest_data.nano_list[rest_data.batch_size :],
-                ),
-                axis=0,
-            )
-        reco["nano_sec"] = nano_sec
 
     # Store pointings
     if data.pon_pos:
