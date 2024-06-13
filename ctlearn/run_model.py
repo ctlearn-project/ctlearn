@@ -17,7 +17,7 @@ import yaml
 import tensorflow as tf
 from tensorflow.python import debug as tf_debug
 
-from dl1_data_handler.reader import DL1DataReaderSTAGE1, DL1DataReaderDL1DH
+from dl1_data_handler.reader import DLDataReader
 from ctlearn.data_loader import KerasBatchGenerator
 from ctlearn.output_handler import *
 from ctlearn.utils import *
@@ -54,7 +54,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             class_names = [name[0] for name in class_names]
 
     # Set up the DL1DataReader
-    config["Data"], data_format = setup_DL1DataReader(config, mode)
+    config["Data"] = setup_DL1DataReader(config, mode)
 
     # Set up logging, saving the config and optionally logging to a file
     logger = setup_logging(config, model_dir, debug, log_to_file)
@@ -72,11 +72,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     # Create data reader
     logger.info("Loading data:")
     logger.info("  For a large dataset, this may take a while...")
-    if data_format == "stage1":
-        reader = DL1DataReaderSTAGE1(**config["Data"])
-    elif data_format == "dl1dh":
-        reader = DL1DataReaderDL1DH(**config["Data"])
-
+    reader = DLDataReader(**config["Data"])
     logger.info("  Number of events loaded: {}".format(len(reader)))
 
     # Set up the KerasBatchGenerator

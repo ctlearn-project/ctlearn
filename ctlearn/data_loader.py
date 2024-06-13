@@ -7,7 +7,7 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
 
     def __init__(
         self,
-        DL1DataReaderDL1DH,
+        DLDataReader,
         indices,
         batch_size=64,
         mode="train",
@@ -16,7 +16,7 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
         stack_telescope_images=False,
     ):
         "Initialization"
-        self.DL1DataReaderDL1DH = DL1DataReaderDL1DH
+        self.DLDataReader = DLDataReader
         self.batch_size = batch_size
         self.indices = indices
         self.mode = mode
@@ -39,8 +39,6 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
         # Additional info
         self.evt_pos, self.obs_pos = None, None
         self.event_list, self.obs_list = [], []
-        self.mjd_pos, self.milli_pos, self.nano_pos = None, None, None
-        self.mjd_list, self.milli_list, self.nano_list = [], [], []
         # Labels
         self.prt_pos, self.enr_pos, self.drc_pos = None, None, None
         self.prt_labels = []
@@ -49,7 +47,7 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
         self.trgpatch_labels = []
         self.energy_unit = None
 
-        for i, desc in enumerate(self.DL1DataReaderDL1DH.example_description):
+        for i, desc in enumerate(self.DLDataReader.example_description):
             if "HWtrigger" in desc["name"]:
                 self.trg_pos = i
                 self.trg_shape = desc["shape"]
@@ -78,12 +76,6 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
                 self.evt_pos = i
             elif "obs_id" in desc["name"]:
                 self.obs_pos = i
-            elif "mjd" in desc["name"]:
-                self.mjd_pos = i
-            elif "milli_sec" in desc["name"]:
-                self.milli_pos = i
-            elif "nano_sec" in desc["name"]:
-                self.nano_pos = i
 
         # Retrieve shape from a single image in stereo analysis
         if self.trg_pos is not None and self.img_pos is not None:
@@ -139,7 +131,7 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
                 )
         # Generate data
         for i, index in enumerate(batch_indices):
-            event = self.DL1DataReaderDL1DH[index]
+            event = self.DLDataReader[index]
             # Fill the features
             if self.trg_pos is not None:
                 triggers[i] = event[self.trg_pos]
@@ -155,7 +147,7 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
                 if self.prt_pos is not None:
                     particletype[
                         i
-                    ] = self.DL1DataReaderDL1DH.shower_primary_id_to_class[
+                    ] = self.DLDataReader.shower_primary_id_to_class[
                         int(event[self.prt_pos])
                     ]
                 if self.enr_pos is not None:
@@ -186,13 +178,6 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
                     self.event_list.append(np.float32(event[self.evt_pos]))
                 if self.obs_pos is not None:
                     self.obs_list.append(np.float32(event[self.obs_pos]))
-                # Save timestamp
-                if self.mjd_pos is not None:
-                    self.mjd_list.append(np.float32(event[self.mjd_pos]))
-                if self.milli_pos is not None:
-                    self.milli_list.append(np.float32(event[self.milli_pos]))
-                if self.nano_pos is not None:
-                    self.nano_list.append(np.float32(event[self.nano_pos]))
 
         features = {}
         if self.trg_pos is not None:
@@ -209,11 +194,11 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
             if self.prt_pos is not None:
                 labels["type"] = tf.keras.utils.to_categorical(
                     particletype,
-                    num_classes=self.DL1DataReaderDL1DH.num_classes,
+                    num_classes=self.DLDataReader.num_classes,
                 )
                 label = tf.keras.utils.to_categorical(
                     particletype,
-                    num_classes=self.DL1DataReaderDL1DH.num_classes,
+                    num_classes=self.DLDataReader.num_classes,
                 )
             if self.enr_pos is not None:
                 labels["energy"] = energy.reshape((-1, 1))
@@ -221,7 +206,7 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
             if self.drc_pos is not None:
                 labels["direction"] = direction
                 label = direction
-            if self.trgpatch_pos is not None and self.DL1DataReaderDL1DH.reco_cherenkov_photons:
+            if self.trgpatch_pos is not None and self.DLDataReader.reco_cherenkov_photons:
                 labels["cherenkov_photons"] = trigger_patches_true_image_sum
                 label = trigger_patches_true_image_sum
 
