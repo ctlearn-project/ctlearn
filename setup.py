@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 from os import path
 
 def getVersionFromFile():
-    file = open("versionBackup.txt").readlines()
+    file = open(".github/versionBackup.txt").readlines()
     for line in file:
         for word in line.split():
             return word
