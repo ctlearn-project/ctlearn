@@ -4,7 +4,7 @@ package:
   name: ctlearn
   version: {{ data.get('version') }}
 source:
-  path: ..
+  path: ../..
 
 build:
   #noarch: generic
