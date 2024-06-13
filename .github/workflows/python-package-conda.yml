@@ -83,7 +83,7 @@ jobs:
         git status
         git add .
         git commit -m "version update" --allow-empty
-        git push -u origin master
+        git push -u origin testalex
         
     - name: publish-to-conda
       uses: fcakyon/conda-publish-action@v1.3
