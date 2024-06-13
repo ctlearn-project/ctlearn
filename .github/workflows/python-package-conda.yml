@@ -64,7 +64,7 @@ jobs:
         sudo apt-get install python3-numpy
     - name: Get version
       run: |
-        output=$(python .github/versionScript.py)
+        output=$(python ctlearn/versionScript.py)
         echo "version=$output" >> $GITHUB_OUTPUT
       id: step1  
     - name: Write
@@ -88,6 +88,6 @@ jobs:
     - name: publish-to-conda
       uses: fcakyon/conda-publish-action@v1.3
       with:
-        subdir: 'conda'
+        subdir: '.github/conda'
         anacondatoken: ${{ secrets.ANACONDA_TOKEN }}
 
