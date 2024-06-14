@@ -127,7 +127,7 @@ def setup_DL1DataReader(config, mode):
         if mc_file:
             event_info.append("true_alt")
             event_info.append("true_az")
-            transformations.append({"name": "DeltaAltAz_fix_subarray"})
+            transformations.append({"name": "DeltaAltAz"})
     if "cherenkov_photons" in tasks:
         if "trigger_settings" in config["Data"]:
             config["Data"]["trigger_settings"]["reco_cherenkov_photons"] = True
