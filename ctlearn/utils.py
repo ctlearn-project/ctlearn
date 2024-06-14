@@ -185,8 +185,6 @@ def setup_DL1DataReader(config, mode):
         if "event_info" not in config["Data"]:
             config["Data"]["event_info"] = []
         config["Data"]["event_info"].extend(["event_id", "obs_id"])
-        if data_format == "dl1dh" and not mc_file:
-            config["Data"]["event_info"].extend(["mjd", "milli_sec", "nano_sec"])
 
     return config["Data"]
 
