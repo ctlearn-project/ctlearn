@@ -41,31 +41,12 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
             )
         reco["obs_id"] = obs_id
 
-    # Store pointings
-    if data.pon_pos:
-        pointing_alt = np.array(data.pointing)[data.batch_size :, 0]
-        pointing_az = np.array(data.pointing)[data.batch_size :, 1]
-        if rest_data:
-            pointing_alt = np.concatenate(
-                (
-                    pointing_alt,
-                    np.array(rest_data.pointing)[rest_data.batch_size :, 0],
-                ),
-                axis=0,
+    # Store telescope pointings
+    if reader.telescope_pointings is not None:
+        for tel_id, pointing_table in enumerate(reader.telescope_pointings):
+            pd.DataFrame(data=pointing_table).to_hdf(
+                h5file, key=f"/configuration/telescope/pointing/{tel_id}", mode="a"
             )
-            pointing_az = np.concatenate(
-                (
-                    pointing_az,
-                    np.array(rest_data.pointing)[rest_data.batch_size :, 1],
-                ),
-                axis=0,
-            )
-
-    else:
-        pointing_alt = np.array([reader.pointing[0]] * len(reader))
-        pointing_az = np.array([reader.pointing[1]] * len(reader))
-    reco["pointing_alt"] = pointing_alt
-    reco["pointing_az"] = pointing_az
 
     # Store predictions and simulation values
     # Gamma/hadron classification
@@ -125,7 +106,6 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
                     ),
                     axis=0,
                 )
-                + pointing_alt
             )
             az = (
                 np.concatenate(
@@ -135,7 +115,6 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
                     ),
                     axis=0,
                 )
-                + pointing_az
             )
         if "corsika_version" not in reader._v_attrs:
             reco["source_alt"] = alt
@@ -145,8 +124,8 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
             reco["true_az"] = az
 
     if "direction" in tasks:
-        reco["reco_alt"] = np.array(predictions[:, 0]) + pointing_alt
-        reco["reco_az"] = np.array(predictions[:, 1]) + pointing_az
+        reco["reco_alt"] = np.array(predictions[:, 0])
+        reco["reco_az"] = np.array(predictions[:, 1])
 
     if data.trgpatch_pos:
         cherenkov_photons = data.trgpatch_labels[data.batch_size :]

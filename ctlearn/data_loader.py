@@ -30,8 +30,6 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
         self.singleimg_shape = None
         self.trg_pos, self.trg_shape = None, None
         self.trgpatch_pos, self.trgpatch_shape = None, None
-        self.pon_pos = None
-        self.pointing = []
         self.wvf_pos, self.wvf_shape = None, None
         self.img_pos, self.img_shape = None, None
         self.prm_pos, self.prm_shape = None, None
@@ -51,8 +49,6 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
             if "HWtrigger" in desc["name"]:
                 self.trg_pos = i
                 self.trg_shape = desc["shape"]
-            elif "pointing" in desc["name"]:
-                self.pon_pos = i
             elif "waveform" in desc["name"]:
                 self.wvf_pos = i
                 self.wvf_shape = desc["shape"]
@@ -167,9 +163,6 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
                     self.az_labels.append(np.float32(event[self.drc_pos][1]))
                 if self.trgpatch_pos is not None:
                     self.trgpatch_labels.append(np.float32(event[self.trgpatch_pos]))
-                # Save pointing
-                if self.pon_pos is not None:
-                    self.pointing.append(event[self.pon_pos])
                 # Save all parameters for the prediction phase
                 if self.prm_pos is not None:
                     self.parameter_list.append(event[self.prm_pos])
