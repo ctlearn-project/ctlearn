@@ -2,6 +2,7 @@ import os
 import logging
 import numpy as np
 import pandas as pd
+from astropy.table import Table
 
 
 def write_output(h5file, data, rest_data, reader, predictions, tasks):
@@ -43,8 +44,8 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
 
     # Store telescope pointings
     if reader.telescope_pointings is not None:
-        for tel_id, pointing_table in enumerate(reader.telescope_pointings):
-            pd.DataFrame(data=pointing_table).to_hdf(
+        for tel_id in reader.telescope_pointings:
+            pd.DataFrame(data=reader.telescope_pointings[tel_id].to_pandas()).to_hdf(
                 h5file, key=f"/configuration/telescope/pointing/{tel_id}", mode="a"
             )
 
