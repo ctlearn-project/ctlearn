@@ -46,7 +46,7 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
     if reader.telescope_pointings is not None:
         for tel_id in reader.telescope_pointings:
             pd.DataFrame(data=reader.telescope_pointings[tel_id].to_pandas()).to_hdf(
-                h5file, key=f"/configuration/telescope/pointing/{tel_id}", mode="a"
+                h5file, key=f"/monitoring/telescope/pointing/{tel_id}", mode="a"
             )
 
     # Store predictions and simulation values
@@ -117,16 +117,16 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
                     axis=0,
                 )
             )
-        if "corsika_version" not in reader._v_attrs:
-            reco["source_alt"] = alt
-            reco["source_az"] = az
-        else:
-            reco["true_alt"] = alt
-            reco["true_az"] = az
+        reco["true_alt"] = alt if reader.fix_pointing_alt is None else alt + reader.fix_pointing_alt
+        reco["true_az"] = az if reader.fix_pointing_az is None else az + reader.fix_pointing_az
 
     if "direction" in tasks:
-        reco["reco_alt"] = np.array(predictions[:, 0])
-        reco["reco_az"] = np.array(predictions[:, 1])
+        reco["reco_alt"] = np.array(predictions[:, 0]) if reader.fix_pointing_alt is None else np.array(predictions[:, 0]) + reader.fix_pointing_alt
+        reco["reco_az"] = np.array(predictions[:, 1]) if reader.fix_pointing_az is None else np.array(predictions[:, 1]) + reader.fix_pointing_az
+        if reader.fix_pointing_alt is not None:
+            reco["pointing_alt"] = np.full(len(reco["reco_alt"]), reader.fix_pointing_alt)
+        if reader.fix_pointing_az is not None:
+            reco["pointing_az"] = np.full(len(reco["reco_az"]), reader.fix_pointing_az)
 
     if data.trgpatch_pos:
         cherenkov_photons = data.trgpatch_labels[data.batch_size :]
