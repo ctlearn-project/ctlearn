@@ -144,7 +144,7 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
                 axis=0,
             )
         reco["true_shower_primary_id"] = true_shower_primary_id
-    if "particletype" in tasks:
+    if "type" in tasks:
         for n, name in enumerate(data.class_names):
             reco[name + "ness"] = np.array(predictions[:, n])
     # Energy regression
@@ -212,17 +212,33 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
         reco["reco_alt"] = np.array(predictions[:, 0]) + pointing_alt
         reco["reco_az"] = np.array(predictions[:, 1]) + pointing_az
 
+    if data.trgpatch_pos:
+        cherenkov_photons = data.trgpatch_labels[data.batch_size :]
+        if rest_data:
+            cherenkov_photons = np.concatenate(
+                (
+                    cherenkov_photons,
+                    rest_data.trgpatch_labels[rest_data.batch_size :],
+                ),
+                axis=0,
+            )
+        reco["true_cherenkov_photons"] = cherenkov_photons
+    if "cherenkov_photons" in tasks:
+        reco["reco_cherenkov_photons"] = np.array(predictions)[:, 0]
     # Dump the dl2 data to hdf5 file
-    pd.DataFrame(data=reco).to_hdf(h5file, key=f"/dl2/reco", mode="a")
+    if reader.include_nsb_patches is None:
+        pd.DataFrame(data=reco).to_hdf(h5file, key=f"/dl2/reco", mode="a")
+    else:
+        pd.DataFrame(data=reco).to_hdf(h5file, key=f"/trigger/reco", mode="a")
 
     # Store the simulation information for pyirf
-    if reader.simulation_info:
+    if reader.simulation_info and reader.include_nsb_patches != "all":
         pd.DataFrame(data=reader.simulation_info, index=[0]).to_hdf(
             h5file, key=f"/info/mc_header", mode="a"
         )
 
     # Store the selected Hillas parameters (dl1b)
-    if reader.parameter_list:
+    if reader.parameter_list and reader.include_nsb_patches != "all":
         tel_counter = 0
         if reader.mode == "mono":
             tel_type = list(reader.selected_telescopes.keys())[0]

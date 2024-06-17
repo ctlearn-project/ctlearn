@@ -37,7 +37,7 @@ necessary package channels, and install CTLearn specified version and its depend
 
 .. code-block:: bash
 
-   CTLEARN_VER=0.7.0
+   CTLEARN_VER=0.8.0
    wget https://raw.githubusercontent.com/ctlearn-project/ctlearn/v$CTLEARN_VER/environment.yml
    conda env create -n [ENVIRONMENT_NAME] -f environment.yml
    conda activate [ENVIRONMENT_NAME]
@@ -54,29 +54,10 @@ Citing this software
 
 Please cite the corresponding version using the DOIs below if this software package is used to produce results for any publication:
 
-.. |zendoi060| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.6842323.svg
-   :target: https://doi.org/10.5281/zenodo.6842323
-.. |zendoi052| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.5947837.svg
-   :target: https://doi.org/10.5281/zenodo.5947837
-.. |zendoi051| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.5772815.svg
-   :target: https://doi.org/10.5281/zenodo.5772815
-.. |zendoi050| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.4576196.svg
-   :target: https://doi.org/10.5281/zenodo.4576196
-.. |zendoi040| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.3345947.svg
-   :target: https://doi.org/10.5281/zenodo.3345947
-.. |zendoi040l| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.3342954.svg
-   :target: https://doi.org/10.5281/zenodo.3342954
-.. |zendoi031| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.3342953.svg
-   :target: https://doi.org/10.5281/zenodo.3342953
+.. |zendoi070| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.7908252.svg
+   :target: https://doi.org/10.5281/zenodo.7908252
 
-
-* 0.6.0 : |zendoi050|
-* 0.5.2 : |zendoi050|
-* 0.5.1 : |zendoi050|
-* 0.5.0 : |zendoi050|
-* 0.4.0 : |zendoi040|
-* 0.4.0-legacy : |zendoi040l|
-* 0.3.1 : |zendoi031|
+* 0.7.0 : |zendoi070|
 
 Team
 ----

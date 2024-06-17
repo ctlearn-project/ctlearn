@@ -1,5 +1,5 @@
-# conda env create -f environment.yml
-name: ctlearn
+# conda env create -f environment-cluster.yml
+name: ctlearn-cluster
 channels:
     - anaconda
     - conda-forge
@@ -9,15 +9,21 @@ dependencies:
     - python=3.10
     - dl1_data_handler==0.11.1
     - astropy
-    - matplotlib
     - numpy
-    - pandas
     - pip
     - pyyaml
     - scikit-learn
     - pip:
         - ctaplot
+        - matplotlib==3.6.2
         - numba>=0.56.2,<0.57
-        - tensorflow>=2.15,<2.16
+        - numexpr==2.8.4
+        - kiwisolver==1.4
+        - tensorflow>=2.14,<2.15
         - pydot
         - pyirf
+        - pandas==1.5.2
+        - pillow==9.3.0
+        - scipy==1.11.1
+        - tables==3.8.0
+

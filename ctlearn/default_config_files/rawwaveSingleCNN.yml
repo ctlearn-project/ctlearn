@@ -1,13 +1,17 @@
 Data:
     mode: 'mono'
-    waveform: 'raw'
-    waveform_sequence_length: 5
-    waveform_format: 'timechannel_last'
+    waveform_settings:
+        waveform_type: 'raw'
+        waveform_sequence_length: 20
+        waveform_max_from_simulation: False
+        waveform_format: 'timechannel_last'
+        waveform_r0pedsub: True
     mapping_settings:
         mapping_method:
             'LSTCam': 'bilinear_interpolation'
             'FlashCam': 'bilinear_interpolation'
             'NectarCam': 'bilinear_interpolation'
+            'DigiCam': 'bilinear_interpolation'
             'CHEC': 'oversampling'
             'SCTCam': 'oversampling'
             'LSTSiPMCam': 'bilinear_interpolation'
@@ -16,17 +20,18 @@ Data:
             'LSTCam': 2
             'FlashCam': 2
             'NectarCam': 2
+            'DigiCam': 2
             'CHEC': 0
             'SCTCam': 0
             'LSTSiPMCam': 2
             'MAGICCam': 2
 Input:
     batch_size_per_worker: 8
-    concat_telescopes: false
+    stack_telescope_images: false
 Model:
     name: 'SingleCNNWave'
     backbone: {module: 'single_cnn', function: 'single_cnn_model'}
-    engine_wvf: {module: 'basic', function: 'conv_block'}
+    waveform_engine: {module: 'basic', function: 'conv_block'}
     head: {module: 'head', function: 'standard_head'}
 Model Parameters:
     attention: {mechanism: 'Squeeze-and-Excitation', ratio: 16}
@@ -41,18 +46,18 @@ Model Parameters:
             bottleneck: null
             batchnorm: false
     standard_head:
-        particletype: {fc_head: [512, 256], weight: 1.0}
+        type: {fc_head: [512, 256], weight: 1.0}
         energy: {fc_head: [512, 256], weight: 1.0}
         direction: {fc_head: [512, 256], weight: 1.0}
 Training:
-    validation_split: 0.05
+    validation_split: 0.1
     num_epochs: 10
     verbose: 2
     workers: 1
     optimizer: 'Adam'
     adam_epsilon: 1.0e-8
-    base_learning_rate: 0.0001
+    base_learning_rate: 0.00001
     lr_reducing_patience: 5
     lr_reducing_factor: 0.5
     lr_reducing_mindelta: 0.01
-    lr_reducing_minlr: 0.00001
+    lr_reducing_minlr: 0.000001

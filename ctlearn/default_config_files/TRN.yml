@@ -1,11 +1,13 @@
 Data:
     mode: 'mono'
-    image_channels: ['image', 'peak_time']
+    image_settings:
+        image_channels: ['image', 'peak_time']
     mapping_settings:
         mapping_method:
             'LSTCam': 'bilinear_interpolation'
             'FlashCam': 'bilinear_interpolation'
             'NectarCam': 'bilinear_interpolation'
+            'DigiCam': 'bilinear_interpolation'
             'CHEC': 'oversampling'
             'SCTCam': 'oversampling'
             'LSTSiPMCam': 'bilinear_interpolation'
@@ -14,17 +16,18 @@ Data:
             'LSTCam': 2
             'FlashCam': 2
             'NectarCam': 2
+            'DigiCam': 2
             'CHEC': 0
             'SCTCam': 0
             'LSTSiPMCam': 2
             'MAGICCam': 2
 Input:
     batch_size_per_worker: 64
-    concat_telescopes: false
+    stack_telescope_images: false
 Model:
     name: 'ThinResNet'
     backbone: {module: 'single_cnn', function: 'single_cnn_model'}
-    engine_img: {module: 'resnet', function: 'stacked_res_blocks'}
+    image_engine: {module: 'resnet', function: 'stacked_res_blocks'}
     head: {module: 'head', function: 'standard_head'}
 Model Parameters:
     attention: {mechanism: 'Squeeze-and-Excitation', ratio: 16}
@@ -37,7 +40,7 @@ Model Parameters:
                 - {filters: 128, blocks: 3}
                 - {filters: 256, blocks: 3}
     standard_head:
-        particletype: {fc_head: [512, 256], weight: 1.0}
+        type: {fc_head: [512, 256], weight: 1.0}
         energy: {fc_head: [512, 256], weight: 1.0}
         direction: {fc_head: [512, 256], weight: 1.0}
 Training:

@@ -312,11 +312,8 @@ def main():
             energy_max=u.Quantity(p["mc_header"]["energy_range_max"].max(), u.TeV),
             spectral_index=p["mc_header"]["spectral_index"][0],
             max_impact=u.Quantity(p["mc_header"]["max_scatter_range"].max(), u.m),
-            viewcone=u.Quantity(
-                p["mc_header"]["max_viewcone_radius"][0]
-                - p["mc_header"]["min_viewcone_radius"][0],
-                u.deg,
-            ),
+            viewcone_min=u.Quantity(np.around(p["mc_header"]["min_viewcone_radius"][0], decimals=2), u.deg),
+            viewcone_max=u.Quantity(np.around(p["mc_header"]["max_viewcone_radius"][0], decimals=2), u.deg),
         )
         p["simulation_info"] = simulation_info
         p["simulated_spectrum"] = PowerLaw.from_simulation(simulation_info, T_OBS)

@@ -1,27 +1,33 @@
 Data:
     mode: 'mono'
+    trigger_settings:
+        number_of_trigger_patches: [7, 7]
+        reco_cherenkov_photons: False
+        include_nsb_patches: 'auto'
+        trigger_patch_from_simulation: True
     waveform_settings:
-        waveform_type: 'calibrated'
-        waveform_sequence_length: 20
-        waveform_max_from_simulation: False
+        waveform_type: 'raw'
+        waveform_sequence_length: 5
+        waveform_max_from_simulation: True
         waveform_format: 'timechannel_last'
+        waveform_r0pedsub: True
     mapping_settings:
         mapping_method:
-            'LSTCam': 'bilinear_interpolation'
-            'FlashCam': 'bilinear_interpolation'
-            'NectarCam': 'bilinear_interpolation'
-            'DigiCam': 'bilinear_interpolation'
+            'LSTCam': 'image_shifting'
+            'FlashCam': 'image_shifting'
+            'NectarCam': 'image_shifting'
+            'DigiCam': 'image_shifting'
             'CHEC': 'oversampling'
             'SCTCam': 'oversampling'
-            'LSTSiPMCam': 'bilinear_interpolation'
-            'MAGICCam': 'bilinear_interpolation'
+            'LSTSiPMCam': 'image_shifting'
+            'MAGICCam': 'image_shifting'
         padding:
             'LSTCam': 2
             'FlashCam': 2
             'NectarCam': 2
             'DigiCam': 2
-            'CHEC': 0
-            'SCTCam': 0
+            'CHEC': 2
+            'SCTCam': 2
             'LSTSiPMCam': 2
             'MAGICCam': 2
 Input:
@@ -33,7 +39,6 @@ Model:
     waveform_engine: {module: 'basic', function: 'conv_block'}
     head: {module: 'head', function: 'standard_head'}
 Model Parameters:
-    attention: {mechanism: 'Squeeze-and-Excitation', ratio: 16}
     basic:
         conv_block:
             layers:
@@ -48,15 +53,16 @@ Model Parameters:
         type: {fc_head: [512, 256], weight: 1.0}
         energy: {fc_head: [512, 256], weight: 1.0}
         direction: {fc_head: [512, 256], weight: 1.0}
+        cherenkov_photons: {fc_head: [512, 256], weight: 1.0}
 Training:
-    validation_split: 0.1
+    validation_split: 0.05
     num_epochs: 10
     verbose: 2
     workers: 1
     optimizer: 'Adam'
     adam_epsilon: 1.0e-8
-    base_learning_rate: 0.00001
+    base_learning_rate: 0.0001
     lr_reducing_patience: 5
     lr_reducing_factor: 0.5
     lr_reducing_mindelta: 0.01
-    lr_reducing_minlr: 0.000001
+    lr_reducing_minlr: 0.00001
