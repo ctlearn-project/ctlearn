@@ -2,41 +2,13 @@ import os
 import logging
 import numpy as np
 import pandas as pd
+from astropy.table import Table
 
 
 def write_output(h5file, data, rest_data, reader, predictions, tasks):
     prediction_dir = h5file.replace(f'{h5file.split("/")[-1]}', "")
     if not os.path.exists(prediction_dir):
         os.makedirs(prediction_dir)
-
-    # Store the information for observational data
-    if reader.instrument_id == "MAGIC" and reader.process_type == "Observation":
-        # Dump the information of the run to hdf5 file
-        run_info = {}
-        run_info["run_number"] = reader._v_attrs["run_number"]
-        run_info["magic_number"] = reader._v_attrs["magic_number"]
-        run_info["num_events"] = reader._v_attrs["num_events"]
-        run_info["run_start_mjd"] = reader._v_attrs["run_start_mjd"]
-        run_info["run_start_ms"] = reader._v_attrs["run_start_ms"]
-        run_info["run_start_ns"] = reader._v_attrs["run_start_ns"]
-        run_info["run_stop_mjd"] = reader._v_attrs["run_stop_mjd"]
-        run_info["run_stop_ms"] = reader._v_attrs["run_stop_ms"]
-        run_info["run_stop_ns"] = reader._v_attrs["run_stop_ns"]
-        pd.DataFrame(data=run_info, index=[0]).to_hdf(
-            h5file, key=f"/info/run", mode="a"
-        )
-        # Dump the information of the obsveration to hdf5 file
-        obs_info = {}
-        obs_info["source_name"] = reader._v_attrs["source_name"]
-        obs_info["project_name"] = reader._v_attrs["project_name"]
-        obs_info["observation_mode"] = reader._v_attrs["observation_mode"]
-        obs_info["source_dec"] = reader._v_attrs["source_dec"]
-        obs_info["source_ra"] = reader._v_attrs["source_ra"]
-        obs_info["telescope_dec"] = reader._v_attrs["telescope_dec"]
-        obs_info["telescope_ra"] = reader._v_attrs["telescope_ra"]
-        pd.DataFrame(data=obs_info, index=[0]).to_hdf(
-            h5file, key=f"/info/obs", mode="a"
-        )
 
     # Store dl2 data
     reco = {}
@@ -70,66 +42,12 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
             )
         reco["obs_id"] = obs_id
 
-    # Store the timestamp
-    if data.mjd_pos:
-        mjd = data.mjd_list[data.batch_size :]
-        if rest_data:
-            mjd = np.concatenate(
-                (
-                    mjd,
-                    rest_data.mjd_list[rest_data.batch_size :],
-                ),
-                axis=0,
+    # Store telescope pointings
+    if reader.telescope_pointings is not None:
+        for tel_id in reader.telescope_pointings:
+            pd.DataFrame(data=reader.telescope_pointings[tel_id].to_pandas()).to_hdf(
+                h5file, key=f"/monitoring/telescope/pointing/{tel_id}", mode="a"
             )
-        reco["mjd"] = mjd
-    if data.milli_pos:
-        milli_sec = data.milli_list[data.batch_size :]
-        if rest_data:
-            milli_sec = np.concatenate(
-                (
-                    milli_sec,
-                    rest_data.milli_list[rest_data.batch_size :],
-                ),
-                axis=0,
-            )
-        reco["milli_sec"] = milli_sec
-    if data.nano_pos:
-        nano_sec = data.nano_list[data.batch_size :]
-        if rest_data:
-            nano_sec = np.concatenate(
-                (
-                    nano_sec,
-                    rest_data.nano_list[rest_data.batch_size :],
-                ),
-                axis=0,
-            )
-        reco["nano_sec"] = nano_sec
-
-    # Store pointings
-    if data.pon_pos:
-        pointing_alt = np.array(data.pointing)[data.batch_size :, 0]
-        pointing_az = np.array(data.pointing)[data.batch_size :, 1]
-        if rest_data:
-            pointing_alt = np.concatenate(
-                (
-                    pointing_alt,
-                    np.array(rest_data.pointing)[rest_data.batch_size :, 0],
-                ),
-                axis=0,
-            )
-            pointing_az = np.concatenate(
-                (
-                    pointing_az,
-                    np.array(rest_data.pointing)[rest_data.batch_size :, 1],
-                ),
-                axis=0,
-            )
-
-    else:
-        pointing_alt = np.array([reader.pointing[0]] * len(reader))
-        pointing_az = np.array([reader.pointing[1]] * len(reader))
-    reco["pointing_alt"] = pointing_alt
-    reco["pointing_az"] = pointing_az
 
     # Store predictions and simulation values
     # Gamma/hadron classification
@@ -189,7 +107,6 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
                     ),
                     axis=0,
                 )
-                + pointing_alt
             )
             az = (
                 np.concatenate(
@@ -199,18 +116,17 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
                     ),
                     axis=0,
                 )
-                + pointing_az
             )
-        if "corsika_version" not in reader._v_attrs:
-            reco["source_alt"] = alt
-            reco["source_az"] = az
-        else:
-            reco["true_alt"] = alt
-            reco["true_az"] = az
+        reco["true_alt"] = alt if reader.fix_pointing_alt is None else alt + reader.fix_pointing_alt
+        reco["true_az"] = az if reader.fix_pointing_az is None else az + reader.fix_pointing_az
 
     if "direction" in tasks:
-        reco["reco_alt"] = np.array(predictions[:, 0]) + pointing_alt
-        reco["reco_az"] = np.array(predictions[:, 1]) + pointing_az
+        reco["reco_alt"] = np.array(predictions[:, 0]) if reader.fix_pointing_alt is None else np.array(predictions[:, 0]) + reader.fix_pointing_alt
+        reco["reco_az"] = np.array(predictions[:, 1]) if reader.fix_pointing_az is None else np.array(predictions[:, 1]) + reader.fix_pointing_az
+        if reader.fix_pointing_alt is not None:
+            reco["pointing_alt"] = np.full(len(reco["reco_alt"]), reader.fix_pointing_alt)
+        if reader.fix_pointing_az is not None:
+            reco["pointing_az"] = np.full(len(reco["reco_az"]), reader.fix_pointing_az)
 
     if data.trgpatch_pos:
         cherenkov_photons = data.trgpatch_labels[data.batch_size :]
