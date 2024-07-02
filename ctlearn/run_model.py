@@ -483,7 +483,7 @@ def main():
         "--nsb",
         default=False,
         action=argparse.BooleanOptionalAction,
-        help="Flag, if the network should predict on NSB trigger patches",
+        help="Flag, if the network should include NSB trigger patches at training phase. In prediction mode, the network should only predict on NSB trigger patches",
     )
     parser.add_argument(
         "--pretrained_weights", "-w", help="Path to the pretrained weights"
@@ -661,6 +661,13 @@ def main():
         config["Data"][
             "example_identifiers_file"
         ] = f"{config['Logging']['model_directory']}/example_identifiers_file.h5"
+
+        # AI-Trigger settings weather to include NSB trigger patches at training phase or not
+        if "trigger_settings" in config["Data"]:
+            if args.nsb:
+                config["Data"]["trigger_settings"]["include_nsb_patches"] = "auto"
+            else:
+                config["Data"]["trigger_settings"]["include_nsb_patches"] = "off"
 
         run_model(config, mode="train", debug=args.debug, log_to_file=args.log_to_file)
 
