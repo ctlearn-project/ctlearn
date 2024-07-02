@@ -486,6 +486,12 @@ def main():
         help="Flag, if the network should include NSB trigger patches at training phase. In prediction mode, the network should only predict on NSB trigger patches",
     )
     parser.add_argument(
+        "--trigger_patches_from_file",
+        default=False,
+        action=argparse.BooleanOptionalAction,
+        help="Flag, if the trigger patches should be retrieved from an external file",
+    )
+    parser.add_argument(
         "--pretrained_weights", "-w", help="Path to the pretrained weights"
     )
     parser.add_argument(
@@ -668,6 +674,8 @@ def main():
                 config["Data"]["trigger_settings"]["include_nsb_patches"] = "auto"
             else:
                 config["Data"]["trigger_settings"]["include_nsb_patches"] = "off"
+            if args.trigger_patches_from_file:
+                config["Data"]["trigger_settings"]["get_trigger_patch"] = "file"
 
         run_model(config, mode="train", debug=args.debug, log_to_file=args.log_to_file)
 
@@ -705,6 +713,8 @@ def main():
                                 config["Data"]["trigger_settings"]["include_nsb_patches"] = "all"
                             else:
                                 config["Data"]["trigger_settings"]["include_nsb_patches"] = "off"
+                            if args.trigger_patches_from_file:
+                                config["Data"]["trigger_settings"]["get_trigger_patch"] = "file"
                         if args.tel_types:
                             config["Data"]["selected_telescope_types"] = args.tel_types
                         if args.allowed_tels:
@@ -780,6 +790,8 @@ def main():
                         config["Data"]["trigger_settings"]["include_nsb_patches"] = "all"
                     else:
                         config["Data"]["trigger_settings"]["include_nsb_patches"] = "off"
+                    if args.trigger_patches_from_file:
+                        config["Data"]["trigger_settings"]["get_trigger_patch"] = "file"
                 if args.tel_types:
                     config["Data"]["selected_telescope_types"] = args.tel_types
                 if args.allowed_tels:
