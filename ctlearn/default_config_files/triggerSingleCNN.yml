@@ -4,7 +4,7 @@ Data:
         number_of_trigger_patches: [7, 7]
         reco_cherenkov_photons: False
         include_nsb_patches: 'off'
-        trigger_patch_from_simulation: True
+        get_trigger_patch: 'file'
     waveform_settings:
         waveform_type: 'raw'
         waveform_sequence_length: 5
