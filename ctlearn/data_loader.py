@@ -39,9 +39,10 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
         self.event_list, self.obs_list = [], []
         # Labels
         self.prt_pos, self.enr_pos, self.drc_pos = None, None, None
+        self.drc_unit = None
         self.prt_labels = []
         self.enr_labels = []
-        self.alt_labels, self.az_labels = [], []
+        self.az_labels, self.alt_labels, self.sep_labels = [], [], []
         self.trgpatch_labels = []
         self.energy_unit = None
 
@@ -68,6 +69,7 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
                 self.energy_unit = desc["unit"]
             elif "direction" in desc["name"]:
                 self.drc_pos = i
+                self.drc_unit = desc["unit"]
             elif "event_id" in desc["name"]:
                 self.evt_pos = i
             elif "obs_id" in desc["name"]:
@@ -120,7 +122,7 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
             if self.enr_pos is not None:
                 energy = np.empty((self.batch_size))
             if self.drc_pos is not None:
-                direction = np.empty((self.batch_size, 2))
+                direction = np.empty((self.batch_size, 3))
             if self.trgpatch_pos is not None:
                 trigger_patches_true_image_sum = np.empty(
                     (self.batch_size, *self.trgpatch_shape)
@@ -159,8 +161,9 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
                 if self.enr_pos is not None:
                     self.enr_labels.append(np.float32(event[self.enr_pos][0]))
                 if self.drc_pos is not None:
-                    self.alt_labels.append(np.float32(event[self.drc_pos][0]))
-                    self.az_labels.append(np.float32(event[self.drc_pos][1]))
+                    self.az_labels.append(np.float32(event[self.drc_pos][0]))
+                    self.alt_labels.append(np.float32(event[self.drc_pos][1]))
+                    self.sep_labels.append(np.float32(event[self.drc_pos][2]))
                 if self.trgpatch_pos is not None:
                     self.trgpatch_labels.append(np.float32(event[self.trgpatch_pos]))
                 # Save all parameters for the prediction phase
