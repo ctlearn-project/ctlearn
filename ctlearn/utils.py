@@ -123,7 +123,7 @@ def setup_DL1DataReader(config, mode):
         and mode == "predict"
     ):
         config["Data"]["parameter_settings"] = {"parameter_list": dl1bparameter_names}
-    if "direction" in tasks or mode == "predict":
+    if "direction" in tasks:
         if mc_file:
             event_info.append("true_alt")
             event_info.append("true_az")

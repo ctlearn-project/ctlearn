@@ -159,7 +159,7 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
                 if self.prt_pos is not None:
                     self.prt_labels.append(np.float32(event[self.prt_pos]))
                 if self.enr_pos is not None:
-                    self.enr_labels.append(np.float32(event[self.enr_pos][0]))
+                    self.enr_labels.append(np.float32(event[self.enr_pos]))
                 if self.drc_pos is not None:
                     self.az_labels.append(np.float32(event[self.drc_pos][0]))
                     self.alt_labels.append(np.float32(event[self.drc_pos][1]))
