@@ -20,6 +20,7 @@ setup(name='ctlearn',
       entry_points = {
         'console_scripts': ['ctlearn=ctlearn.run_model:main',
                             'build_irf=ctlearn.build_irf:main'],
+        'ctapipe_reco': ['CTLearnReconstructor=ctlearn.ctapipe_plugin:CTLearnReconstructor'],
       },
       include_package_data=True,
       dependencies=[],
