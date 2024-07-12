@@ -6,5 +6,8 @@ pip
 pyyaml
 scikit-learn
 tensorflow
-tf2onnx
+ctaplot
 dl1_data_handler
+numba
+pydot
+pyirf
