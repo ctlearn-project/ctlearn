@@ -3,8 +3,8 @@ Data:
     trigger_settings:
         number_of_trigger_patches: [7, 7]
         reco_cherenkov_photons: False
-        include_nsb_patches: 'auto'
-        trigger_patch_from_simulation: True
+        include_nsb_patches: 'off'
+        get_trigger_patch: 'simulation'
     waveform_settings:
         waveform_type: 'raw'
         waveform_sequence_length: 5

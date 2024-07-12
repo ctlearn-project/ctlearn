@@ -43,7 +43,7 @@ def standard_head(inputs, tasks, params):
         logits["direction"] = fully_connect(
             inputs,
             standard_head_settings["direction"]["fc_head"],
-            expected_logits_dimension=2,
+            expected_logits_dimension=3,
             name="direction",
         )
         losses["direction"] = tf.keras.losses.MeanAbsoluteError(

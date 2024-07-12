@@ -95,31 +95,17 @@ def setup_DL1DataReader(config, mode):
     mc_file = True
     dl1bparameter_names = None
     with tables.open_file(config["Data"]["file_list"][0], mode="r") as f:
-        # Retrieve the data format of the hdf5 file
-        if "CTA PRODUCT DATA MODEL NAME" in f.root._v_attrs:
-            data_format = "stage1"
-        elif "dl1_data_handler_version" in f.root._v_attrs:
-            data_format = "dl1dh"
-        else:
-            raise ValueError(
-                "Data format is not implemented in the DL1DH reader. Available data formats are 'stage1' and 'dl1dh'."
-            )
+
         # Check weather the file is MC simulation or real observational data
-        if data_format == "dl1dh" and "source_name" in f.root._v_attrs:
+        if f.root._v_attrs['CTA PROCESS TYPE'] == 'Observation':
             mc_file = False
         # Retrieve the name convention for the dl1b parameters
-        if data_format == "dl1dh":
-            first_tablename = next(f.root.Parameters0._f_iter_nodes()).name
-            dl1bparameter_names = f.root.Parameters0._f_get_child(
-                f"{first_tablename}"
-            ).colnames
-        else:
-            first_tablename = next(
-                f.root.dl1.event.telescope.parameters._f_iter_nodes()
-            ).name
-            dl1bparameter_names = f.root.dl1.event.telescope.parameters._f_get_child(
-                f"{first_tablename}"
-            ).colnames
+        first_tablename = next(
+            f.root.dl1.event.telescope.parameters._f_iter_nodes()
+        ).name
+        dl1bparameter_names = f.root.dl1.event.telescope.parameters._f_get_child(
+            f"{first_tablename}"
+        ).colnames
 
     allow_overwrite = config["Data"].get("allow_overwrite", True)
     if "allow_overwrite" in config["Data"]:
@@ -131,68 +117,33 @@ def setup_DL1DataReader(config, mode):
     tasks = config["Reco"]
     transformations = []
     event_info = []
-    if data_format == "dl1dh":
-        if (
-            "parameter_settings" not in config["Data"]
-            and dl1bparameter_names is not None
-            and mode == "predict"
-        ):
-            config["Data"]["parameter_settings"] = {"parameter_list": dl1bparameter_names}
-        # Parse list of event selection filters
-        event_selection = {}
-        for s in config["Data"].get("event_selection", {}):
-            s = {"module": "dl1_data_handler.filters", **s}
-            filter_fn, filter_params = load_from_module(**s)
-            event_selection[filter_fn] = filter_params
-        config["Data"]["event_selection"] = event_selection
-
-        # Parse list of image selection filters
-        image_selection = {}
-        for s in config["Data"].get("image_selection", {}):
-            s = {"module": "dl1_data_handler.filters", **s}
-            filter_fn, filter_params = load_from_module(**s)
-            image_selection[filter_fn] = filter_params
-        config["Data"]["image_selection"] = image_selection
-
-        if "direction" in tasks:
-            event_info.append("src_pos_cam_x")
-            event_info.append("src_pos_cam_y")
-            transformations.append(
-                {
-                    "name": "AltAz",
-                    "args": {
-                        "alt_col_name": "src_pos_cam_x",
-                        "az_col_name": "src_pos_cam_y",
-                        "deg2rad": False,
-                    },
-                }
-            )
-    else:
-        if (
-            "parameter_settings" not in config["Data"]
-            and dl1bparameter_names is not None
-            and mode == "predict"
-        ):
-            config["Data"]["parameter_settings"] = {"parameter_list": dl1bparameter_names}
-        if "direction" in tasks or mode == "predict":
+    if (
+        "parameter_settings" not in config["Data"]
+        and dl1bparameter_names is not None
+        and mode == "predict"
+    ):
+        config["Data"]["parameter_settings"] = {"parameter_list": dl1bparameter_names}
+    if "direction" in tasks:
+        if mc_file:
             event_info.append("true_alt")
             event_info.append("true_az")
-            transformations.append({"name": "DeltaAltAz_fix_subarray"})
-        if "cherenkov_photons" in tasks:
-            if "trigger_settings" in config["Data"]:
-                config["Data"]["trigger_settings"]["reco_cherenkov_photons"] = True
-            else:
-                raise ValueError(
-                    "Required trigger settings are not provided for the regression of Cherenkov photons."
-                )
+            transformations.append({"name": "SkyOffsetSeparation"})
+    if "cherenkov_photons" in tasks:
+        if "trigger_settings" in config["Data"]:
+            config["Data"]["trigger_settings"]["reco_cherenkov_photons"] = True
+        else:
+            raise ValueError(
+                "Required trigger settings are not provided for the regression of Cherenkov photons."
+            )
 
     if "type" in tasks or mode == "predict":
-        event_info.append("true_shower_primary_id")
+        if mc_file:
+            event_info.append("true_shower_primary_id")
 
     if "energy" in tasks or mode == "predict":
         if mc_file:
             event_info.append("true_energy")
-        transformations.append({"name": "MCEnergy"})
+            transformations.append({"name": "LogEnergy"})
 
     stack_telescope_images = config["Input"].get("stack_telescope_images", False)
     if config["Data"]["mode"] == "stereo" and not stack_telescope_images:
@@ -234,10 +185,8 @@ def setup_DL1DataReader(config, mode):
         if "event_info" not in config["Data"]:
             config["Data"]["event_info"] = []
         config["Data"]["event_info"].extend(["event_id", "obs_id"])
-        if data_format == "dl1dh" and not mc_file:
-            config["Data"]["event_info"].extend(["mjd", "milli_sec", "nano_sec"])
 
-    return config["Data"], data_format
+    return config["Data"]
 
 
 def load_from_module(name, module, path=None, args=None):

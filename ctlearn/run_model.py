@@ -17,7 +17,7 @@ import yaml
 import tensorflow as tf
 from tensorflow.python import debug as tf_debug
 
-from dl1_data_handler.reader import DL1DataReaderSTAGE1, DL1DataReaderDL1DH
+from dl1_data_handler.reader import DLDataReader
 from ctlearn.data_loader import KerasBatchGenerator
 from ctlearn.output_handler import *
 from ctlearn.utils import *
@@ -54,7 +54,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             class_names = [name[0] for name in class_names]
 
     # Set up the DL1DataReader
-    config["Data"], data_format = setup_DL1DataReader(config, mode)
+    config["Data"] = setup_DL1DataReader(config, mode)
 
     # Set up logging, saving the config and optionally logging to a file
     logger = setup_logging(config, model_dir, debug, log_to_file)
@@ -72,11 +72,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     # Create data reader
     logger.info("Loading data:")
     logger.info("  For a large dataset, this may take a while...")
-    if data_format == "stage1":
-        reader = DL1DataReaderSTAGE1(**config["Data"])
-    elif data_format == "dl1dh":
-        reader = DL1DataReaderDL1DH(**config["Data"])
-
+    reader = DLDataReader(**config["Data"])
     logger.info("  Number of events loaded: {}".format(len(reader)))
 
     # Set up the KerasBatchGenerator
@@ -487,7 +483,13 @@ def main():
         "--nsb",
         default=False,
         action=argparse.BooleanOptionalAction,
-        help="Flag, if the network should predict on NSB trigger patches",
+        help="Flag, if the network should include NSB trigger patches at training phase. In prediction mode, the network should only predict on NSB trigger patches",
+    )
+    parser.add_argument(
+        "--trigger_patches_from_file",
+        default=False,
+        action=argparse.BooleanOptionalAction,
+        help="Flag, if the trigger patches should be retrieved from an external file",
     )
     parser.add_argument(
         "--pretrained_weights", "-w", help="Path to the pretrained weights"
@@ -666,6 +668,15 @@ def main():
             "example_identifiers_file"
         ] = f"{config['Logging']['model_directory']}/example_identifiers_file.h5"
 
+        # AI-Trigger settings weather to include NSB trigger patches at training phase or not
+        if "trigger_settings" in config["Data"]:
+            if args.nsb:
+                config["Data"]["trigger_settings"]["include_nsb_patches"] = "auto"
+            else:
+                config["Data"]["trigger_settings"]["include_nsb_patches"] = "off"
+            if args.trigger_patches_from_file:
+                config["Data"]["trigger_settings"]["get_trigger_patch"] = "file"
+
         run_model(config, mode="train", debug=args.debug, log_to_file=args.log_to_file)
 
     if "predict" in args.mode:
@@ -702,6 +713,8 @@ def main():
                                 config["Data"]["trigger_settings"]["include_nsb_patches"] = "all"
                             else:
                                 config["Data"]["trigger_settings"]["include_nsb_patches"] = "off"
+                            if args.trigger_patches_from_file:
+                                config["Data"]["trigger_settings"]["get_trigger_patch"] = "file"
                         if args.tel_types:
                             config["Data"]["selected_telescope_types"] = args.tel_types
                         if args.allowed_tels:
@@ -777,6 +790,8 @@ def main():
                         config["Data"]["trigger_settings"]["include_nsb_patches"] = "all"
                     else:
                         config["Data"]["trigger_settings"]["include_nsb_patches"] = "off"
+                    if args.trigger_patches_from_file:
+                        config["Data"]["trigger_settings"]["get_trigger_patch"] = "file"
                 if args.tel_types:
                     config["Data"]["selected_telescope_types"] = args.tel_types
                 if args.allowed_tels:
