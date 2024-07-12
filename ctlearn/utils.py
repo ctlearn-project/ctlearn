@@ -123,11 +123,11 @@ def setup_DL1DataReader(config, mode):
         and mode == "predict"
     ):
         config["Data"]["parameter_settings"] = {"parameter_list": dl1bparameter_names}
-    if "direction" in tasks or mode == "predict":
+    if "direction" in tasks:
         if mc_file:
             event_info.append("true_alt")
             event_info.append("true_az")
-            transformations.append({"name": "DeltaAltAz"})
+            transformations.append({"name": "SkyOffsetSeparation"})
     if "cherenkov_photons" in tasks:
         if "trigger_settings" in config["Data"]:
             config["Data"]["trigger_settings"]["reco_cherenkov_photons"] = True
@@ -143,7 +143,7 @@ def setup_DL1DataReader(config, mode):
     if "energy" in tasks or mode == "predict":
         if mc_file:
             event_info.append("true_energy")
-            transformations.append({"name": "MCEnergy"})
+            transformations.append({"name": "LogEnergy"})
 
     stack_telescope_images = config["Input"].get("stack_telescope_images", False)
     if config["Data"]["mode"] == "stereo" and not stack_telescope_images:
