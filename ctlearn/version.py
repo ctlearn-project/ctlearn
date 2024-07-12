@@ -27,7 +27,7 @@ https://github.com/warner/python-versioneer
 but being much more lightwheight
 
 """
-from subprocess import check_output, CalledProcessError
+import subprocess
 from os import path, name, devnull, environ, listdir
 from ast import literal_eval
 
@@ -44,11 +44,11 @@ if name == "nt":
         """find the path to the git executable on windows"""
         # first see if git is in the path
         try:
-            check_output(["where", "/Q", "git"])
+            subprocess.check_output(["where", "/Q", "git"])
             # if this command succeeded, git is in the path
             return "git"
         # catch the exception thrown if git was not found
-        except CalledProcessError:
+        except subprocess.CalledProcessError:
             pass
         # There are several locations git.exe may be hiding
         possible_locations = []
@@ -78,17 +78,26 @@ if name == "nt":
     GIT_COMMAND = find_git_on_windows()
 
 
-def get_git_describe_version(abbrev=7):
+def get_git_describe_version():
     """return the string output of git desribe"""
     try:
         with open(devnull, "w") as fnull:
-            arguments = [GIT_COMMAND, "describe", "--tags", "--abbrev=%d" % abbrev]
-            return (
-                check_output(arguments, cwd=CURRENT_DIRECTORY, stderr=fnull)
-                .decode("ascii")
-                .strip()
-            )
-    except (OSError, CalledProcessError):
+            repo_url = "https://github.com/ctlearn-project/ctlearn"
+            output_lines = subprocess.check_output(
+                [
+                    "git",
+                    "ls-remote",
+                    "--tags",
+                    "--refs",
+                    "--sort=version:refname",
+                    repo_url,
+                ],
+                encoding="utf-8",
+            ).splitlines() #nosec
+            last_line_ref = output_lines[-1].rpartition("/")[-1]
+            return (last_line_ref)
+
+    except (OSError, subprocess.CalledProcessError):
         return None
 
 

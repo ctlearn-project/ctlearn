@@ -87,7 +87,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     if mode == "train":
         if "Training" not in config:
             config["Training"] = {}
-        validation_split = np.float(config["Training"].get("validation_split", 0.1))
+        validation_split = np.float64(config["Training"].get("validation_split", 0.1))
         if not 0.0 < validation_split < 1.0:
             raise ValueError(
                 "Invalid validation split: {}. "

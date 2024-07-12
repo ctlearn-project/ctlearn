@@ -1,0 +1,56 @@
+{% set data = load_setup_py_data() %}
+
+package:
+  name: ctlearn
+  version: {{ data.get('version') }}
+source:
+  path: ../..
+
+build:
+  #noarch: generic
+  number: 0
+  
+requirements:
+  build:
+    - python #==3.12
+    - numpy >=1.20
+    - setuptools
+    - astropy
+    - scipy
+    - jupyter
+    - ctapipe ==0.20.0
+    - pytables >=3.8
+    - pandas
+  host:
+    - python #==3.12
+    - numpy >=1.20
+    - astropy
+    - setuptools
+    - scipy
+    - jupyter
+    - ctapipe ==0.20.0
+    - pytables >=3.8
+    - pandas
+  run:
+    - python #==3.12
+    - numpy >=1.20
+    - jupyter
+    - setuptools
+    - astropy
+    - scipy
+    - ctapipe ==0.20.0
+    - pytables >=3.8
+    - pandas
+
+  test:
+    imports:
+      - ctlearn
+about:
+  home: https://github.com/ctlearn-project/ctlearn/
+  license: BSD3-Clause
+  license_file: LICENSE
+  summary: Deep Learning for IACT Event Reconstruction.
+extra:
+  recipe-maintainers:
+    - TjarkMiener
+    - nietootein
