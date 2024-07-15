@@ -1,7 +1,9 @@
 name: Release CD
 
-on: [push]
-
+on:
+  release:
+    types: [published]
+    
 jobs:
   pypi-publish:
     name: Publish release to PyPI
