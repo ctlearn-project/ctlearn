@@ -14,7 +14,7 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../../'))
+import ctlearn
 
 # -- Project information -----------------------------------------------------
 
@@ -23,9 +23,9 @@ copyright = '2022, CTLearn devs'
 author = 'CTLearn devs'
 
 # The short X.Y version
-version = ''
+version = ctlearn.__version__
 # The full version, including alpha/beta/rc tags
-release = '0.0.1'
+release = version
 
 
 # -- General configuration ---------------------------------------------------
