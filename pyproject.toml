@@ -49,8 +49,11 @@ packages = ["ctlearn"]
 
 [project.optional-dependencies]
 doc = [
-  "sphinx"
+  "sphinx",
+  "sphinx-rtd-theme",
 ]
+# self reference allows all to be defined in terms of other extras
+all = ["ctlearn[doc]"]
 
 [project.urls]
 repository = "https://github.com/ctlearn-project/ctlearn"
