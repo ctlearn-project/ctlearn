@@ -38,7 +38,7 @@ jobs:
         
     - name: Get version
       run: |
-        output=$(python dl1_data_handler/versionScript.py)
+        output=$(python ctlearn/versionScript.py)
         echo "version=$output" >> $GITHUB_OUTPUT
       id: step1  
       
@@ -65,39 +65,6 @@ jobs:
         python setup.py sdist bdist_wheel  # Could also be python -m build
     - name: Publish package distributions to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
-
-  condapublish:
-    strategy:
-      matrix:
-        os: [ubuntu-22.04]
-        pyv: ["3.10"]
-      max-parallel: 5
-    runs-on: ${{ matrix.os }}
-    permissions:
-      id-token: write
-      contents: write
-      deployments: write
-      statuses: write
-      actions: write
-      checks: read
-    steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-        
-    - name: Set up Python ${{ matrix.pyv }}
-      run: |
-        conda install -y python=${{ matrix.pyv }}
-        
-    - name: Add conda to system path
-      run: |
-        # $CONDA is an environment variable pointing to the root of the miniconda directory
-        echo $CONDA/bin >> $GITHUB_PATH
-        
-    - name: Install dependencies
-      run: |
-        conda env update --file environment.yml --name base
-        sudo apt-get install python3-numpy
         
     - name: publish-to-conda
       uses: fcakyon/conda-publish-action@v1.3
