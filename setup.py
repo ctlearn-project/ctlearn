@@ -9,6 +9,9 @@ def getVersionFromFile():
 
 here = path.abspath(path.dirname(__file__))
 
+def getRequirements():
+    return open("docs/requirements.txt").readlines()
+        
 with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
@@ -22,9 +25,11 @@ setup(name='ctlearn',
       url='https://github.com/ctlearn-project/ctlearn',
       license='BSD-3-Clause',
       packages=['ctlearn'],
+      install_requires=getRequirements(),
       entry_points = {
         'console_scripts': ['ctlearn=ctlearn.run_model:main',
                             'build_irf=ctlearn.build_irf:main'],
       },
+      
       dependency_links=[],
       zip_safe=True)

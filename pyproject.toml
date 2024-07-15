@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools >= 65", "setuptools_scm[toml]>=6.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "CTLearn"
+description = "CTLearn is a package under active development to run deep learning models to analyze data from all major current and future arrays of imaging atmospheric Cherenkov telescopes (IACTs)."
+readme = "README.md"
+license = {text = "BSD-3-Clause"}
+authors = [
+    {name = "Ari Brill"},
+    {name = "Bryan Kim"},
+    {name = "Tjark Miener"},
+    {name = "Daniel Nieto"}
+]
+
+classifiers = [
+    "License :: OSI Approved :: BSD License",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Astronomy",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
+
+requires-python = ">=3.10"
+dependencies = [
+    "dl1_data_handler>=0.12.0",
+    "astropy",
+    "matplotlib",
+    "numpy",
+    "pandas",
+    "pip",
+    "pyyaml",
+    "scikit-learn",
+    "ctaplot",
+    "numba>=0.56.2,<0.57",
+    "tensorflow>=2.15,<2.16",
+    "pydot",
+    "pyirf",
+]
+
+dynamic = ["version"]
+
+[project.urls]
+repository = "https://github.com/ctlearn-project/ctlearn"
+documentation = "https://ctlearn.readthedocs.io/en/latest/"
+
+[project.scripts]
+ctlearn="ctlearn.run_model:main"
+build_irf="ctlearn.build_irf:main"
