@@ -2,8 +2,8 @@
 CTLearn: Deep Learning for IACT Event Reconstruction
 ====================================================
 
-.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.3342952.svg
-   :target: https://doi.org/10.5281/zenodo.3342952
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11475531.svg
+   :target: https://doi.org/10.5281/zenodo.11475531
    :alt: DOI
 
 
