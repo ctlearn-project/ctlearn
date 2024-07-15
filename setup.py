@@ -10,7 +10,7 @@ def getVersionFromFile():
 here = path.abspath(path.dirname(__file__))
 
 def getRequirements():
-    return open(".docs/requirements.txt").readlines()
+    return open("docs/requirements.txt").readlines()
         
 with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
