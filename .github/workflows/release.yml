@@ -1,8 +1,8 @@
 name: Release CD
 
-on:
-  release:
-    types: [published]
+on:[push]
+  #release:
+   # types: [published]
 
 jobs:
   pypi-publish:
@@ -32,34 +32,10 @@ jobs:
     - name: Install dependencies
       run: |
         conda env update --file environment.yml --name base 
-        
-    - name: Get version
-      run: |
-        output=$(python ctlearn/versionScript.py)
-        echo "version=$output" >> $GITHUB_OUTPUT
-      id: step1  
-      
-    - name: Write
-      uses: 1arp/create-a-file-action@0.4.5
-      with:
-        path: '.'
-        isAbsolutePath: true
-        file: '.github/versionBackup.txt'
-        content: |
-          ${{ steps.step1.outputs.version }}
-          
-    - name: Push changes    
-      run: |
-        git config --global user.email "rcervino@ucm.es"
-        git config --global user.name "rcervinoucm"
-        git status
-        git add .
-        git commit -m "version update" --allow-empty
-        git push -u origin master   
-        
+        pip install setuptools wheel build
     - name: Build package
       run: |
-        python setup.py sdist bdist_wheel  # Could also be python -m build
+        python -m build
     - name: Publish package distributions to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
 
@@ -91,30 +67,6 @@ jobs:
       run: |
         conda env update --file environment.yml --name base
         sudo apt-get install python3-numpy
-        
-    - name: Get version
-      run: |
-        output=$(python ctlearn/versionScript.py)
-        echo "version=$output" >> $GITHUB_OUTPUT
-      id: step1  
-      
-    - name: Write
-      uses: 1arp/create-a-file-action@0.4.5
-      with:
-        path: '.'
-        isAbsolutePath: true
-        file: '.github/versionBackup.txt'
-        content: |
-          ${{ steps.step1.outputs.version }}
-          
-    - name: Push changes    
-      run: |
-        git config --global user.email "rcervino@ucm.es"
-        git config --global user.name "rcervinoucm"
-        git status
-        git add .
-        git commit -m "version update" --allow-empty
-        git push -u origin master
         
     - name: publish-to-conda
       uses: fcakyon/conda-publish-action@v1.3
