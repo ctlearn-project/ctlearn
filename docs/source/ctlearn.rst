@@ -36,13 +36,6 @@ ctlearn.utils module
    :undoc-members:
    :show-inheritance:
 
-ctlearn.version module
-----------------------
-
-.. automodule:: ctlearn.version
-   :members:
-   :undoc-members:
-   :show-inheritance:
 
 Module contents
 ---------------

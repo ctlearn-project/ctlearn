@@ -1,3 +1,5 @@
+ctlearn/_version.py
+
 *.swp
 *.swo
 *.gemini
@@ -15,8 +17,8 @@
 __pycache__/
 *.py[cod]
 .DS_Store
-ctlearn/.DS_Store
-ctlearn.egg-info/
+*.egg-info/
+dist
 
 # Sphinx documentation
 docs/build/

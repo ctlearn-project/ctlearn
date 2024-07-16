@@ -1,13 +1,19 @@
 name: CI
 
-on: [push]
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - "**"
+  pull_request:
 
 jobs:
   build:
     strategy:
       matrix:
         os: [ubuntu-22.04]
-        pyv: [3.9, '3.10', 3.11, 3.12]
+        pyv: ['3.9', '3.10', '3.11', '3.12']
       max-parallel: 5
     runs-on: ${{ matrix.os }}
     steps:
