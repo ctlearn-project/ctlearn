@@ -152,8 +152,8 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
                 tel_az = tel_pointing[i]['azimuth'] * u.rad
                 tel_alt = tel_pointing[i]['altitude'] * u.rad
                 pointing = SkyCoord(
-                    tel_az.to_value(u.deg),
-                    tel_alt.to_value(u.deg),
+                    tel_az.to_value(data.drc_unit),
+                    tel_alt.to_value(data.drc_unit),
                     frame="altaz",
                     unit="deg",
                 )

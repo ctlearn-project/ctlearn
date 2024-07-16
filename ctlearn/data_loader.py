@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+import astropy.units as u
 
 
 class KerasBatchGenerator(tf.keras.utils.Sequence):
@@ -39,12 +40,12 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
         self.event_list, self.obs_list = [], []
         # Labels
         self.prt_pos, self.enr_pos, self.drc_pos = None, None, None
-        self.drc_unit = None
+        self.drc_unit = u.deg
         self.prt_labels = []
         self.enr_labels = []
         self.az_labels, self.alt_labels, self.sep_labels = [], [], []
         self.trgpatch_labels = []
-        self.energy_unit = None
+        self.energy_unit = "log(TeV)"
 
         for i, desc in enumerate(self.DLDataReader.example_description):
             if "HWtrigger" in desc["name"]:
