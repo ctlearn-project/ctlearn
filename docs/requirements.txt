@@ -1,0 +1,13 @@
+astropy
+matplotlib
+numpy
+pandas
+pip
+pyyaml
+scikit-learn
+tensorflow
+ctaplot
+dl1_data_handler
+numba
+pydot
+pyirf

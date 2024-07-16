@@ -42,7 +42,8 @@ import argparse
 import copy
 from multiprocessing import Pool
 import os
-from importlib.metadata import version
+import sys
+import pkg_resources
 
 import numpy as np
 import yaml
@@ -202,7 +203,7 @@ combinations, configurations = make_configurations(base_config,
 # to a file for convenient lookup
 print(settings['run_combinations_path'])
 with open(settings['run_combinations_path'], 'w+') as combinations_file:
-    ctlearn_version = version("ctlearn")
+    ctlearn_version=pkg_resources.get_distribution("ctlearn").version
     combinations_file.write('# The training was performed using CTLearn version {}.\n'.format(ctlearn_version))
     yaml.dump(combinations, combinations_file, default_flow_style=False)
 
