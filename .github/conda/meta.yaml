@@ -3,7 +3,7 @@
 
 package:
   name: 'ctlearn'
-  version: {{ project.get('version') }}
+  version: {{ project.get('dynamic') }}
 source:
   path: ../..
 
