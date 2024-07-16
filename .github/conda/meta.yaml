@@ -1,4 +1,4 @@
-{% set pyproject = load_file_data('../../pyproject.toml', from_recipe_dir=True) %}
+{% set pyproject = load_file_data('../../pyproject.toml','toml', from_recipe_dir=True) %}
 {% set project = pyproject.get('project', {}) %}
 
 package:
@@ -14,6 +14,7 @@ build:
 requirements:
   build:
     - python #==3.12
+    - setuptools
     - numpy >=1.20
     - setuptools
     - astropy
