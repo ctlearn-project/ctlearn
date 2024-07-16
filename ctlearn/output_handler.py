@@ -140,8 +140,37 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
             reco["true_alt"] = np.array(true_alt)
     if "direction" in tasks:
         if reader.fix_pointing is None:
-            reco["reco_az"] = np.array(predictions[:, 0])
-            reco["reco_alt"] = np.array(predictions[:, 1])
+            # Currently we only have LST-1 real observational data,
+            # so there is only one tel_id in the file.
+            # For stereo we should fix this directly in the ctapipe plugin,
+            # which is currently under development.
+            for tel_id in reader.telescope_pointings:
+                tel_pointing = reader.telescope_pointings[tel_id]
+            reco_az, reco_alt = [], []
+            pointing_az, pointing_alt, time = [], [], []
+            for i, (az_off, alt_off) in enumerate(zip(predictions[:, 0], predictions[:, 1])):
+                tel_az = tel_pointing[i]['azimuth'] * u.rad
+                tel_alt = tel_pointing[i]['altitude'] * u.rad
+                pointing = SkyCoord(
+                    tel_az.to_value(u.deg),
+                    tel_alt.to_value(u.deg),
+                    frame="altaz",
+                    unit="deg",
+                )
+                reco_direction = pointing.spherical_offsets_by(
+                    u.Quantity(az_off, unit=u.deg),
+                    u.Quantity(alt_off, unit=u.deg),
+                )
+                reco_az.append(reco_direction.az.to_value(data.drc_unit))
+                reco_alt.append(reco_direction.alt.to_value(data.drc_unit))
+                pointing_az.append(tel_az.to_value(u.deg))
+                pointing_alt.append(tel_alt.to_value(u.deg))
+                time.append(tel_pointing[i]['time'])
+            reco["reco_az"] = np.array(reco_az)
+            reco["reco_alt"] = np.array(reco_alt)
+            reco["pointing_az"] = np.array(pointing_az)
+            reco["pointing_alt"] = np.array(pointing_alt)
+            reco["time"] = np.array(time)
             reco["reco_sep"] = np.array(predictions[:, 2])
         else:
             reco_az, reco_alt = [], []
