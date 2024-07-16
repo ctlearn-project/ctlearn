@@ -1,6 +1,9 @@
+{% set pyproject = load_file_data('pyproject.toml') %}
+{% set poetry = pyproject.get('tool', {}).get('poetry') %}
+
 package:
-  name: ctlearn
-  version: {{ GIT_DESCRIBE_TAG }}
+  name: {{ poetry.get('name') }}
+  version: {{ poetry.get('version') }}
 source:
   path: ../..
 
