@@ -65,3 +65,4 @@ build_irf="ctlearn.build_irf:main"
 
 [tool.setuptools_scm]
 version_file = "ctlearn/_version.py"
+version = {attr = "ctlearn.VERSION"}
