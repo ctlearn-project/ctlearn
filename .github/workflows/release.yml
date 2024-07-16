@@ -1,6 +1,6 @@
 name: Release CD
 
-on:[push]
+on: [push]
   #release:
    # types: [published]
 
