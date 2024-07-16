@@ -1,4 +1,4 @@
-{% set pyproject = load_file_data('pyproject.toml') %}
+{% set pyproject = load_file_data('../pyproject.toml') %}
 {% set poetry = pyproject.get('tool', {}).get('poetry') %}
 
 package:
