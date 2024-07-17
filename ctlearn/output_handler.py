@@ -161,11 +161,7 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
             reco_az, reco_alt = [], []
             pointing_az, pointing_alt, time = [], [], []
             for i, (az_off, alt_off) in enumerate(zip(predictions[:, 0], predictions[:, 1])):
-                event_id = trigger_info[i]['event_id']
-                obs_id = trigger_info[i]['obs_id']
-                tel_id = trigger_info[i]['tel_id']
-                time = trigger_info[i]['time']
-                tel_alt, tel_az = pointing_interpolator(tel_id_int, time)
+                tel_alt, tel_az = pointing_interpolator(tel_id_int, trigger_info[i]['time'])
                 pointing = SkyCoord(
                     tel_az.to_value(data.drc_unit),
                     tel_alt.to_value(data.drc_unit),
@@ -176,6 +172,10 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
                     u.Quantity(az_off, unit=u.deg),
                     u.Quantity(alt_off, unit=u.deg),
                 )
+                event_id.append(trigger_info[i]['event_id'])
+                obs_id.append(trigger_info[i]['obs_id'])
+                tel_id.append(trigger_info[i]['tel_id'])
+                time.append(trigger_info[i]['time'])
                 reco_az.append(reco_direction.az.to_value(data.drc_unit))
                 reco_alt.append(reco_direction.alt.to_value(data.drc_unit))
                 pointing_az.append(tel_az.to_value(u.deg))
