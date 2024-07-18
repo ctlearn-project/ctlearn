@@ -37,9 +37,10 @@ dependencies = [
     "scikit-learn",
     "ctaplot",
     "numba>=0.56.2,<0.57",
-    "tensorflow>=2.15,<2.16",
+    "tensorflow>=2.14,<2.16",
     "pydot",
     "pyirf",
+    "ctapipe",
 ]
 
 dynamic = ["version"]

@@ -27,4 +27,4 @@ dependencies:
         - pillow==9.3.0
         - scipy==1.11.1
         - tables==3.8.0
-
+        - ctapipe
