@@ -41,7 +41,6 @@ dependencies = [
     "pydot",
     "pyirf",
     "ctapipe",
-    "tensorflow>=2.14,<2.16",
 ]
 
 dynamic = ["version"]
