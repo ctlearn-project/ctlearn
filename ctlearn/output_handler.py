@@ -144,7 +144,7 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
             # so there is only one tel_id in the file.
             # For stereo we should fix this directly in the ctapipe plugin,
             # which is currently under development.
-            pointing_interpolator = PointingInterpolator()
+            pointing_interpolator = PointingInterpolator(bounds_error=False, extrapolate=True)
             tel_id_int = None
             for tel_id, pointing_table in reader.telescope_pointings.items():
                 tel_id_int = int(tel_id.replace("tel_", ""))
