@@ -1,10 +1,9 @@
 Data:
     mode: 'mono'
     waveform_settings:
-        waveform_type: 'calibrated'
-        waveform_sequence_length: 20
-        waveform_max_from_simulation: False
-        waveform_format: 'timechannel_last'
+        type: 'calibrated'
+        sequence_length: 20
+        max_from_simulation: False
     mapping_settings:
         mapping_method:
             'LSTCam': 'bilinear_interpolation'

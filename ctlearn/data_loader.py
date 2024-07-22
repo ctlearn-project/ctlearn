@@ -203,9 +203,6 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
             if self.drc_pos is not None:
                 labels["direction"] = direction
                 label = direction
-            if self.trgpatch_pos is not None and self.DLDataReader.reco_cherenkov_photons:
-                labels["cherenkov_photons"] = trigger_patches_true_image_sum
-                label = trigger_patches_true_image_sum
 
         # Temp fix till keras support class weights for multiple outputs or I wrote custom loss
         # https://github.com/keras-team/keras/issues/11735

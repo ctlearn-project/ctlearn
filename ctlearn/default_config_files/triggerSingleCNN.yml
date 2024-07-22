@@ -2,15 +2,13 @@ Data:
     mode: 'mono'
     trigger_settings:
         number_of_trigger_patches: [7, 7]
-        reco_cherenkov_photons: False
         include_nsb_patches: 'off'
-        get_trigger_patch: 'simulation'
+        get_patch_from: 'simulation'
     waveform_settings:
-        waveform_type: 'raw'
-        waveform_sequence_length: 5
-        waveform_max_from_simulation: True
-        waveform_format: 'timechannel_last'
-        waveform_r0pedsub: True
+        type: 'raw'
+        sequence_length: 5
+        max_from_simulation: True
+        r0pedsub: True
     mapping_settings:
         mapping_method:
             'LSTCam': 'image_shifting'

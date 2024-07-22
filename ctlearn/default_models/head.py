@@ -51,18 +51,6 @@ def standard_head(inputs, tasks, params):
         )
         loss_weights["direction"] = standard_head_settings["direction"]["weight"]
         metrics["direction"] = tf.keras.metrics.MeanAbsoluteError(name="mae_direction")
-    if "cherenkov_photons" in tasks:
-        logits["cherenkov_photons"] = fully_connect(
-            inputs,
-            standard_head_settings["cherenkov_photons"]["fc_head"],
-            expected_logits_dimension=1,
-            name="cherenkov_photons",
-        )
-        losses["cherenkov_photons"] = tf.keras.losses.MeanAbsoluteError(
-            reduction=tf.keras.losses.Reduction.SUM_OVER_BATCH_SIZE
-        )
-        loss_weights["cherenkov_photons"] = standard_head_settings["cherenkov_photons"]["weight"]
-        metrics["cherenkov_photons"] = tf.keras.metrics.MeanAbsoluteError(name="mae_cherenkov_photons")
 
     # Temp fix till keras support class weights for multiple outputs or I wrote custom loss
     # https://github.com/keras-team/keras/issues/11735

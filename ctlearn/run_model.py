@@ -332,7 +332,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         # Scaling by total/2 helps keep the loss to a similar magnitude.
         # The sum of the weights of all examples stays the same.
         class_weight = None
-        if reader.num_classes >= 2 and not reader.reco_cherenkov_photons:
+        if reader.num_classes >= 2:
             logger.info("  Apply class weights:")
             total = reader.simulated_particles["total"]
             logger.info("    Total number: {}".format(total))
@@ -565,8 +565,8 @@ def main():
                 for channel in config["Data"]["image_settings"]["image_channels"]
             ]
         if "waveform_settings" in config["Data"]:
-            config["Data"]["waveform_settings"]["waveform_type"] = (
-                "cleaned_" + config["Data"]["waveform_settings"]["waveform_type"]
+            config["Data"]["waveform_settings"]["type"] = (
+                "cleaned_" + config["Data"]["waveform_settings"]["type"]
             )
 
     if args.tel_types:
@@ -675,7 +675,7 @@ def main():
             else:
                 config["Data"]["trigger_settings"]["include_nsb_patches"] = "off"
             if args.trigger_patches_from_file:
-                config["Data"]["trigger_settings"]["get_trigger_patch"] = "file"
+                config["Data"]["trigger_settings"]["get_patch_from"] = "file"
 
         run_model(config, mode="train", debug=args.debug, log_to_file=args.log_to_file)
 
@@ -702,10 +702,10 @@ def main():
                                     ]
                                 ]
                             if "waveform_settings" in config["Data"]:
-                                config["Data"]["waveform_settings"]["waveform_type"] = (
+                                config["Data"]["waveform_settings"]["type"] = (
                                     "cleaned_"
                                     + config["Data"]["waveform_settings"][
-                                        "waveform_type"
+                                        "type"
                                     ]
                                 )
                         if "trigger_settings" in config["Data"]:
@@ -714,7 +714,7 @@ def main():
                             else:
                                 config["Data"]["trigger_settings"]["include_nsb_patches"] = "off"
                             if args.trigger_patches_from_file:
-                                config["Data"]["trigger_settings"]["get_trigger_patch"] = "file"
+                                config["Data"]["trigger_settings"]["get_patch_from"] = "file"
                         if args.tel_types:
                             config["Data"]["selected_telescope_types"] = args.tel_types
                         if args.allowed_tels:
@@ -781,9 +781,9 @@ def main():
                             ]
                         ]
                     if "waveform_settings" in config["Data"]:
-                        config["Data"]["waveform_settings"]["waveform_type"] = (
+                        config["Data"]["waveform_settings"]["type"] = (
                             "cleaned_"
-                            + config["Data"]["waveform_settings"]["waveform_type"]
+                            + config["Data"]["waveform_settings"]["type"]
                         )
                 if "trigger_settings" in config["Data"]:
                     if args.nsb:
