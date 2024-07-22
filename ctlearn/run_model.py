@@ -575,26 +575,26 @@ def main():
     if args.allowed_tels:
         config["Data"]["selected_telescope_ids"] = args.allowed_tels
 
-    parameter_selection = []
+    quality_selection = []
     if args.size_cut:
-        parameter_selection.append(
+        quality_selection.append(
             {"col_name": "hillas_intensity", "min_value": args.size_cut}
         )
 
     if args.leakage_cut:
-        parameter_selection.append(
+        quality_selection.append(
             {"col_name": "leakage_intensity_width_2", "max_value": args.leakage_cut}
         )
 
-    for parameter in config["Data"].get("parameter_selection", []):
+    for quality_selection in config["Data"].get("quality_selection", []):
         if parameter["col_name"] == "hillas_intensity" and args.size_cut:
             continue
         if parameter["col_name"] == "leakage_intensity_width_2" and args.leakage_cut:
             continue
-        parameter_selection.append(parameter)
+        quality_selection.append(parameter)
 
-    if parameter_selection:
-        config["Data"]["parameter_selection"] = parameter_selection
+    if quality_selection:
+        config["Data"]["quality_selection"] = quality_selection
 
     if args.multiplicity_cut:
         config["Data"]["multiplicity_selection"] = {"Subarray": args.multiplicity_cut}
@@ -719,8 +719,8 @@ def main():
                             config["Data"]["selected_telescope_types"] = args.tel_types
                         if args.allowed_tels:
                             config["Data"]["selected_telescope_ids"] = args.allowed_tels
-                        if parameter_selection:
-                            config["Data"]["parameter_selection"] = parameter_selection
+                        if quality_selection:
+                            config["Data"]["quality_selection"] = quality_selection
                         if args.multiplicity_cut:
                             config["Data"]["multiplicity_selection"] = {
                                 "Subarray": args.multiplicity_cut
@@ -796,8 +796,8 @@ def main():
                     config["Data"]["selected_telescope_types"] = args.tel_types
                 if args.allowed_tels:
                     config["Data"]["selected_telescope_ids"] = args.allowed_tels
-                if parameter_selection:
-                    config["Data"]["parameter_selection"] = parameter_selection
+                if quality_selection:
+                    config["Data"]["quality_selection"] = quality_selection
                 if args.multiplicity_cut:
                     config["Data"]["multiplicity_selection"] = {
                         "Subarray": args.multiplicity_cut

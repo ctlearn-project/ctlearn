@@ -87,62 +87,13 @@ Data:
     # Optinal dict. Not needed for MAGIC data!
     #multiplicity_selection: {"LST_LST_LSTCam": 4}
 
-    # Dict of parameter selections from the DL1 file.
+    # Dict of quality selections from the DL1 file.
     # The recommended way of applying quality cuts to the data.
     # Only available for mono analysis at the moment.
     # Optional dict.
-    parameter_selection:
+    quality_selection:
         - {col_name: "hillas_intensity", min_value: 50.0}
         - {col_name: "leakage_intensity_width_2", max_value: 0.2}
-
-    # Not the recommended way of applying quality cuts to the data:
-    # PyTables cut condition to apply selection cuts to events.
-    # Optional string. Default: don't apply any cuts
-    # See https://www.pytables.org/usersguide/condition_syntax.html
-    # for explanation of syntax.
-    #selection_string: '(true_energy > 1.0) & (true_h_first_int < 20000)'
-
-    # Event selection filters to apply to each data file.
-    # Optional list of dictionaries with the following key/value pairs:
-    #   - 'path': Optional string. Path to module containing filter.
-    #             Default: path to DL1DataHandler
-    #   - 'module': Optional string. Name of module containing filter.
-    #               Default: 'utils'
-    #   - 'name': Required string. Name of filter.
-    #   - 'args': Optional dictionary. Arguments to pass to filter using
-    #             filter(file, **args). Default: {}
-    # Valid filter names are those defined in DL1DataHandler or any defined
-    # in the specified path and module.
-    #event_selection:
-    #    -
-    #        name: 'event_intensity_filter'
-    #        args: {i_min: 100, i_max: 316}
-    #   -
-    #       path: '/path/to/my/module/'
-    #       module: 'my_filter'
-    #       name: 'filter_fn'
-    #       args: {'arg1': 'foo', 'arg2': 3.14}
-
-    # Image selection filters to apply to each image (mono mode only).
-    # Optional list of dictionaries with the following key/value pairs:
-    #   - 'path': Optional string. Path to module containing filter.
-    #             Default: path to DL1DataHandler
-    #   - 'module': Optional string. Name of module containing filter.
-    #               Default: 'utils'
-    #   - 'name': Required string. Name of filter.
-    #   - 'args': Optional dictionary. Arguments to pass to filter using
-    #             filter(file, **args). Default: {}
-    # Valid filter names are those defined in DL1DataHandler or any defined
-    # in the specified path and module.
-    #image_selection:
-    #    -
-    #        name: 'image_intensity_filter'
-    #        args: {i_min: 10, i_max: 31.6}
-    #    -
-    #        path: '/path/to/my/module/'
-    #        module: 'my_filter'
-    #        name: 'filter_fn'
-    #        args: {'arg1': 'foo', 'arg2': 3.14}
 
     # Whether to shuffle the examples.
     # Optional Boolean. Default: False
