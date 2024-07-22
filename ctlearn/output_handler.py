@@ -150,9 +150,9 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
                 tel_id_int = int(tel_id.replace("tel_", ""))
                 pointing_interpolator.add_table(tel_id_int, pointing_table)
                 trigger_info = reader.tel_trigger_table[reader.tel_trigger_table["tel_id"]== tel_id_int]
+            # Apply the quality mask to the trigger info to retrieve the correct event IDs and trigger timestamps.
+            trigger_info = trigger_info[reader.quality_mask]
             # Check if the number of predictions and trigger info match
-            # Actually this check is redundant since the dl1dh do not allow quality cuts when processing real data
-            # However, it is still good to have it here in case table are not properly filled. 
             if len(predictions[:, 0]) != len(trigger_info):
                 raise ValueError(
                     f"The number of predictions ({len(predictions[:, 0])}) and trigger info ({len(trigger_info)}) do not match."
