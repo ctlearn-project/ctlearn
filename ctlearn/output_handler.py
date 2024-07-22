@@ -219,8 +219,6 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
                 axis=0,
             )
         reco["true_cherenkov_photons"] = cherenkov_photons
-    if "cherenkov_photons" in tasks:
-        reco["reco_cherenkov_photons"] = np.array(predictions)[:, 0]
     # Dump the dl2 data to hdf5 file
     if reader.include_nsb_patches is None:
         pd.DataFrame(data=reco).to_hdf(h5file, key=f"/dl2/reco", mode="a")
