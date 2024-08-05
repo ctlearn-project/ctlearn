@@ -46,6 +46,7 @@ Model Parameters:
 Training:
     validation_split: 0.1
     num_epochs: 10
+    random_seed: 1234
     verbose: 2
     workers: 1
     optimizer: 'Adam'

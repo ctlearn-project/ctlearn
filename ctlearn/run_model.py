@@ -29,7 +29,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     random_seed = None
     if config["Logging"].get("add_seed", False):
-        random_seed = config["Data"]["seed"]
+        random_seed = config["Training"]["random_seed"]
         model_dir += f"/seed_{random_seed}/"
         if not os.path.exists(model_dir):
             if mode == "predict":
@@ -94,22 +94,24 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                 "Must be between 0.0 and 1.0".format(validation_split)
             )
         num_training_examples = math.floor((1 - validation_split) * len(reader))
+        np.random.seed(config["Training"]["random_seed"])
+        np.random.shuffle(indices)
         training_indices = indices[:num_training_examples]
         validation_indices = indices[num_training_examples:]
 
         data = KerasBatchGenerator(
             reader,
             training_indices,
+            tasks=config["Reco"],
             batch_size=batch_size,
-            mode=mode,
             class_names=class_names,
             stack_telescope_images=stack_telescope_images,
         )
         validation_data = KerasBatchGenerator(
             reader,
             validation_indices,
+            tasks=config["Reco"],
             batch_size=batch_size,
-            mode=mode,
             class_names=class_names,
             stack_telescope_images=stack_telescope_images,
         )
@@ -127,10 +129,9 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         data = KerasBatchGenerator(
             reader,
             indices,
+            tasks=config["Reco"],
             batch_size=batch_size,
-            mode=mode,
             class_names=class_names,
-            shuffle=False,
             stack_telescope_images=stack_telescope_images,
         )
 
@@ -145,10 +146,9 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             rest_data = KerasBatchGenerator(
                 reader,
                 rest_indices,
+                tasks=config["Reco"],
                 batch_size=rest,
-                mode=mode,
                 class_names=class_names,
-                shuffle=False,
                 stack_telescope_images=stack_telescope_images,
             )
 
@@ -240,8 +240,8 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     if mode == "train":
         logger.info("Setting up training:")
+        logger.info("  Shuffle data with random seed: {}".format( config["Training"]["random_seed"]))
         logger.info("  Validation split: {}".format(validation_split))
-
         if not 0.0 < validation_split < 1.0:
             raise ValueError(
                 "Invalid validation split: {}. "
@@ -621,30 +621,26 @@ def main():
         config["Model"]["save2onnx"] = args.save2onnx
 
     # Overwrite the number of epochs, batch size and random seed in the config file
-    if args.num_epochs:
-        if "Training" not in config:
-            config["Training"] = {}
-        config["Training"]["num_epochs"] = args.num_epochs
+    if "Input" not in config:
+        config["Input"] = {}
     if args.batch_size:
-        if "Input" not in config:
-            config["Input"] = {}
         config["Input"]["batch_size_per_worker"] = args.batch_size
+    if "Training" not in config:
+        config["Training"] = {}
+    if args.num_epochs:
+        config["Training"]["num_epochs"] = args.num_epochs
     if args.random_seed:
         if 1000 <= args.random_seed <= 9999:
-            config["Data"]["seed"] = args.random_seed
+            config["Training"]["random_seed"] = args.random_seed
             config["Logging"]["add_seed"] = True
         else:
             raise ValueError(
                 "Random seed: '{}'. "
                 "Must be 4 digit integer!".format(args.random_seed)
             )
-    random_seed = config["Data"].get("seed", 1234)
+    random_seed = config["Training"].get("random_seed", 1234)
 
     if "train" in args.mode:
-        # Shuffle the data in train mode as default
-        if "shuffle" not in config["Data"]:
-            config["Data"]["shuffle"] = True
-
         # Training file handling
         training_file_list = (
             f"{config['Logging']['model_directory']}/training_file_list.txt"
@@ -725,30 +721,27 @@ def main():
                             config["Data"]["multiplicity_selection"] = {
                                 "Subarray": args.multiplicity_cut
                             }
+                        if "Input" not in config:
+                            config["Input"] = {}
                         if args.batch_size:
-                            if "Input" not in config:
-                                config["Input"] = {}
                             config["Input"]["batch_size_per_worker"] = args.batch_size
                         if args.output:
                             config["Logging"] = {}
                             config["Logging"]["model_directory"] = args.output
+                        config["Training"]["random_seed"] = random_seed
+                        if args.random_seed:
+                            config["Logging"]["add_seed"] = True
                         if args.pretrained_weights:
                             config["Model"][
                                 "pretrained_weights"
                             ] = args.pretrained_weights
                             config["Model"]["trainable_backbone"] = False
 
-                        config["Data"]["shuffle"] = False
-                        config["Data"]["seed"] = random_seed
-                        if args.random_seed:
-                            config["Logging"]["add_seed"] = True
-
                         if "Prediction" not in config:
                             config["Prediction"] = {}
 
                         prediction_file = (
                             file.split("/")[-1]
-                            .replace("_S_", "_E_")
                             .replace("dl1", "dl2")
                             .replace("DL1", "DL2")
                         )
@@ -802,21 +795,20 @@ def main():
                     config["Data"]["multiplicity_selection"] = {
                         "Subarray": args.multiplicity_cut
                     }
+                if "Input" not in config:
+                    config["Input"] = {}
                 if args.batch_size:
-                    if "Input" not in config:
-                        config["Input"] = {}
                     config["Input"]["batch_size_per_worker"] = args.batch_size
                 if args.output:
                     config["Logging"] = {}
                     config["Logging"]["model_directory"] = args.output
+                config["Training"]["random_seed"] = random_seed
+                if args.random_seed:
+                    config["Logging"]["add_seed"] = True
                 if args.pretrained_weights:
                     config["Model"]["pretrained_weights"] = args.pretrained_weights
                     config["Model"]["trainable_backbone"] = False
 
-                config["Data"]["shuffle"] = False
-                config["Data"]["seed"] = random_seed
-                if args.random_seed:
-                    config["Logging"]["add_seed"] = True
                 if "Prediction" not in config:
                     config["Prediction"] = {}
                 config["Prediction"]["prediction_file"] = key

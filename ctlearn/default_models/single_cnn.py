@@ -10,7 +10,6 @@ def single_cnn_model(data, model_params):
     network_input, network_output = [], []
     if data.wvf_pos is not None:
         network_input_wvf = tf.keras.Input(shape=data.wvf_shape, name=f"waveforms")
-        waveform3D = len(data.wvf_shape) == 4
         network_input.append(network_input_wvf)
     if data.img_pos is not None:
         network_input_img = tf.keras.Input(shape=data.img_shape, name=f"images")
@@ -41,47 +40,27 @@ def single_cnn_model(data, model_params):
                 engine_wvf_module, model_params["waveform_engine"]["function"]
             )
             if init_layer:
-                if waveform3D:
-                    network_input_wvf = tf_layers.Conv3D(
-                        filters=init_layer["filters"],
-                        kernel_size=init_layer["kernel_size"],
-                        strides=init_layer["strides"],
-                        name=backbone_name_wvf + "_conv1_conv",
-                    )(network_input_wvf)
-                else:
-                    network_input_wvf = tf_layers.Conv2D(
-                        filters=init_layer["filters"],
-                        kernel_size=init_layer["kernel_size"],
-                        strides=init_layer["strides"],
-                        name=backbone_name_wvf + "_conv1_conv",
-                    )(network_input_wvf)
+                network_input_wvf = tf_layers.Conv2D(
+                    filters=init_layer["filters"],
+                    kernel_size=init_layer["kernel_size"],
+                    strides=init_layer["strides"],
+                    name=backbone_name_wvf + "_conv1_conv",
+                )(network_input_wvf)
             # x = tf.pad(x, tf.constant([[1, 1], [1, 1]]), name='pool1_pad')
             if init_max_pool:
-                if waveform3D:
-                    network_input_wvf = tf_layers.MaxPool3D(
-                        pool_size=init_max_pool["size"],
-                        strides=init_max_pool["strides"],
-                        name=backbone_name_wvf + "_pool1_pool",
-                    )(network_input_wvf)
-                else:
-                    network_input_wvf = tf_layers.MaxPool2D(
-                        pool_size=init_max_pool["size"],
-                        strides=init_max_pool["strides"],
-                        name=backbone_name_wvf + "_pool1_pool",
-                    )(network_input_wvf)
+                network_input_wvf = tf_layers.MaxPool2D(
+                    pool_size=init_max_pool["size"],
+                    strides=init_max_pool["strides"],
+                    name=backbone_name_wvf + "_pool1_pool",
+                )(network_input_wvf)
 
             engine_output_wvf = engine_wvf(
                 network_input_wvf, params=model_params, name=backbone_name_wvf
             )
 
-            if waveform3D:
-                network_output = output_wvf = tf_layers.GlobalAveragePooling3D(
-                    name=backbone_name_wvf + "_global_avgpool"
-                )(engine_output_wvf)
-            else:
-                network_output = output_wvf = tf_layers.GlobalAveragePooling2D(
-                    name=backbone_name_wvf + "_global_avgpool"
-                )(engine_output_wvf)
+            network_output = output_wvf = tf_layers.GlobalAveragePooling2D(
+                name=backbone_name_wvf + "_global_avgpool"
+            )(engine_output_wvf)
 
         if data.img_pos is not None:
             backbone_name_img = backbone_name + "_img"

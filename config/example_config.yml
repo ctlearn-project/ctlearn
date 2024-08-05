@@ -89,7 +89,6 @@ Data:
 
     # Dict of quality selections from the DL1 file.
     # The recommended way of applying quality cuts to the data.
-    # Only available for mono analysis at the moment.
     # Optional dict.
     quality_selection:
         - {col_name: "hillas_intensity", min_value: 50.0}
@@ -112,10 +111,9 @@ Data:
     #  - 'waveform_r0pedsub' is a boolean weather to calculate and subtract the pedestal level
     #    per pixel outside the sequence aound the shower maximum (only selectable for R0).
     waveform_settings:
-            waveform_type: 'raw'
-            waveform_sequence_length: 5
-            waveform_format: 'timechannel_last'
-            waveform_r0pedsub: True
+            type: 'raw'
+            sequence_length: 5
+            r0pedsub: True
 
     # Image settings to load.
     # Optional dicts. Default: None

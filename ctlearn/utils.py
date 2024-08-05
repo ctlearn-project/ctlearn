@@ -92,13 +92,8 @@ def setup_DL1DataReader(config, mode):
                 "Must be list or path to file or directory".format(file_list)
             )
 
-    mc_file = True
     dl1bparameter_names = None
     with tables.open_file(config["Data"]["file_list"][0], mode="r") as f:
-
-        # Check weather the file is MC simulation or real observational data
-        if f.root._v_attrs['CTA PROCESS TYPE'] == 'Observation':
-            mc_file = False
         # Retrieve the name convention for the dl1b parameters
         first_tablename = next(
             f.root.dl1.event.telescope.parameters._f_iter_nodes()
@@ -114,37 +109,14 @@ def setup_DL1DataReader(config, mode):
     selected_telescope_types = config["Data"]["selected_telescope_types"]
     camera_types = [tel_type.split("_")[-1] for tel_type in selected_telescope_types]
 
-    tasks = config["Reco"]
-    transformations = []
-    event_info = []
     if (
         "parameter_settings" not in config["Data"]
         and dl1bparameter_names is not None
         and mode == "predict"
     ):
         config["Data"]["parameter_settings"] = {"parameter_list": dl1bparameter_names}
-    if "direction" in tasks:
-        if mc_file:
-            event_info.append("true_alt")
-            event_info.append("true_az")
-            transformations.append({"name": "SkyOffsetSeparation"})
-    if "cherenkov_photons" in tasks:
-        if "trigger_settings" in config["Data"]:
-            config["Data"]["trigger_settings"]["reco_cherenkov_photons"] = True
-        else:
-            raise ValueError(
-                "Required trigger settings are not provided for the regression of Cherenkov photons."
-            )
-
-    if "type" in tasks or mode == "predict":
-        if mc_file:
-            event_info.append("true_shower_primary_id")
-
-    if "energy" in tasks or mode == "predict":
-        if mc_file:
-            event_info.append("true_energy")
-            transformations.append({"name": "LogEnergy"})
-
+   
+    '''
     stack_telescope_images = config["Input"].get("stack_telescope_images", False)
     if config["Data"]["mode"] == "stereo" and not stack_telescope_images:
         for tel_desc in selected_telescope_types:
@@ -154,7 +126,7 @@ def setup_DL1DataReader(config, mode):
                     "args": {"sorting": "size", "tel_desc": f"{tel_desc}"},
                 }
             )
-
+    '''
     # Convert interpolation image shapes from lists to tuples, if present
     if "interpolation_image_shape" in config["Data"].get("mapping_settings", {}):
         config["Data"]["mapping_settings"]["interpolation_image_shape"] = {
@@ -165,34 +137,12 @@ def setup_DL1DataReader(config, mode):
         }
 
     if allow_overwrite:
-        config["Data"]["event_info"] = event_info
         config["Data"]["mapping_settings"]["camera_types"] = camera_types
-    else:
-        transformations = config["Data"].get("transforms", {})
-
-    transforms = []
-    # Parse list of Transforms
-    for t in transformations:
-        t = {"module": "dl1_data_handler.transforms", **t}
-        transform, args = load_from_module(**t)
-        transforms.append(transform(**args))
-    config["Data"]["transforms"] = transforms
 
     # Possibly add additional info to load if predicting to write later
     if mode == "predict":
         if "Prediction" not in config:
             config["Prediction"] = {}
-        if "event_info" not in config["Data"]:
-            config["Data"]["event_info"] = []
-        config["Data"]["event_info"].extend(["event_id", "obs_id"])
 
     return config["Data"]
 
-
-def load_from_module(name, module, path=None, args=None):
-    if path is not None and path not in sys.path:
-        sys.path.append(path)
-    mod = importlib.import_module(module)
-    fn = getattr(mod, name)
-    params = args if args is not None else {}
-    return fn, params
