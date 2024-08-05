@@ -157,55 +157,40 @@ def write_output(h5file, data, rest_data, reader, predictions, tasks):
                 raise ValueError(
                     f"The number of predictions ({len(predictions[:, 0])}) and trigger info ({len(trigger_info)}) do not match."
                 )
-            event_id, obs_id, tel_id = [], [], []
-            reco_az, reco_alt = [], []
-            pointing_az, pointing_alt, time = [], [], []
-            for i, (az_off, alt_off) in enumerate(zip(predictions[:, 0], predictions[:, 1])):
-                tel_alt, tel_az = pointing_interpolator(tel_id_int, trigger_info[i]['time'])
-                pointing = SkyCoord(
-                    tel_az.to_value(data.drc_unit),
-                    tel_alt.to_value(data.drc_unit),
-                    frame="altaz",
-                    unit="deg",
-                )
-                reco_direction = pointing.spherical_offsets_by(
-                    u.Quantity(az_off, unit=u.deg),
-                    u.Quantity(alt_off, unit=u.deg),
-                )
-                event_id.append(trigger_info[i]['event_id'])
-                obs_id.append(trigger_info[i]['obs_id'])
-                tel_id.append(trigger_info[i]['tel_id'])
-                time.append(trigger_info[i]['time'])
-                reco_az.append(reco_direction.az.to_value(data.drc_unit))
-                reco_alt.append(reco_direction.alt.to_value(data.drc_unit))
-                pointing_az.append(tel_az.to_value(u.deg))
-                pointing_alt.append(tel_alt.to_value(u.deg))
-            reco["event_id"] = np.array(event_id)
-            reco["obs_id"] = np.array(obs_id)
-            reco["tel_id"] = np.array(tel_id)
-            reco["time"] = np.array(time)
-            reco["reco_az"] = np.array(reco_az)
-            reco["reco_alt"] = np.array(reco_alt)
-            reco["pointing_az"] = np.array(pointing_az)
-            reco["pointing_alt"] = np.array(pointing_alt)
+            # Interpolate the telescope pointing
+            tel_alt, tel_az = pointing_interpolator(tel_id_int, trigger_info['time'])
+            pointing = SkyCoord(
+                tel_az.to_value(data.drc_unit),
+                tel_alt.to_value(data.drc_unit),
+                frame="altaz",
+                unit="deg",
+            )
+            # Calculate the reconstructed direction by taking spherical offsets of the telescope pointing
+            az_off = u.Quantity(predictions[:, 0], unit=data.drc_unit)
+            alt_off = u.Quantity(predictions[:, 1], unit=data.drc_unit)
+            reco_direction = pointing.spherical_offsets_by(az_off, alt_off)
+            reco["event_id"] = np.array(trigger_info['event_id'])
+            reco["obs_id"] = np.array(trigger_info['obs_id'])
+            reco["tel_id"] = np.array(trigger_info['tel_id'])
+            reco["time"] = np.array(trigger_info['time'])
+            reco["reco_az"] = np.array(reco_direction.az.to_value(u.deg))
+            reco["reco_alt"] = np.array(reco_direction.alt.to_value(u.deg))
+            reco["pointing_az"] = np.array(tel_az.to_value(u.deg))
+            reco["pointing_alt"] = np.array(tel_alt.to_value(u.deg))
             reco["reco_sep"] = np.array(predictions[:, 2])
         else:
-            reco_az, reco_alt = [], []
-            for az_off, alt_off in zip(predictions[:, 0], predictions[:, 1]):
-                reco_direction = reader.fix_pointing.spherical_offsets_by(
-                    u.Quantity(az_off, unit=data.drc_unit),
-                    u.Quantity(alt_off, unit=data.drc_unit),
-                )
-                reco_az.append(reco_direction.az.to_value(data.drc_unit))
-                reco_alt.append(reco_direction.alt.to_value(data.drc_unit))
-            reco["reco_az"] = np.array(reco_az)
-            reco["reco_alt"] = np.array(reco_alt)
+            # Calculate the reconstructed direction by taking spherical offsets of the telescope pointing
+            az_off = u.Quantity(predictions[:, 0], unit=data.drc_unit)
+            alt_off = u.Quantity(predictions[:, 1], unit=data.drc_unit)
+            reco_direction = pointing.spherical_offsets_by(az_off, alt_off)
+            reco["reco_az"] = np.array(reco_direction.az.to_value(u.deg))
+            reco["reco_alt"] = np.array(reco_direction.alt.to_value(u.deg))
             reco["reco_sep"] = np.array(predictions[:, 2])
             reco["pointing_az"] = np.full(
-                len(reco["reco_az"]), reader.fix_pointing.az.to_value(data.drc_unit)
+                len(reco["reco_az"]), reader.fix_pointing.az.to_value(u.deg)
             )
             reco["pointing_alt"] = np.full(
-                len(reco["reco_alt"]), reader.fix_pointing.alt.to_value(data.drc_unit)
+                len(reco["reco_alt"]), reader.fix_pointing.alt.to_value(u.deg)
             )
 
     if data.trgpatch_pos:
