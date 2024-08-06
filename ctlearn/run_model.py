@@ -104,7 +104,8 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             training_indices,
             tasks=config["Reco"],
             batch_size=batch_size,
-            class_names=class_names,
+            shuffle=True,
+            random_seed=config["Training"]["random_seed"],
             stack_telescope_images=stack_telescope_images,
         )
         validation_data = KerasBatchGenerator(
@@ -112,7 +113,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             validation_indices,
             tasks=config["Reco"],
             batch_size=batch_size,
-            class_names=class_names,
+            shuffle=False,
             stack_telescope_images=stack_telescope_images,
         )
     elif mode == "predict":
@@ -131,7 +132,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             indices,
             tasks=config["Reco"],
             batch_size=batch_size,
-            class_names=class_names,
+            shuffle=False,
             stack_telescope_images=stack_telescope_images,
         )
 
@@ -148,7 +149,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                 rest_indices,
                 tasks=config["Reco"],
                 batch_size=rest,
-                class_names=class_names,
+                shuffle=False,
                 stack_telescope_images=stack_telescope_images,
             )
 

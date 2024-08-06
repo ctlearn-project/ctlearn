@@ -8,11 +8,11 @@ import tensorflow.keras.layers as tf_layers
 def single_cnn_model(data, model_params):
     # Load neural network model
     network_input, network_output = [], []
-    if data.wvf_pos is not None:
-        network_input_wvf = tf.keras.Input(shape=data.wvf_shape, name=f"waveforms")
+    if data.waveform:
+        network_input_wvf = tf.keras.Input(shape=data.waveform_shape, name=f"waveforms")
         network_input.append(network_input_wvf)
-    if data.img_pos is not None:
-        network_input_img = tf.keras.Input(shape=data.img_shape, name=f"images")
+    if data.image:
+        network_input_img = tf.keras.Input(shape=data.image_shape, name=f"images")
         network_input.append(network_input_img)
 
     backbone_name = model_params.get("name", "CNN") + "_block"
@@ -31,7 +31,7 @@ def single_cnn_model(data, model_params):
         # x = tf.pad(telescope_data, tf.constant([[3, 3], [3, 3]]), name='conv1_pad')
         init_layer = model_params.get("init_layer", False)
         init_max_pool = model_params.get("init_max_pool", False)
-        if data.wvf_pos is not None:
+        if data.waveform:
             backbone_name_wvf = backbone_name + "_wvf"
             engine_wvf_module = importlib.import_module(
                 model_params["waveform_engine"]["module"]
@@ -62,7 +62,7 @@ def single_cnn_model(data, model_params):
                 name=backbone_name_wvf + "_global_avgpool"
             )(engine_output_wvf)
 
-        if data.img_pos is not None:
+        if data.image:
             backbone_name_img = backbone_name + "_img"
             engine_img_module = importlib.import_module(
                 model_params["image_engine"]["module"]
@@ -92,7 +92,7 @@ def single_cnn_model(data, model_params):
             network_output = output_img = tf_layers.GlobalAveragePooling2D(
                 name=backbone_name_img + "_global_avgpool"
             )(engine_output_img)
-            if data.wvf_pos is not None:
+            if data.waveform:
                 network_output = tf.keras.layers.Concatenate()([output_wvf, output_img])
 
         singlecnn_model = tf.keras.Model(

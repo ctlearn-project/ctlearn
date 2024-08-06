@@ -12,25 +12,38 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
         indices,
         tasks,
         batch_size=64,
-        class_names=None,
+        shuffle=True,
+        random_seed=1234,
         stack_telescope_images=False,
     ):
         "Initialization"
         self.DLDataReader = DLDataReader
-        self.batch_size = batch_size
         self.indices = indices
         self.tasks = tasks
-        self.class_names = class_names
+        self.batch_size = batch_size
+        self.shuffle = shuffle
+        self.random_seed = random_seed
+        self.on_epoch_end()
         self.stack_telescope_images = stack_telescope_images
 
-        # FIXME: Currently hardcoded for testing
-        self.img_pos = 1
-        self.wvf_pos = None
-        self.img_shape = self.DLDataReader.image_mapper.image_shapes["LSTCam"]
+        self.image, self.waveform = False, False
+        if self.DLDataReader.image_channels is not None:
+            self.image = True
+            self.image_shape = self.DLDataReader.image_mapper.image_shapes["LSTCam"]
+        if self.DLDataReader.waveform_type is not None:
+            self.waveform = True
+            self.waveform_shape = self.DLDataReader.waveform_settings["shapes"]["LSTCam"]
 
     def __len__(self):
         "Denotes the number of batches per epoch"
         return int(np.floor(len(self.indices) / self.batch_size))
+
+    def on_epoch_end(self):
+        "Updates indexes after each epoch"
+        if self.shuffle:
+            np.random.seed(self.random_seed)
+            np.random.shuffle(self.indices)
+
 
     def __getitem__(self, index):
         "Generate one batch of data"
