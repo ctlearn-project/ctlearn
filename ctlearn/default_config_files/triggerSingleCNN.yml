@@ -41,9 +41,7 @@ Model Parameters:
         conv_block:
             layers:
                 - {filters: 32, kernel_size: 3, number: 1}
-                - {filters: 32, kernel_size: 3, number: 1}
                 - {filters: 64, kernel_size: 3, number: 1}
-                - {filters: 128, kernel_size: 3, number: 1}
             max_pool: {size: 2, strides: 2}
             bottleneck: null
             batchnorm: false
