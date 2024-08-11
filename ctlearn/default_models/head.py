@@ -15,7 +15,7 @@ def standard_head(inputs, tasks, params):
         logit = fully_connect(
             inputs,
             standard_head_settings["type"]["fc_head"],
-            expected_logits_dimension=params["num_classes"],
+            expected_logits_dimension=params["n_classes"],
             name="particletype",
         )
         logits["type"] = tf_layers.Softmax(name="type")(logit)

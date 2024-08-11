@@ -17,7 +17,7 @@ import yaml
 import tensorflow as tf
 from tensorflow.python import debug as tf_debug
 
-from dl1_data_handler.reader import DLDataReader
+from dl1_data_handler.reader import DLImageReader, DLWaveformReader, DLTriggerReader
 from ctlearn.data_loader import KerasBatchGenerator
 from ctlearn.output_handler import *
 from ctlearn.utils import *
@@ -39,20 +39,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
                 )
             os.makedirs(model_dir)
 
-    # Read class names from the example identifiers file
-    class_names = None
-    if mode == "predict" and os.path.isfile(
-        root_model_dir + "/example_identifiers_file.h5"
-    ):
-        example_identifiers_file = pd.HDFStore(
-            root_model_dir + "/example_identifiers_file.h5"
-        )
-        if "/class_names" in list(example_identifiers_file.keys()):
-            class_names = pd.read_hdf(
-                example_identifiers_file, key="/class_names"
-            ).to_dict("records")
-            class_names = [name[0] for name in class_names]
-
     # Set up the DL1DataReader
     config["Data"] = setup_DL1DataReader(config, mode)
 
@@ -72,9 +58,10 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     # Create data reader
     logger.info("Loading data:")
     logger.info("  For a large dataset, this may take a while...")
-    reader = DLDataReader(**config["Data"])
-    logger.info("  Number of events loaded: {}".format(len(reader)))
-
+    reader = DLImageReader(**config["Data"])
+    logger.info(f"  Number of events loaded: {len(reader)}")
+    logger.info(f"  Selected subarray info:")
+    reader.subarray.info()
     # Set up the KerasBatchGenerator
     indices = list(range(len(reader)))
 
@@ -85,6 +72,12 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     stack_telescope_images = config["Input"].get("stack_telescope_images", False)
 
     if mode == "train":
+        # Check if there are at least two classes in the reader for the particle classification
+        if reader.n_classes < 2 and "type" in config["Reco"]:
+            raise ValueError(
+                "Classification task selected but less than two classes are present in the data."
+            )
+
         if "Training" not in config:
             config["Training"] = {}
         validation_split = np.float64(config["Training"].get("validation_split", 0.1))
@@ -113,7 +106,8 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             validation_indices,
             tasks=config["Reco"],
             batch_size=batch_size,
-            shuffle=False,
+            shuffle=True,
+            random_seed=config["Training"]["random_seed"],
             stack_telescope_images=stack_telescope_images,
         )
     elif mode == "predict":
@@ -123,7 +117,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             elif config["Data"]["trigger_settings"]["include_nsb_patches"] == "off":
                 logger.info("  Predicting on trigger patches.")
         logger.info(
-            "  Simulation info for pyirf.simulations.SimulatedEventsInfo: {}".format(
+            "  Simulation info for pyirf: {}".format(
                 reader.simulation_info
             )
         )
@@ -167,7 +161,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
     # Write the model parameters in the params dictionary
     model_params = {**config["Model"], **config.get("Model Parameters", {})}
     model_params["model_directory"] = model_directory
-    model_params["num_classes"] = reader.num_classes
+    model_params["n_classes"] = reader.n_classes
 
     # Open a strategy scope.
     with strategy.scope():
@@ -286,7 +280,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         logger.info("  Use of multiprocessing: {}".format(use_multiprocessing))
 
         # Set up the callbacks
-        monitor = "val_loss" if reader.num_classes < 3 else "loss"
+        monitor = "val_loss" if reader.n_classes < 3 else "loss"
         monitor_mode = "min"
         initial_value_threshold = None
         if "training_log.csv" in os.listdir(model_dir):
@@ -333,18 +327,18 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         # Scaling by total/2 helps keep the loss to a similar magnitude.
         # The sum of the weights of all examples stays the same.
         class_weight = None
-        if reader.num_classes >= 2:
+        if reader.n_classes >= 2:
             logger.info("  Apply class weights:")
             total = reader.simulated_particles["total"]
             logger.info("    Total number: {}".format(total))
-            for particle_id, num_particles in reader.simulated_particles.items():
+            for particle_id, n_particles in reader.simulated_particles.items():
                 if particle_id != "total":
                     logger.info(
                         "    Breakdown by '{}' ({}) with original particle id '{}': {}".format(
                             reader.shower_primary_id_to_name[particle_id],
                             reader.shower_primary_id_to_class[particle_id],
                             particle_id,
-                            num_particles,
+                            n_particles,
                         )
                     )
             logger.info("    Class weights: {}".format(reader.class_weight))
@@ -571,10 +565,10 @@ def main():
             )
 
     if args.tel_types:
-        config["Data"]["selected_telescope_types"] = args.tel_types
+        config["Data"]["tel_types"] = args.tel_types
 
     if args.allowed_tels:
-        config["Data"]["selected_telescope_ids"] = args.allowed_tels
+        config["Data"]["tel_ids"] = args.allowed_tels
 
     quality_selection = []
     if args.size_cut:
@@ -661,10 +655,6 @@ def main():
         if "training_file_list.txt" in os.listdir(config["Logging"]["model_directory"]):
             config["Data"]["file_list"] = training_file_list
 
-        config["Data"][
-            "example_identifiers_file"
-        ] = f"{config['Logging']['model_directory']}/example_identifiers_file.h5"
-
         # AI-Trigger settings weather to include NSB trigger patches at training phase or not
         if "trigger_settings" in config["Data"]:
             if args.nsb:
@@ -713,9 +703,9 @@ def main():
                             if args.trigger_patches_from_file:
                                 config["Data"]["trigger_settings"]["get_patch_from"] = "file"
                         if args.tel_types:
-                            config["Data"]["selected_telescope_types"] = args.tel_types
+                            config["Data"]["tel_types"] = args.tel_types
                         if args.allowed_tels:
-                            config["Data"]["selected_telescope_ids"] = args.allowed_tels
+                            config["Data"]["tel_ids"] = args.allowed_tels
                         if quality_selection:
                             config["Data"]["quality_selection"] = quality_selection
                         if args.multiplicity_cut:
@@ -787,9 +777,9 @@ def main():
                     if args.trigger_patches_from_file:
                         config["Data"]["trigger_settings"]["get_trigger_patch"] = "file"
                 if args.tel_types:
-                    config["Data"]["selected_telescope_types"] = args.tel_types
+                    config["Data"]["tel_types"] = args.tel_types
                 if args.allowed_tels:
-                    config["Data"]["selected_telescope_ids"] = args.allowed_tels
+                    config["Data"]["tel_ids"] = args.allowed_tels
                 if quality_selection:
                     config["Data"]["quality_selection"] = quality_selection
                 if args.multiplicity_cut:

@@ -1,14 +1,13 @@
 Data:
-    mode: 'mono'
     trigger_settings:
         number_of_patches: [7, 7]
         include_nsb_patches: 'off'
         get_patch_from: 'simulation'
+        pedsub: True
     waveform_settings:
         type: 'raw'
         sequence_length: 5
         max_from_simulation: True
-        r0pedsub: True
     mapping_settings:
         mapping_method:
             'LSTCam': 'image_shifting'

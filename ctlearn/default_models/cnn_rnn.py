@@ -47,8 +47,8 @@ def cnn_rnn_model(data, model_params):
             network_input, output, name=model_params["image_engine"]["function"]
         )
 
-    telescope_data = tf.keras.Input(shape=data.img_shape, name=f"images")
-    telescope_triggers = tf.keras.Input(shape=(*data.trg_shape, 1), name=f"triggers")
+    telescope_data = tf.keras.Input(shape=data.image_shape, name=f"images")
+    telescope_triggers = tf.keras.Input(shape=(*data.trigger_shape, 1), name=f"triggers")
 
     output = tf_layers.TimeDistributed(model)(telescope_data)
     dropout = tf_layers.TimeDistributed(tf_layers.Dropout(rate=0.2))(output)

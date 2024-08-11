@@ -92,40 +92,10 @@ def setup_DL1DataReader(config, mode):
                 "Must be list or path to file or directory".format(file_list)
             )
 
-    dl1bparameter_names = None
-    with tables.open_file(config["Data"]["file_list"][0], mode="r") as f:
-        # Retrieve the name convention for the dl1b parameters
-        first_tablename = next(
-            f.root.dl1.event.telescope.parameters._f_iter_nodes()
-        ).name
-        dl1bparameter_names = f.root.dl1.event.telescope.parameters._f_get_child(
-            f"{first_tablename}"
-        ).colnames
-
-    allow_overwrite = config["Data"].get("allow_overwrite", True)
-    if "allow_overwrite" in config["Data"]:
-        del config["Data"]["allow_overwrite"]
-
-    selected_telescope_types = config["Data"]["selected_telescope_types"]
-    camera_types = [tel_type.split("_")[-1] for tel_type in selected_telescope_types]
-
-    if (
-        "parameter_settings" not in config["Data"]
-        and dl1bparameter_names is not None
-        and mode == "predict"
-    ):
-        config["Data"]["parameter_settings"] = {"parameter_list": dl1bparameter_names}
    
     '''
     stack_telescope_images = config["Input"].get("stack_telescope_images", False)
-    if config["Data"]["mode"] == "stereo" and not stack_telescope_images:
-        for tel_desc in selected_telescope_types:
-            transformations.append(
-                {
-                    "name": "SortTelescopes",
-                    "args": {"sorting": "size", "tel_desc": f"{tel_desc}"},
-                }
-            )
+    
     '''
     # Convert interpolation image shapes from lists to tuples, if present
     if "interpolation_image_shape" in config["Data"].get("mapping_settings", {}):
@@ -135,9 +105,6 @@ def setup_DL1DataReader(config, mode):
                 "interpolation_image_shape"
             ].items()
         }
-
-    if allow_overwrite:
-        config["Data"]["mapping_settings"]["camera_types"] = camera_types
 
     # Possibly add additional info to load if predicting to write later
     if mode == "predict":
