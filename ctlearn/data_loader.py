@@ -137,16 +137,23 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
             if self.wvf_pos is not None:
                 waveforms[i] = event[self.wvf_pos]
             if self.img_pos is not None:
-                images[i] = np.reshape(event[self.img_pos], self.img_shape)
+                if self.stack_telescope_images:
+                    images[i] = np.concatenate(
+                        [
+                            event[self.img_pos][j]
+                            for j in range(event[self.img_pos].shape[0])
+                        ],
+                        axis=-1,
+                    )
+                else:
+                    images[i] = event[self.img_pos]
             if self.prm_pos is not None:
                 parameters[i] = event[self.prm_pos]
 
             if self.mode == "train":
                 # Fill the labels
                 if self.prt_pos is not None:
-                    particletype[
-                        i
-                    ] = self.DLDataReader.shower_primary_id_to_class[
+                    particletype[i] = self.DLDataReader.shower_primary_id_to_class[
                         int(event[self.prt_pos])
                     ]
                 if self.enr_pos is not None:
@@ -203,7 +210,10 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
             if self.drc_pos is not None:
                 labels["direction"] = direction
                 label = direction
-            if self.trgpatch_pos is not None and self.DLDataReader.reco_cherenkov_photons:
+            if (
+                self.trgpatch_pos is not None
+                and self.DLDataReader.reco_cherenkov_photons
+            ):
                 labels["cherenkov_photons"] = trigger_patches_true_image_sum
                 label = trigger_patches_true_image_sum
 
