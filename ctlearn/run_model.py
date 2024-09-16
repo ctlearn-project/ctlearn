@@ -652,6 +652,9 @@ def main():
         if args.input:
             for input in args.input:
                 abs_file_dir = os.path.abspath(input)
+                # Exception handling for the input directory
+                if not os.path.isdir(abs_file_dir):
+                    raise NotADirectoryError(f"'{abs_file_dir}' is not a directory.")
                 with open(training_file_list, "a") as file_list:
                     for pattern in args.pattern:
                         files = glob.glob(os.path.join(abs_file_dir, pattern))
@@ -683,6 +686,9 @@ def main():
         if args.input:
             for input in args.input:
                 abs_file_dir = os.path.abspath(input)
+                # Exception handling for the input directory
+                if not os.path.isdir(abs_file_dir):
+                    raise NotADirectoryError(f"'{abs_file_dir}' is not a directory.")
                 for pattern in args.pattern:
                     files = glob.glob(os.path.join(abs_file_dir, pattern))
                     if not files:
