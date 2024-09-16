@@ -235,6 +235,9 @@ def main():
     n_showers_factor = 1
     for input in args.input:
         abs_file_dir = os.path.abspath(input)
+        # Exception handling for the input directory
+        if not os.path.isdir(abs_file_dir):
+            raise NotADirectoryError(f"'{abs_file_dir}' is not a directory.")
         for pattern in args.pattern:
             files = glob.glob(os.path.join(abs_file_dir, pattern))
             if not files:
