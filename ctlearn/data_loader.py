@@ -1,9 +1,10 @@
 import numpy as np
 import tensorflow as tf
+import keras
 import astropy.units as u
 
 
-class KerasBatchGenerator(tf.keras.utils.Sequence):
+class KerasBatchGenerator(keras.utils.Sequence):
     "Generates batches for Keras application"
 
     def __init__(
@@ -15,7 +16,10 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
         class_names=None,
         shuffle=True,
         stack_telescope_images=False,
+        **kwargs,
     ):
+
+        super().__init__(**kwargs)
         "Initialization"
         self.DLDataReader = DLDataReader
         self.batch_size = batch_size
@@ -209,7 +213,7 @@ class KerasBatchGenerator(tf.keras.utils.Sequence):
 
         # Temp fix till keras support class weights for multiple outputs or I wrote custom loss
         # https://github.com/keras-team/keras/issues/11735
-        if len(labels) == 1:
-            labels = label
+        #if len(labels) == 1:
+        #    labels = label
 
         return features, labels

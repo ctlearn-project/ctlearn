@@ -1,5 +1,5 @@
 import tensorflow as tf
-import tensorflow.keras.layers as tf_layers
+import keras.layers as tf_layers
 from ctlearn.default_models.attention import (
     squeeze_excite_block,
     channel_squeeze_excite_block,
@@ -24,7 +24,7 @@ def conv_block(inputs, params, name="cnn_block"):
     bottleneck_filters = params["basic"]["conv_block"]["bottleneck"]
     batchnorm = params["basic"]["conv_block"].get("batchnorm", False)
     attention = params.get("attention")
-    waveform3D = len(inputs.get_shape().as_list()) == 5
+    waveform3D = len(inputs.shape) == 5
 
     x = inputs
     if batchnorm:

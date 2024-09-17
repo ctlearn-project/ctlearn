@@ -1,5 +1,7 @@
 import tensorflow as tf
-import tensorflow.keras.layers as tf_layers
+import keras.layers as tf_layers
+import keras.losses as tf_losses
+import keras.metrics as tf_metrics
 from ctlearn.default_models.basic import fully_connect
 
 
@@ -19,13 +21,13 @@ def standard_head(inputs, tasks, params):
             name="particletype",
         )
         logits["type"] = tf_layers.Softmax(name="type")(logit)
-        losses["type"] = tf.keras.losses.CategoricalCrossentropy(
-            reduction=tf.keras.losses.Reduction.SUM_OVER_BATCH_SIZE
+        losses["type"] = tf_losses.CategoricalCrossentropy(
+            reduction="sum_over_batch_size"
         )
         loss_weights["type"] = standard_head_settings["type"]["weight"]
         metrics["type"] = [
-            tf.keras.metrics.CategoricalAccuracy(name="accuracy"),
-            tf.keras.metrics.AUC(name="auc"),
+            tf_metrics.CategoricalAccuracy(name="accuracy"),
+            tf_metrics.AUC(name="auc"),
         ]
     if "energy" in tasks:
         logits["energy"] = fully_connect(
@@ -34,11 +36,11 @@ def standard_head(inputs, tasks, params):
             expected_logits_dimension=1,
             name="energy",
         )
-        losses["energy"] = tf.keras.losses.MeanAbsoluteError(
-            reduction=tf.keras.losses.Reduction.SUM_OVER_BATCH_SIZE
+        losses["energy"] = tf_losses.MeanAbsoluteError(
+            reduction="sum_over_batch_size"
         )
         loss_weights["energy"] = standard_head_settings["energy"]["weight"]
-        metrics["energy"] = tf.keras.metrics.MeanAbsoluteError(name="mae_energy")
+        metrics["energy"] = tf_metrics.MeanAbsoluteError(name="mae_energy")
     if "direction" in tasks:
         logits["direction"] = fully_connect(
             inputs,
@@ -46,11 +48,11 @@ def standard_head(inputs, tasks, params):
             expected_logits_dimension=3,
             name="direction",
         )
-        losses["direction"] = tf.keras.losses.MeanAbsoluteError(
-            reduction=tf.keras.losses.Reduction.SUM_OVER_BATCH_SIZE
+        losses["direction"] = tf_losses.MeanAbsoluteError(
+            reduction="sum_over_batch_size"
         )
         loss_weights["direction"] = standard_head_settings["direction"]["weight"]
-        metrics["direction"] = tf.keras.metrics.MeanAbsoluteError(name="mae_direction")
+        metrics["direction"] = tf_metrics.MeanAbsoluteError(name="mae_direction")
     if "cherenkov_photons" in tasks:
         logits["cherenkov_photons"] = fully_connect(
             inputs,
@@ -58,18 +60,18 @@ def standard_head(inputs, tasks, params):
             expected_logits_dimension=1,
             name="cherenkov_photons",
         )
-        losses["cherenkov_photons"] = tf.keras.losses.MeanAbsoluteError(
-            reduction=tf.keras.losses.Reduction.SUM_OVER_BATCH_SIZE
+        losses["cherenkov_photons"] = tf_losses.MeanAbsoluteError(
+            reduction="sum_over_batch_size"
         )
         loss_weights["cherenkov_photons"] = standard_head_settings["cherenkov_photons"]["weight"]
-        metrics["cherenkov_photons"] = tf.keras.metrics.MeanAbsoluteError(name="mae_cherenkov_photons")
+        metrics["cherenkov_photons"] = tf_metrics.MeanAbsoluteError(name="mae_cherenkov_photons")
 
     # Temp fix till keras support class weights for multiple outputs or I wrote custom loss
     # https://github.com/keras-team/keras/issues/11735
-    if len(tasks) == 1:
-        logits = logits[tasks[0]]
-        losses = losses[tasks[0]]
-        loss_weights = loss_weights[tasks[0]]
-        metrics = metrics[tasks[0]]
+    #if len(tasks) == 1:
+    #    logits = logits[tasks[0]]
+    #    losses = losses[tasks[0]]
+    #    loss_weights = loss_weights[tasks[0]]
+    #    metrics = metrics[tasks[0]]
 
     return logits, losses, loss_weights, metrics

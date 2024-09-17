@@ -2,25 +2,24 @@ import importlib
 import sys
 
 import tensorflow as tf
-import tensorflow.keras.layers as tf_layers
-
+import keras.layers as tf_layers
 
 def single_cnn_model(data, model_params):
     # Load neural network model
     network_input, network_output = [], []
     if data.wvf_pos is not None:
-        network_input_wvf = tf.keras.Input(shape=data.wvf_shape, name=f"waveforms")
+        network_input_wvf = tf_layers.Input(shape=data.wvf_shape, name="waveforms")
         waveform3D = len(data.wvf_shape) == 4
         network_input.append(network_input_wvf)
     if data.img_pos is not None:
-        network_input_img = tf.keras.Input(shape=data.img_shape, name=f"images")
+        network_input_img = tf_layers.Input(shape=data.img_shape, name="images")
         network_input.append(network_input_img)
 
     backbone_name = model_params.get("name", "CNN") + "_block"
     trainable_backbone = model_params.get("trainable_backbone", True)
     pretrained_weights = model_params.get("pretrained_weights", None)
     if pretrained_weights:
-        loaded_model = tf.keras.models.load_model(f"{pretrained_weights}/ctlearn_model/")
+        loaded_model = tf.keras.models.load_model(f"{pretrained_weights}/ctlearn_model.keras")
         for layer in loaded_model.layers:
             if layer.name.endswith("_block"):
                 model = loaded_model.get_layer(layer.name)

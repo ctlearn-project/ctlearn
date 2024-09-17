@@ -80,8 +80,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
     if "Input" not in config:
         config["Input"] = {}
-    batch_size_per_worker = config["Input"].get("batch_size_per_worker", 64)
-    batch_size = batch_size_per_worker * strategy.num_replicas_in_sync
+    batch_size = config["Input"].get("batch_size", 64) * strategy.num_replicas_in_sync
     stack_telescope_images = config["Input"].get("stack_telescope_images", False)
 
     if mode == "train":
@@ -186,8 +185,8 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         )
 
         if "ctlearn_model" in np.array([os.listdir(model_dir)]):
-            logger.info(f"  Loading weights from '{model_dir}/ctlearn_model/'.")
-            model = tf.keras.models.load_model(f"{model_dir}/ctlearn_model/")
+            logger.info(f"  Loading weights from '{model_dir}/ctlearn_model.keras'.")
+            model = tf.keras.models.load_model(f"{model_dir}/ctlearn_model.keras")
         else:
             model = tf.keras.Model(backbone_inputs, logits, name="CTLearn_model")
 
@@ -250,7 +249,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         num_epochs = int(config["Training"].get("num_epochs", 10))
         logger.info("  Number of epochs: {}".format(num_epochs))
         logger.info(
-            "  Size of the batches per worker: {}".format(batch_size_per_worker)
+            "  Size of the batches: {}".format(batch_size)
         )
         logger.info("  Size of the batches: {}".format(batch_size))
         num_training_examples = math.floor((1 - validation_split) * len(reader))
@@ -277,12 +276,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
         logger.info("  Learning rate reducing min lr: {}".format(lr_reducing_minlr))
         verbose = int(config["Training"].get("verbose", 2))
         logger.info("  Verbosity mode: {}".format(verbose))
-        workers = int(config["Training"].get("workers", 1))
-        # ToDo: Fix multiprocessing issue
-        workers = 1
-        logger.info("  Number of workers: {}".format(workers))
-        use_multiprocessing = True if workers > 1 else False
-        logger.info("  Use of multiprocessing: {}".format(use_multiprocessing))
 
         # Set up the callbacks
         monitor = "val_loss" if reader.num_classes < 3 else "loss"
@@ -295,7 +288,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
 
         # Model checkpoint callback
         model_checkpoint_callback = tf.keras.callbacks.ModelCheckpoint(
-            filepath=f"{model_dir}/ctlearn_model/",
+            filepath=f"{model_dir}/ctlearn_model.keras",
             monitor=monitor,
             verbose=1,
             mode=monitor_mode,
@@ -364,8 +357,6 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             class_weight=reader.class_weight,
             callbacks=callbacks,
             verbose=verbose,
-            workers=workers,
-            use_multiprocessing=use_multiprocessing,
         )
         logger.info("Training and evaluating finished succesfully!")
 
@@ -376,7 +367,7 @@ def run_model(config, mode="train", debug=False, log_to_file=False):
             import tf2onnx
 
             input_type_spec = [input._type_spec for input in backbone_inputs]
-            output_path = f"{model_dir}/ctlearn_model/{model.name}.onnx"
+            output_path = f"{model_dir}/{model.name}.onnx"
             tf2onnx.convert.from_keras(
                 model, input_signature=input_type_spec, output_path=output_path
             )
@@ -524,7 +515,7 @@ def main():
     parser.add_argument(
         "--num_epochs", "-e", type=int, help="Number of epochs to train"
     )
-    parser.add_argument("--batch_size", "-b", type=int, help="Batch size per worker")
+    parser.add_argument("--batch_size", "-b", type=int, help="Size of one batch")
     parser.add_argument(
         "--random_seed", "-s", type=int, help="Selection of random seed (4 digits)"
     )
@@ -628,7 +619,7 @@ def main():
     if args.batch_size:
         if "Input" not in config:
             config["Input"] = {}
-        config["Input"]["batch_size_per_worker"] = args.batch_size
+        config["Input"]["batch_size"] = args.batch_size
     if args.random_seed:
         if 1000 <= args.random_seed <= 9999:
             config["Data"]["seed"] = args.random_seed
@@ -728,7 +719,7 @@ def main():
                         if args.batch_size:
                             if "Input" not in config:
                                 config["Input"] = {}
-                            config["Input"]["batch_size_per_worker"] = args.batch_size
+                            config["Input"]["batch_size"] = args.batch_size
                         if args.output:
                             config["Logging"] = {}
                             config["Logging"]["model_directory"] = args.output
@@ -805,7 +796,7 @@ def main():
                 if args.batch_size:
                     if "Input" not in config:
                         config["Input"] = {}
-                    config["Input"]["batch_size_per_worker"] = args.batch_size
+                    config["Input"]["batch_size"] = args.batch_size
                 if args.output:
                     config["Logging"] = {}
                     config["Logging"]["model_directory"] = args.output

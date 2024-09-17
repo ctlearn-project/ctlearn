@@ -2,7 +2,7 @@ import importlib
 import sys
 
 import tensorflow as tf
-import tensorflow.keras.layers as tf_layers
+import keras.layers as tf_layers
 
 LSTM_SIZE = 2048
 
@@ -25,7 +25,7 @@ def cnn_rnn_model(data, model_params):
     trainable_backbone = model_params.get("trainable_backbone", True)
     pretrained_weights = model_params.get("pretrained_weights", None)
     if pretrained_weights:
-        loaded_model = tf.keras.models.load_model(f"{pretrained_weights}/ctlearn_model/")
+        loaded_model = tf.keras.models.load_model(f"{pretrained_weights}/ctlearn_model.keras")
         for layer in loaded_model.layers:
             if layer.name.endswith("_block"):
                 model = loaded_model.get_layer(layer.name)

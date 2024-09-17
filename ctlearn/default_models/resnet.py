@@ -1,5 +1,5 @@
 import tensorflow as tf
-import tensorflow.keras.layers as tf_layers
+import keras.layers as tf_layers
 from ctlearn.default_models.attention import (
     squeeze_excite_block,
     channel_squeeze_excite_block,
@@ -28,7 +28,7 @@ def stacked_res_blocks(inputs, params, name=None):
         for layer in params["resnet"]["stacked_res_blocks"]["architecture"]
     ]
     attention = params.get("attention", None)
-    waveform3D = len(inputs.get_shape().as_list()) == 5
+    waveform3D = len(inputs.shape) == 5
 
     x = stack_fn(
         inputs,
