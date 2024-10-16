@@ -61,8 +61,7 @@ repository = "https://github.com/ctlearn-project/ctlearn"
 documentation = "https://ctlearn.readthedocs.io/en/latest/"
 
 [project.scripts]
-ctlearn="ctlearn.run_model:main"
-build_irf="ctlearn.build_irf:main"
+ctlearn-train-model = "ctlearn.tools.train_model:main"
 
 [tool.setuptools_scm]
 version_file = "ctlearn/_version.py"
