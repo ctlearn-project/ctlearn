@@ -246,7 +246,7 @@ class TrainCTLearnModel(Tool):
         monitor_mode = "min"
         # Model checkpoint callback
         model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
-            filepath=f"{self.output_dir}/ctlearn_model.keras",
+            filepath=f"{self.output_dir}/ctlearn_model.ckp",
             monitor=monitor,
             verbose=1,
             mode=monitor_mode,
@@ -316,6 +316,7 @@ class TrainCTLearnModel(Tool):
             epochs=self.n_epochs,
             class_weight=self.dl1dh_reader.class_weight,
             callbacks=self.callbacks,
+            verbose=2,
         )
         self.log.info("Training and evaluating finished succesfully!")
 
