@@ -388,6 +388,11 @@ class TrainCTLearnModel(Tool):
                 keras.metrics.CategoricalAccuracy(name="accuracy"),
                 keras.metrics.AUC(name="auc"),
             ]
+            # Temp fix till keras support class weights for multiple outputs or I wrote custom loss
+            # https://github.com/keras-team/keras/issues/11735
+            if len(tasks) == 1:
+                losses = losses["type"]
+                metrics = metrics["type"]
         if "energy" in self.reco_tasks:
             losses["energy"] = keras.losses.MeanAbsoluteError(
                 reduction="sum_over_batch_size"
@@ -398,11 +403,6 @@ class TrainCTLearnModel(Tool):
                 reduction="sum_over_batch_size"
             )
             metrics["direction"] = keras.metrics.MeanAbsoluteError(name="mae_direction")
-        # Temp fix till keras support class weights for multiple outputs or I wrote custom loss
-        # https://github.com/keras-team/keras/issues/11735
-        if len(tasks) == 1 and tasks[0] == "type":
-            losses = losses[tasks[0]]
-            metrics = metrics[tasks[0]]
         return losses, metrics
 
 
