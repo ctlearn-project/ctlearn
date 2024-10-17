@@ -50,7 +50,11 @@ def build_fully_connect_head(inputs, layers, tasks):
                 x = keras.layers.Dense(units=units, activation="relu", name=f"fc_{task}_{i+1}")(x)
             else:
                 x = keras.layers.Dense(units=units, name=task)(x)        
-        logits[task] = keras.layers.Softmax(name="type_softmax")(x) if task == "type" else x
+        logits[task] = keras.layers.Softmax()(x) if task == "type" else x
+    # Temp fix till keras support class weights for multiple outputs or I wrote custom loss
+    # https://github.com/keras-team/keras/issues/11735
+    if len(tasks) == 1 and tasks[0] == "type":
+        logits = logits[tasks[0]]
     return logits
 
 

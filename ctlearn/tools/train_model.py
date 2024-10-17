@@ -304,7 +304,7 @@ class TrainCTLearnModel(Tool):
                 "SGD": (keras.optimizers.SGD, dict(learning_rate=learning_rate)),
             }
             optimizer_fn, optimizer_args = optimizers[self.optimizer["name"]]
-            losses, metrics = self._get_losses_and_mertics()
+            losses, metrics = self._get_losses_and_mertics(self.reco_tasks)
             self.log.info("Compiling CTLearn model.")
             self.model.compile(optimizer=optimizer_fn(**optimizer_args), loss=losses, metrics=metrics)
 
@@ -359,7 +359,7 @@ class TrainCTLearnModel(Tool):
 
         self.log.info("Tool is shutting down")
 
-    def _get_losses_and_mertics(self,):
+    def _get_losses_and_mertics(self, tasks):
         """
         Build the fully connected head for the CTLearn model.
 
@@ -398,7 +398,11 @@ class TrainCTLearnModel(Tool):
                 reduction="sum_over_batch_size"
             )
             metrics["direction"] = keras.metrics.MeanAbsoluteError(name="mae_direction")
-
+        # Temp fix till keras support class weights for multiple outputs or I wrote custom loss
+        # https://github.com/keras-team/keras/issues/11735
+        if len(tasks) == 1 and tasks[0] == "type":
+            losses = losses[tasks[0]]
+            metrics = metrics[tasks[0]]
         return losses, metrics
 
 
