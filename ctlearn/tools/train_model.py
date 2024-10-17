@@ -332,15 +332,15 @@ class TrainCTLearnModel(Tool):
             except ImportError:
                 raise ImportError("tf2onnx is not installed in your environment!")
 
-            output_path = f"{self.output_path}/ctlearn_model.onnx"
+            output_path = f"{self.output_dir}/ctlearn_model.onnx"
             tf2onnx.convert.from_keras(
-                self.model, input_signature=self.model.input_layer.input._type_spec, output_path=self.output_path
+                self.model, input_signature=self.model.input_layer.input._type_spec, output_path=output_path
             )
-            self.log.info("ONNX model saved in {}".format(output_path))
+            self.log.info("ONNX model saved in {}".format(output_dir))
 
         # Plotting training history
         self.log.info("Plotting training history...")
-        training_log = pd.read_csv(self.output_path + "/training_log.csv")
+        training_log = pd.read_csv(self.output_dir + "/training_log.csv")
         for metric in training_log.columns:
             epochs = training_log["epoch"] + 1
             if metric != "epoch" and not metric.startswith("val_"):
@@ -355,7 +355,7 @@ class TrainCTLearnModel(Tool):
                 plt.xlabel("epoch")
                 plt.ylabel(metric)
                 plt.legend(legend, loc="upper left")
-                plt.savefig(f"{self.output_path}/{metric}.png")
+                plt.savefig(f"{self.output_dir}/{metric}.png")
 
         self.log.info("Tool is shutting down")
 
