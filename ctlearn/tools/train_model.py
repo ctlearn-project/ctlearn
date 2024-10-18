@@ -340,7 +340,7 @@ class TrainCTLearnModel(Tool):
 
         # Plotting training history
         self.log.info("Plotting training history...")
-        training_log = pd.read_csv(self.output_dir + "/training_log.csv")
+        training_log = pd.read_csv(f"{self.output_dir}/training_log.csv")
         for metric in training_log.columns:
             epochs = training_log["epoch"] + 1
             if metric != "epoch" and not metric.startswith("val_"):
