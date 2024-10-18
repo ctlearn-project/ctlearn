@@ -341,7 +341,7 @@ class TrainCTLearnModel(Tool):
             tf2onnx.convert.from_keras(
                 self.model, input_signature=self.model.input_layer.input._type_spec, output_path=output_path
             )
-            self.log.info("ONNX model saved in {}".format(output_dir))
+            self.log.info(f"ONNX model saved in {self.output_dir}")
 
         # Plotting training history
         self.log.info("Plotting training history...")
