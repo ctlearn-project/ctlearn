@@ -28,7 +28,7 @@ from ctapipe.core.traits import (
 )
 
 import pandas as pd
-import os
+import shutil
 
 from dl1_data_handler.reader import DLDataReader
 from dl1_data_handler.loader import DLDataLoader
@@ -190,10 +190,19 @@ class TrainCTLearnModel(Tool):
     )
 
     def setup(self):
+        # Check if the output directory exists and if it should be overwritten
+        if self.output_dir.exists() and not self.overwrite:
+            raise ToolConfigurationError(
+                f"Output directory {self.output_dir} already exists. Use --overwrite to overwrite."
+            )
+        else:
+            # Remove the output directory if it exists
+            self.log.info("Removing output directory %s", self.output_dir)
+            shutil.rmtree(self.output_dir)
         # Create a MirroredStrategy.
         self.strategy = tf.distribute.MirroredStrategy()
         atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore
-        self.log.info("Number of devices: {}".format(self.strategy.num_replicas_in_sync))
+        self.log.info("Number of devices: %s", self.strategy.num_replicas_in_sync)
         # Get signal input Files
         self.input_url_signal = sorted(self.input_dir_signal.glob(self.file_pattern_signal))
         # Get bkg input Files
@@ -211,7 +220,7 @@ class TrainCTLearnModel(Tool):
             parent=self,
         )
 
-        self.log.info(f"  Number of events loaded: {self.dl1dh_reader._get_n_events()}")
+        self.log.info("  Number of events loaded: %s", self.dl1dh_reader._get_n_events())
 
         # Check if there are at least two classes in the reader for the particle classification
         if self.dl1dh_reader.class_weight is None and "type" in self.reco_tasks:
@@ -341,7 +350,7 @@ class TrainCTLearnModel(Tool):
             tf2onnx.convert.from_keras(
                 self.model, input_signature=self.model.input_layer.input._type_spec, output_path=output_path
             )
-            self.log.info(f"ONNX model saved in {self.output_dir}")
+            self.log.info("ONNX model saved in %s", self.output_dir)
 
         # Plotting training history
         self.log.info("Plotting training history...")
