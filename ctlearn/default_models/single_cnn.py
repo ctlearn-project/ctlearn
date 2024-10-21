@@ -116,8 +116,8 @@ def single_cnn_model(data, model_params):
             if data.wvf_pos is not None:
                 network_output = tf.keras.layers.Concatenate()([output_wvf, output_img])
 
-        singlecnn_model = tf.keras.Model(
+        model = tf.keras.Model(
             network_input, network_output, name=backbone_name
         )
 
-    return singlecnn_model, network_input
+    return model, network_input
