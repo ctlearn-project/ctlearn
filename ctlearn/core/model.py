@@ -12,6 +12,7 @@ from ctlearn.core.attention import (
     channel_squeeze_excite_block,
     spatial_squeeze_excite_block,
 )
+from ctlearn.utils import validate_trait_dict
 
 __all__ = [
     "build_fully_connect_head",
@@ -213,12 +214,20 @@ class SingleCNN(CTLearnModel):
             **kwargs,
         )
 
+        # Validate the architecture trait
+        for layer in self.architecture:
+            validate_trait_dict(layer, ["filters", "kernel_size", "number"])
+        # Validate the pooling parameters trait
+        validate_trait_dict(self.pooling_parameters, ["size", "strides"])
+
         # Construct the name of the backbone model by appending "_block" to the model name
         self.backbone_name = self.name + "_block"
 
         # Build the ResNet model backbone
         self.backbone_model, self.input_layer = self._build_backbone(input_shape)
         backbone_output = self.backbone_model(self.input_layer)
+        # Validate the head trait with the provided tasks
+        validate_trait_dict(self.head, tasks)
         # Build the fully connected head depending on the tasks
         self.logits = build_fully_connect_head(backbone_output, self.head, tasks)
 
@@ -370,12 +379,23 @@ class ResNet(CTLearnModel):
             **kwargs,
         )
 
+        # Validate the architecture trait
+        for layer in self.architecture:
+            validate_trait_dict(layer, ["filters", "blocks"])
+        # Validate the initial layers trait
+        if self.init_layer is not None:
+            validate_trait_dict(self.init_layer, ["filters", "kernel_size", "strides"])
+        if self.init_max_pool is not None:
+            validate_trait_dict(self.init_max_pool, ["size", "strides"])
+
         # Construct the name of the backbone model by appending "_block" to the model name
         self.backbone_name = self.name + "_block"
 
         # Build the ResNet model backbone
         self.backbone_model, self.input_layer = self._build_backbone(input_shape)
         backbone_output = self.backbone_model(self.input_layer)
+        # Validate the head trait with the provided tasks
+        validate_trait_dict(self.head, tasks)
         # Build the fully connected head depending on the tasks
         self.logits = build_fully_connect_head(backbone_output, self.head, tasks)
 

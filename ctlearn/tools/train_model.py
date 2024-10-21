@@ -33,6 +33,7 @@ import shutil
 from dl1_data_handler.reader import DLDataReader
 from dl1_data_handler.loader import DLDataLoader
 from ctlearn.core.model import CTLearnModel
+from ctlearn.utils import validate_trait_dict
 
 
 class TrainCTLearnModel(Tool):
@@ -197,7 +198,7 @@ class TrainCTLearnModel(Tool):
             )
         else:
             # Remove the output directory if it exists
-            self.log.info("Removing output directory %s", self.output_dir)
+            self.log.info("Removing existing output directory %s", self.output_dir)
             shutil.rmtree(self.output_dir)
         # Create a MirroredStrategy.
         self.strategy = tf.distribute.MirroredStrategy()
@@ -277,6 +278,8 @@ class TrainCTLearnModel(Tool):
         self.callbacks = [model_checkpoint_callback, tensorboard_callback, csv_logger_callback]
         # Learning rate reducing callback
         if self.lr_reducing is not None:
+            # Validate the learning rate reducing parameters
+            validate_trait_dict(self.lr_reducing, ["factor", "patience", "min_delta", "min_lr"])
             lr_reducing_callback = keras.callbacks.ReduceLROnPlateau(
                 monitor=monitor,
                 factor=self.lr_reducing["factor"],
@@ -301,9 +304,18 @@ class TrainCTLearnModel(Tool):
                 tasks=self.reco_tasks,
                 parent=self,
             ).model
-            # Select optimizer with appropriate arguments
-            adam_epsilon = self.optimizer["adam_epsilon"] if "adam_epsilon" in self.optimizer else None
+            # Validate the optimizer parameters
+            validate_trait_dict(self.optimizer, ["name", "base_learning_rate"])
+            # Set the learning rate for the optimizer
             learning_rate =  self.optimizer["base_learning_rate"]
+            # Set the epsilon for the Adam optimizer
+            adam_epsilon = None
+            if self.optimizer["name"] == "Adam":
+                # Validate the epsilon for the Adam optimizer
+                validate_trait_dict(self.optimizer, ["adam_epsilon"])
+                # Set the epsilon for the Adam optimizer
+                adam_epsilon = self.optimizer["adam_epsilon"]
+            # Select optimizer with appropriate arguments
             # Dict of optimizer_name: (optimizer_fn, optimizer_args)
             optimizers = {
                 "Adadelta": (
@@ -317,8 +329,11 @@ class TrainCTLearnModel(Tool):
                 "RMSProp": (keras.optimizers.RMSprop, dict(learning_rate=learning_rate)),
                 "SGD": (keras.optimizers.SGD, dict(learning_rate=learning_rate)),
             }
+            # Get the optimizer function and arguments
             optimizer_fn, optimizer_args = optimizers[self.optimizer["name"]]
+            # Get the losses and metrics for the model
             losses, metrics = self._get_losses_and_mertics(self.reco_tasks)
+            # Compile the model
             self.log.info("Compiling CTLearn model.")
             self.model.compile(optimizer=optimizer_fn(**optimizer_args), loss=losses, metrics=metrics)
 
