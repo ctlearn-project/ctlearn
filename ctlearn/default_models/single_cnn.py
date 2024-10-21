@@ -20,10 +20,10 @@ def single_cnn_model(data, model_params):
     trainable_backbone = model_params.get("trainable_backbone", True)
     pretrained_weights = model_params.get("pretrained_weights", None)
     if pretrained_weights:
-        loaded_model = tf.keras.models.load_model(f"{pretrained_weights}/ctlearn_model/")
-        for layer in loaded_model.layers:
+        singlecnn_model = tf.keras.models.load_model(f"{pretrained_weights}/ctlearn_model/")
+        for layer in singlecnn_model.layers:
             if layer.name.endswith("_block"):
-                model = loaded_model.get_layer(layer.name)
+                model = singlecnn_model.get_layer(layer.name)
                 model.trainable = trainable_backbone
     else:
         sys.path.append(model_params["model_directory"])
@@ -116,8 +116,8 @@ def single_cnn_model(data, model_params):
             if data.wvf_pos is not None:
                 network_output = tf.keras.layers.Concatenate()([output_wvf, output_img])
 
-        model = tf.keras.Model(
+        singlecnn_model = tf.keras.Model(
             network_input, network_output, name=backbone_name
         )
 
-    return model, network_input
+    return singlecnn_model, network_input
