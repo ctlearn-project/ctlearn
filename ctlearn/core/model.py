@@ -65,10 +65,9 @@ class CTLearnModel(Component):
     """
     Base component for creating a Keras model to be used in CTLearn.
 
-    This class handles the transformation of raw telescope image or waveform data
-    into a format suitable for further analysis. It supports various telescope
-    types and applies necessary scaling and offset adjustments to the image data.
-
+    This class defines the basic functionality for creating a Keras model to be used in CTLearn.
+    It provides the necessary methods to build the backbone of the model and the fully connected head
+    for the specified tasks.
     """
 
     init_padding = Int(
@@ -149,12 +148,10 @@ def _build_backbone(self, input_shape):
 
 class SingleCNN(CTLearnModel):
     """
-    SquareMapper maps images to a square pixel grid without any modifications.
+    ``SingleCNN`` is a simple convolutional neural network model.
 
-    This class extends the functionality of ImageMapper by implementing
-    methods to generate a direct mapping table and perform the transformation.
-    It is particularly useful for applications where a direct one-to-one
-    mapping is sufficient for converting pixel data.for square pixel cameras
+    This class extends the functionality of ``CTLearnModel`` by implementing
+    methods to build a simple convolutional neural network model.
     """
 
     name = Unicode(
@@ -234,6 +231,23 @@ class SingleCNN(CTLearnModel):
         self.model = keras.Model(self.input_layer, self.logits, name="CTLearn_model")
 
     def _build_backbone(self, input_shape):
+        """
+        Build the SingleCNN model backbone.
+
+        Function to build the backbone of the SingleCNN model using the specified parameters.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input data (batch_size, height, width, channels).
+        
+        Returns
+        -------
+        backbone_model : keras.Model
+            Keras model object representing the backbone of the SingleCNN model.
+        network_input : keras.Input
+            Keras input layer object for the backbone model.
+        """
 
         # Define the input layer from the input shape
         network_input = keras.Input(shape=input_shape, name="input")
@@ -317,12 +331,10 @@ class SingleCNN(CTLearnModel):
 
 class ResNet(CTLearnModel):
     """
-    SquareMapper maps images to a square pixel grid without any modifications.
+    ``ResNet`` is a residual neural network model.
 
-    This class extends the functionality of ImageMapper by implementing
-    methods to generate a direct mapping table and perform the transformation.
-    It is particularly useful for applications where a direct one-to-one
-    mapping is sufficient for converting pixel data.for square pixel cameras
+    This class extends the functionality of ``CTLearnModel`` by implementing
+    methods to build a residual neural network model.
     """
 
     name = Unicode(
@@ -465,16 +477,33 @@ class ResNet(CTLearnModel):
 
         
     def _stacked_res_blocks(self, inputs, architecture, residual_block_type, attention, name=None):
-        """Function to set up a ResNet.
-        Arguments:
-            input_shape: input tensor shape.
-            architecture: list of dictionaries, architecture of the ResNet model.
-            residual_block_type: string, type of residual block.
-            attention: config parameters for the attention mechanism.
-            name: string, model label.
-        Returns:
-        Output tensor for the ResNet architecture.
         """
+        Build a stack of residual blocks for the CTLearn model.
+
+        This function constructs a stack of residual blocks, which are used to build the backbone of the CTLearn model.
+        Each residual block consists of a series of convolutional layers with skip connections.
+
+        Parameters
+        ----------
+        inputs : keras.layers.Layer
+            Input Keras layer to the residual blocks.
+        architecture : list of dict
+            List of dictionaries containing the architecture of the ResNet model, which includes:
+            - Number of filters for the convolutional layers in the residual blocks.
+            - Number of residual blocks to stack.
+        residual_block_type : str
+            Type of residual block to use. Options are 'basic' or 'bottleneck'.
+        attention : dict
+            Dictionary containing the configuration parameters for the attention mechanism.
+        name : str, optional
+            Label for the model.
+
+        Returns
+        -------
+        x : keras.layers.Layer
+            Output Keras layer after passing through the stack of residual blocks.
+        """
+
         # Get hyperparameters for the model architecture
         filters_list = [
             layer["filters"]
@@ -517,18 +546,35 @@ class ResNet(CTLearnModel):
         waveform3D=False,
         name=None,
     ):
-        """Function to stack residual blocks.
-        Arguments:
-        inputs: input tensor.
-        filters: integer, filters of the bottleneck layer in a block.
-        blocks: integer, blocks in the stacked blocks.
-        residual_block_type: string, type of residual block.
-        stride: default 2, stride of the first layer in the first block.
-        attention: config parameters for the attention mechanism.
-        waveform3D: boolean, type and shape of input data.
-        name: string, stack label.
-        Returns:
-        Output tensor for the stacked blocks.
+        """
+        Stack residual blocks for the CTLearn model.
+
+        This function constructs a stack of residual blocks, which are used to build the backbone of the CTLearn model.
+        Each residual block can be of different types (e.g., basic or bottleneck) and can include attention mechanisms.
+
+        Parameters
+        ----------
+        inputs : keras.layers.Layer
+            Input tensor to the residual blocks.
+        filters : int
+            Number of filters for the bottleneck layer in a block.
+        blocks : int
+            Number of residual blocks to stack.
+        residual_block_type : str
+            Type of residual block ('basic' or 'bottleneck').
+        stride : int, optional
+            Stride for the first layer in the first block. Default is 2.
+        attention : dict, optional
+            Configuration parameters for the attention mechanism. Default is None.
+        waveform3D : bool, optional
+            Indicates the type and shape of input data. Default is False.
+        name : str, optional
+            Label for the stack. Default is None.
+
+        Returns
+        -------
+        keras.layers.Layer
+            Output tensor for the stacked blocks.
         """
 
         res_blocks = {
@@ -565,18 +611,34 @@ class ResNet(CTLearnModel):
         attention=None,
         name=None,
     ):
-        """Function to build a basic residual block.
-        Arguments:
-        inputs: input tensor.
-        filters: integer, filters of the bottleneck layer.
-        kernel_size: default 3, kernel size of the bottleneck layer.
-        stride: default 1, stride of the first layer.
-        conv_shortcut: default True, use convolution shortcut if True,
-            otherwise identity shortcut.
-        attention: config parameters for the attention mechanism.
-        name: string, block label.
-        Returns:
-        Output tensor for the residual block.
+        """
+        Build a basic residual block for the CTLearn model.
+
+        This function constructs a basic residual block, which is a fundamental building block
+        of ResNet architectures. The block consists of two convolutional layers with an optional
+        convolutional shortcut, and can include attention mechanisms.
+
+        Parameters
+        ----------
+        inputs : keras.layers.Layer
+            Input tensor to the residual block.
+        filters : int
+            Number of filters for the convolutional layers.
+        kernel_size : int, optional
+            Size of the convolutional kernel. Default is 3.
+        stride : int, optional
+            Stride for the convolutional layers. Default is 1.
+        conv_shortcut : bool, optional
+            Whether to use a convolutional layer for the shortcut connection. Default is True.
+        attention : dict, optional
+            Configuration parameters for the attention mechanism. Default is None.
+        name : str, optional
+            Name for the residual block. Default is None.
+
+        Returns
+        -------
+        keras.layers.Layer
+            Output tensor after applying the residual block.
         """
 
         if conv_shortcut:
@@ -631,18 +693,35 @@ class ResNet(CTLearnModel):
         attention=None,
         name=None,
     ):
-        """Function to build a bottleneck residual block.
-        Arguments:
-        inputs: input tensor.
-        filters: integer, filters of the bottleneck layer.
-        kernel_size: default 3, kernel size of the bottleneck layer.
-        stride: default 1, stride of the first layer.
-        conv_shortcut: default True, use convolution shortcut if True,
-            otherwise identity shortcut.
-        attention: config parameters for the attention mechanism.
-        name: string, block label.
-        Returns:
-        Output tensor for the stacked blocks.
+        """
+        Build a bottleneck residual block for the CTLearn model.
+
+        This function constructs a bottleneck residual block, which is a fundamental building block of
+        ResNet architectures. The block consists of three convolutional layers: a 1x1 convolution to reduce
+        dimensionality, a 3x3 convolution for main computation, and another 1x1 convolution to restore dimensionality.
+        It also includes an optional shortcut connection and can include attention mechanisms.
+
+        Parameters
+        ----------
+        inputs : keras.layers.Layer
+            Input tensor to the residual block.
+        filters : int
+            Number of filters for the convolutional layers.
+        kernel_size : int, optional
+            Size of the convolutional kernel. Default is 3.
+        stride : int, optional
+            Stride for the convolutional layers. Default is 1.
+        conv_shortcut : bool, optional
+            Whether to use a convolutional layer for the shortcut connection. Default is True.
+        attention : dict, optional
+            Configuration parameters for the attention mechanism. Default is None.
+        name : str, optional
+            Name for the residual block. Default is None.
+
+        Returns
+        -------
+        output : keras.layers.Layer
+            Output layer of the residual block.
         """
 
         if conv_shortcut:
@@ -694,12 +773,11 @@ class ResNet(CTLearnModel):
 
 class LoadedModel(CTLearnModel):
     """
-    SquareMapper maps images to a square pixel grid without any modifications.
+    ``LoadedModel`` is a pre-trained Keras model.
 
-    This class extends the functionality of ImageMapper by implementing
-    methods to generate a direct mapping table and perform the transformation.
-    It is particularly useful for applications where a direct one-to-one
-    mapping is sufficient for converting pixel data.for square pixel cameras
+    This class extends the functionality of ``CTLearnModel`` by implementing
+    methods to load a pre-trained Keras model. The model can be used as a backbone
+    for the CTLearn model.
     """
 
     load_model_from = Path(
@@ -709,6 +787,12 @@ class LoadedModel(CTLearnModel):
         exists=True,
         directory_ok=True,
         file_ok=False,
+    ).tag(config=True)
+
+    load_head = Bool(
+        default_value=False,
+        allow_none=False,
+        help="Set to load the fully connected head from the loaded model.",
     ).tag(config=True)
 
     trainable_backbone = Bool(
@@ -740,6 +824,24 @@ class LoadedModel(CTLearnModel):
         self.model = keras.Model(self.input_layer, self.logits, name="CTLearn_model")
 
     def _build_backbone(self, input_shape):
+        """
+        Build the LoadedModel backbone.
+
+        Function to build the backbone of the LoadedModel using the specified parameters.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input data (batch_size, height, width, channels).
+        
+        Returns
+        -------
+        backbone_model : keras.Model
+            Keras model object representing the LoadedModel backbone.
+        network_input : keras.Input
+            Keras input layer object for the backbone model.
+        """
+
         # Define the input layer from the input shape
         network_input = keras.Input(shape=input_shape, name="input")
         # Load the model from the specified path
