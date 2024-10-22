@@ -49,19 +49,27 @@ class TrainCTLearnModel(Tool):
     To train a CTLearn model for the classification of the primary particle type:
     > ctlearn-train-model \\
         --signal /path/to/your/gammas_dl1_dir/ \\
+        --pattern-signal "gamma_*_run1.dl1.h5" \\
+        --pattern-signal "gamma_*_run10.dl1.h5" \\
         --background /path/to/your/protons_dl1_dir/ \\
+        --pattern-background "proton_*_run1.dl1.h5" \\
+        --pattern-background "proton_*_run10.dl1.h5" \\
         --output /path/to/your/output_dir/type/ \\
         --reco type \\
 
     To train a CTLearn model for the regression of the primary particle energy:
     > ctlearn-train-model \\
         --signal /path/to/your/gammas_dl1_dir/ \\
+        --pattern-signal "gamma_*_run1.dl1.h5" \\
+        --pattern-signal "gamma_*_run10.dl1.h5" \\
         --output /path/to/your/output_dir/energy/ \\
         --reco energy \\
     
     To train a CTLearn model for the regression of the primary particle arrival direction:
     > ctlearn-train-model \\
         --signal /path/to/your/gammas_dl1_dir/ \\
+        --pattern-signal "gamma_*_run1.dl1.h5" \\
+        --pattern-signal "gamma_*_run10.dl1.h5" \\
         --output /path/to/your/output_dir/direction/ \\
         --reco direction \\
     """
@@ -74,9 +82,10 @@ class TrainCTLearnModel(Tool):
         file_ok=False,
     ).tag(config=True)
 
-    file_pattern_signal = Unicode(
-        default_value="*.h5",
-        help="Give a specific file pattern for matching files in ``input_dir_signal``",
+    file_pattern_signal = List(
+        trait=Unicode(),
+        default_value=["*.h5"],
+        help="List of specific file pattern for matching files in ``input_dir_signal``",
     ).tag(config=True)
 
     input_dir_background = Path(
@@ -88,9 +97,10 @@ class TrainCTLearnModel(Tool):
         file_ok=False,
     ).tag(config=True)
 
-    file_pattern_background = Unicode(
-        default_value="*.h5",
-        help="Give a specific file pattern for matching files in ``input_dir_background``",
+    file_pattern_background = List(
+        trait=Unicode(),
+        default_value=["*.h5"],
+        help="List of specific file pattern for matching files in ``input_dir_background``",
     ).tag(config=True)
 
     dl1dh_reader_type = ComponentName(
@@ -210,20 +220,23 @@ class TrainCTLearnModel(Tool):
         self.strategy = tf.distribute.MirroredStrategy()
         atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore
         self.log.info("Number of devices: %s", self.strategy.num_replicas_in_sync)
-        # Get signal input Files
-        self.input_url_signal = sorted(self.input_dir_signal.glob(self.file_pattern_signal))
-        # Get bkg input Files
+        # Get signal input files
+        self.input_url_signal = []
+        for signal_pattern in self.file_pattern_signal:
+            self.input_url_signal.extend(self.input_dir_signal.glob(signal_pattern))
+        # Get bkg input files
         self.input_url_background = []
         if self.input_dir_background is not None:
-            self.input_url_background = sorted(self.input_dir_background.glob(self.file_pattern_background))
+            for background_pattern in self.file_pattern_background:
+                self.input_url_background.extend(self.input_dir_background.glob(self.file_pattern_background))
 
         # Set up the data reader
         self.log.info("Loading data:")
         self.log.info("  For a large dataset, this may take a while...")
         self.dl1dh_reader = DLDataReader.from_name(
             self.dl1dh_reader_type,
-            input_url_signal=self.input_url_signal,
-            input_url_background=self.input_url_background,
+            input_url_signal=sorted(self.input_url_signal),
+            input_url_background=sorted(self.input_url_background),
             parent=self,
         )
 
