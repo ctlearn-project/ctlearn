@@ -1,14 +1,11 @@
 """
-Perform camera calibration from pedestal and flatfield files
+Tool to train a ``CTLearnModel`` on R1/DL1a data using the ``DLDataReader`` and ``DLDataLoader``.
 """
 
 import atexit
-import pathlib
-from argparse import ArgumentParser
-
-import numpy as np
-from astropy.table import Table
 import keras
+import pandas as pd
+import shutil
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
@@ -26,10 +23,6 @@ from ctapipe.core.traits import (
     ComponentName,
     Unicode,
 )
-
-import pandas as pd
-import shutil
-
 from dl1_data_handler.reader import DLDataReader
 from dl1_data_handler.loader import DLDataLoader
 from ctlearn.core.model import CTLearnModel
@@ -40,9 +33,13 @@ class TrainCTLearnModel(Tool):
     """
     Tool to train a `~ctlearn.core.model.CTLearnModel` on R1/DL1a data.
 
-    The tool first performs a cross validation to give an initial estimate
-    on the quality of the estimation and then finally trains one model
-    per telescope type on the full dataset.
+    The tool trains a CTLearn model on the input data (R1 calibrated waveforms or DL1a images) and
+    saves the trained model in the output directory. The input data is loaded from the input directories
+    for signal and background events using the ``DLDataReader`` and ``DLDataLoader``. The tool supports
+    the following reconstruction tasks:
+    - Classification of the primary particle type (gamma/proton)
+    - Regression of the primary particle energy
+    - Regression of the primary particle arrival direction
     """
 
     name = "ctlearn-train-model"
@@ -51,14 +48,22 @@ class TrainCTLearnModel(Tool):
     examples = """
     To train a CTLearn model for the classification of the primary particle type:
     > ctlearn-train-model \\
-        --signal_input_dir gammas.dl1.h5 \\
-        --bkg_input_dir protons.dl1.h5 \\
+        --signal /path/to/your/gammas_dl1_dir/ \\
+        --background /path/to/your/protons_dl1_dir/ \\
+        --output /path/to/your/output_dir/type/ \\
         --reco type \\
 
     To train a CTLearn model for the regression of the primary particle energy:
     > ctlearn-train-model \\
-        --signal_input_dir gammas.dl1.h5 \\
+        --signal /path/to/your/gammas_dl1_dir/ \\
+        --output /path/to/your/output_dir/energy/ \\
         --reco energy \\
+    
+    To train a CTLearn model for the regression of the primary particle arrival direction:
+    > ctlearn-train-model \\
+        --signal /path/to/your/gammas_dl1_dir/ \\
+        --output /path/to/your/output_dir/direction/ \\
+        --reco direction \\
     """
 
     input_dir_signal = Path(
@@ -192,14 +197,15 @@ class TrainCTLearnModel(Tool):
 
     def setup(self):
         # Check if the output directory exists and if it should be overwritten
-        if self.output_dir.exists() and not self.overwrite:
-            raise ToolConfigurationError(
-                f"Output directory {self.output_dir} already exists. Use --overwrite to overwrite."
-            )
-        else:
-            # Remove the output directory if it exists
-            self.log.info("Removing existing output directory %s", self.output_dir)
-            shutil.rmtree(self.output_dir)
+        if self.output_dir.exists():
+            if not self.overwrite:
+                raise ToolConfigurationError(
+                    f"Output directory {self.output_dir} already exists. Use --overwrite to overwrite."
+                )
+            else:
+                # Remove the output directory if it exists
+                self.log.info("Removing existing output directory %s", self.output_dir)
+                shutil.rmtree(self.output_dir)
         # Create a MirroredStrategy.
         self.strategy = tf.distribute.MirroredStrategy()
         atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore

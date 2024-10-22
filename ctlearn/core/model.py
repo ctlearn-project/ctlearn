@@ -1,5 +1,5 @@
 """
-This module defines the ``ImageMapper`` classes, which holds the basic functionality for mapping raw 1D vectors into 2D mapped images.
+This module defines the ``CTLearnModel`` classes, which holds the basic functionality for creating a Keras model to be used in CTLearn.
 """
 
 from abc import abstractmethod
@@ -60,7 +60,6 @@ def build_fully_connect_head(inputs, layers, tasks):
 
 
 
-
 class CTLearnModel(Component):
     """
     Base component for creating a Keras model to be used in CTLearn.
@@ -81,7 +80,7 @@ class CTLearnModel(Component):
         default_value={'type': [512, 256, 2], 'energy': [512, 256, 1], 'direction': [512, 256, 3]},
         allow_none=False,
         help=(
-            "Dicts containing the number of neurons in the fully connected head for each "
+            "Dictionary containing the number of neurons in the fully connected head for each "
             "task ('type', 'energy', 'direction'). Note: The number of neurons in the last layer "
             "must match the number of classes or the number of reconstructed values."
         ),
@@ -543,7 +542,6 @@ class ResNet(CTLearnModel):
         residual_block_type,
         stride=2,
         attention=None,
-        waveform3D=False,
         name=None,
     ):
         """
@@ -566,8 +564,6 @@ class ResNet(CTLearnModel):
             Stride for the first layer in the first block. Default is 2.
         attention : dict, optional
             Configuration parameters for the attention mechanism. Default is None.
-        waveform3D : bool, optional
-            Indicates the type and shape of input data. Default is False.
         name : str, optional
             Label for the stack. Default is None.
 
@@ -785,14 +781,14 @@ class LoadedModel(CTLearnModel):
         help="Path to a Keras model",
         allow_none=True,
         exists=True,
-        directory_ok=True,
-        file_ok=False,
+        directory_ok=False,
+        file_ok=True,
     ).tag(config=True)
 
-    load_head = Bool(
+    overwrite_head = Bool(
         default_value=False,
         allow_none=False,
-        help="Set to load the fully connected head from the loaded model.",
+        help="Set to overwrite the fully connected head from the loaded model.",
     ).tag(config=True)
 
     trainable_backbone = Bool(
@@ -815,13 +811,18 @@ class LoadedModel(CTLearnModel):
             **kwargs,
         )
 
+        # Load the model from the specified path
+        self.model = keras.saving.load_model(self.load_model_from)
         # Build the ResNet model backbone
         self.backbone_model, self.input_layer = self._build_backbone(input_shape)
-
-        # Build the fully connected head depending on the tasks
-        self.logits = build_fully_connect_head(tasks)
-
-        self.model = keras.Model(self.input_layer, self.logits, name="CTLearn_model")
+        # Load the fully connected head from the loaded model or build a new one
+        if self.overwrite_head:
+            backbone_output = self.backbone_model(self.input_layer)
+            # Validate the head trait with the provided tasks
+            validate_trait_dict(self.head, tasks)
+            # Build the fully connected head depending on the tasks
+            self.logits = build_fully_connect_head(backbone_output, self.head, tasks)
+            self.model = keras.Model(self.input_layer, self.logits, name="CTLearn_model")
 
     def _build_backbone(self, input_shape):
         """
@@ -844,11 +845,15 @@ class LoadedModel(CTLearnModel):
 
         # Define the input layer from the input shape
         network_input = keras.Input(shape=input_shape, name="input")
-        # Load the model from the specified path
-        loaded_model = keras.saving.load_model(self.load_model_from)
         # Set the backbone model to be trainable or not
-        for layer in loaded_model.layers:
+        for layer in self.model.layers:
             if layer.name.endswith("_block"):
-                layer = loaded_model.get_layer(layer.name)
-                layer.trainable = self.trainable_backbone
-        return loaded_model, network_input
+                backbone_layer = self.model.get_layer(layer.name)
+                self.backbone_name = backbone_layer.name
+                backbone_layer.trainable = self.trainable_backbone
+        network_output = backbone_layer(network_input)
+        # Create the backbone model
+        backbone_model = keras.Model(
+            network_input, network_output, name=self.backbone_name
+        )
+        return backbone_model, network_input
