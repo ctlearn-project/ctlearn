@@ -778,10 +778,10 @@ class LoadedModel(CTLearnModel):
 
     load_model_from = Path(
         default_value=None,
-        help="Path to a Keras model",
+        help="Path to a Keras model file (Keras3) or directory Keras2)",
         allow_none=True,
         exists=True,
-        directory_ok=False,
+        directory_ok=True,
         file_ok=True,
     ).tag(config=True)
 
