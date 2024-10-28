@@ -228,7 +228,7 @@ class TrainCTLearnModel(Tool):
         self.input_url_background = []
         if self.input_dir_background is not None:
             for background_pattern in self.file_pattern_background:
-                self.input_url_background.extend(self.input_dir_background.glob(file_pattern_background))
+                self.input_url_background.extend(self.input_dir_background.glob(background_pattern))
 
         # Set up the data reader
         self.log.info("Loading data:")
