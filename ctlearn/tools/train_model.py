@@ -5,6 +5,7 @@ Tool to train a ``CTLearnModel`` on R1/DL1a data using the ``DLDataReader`` and 
 import atexit
 import keras
 import pandas as pd
+import numpy as np
 import shutil
 import tensorflow as tf
 import matplotlib.pyplot as plt
@@ -169,7 +170,11 @@ class TrainCTLearnModel(Tool):
 
     random_seed = Int(
         default_value=0,
-        help="Random seed for sampling training events.",
+        help=(
+            "Random seed for shuffling the data "
+            "before the training/validation split "
+            "and after the end of an epoch."
+        )
     ).tag(config=True)
 
     save_onnx = Bool(
@@ -250,6 +255,9 @@ class TrainCTLearnModel(Tool):
 
         # Set up the data loaders for training and validation
         indices = list(range(self.dl1dh_reader._get_n_events()))
+        # Shuffle the indices before the training/validation split
+        np.random.seed(self.random_seed)
+        np.random.shuffle(indices)
         n_validation_examples = int(self.validation_split * self.dl1dh_reader._get_n_events())
         training_indices = indices[n_validation_examples:]
         validation_indices = indices[:n_validation_examples]
