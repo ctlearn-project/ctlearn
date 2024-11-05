@@ -23,7 +23,7 @@ from ctlearn.output_handler import *
 from ctlearn.utils import *
 
 
-def run_model(config, mode="train", debug=False, log_to_file=False, save_best_only=True):
+def run_model(config, mode="train", debug=False, log_to_file=False, save_best_only=True, trainable_backbone=False):
     # Load options relating to logging and checkpointing
     root_model_dir = model_dir = config["Logging"]["model_directory"]
 
@@ -548,6 +548,13 @@ def main():
         action=argparse.BooleanOptionalAction,
         help="Flag, it only saves when the model is considered the 'best' and the latest best model according to the quantity monitored will not be overwritten",
     )
+
+    parser.add_argument(
+        "--trainable_backbone",
+        default=False,
+        action=argparse.BooleanOptionalAction,
+        help="Flag to indicate if the backbone can be trainable",
+    )
      
     args = parser.parse_args()
 
@@ -621,7 +628,9 @@ def main():
     # Set the path to pretrained weights from the command line
     if args.pretrained_weights:
         config["Model"]["pretrained_weights"] = args.pretrained_weights
-        config["Model"]["trainable_backbone"] = False
+
+    if args.trainable_backbone:
+        config["Model"]["trainable_backbone"] = args.trainable_backbone
 
     # Set the option to save model into ONNX file from the command line
     if args.save2onnx:
@@ -688,7 +697,7 @@ def main():
             if args.trigger_patches_from_file:
                 config["Data"]["trigger_settings"]["get_trigger_patch"] = "file"
 
-        run_model(config, mode="train", debug=args.debug, log_to_file=args.log_to_file, save_best_only= args.save_best_only)
+        run_model(config, mode="train", debug=args.debug, log_to_file=args.log_to_file, save_best_only= args.save_best_only, trainable_backbone= args.trainable_backbone)
 
     if "predict" in args.mode:
         if args.input:
@@ -751,7 +760,9 @@ def main():
                             config["Model"][
                                 "pretrained_weights"
                             ] = args.pretrained_weights
-                            config["Model"]["trainable_backbone"] = False
+
+                        if args.trainable_backbone:
+                            config["Model"]["trainable_backbone"] = args.trainable_backbone
 
                         config["Data"]["shuffle"] = False
                         config["Data"]["seed"] = random_seed
@@ -826,7 +837,9 @@ def main():
                     config["Logging"]["model_directory"] = args.output
                 if args.pretrained_weights:
                     config["Model"]["pretrained_weights"] = args.pretrained_weights
-                    config["Model"]["trainable_backbone"] = False
+
+                if args.trainable_backbone:
+                    config["Model"]["trainable_backbone"] = args.trainable_backbone
 
                 config["Data"]["shuffle"] = False
                 config["Data"]["seed"] = random_seed
