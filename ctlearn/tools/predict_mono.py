@@ -21,6 +21,7 @@ from ctapipe.core.traits import (
     Bool,
     Int,
     Path,
+    flag,
     Set,
     Dict,
     List,
@@ -35,7 +36,7 @@ from astropy.table import (
     vstack,
     join,
 )
-from ctapipe.io import read_table, write_table
+from ctapipe.io import read_table, write_table, HDF5Merger
 from ctlearn.core.model import LoadedModel
 from dl1_data_handler.reader import DLDataReader, ProcessType
 from dl1_data_handler.loader import DLDataLoader
@@ -103,8 +104,6 @@ class MonoPredictionTool(Tool):
         help="Output path to save the dl2 prediction results",
     ).tag(config=True)
 
-    overwrite = Bool(help="Overwrite output file if it exists").tag(config=True)
-
     aliases = {
         ("i", "input_url"): "MonoPredictionTool.input_url",
         "reco": "MonoPredictionTool.reco_tasks",
@@ -112,15 +111,40 @@ class MonoPredictionTool(Tool):
     }
 
     flags = {
-        "overwrite": (
-            {"MonoPredictionTool": {"overwrite": True}},
-            "Overwrite existing files",
+        **flag(
+            "dl1-parameters",
+            "HDF5Merger.dl1_parameters",
+            "Include dl1 parameters",
+            "Exclude dl1 parameters",
+        ),
+        **flag(
+            "dl1-images",
+            "HDF5Merger.dl1_images",
+            "Include dl1 images",
+            "Exclude dl1 images",
+        ),
+        **flag(
+            "true-parameters",
+            "HDF5Merger.true_parameters",
+            "Include true parameters",
+            "Exclude true parameters",
+        ),
+        **flag(
+            "true-images",
+            "HDF5Merger.true_images",
+            "Include true images",
+            "Exclude true images",
         ),
     }
 
     classes = classes_with_traits(DLDataReader) + classes_with_traits(LoadedModel)
 
     def setup(self):
+
+        if not self.input_url.exists():
+            self.log.info("Copying to output destination.")
+            with HDF5Merger(self.output_path, parent=self) as merger:
+                merger(self.input_url)
 
         # Create a MirroredStrategy.
         self.strategy = tf.distribute.MirroredStrategy()
@@ -199,7 +223,6 @@ class MonoPredictionTool(Tool):
                 self.predict_data,
                 self.output_path,
                 f"/dl2/event/telescope/classification/{self.reco_algo}/tel_{self.tel_id:03d}",
-                overwrite=self.overwrite,
             )
         if "direction" in self.reco_tasks:
             if self.dl1dh_reader.process_type == ProcessType.Simulation:
@@ -234,7 +257,6 @@ class MonoPredictionTool(Tool):
                 prediction_table,
                 self.output_path,
                 f"/dl2/event/telescope/geometry/{self.reco_algo}/tel_{self.tel_id:03d}",
-                overwrite=self.overwrite,
             )
         if "energy" in self.reco_tasks:
             reco_energy = u.Quantity(
@@ -246,8 +268,8 @@ class MonoPredictionTool(Tool):
                 prediction_table,
                 self.output_path,
                 f"/dl2/event/telescope/energy/{self.reco_algo}/tel_{self.tel_id:03d}",
-                overwrite=self.overwrite,
             )
+
         self.log.info("Tool is shutting down")
 
 
