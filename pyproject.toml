@@ -62,6 +62,8 @@ documentation = "https://ctlearn.readthedocs.io/en/latest/"
 
 [project.scripts]
 ctlearn-train-model = "ctlearn.tools.train_model:main"
+ctlearn-predict-mono = "ctlearn.tools.predict_mono:main"
+ctlearn-predict-LST1mono = "ctlearn.tools.predict_LST1mono:main"
 
 [tool.setuptools_scm]
 version_file = "ctlearn/_version.py"
