@@ -141,7 +141,7 @@ class MonoPredictionTool(Tool):
 
     def setup(self):
 
-        if not self.input_url.exists():
+        if not self.output_path.exists():
             self.log.info("Copying to output destination.")
             with HDF5Merger(self.output_path, parent=self) as merger:
                 merger(self.input_url)
@@ -217,10 +217,10 @@ class MonoPredictionTool(Tool):
         prediction_table.keep_columns(["obs_id", "event_id", "tel_id"])
         # Fill the prediction table with the prediction results based on the different tasks
         if "type" in self.reco_tasks:
-            prediction_table.add_column(self.predict_data["type"][1], name="prediction")
+            prediction_table.add_column(self.predict_data["col1"], name="prediction")
             # Save the prediction to the output file
             write_table(
-                self.predict_data,
+                prediction_table,
                 self.output_path,
                 f"/dl2/event/telescope/classification/{self.reco_algo}/tel_{self.tel_id:03d}",
             )
@@ -246,13 +246,14 @@ class MonoPredictionTool(Tool):
                 frame="altaz",
             )
             reco_direction = pointing.spherical_offsets_by(reco_spherical_offset_az, reco_spherical_offset_alt)
-            prediction_table = hstack([prediction_table, reco_direction.to_table()])
+            prediction_table = hstack([prediction_table, reco_direction.to_table()], join_type="exact")
             prediction_table.remove_columns(
                 [
                     "telescope_pointing_azimuth",
                     "telescope_pointing_altitude",
                 ]
             )
+            prediction_table.sort(["obs_id", "event_id"])
             write_table(
                 prediction_table,
                 self.output_path,
