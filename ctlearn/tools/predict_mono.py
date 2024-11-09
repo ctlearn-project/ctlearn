@@ -74,6 +74,15 @@ class MonoPredictionTool(Tool):
         config=True
     )
 
+    load_model_from = Path(
+        default_value=None,
+        help="Path to a Keras model file (Keras3) or directory Keras2)",
+        allow_none=True,
+        exists=True,
+        directory_ok=True,
+        file_ok=True,
+    ).tag(config=True)
+
     reco_algo = Unicode(
         default_value="CTLearn",
         allow_none=False,
@@ -136,7 +145,7 @@ class MonoPredictionTool(Tool):
         ),
     }
 
-    classes = classes_with_traits(DLDataReader) + classes_with_traits(LoadedModel)
+    classes = classes_with_traits(DLDataReader)
 
     def setup(self):
 
@@ -162,17 +171,7 @@ class MonoPredictionTool(Tool):
 
         # Load the model from the specified path
         self.log.info("Loading the model.")
-        image_shape = self.dl1dh_reader.image_mappers[
-            self.dl1dh_reader.cam_name
-        ].image_shape
-        if self.dl1dh_reader_type == "DLImageReader":
-            channel = len(self.dl1dh_reader.img_channels)
-        elif self.dl1dh_reader_type == "DLWaveformReader":
-            channel = self.dl1dh_reader.sequnce_length
-        input_shape = (image_shape, image_shape, channel)
-        self.model = LoadedModel(
-            input_shape=input_shape, tasks=self.reco_tasks, parent=self
-        ).model
+        self.model = keras.saving.load_model(self.load_model_from)
 
     def start(self):
         self.log.info("Starting the prediction...")
