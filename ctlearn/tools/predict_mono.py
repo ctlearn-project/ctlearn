@@ -7,7 +7,6 @@ import atexit
 
 import numpy as np
 from astropy import units as u
-from astropy.table import Table
 import shutil
 import tables
 import tensorflow as tf
@@ -38,7 +37,7 @@ from astropy.table import (
 )
 from ctapipe.io import read_table, write_table, HDF5Merger
 from ctlearn.core.model import LoadedModel
-from dl1_data_handler.reader import DLDataReader, ProcessType
+from dl1_data_handler.reader import DLDataReader, ProcessType, get_unmapped_image, get_unmapped_waveform
 from dl1_data_handler.loader import DLDataLoader
 
 
@@ -146,10 +145,6 @@ class MonoPredictionTool(Tool):
             with HDF5Merger(self.output_path, parent=self) as merger:
                 merger(self.input_url)
 
-        # Create a MirroredStrategy.
-        self.strategy = tf.distribute.MirroredStrategy()
-        atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore
-        self.log.info("Number of devices: %s", self.strategy.num_replicas_in_sync)
 
         # Set up the data reader
         self.log.info("Loading data reader:")
@@ -158,29 +153,12 @@ class MonoPredictionTool(Tool):
             input_url_signal=[self.input_url],
             parent=self,
         )
-        # Set up the data loaders for training and validation
-        indices = list(range(self.dl1dh_reader._get_n_events()))
-        self.dl1dh_loader = DLDataLoader(
-            self.dl1dh_reader,
-            indices,
-            tasks=self.reco_tasks,
-            batch_size=self.batch_size * self.strategy.num_replicas_in_sync,
-        )
 
-        # Keras is only considering the last complete batch.
-        # In prediction mode we don't want to loose the last
-        # uncomplete batch, so we are creating an adiitional
-        # batch generator for the remaining events.
-        self.dl1dh_loader_last_batch = None
-        last_batch_size = len(indices) % self.batch_size
-        if last_batch_size > 0:
-            last_batch_indices = indices[-last_batch_size:]
-            self.dl1dh_loader_last_batch = DLDataLoader(
-                self.dl1dh_reader,
-                last_batch_indices,
-                tasks=self.reco_tasks,
-                batch_size=last_batch_size,
-            )
+        self.table_name = f"/dl1/event/telescope/images/tel_{self.tel_id:03d}"
+
+        # Get the number of rows in the table
+        with tables.open_file(self.input_url) as input_file:
+            self.table_length = len(input_file.get_node(self.table_name))
 
         # Load the model from the specified path
         self.log.info("Loading the model.")
@@ -198,29 +176,42 @@ class MonoPredictionTool(Tool):
 
     def start(self):
         self.log.info("Starting the prediction...")
-        # Predict the data using the loaded model
-        self.predict_data = Table(self.model.predict(self.dl1dh_loader))
-        # Predict the last batch and stack the results to the prediction data
-        if self.dl1dh_loader_last_batch is not None:
-            self.predict_data = vstack(
-                [
-                    self.predict_data,
-                    Table(self.model.predict(self.dl1dh_loader_last_batch)),
-                ]
-            )
+
+        data, predict_data = [], []
+        self.table_length = 10 * self.batch_size
+        # Iterate over the data in chunks based on the batch size
+        for start in range(0, self.table_length, self.batch_size):
+            stop = min(start + self.batch_size, self.table_length)
+            print(f"Processing chunk from {start} to {stop - 1}")
+            # Read the data
+            dl1_table = read_table(self.input_url, self.table_name, start=start, stop=stop)
+            image_data = []
+            for event in dl1_table:
+                # Get the unmapped image
+                image = get_unmapped_image(
+                    event, self.dl1dh_reader.img_channels, self.dl1dh_reader.transforms
+                )
+                image_data.append(self.dl1dh_reader.image_mappers[self.dl1dh_reader.cam_name].map_image(image))
+            input_data = {"input": np.array(image_data)}
+            # Temp fix for supporting keras2 & keras3
+            if int(keras.__version__.split(".")[0]) >= 3:
+                input_data = input_data["input"]
+            # Predict the data using the loaded model
+            predict_data.append(Table(self.model.predict_on_batch(input_data)))
+            dl1_table.keep_columns(["obs_id", "event_id", "tel_id", "is_valid"])
+            data.append(dl1_table)
+
+        self.predict_data = vstack(predict_data)
+        self.data = vstack(data)
 
     def finish(self):
-        prediction_table = read_table(
-            self.input_url,
-            f"/dl1/event/telescope/parameters/tel_{self.tel_id:03d}"
-        )[self.dl1dh_reader.passes_quality_checks]
-        prediction_table.keep_columns(["obs_id", "event_id", "tel_id"])
+
         # Fill the prediction table with the prediction results based on the different tasks
         if "type" in self.reco_tasks:
-            prediction_table.add_column(self.predict_data["col1"], name="prediction")
+            self.data.add_column(self.predict_data["col1"], name="prediction")
             # Save the prediction to the output file
             write_table(
-                prediction_table,
+                self.data,
                 self.output_path,
                 f"/dl2/event/telescope/classification/{self.reco_algo}/tel_{self.tel_id:03d}",
             )
@@ -230,8 +221,8 @@ class MonoPredictionTool(Tool):
                     self.input_url,
                     f"/configuration/telescope/pointing/tel_{self.tel_id:03d}",
                 )
-                prediction_table = join(
-                    left=prediction_table,
+                self.data = join(
+                    left=self.data,
                     right=tel_pointing,
                     keys=["obs_id", "tel_id"],
                 )
@@ -241,21 +232,21 @@ class MonoPredictionTool(Tool):
 
             # Set the telescope pointing of the SkyOffsetSeparation tranform to the fix pointing
             pointing = SkyCoord(
-                prediction_table["telescope_pointing_azimuth"],
-                prediction_table["telescope_pointing_altitude"],
+                self.data["telescope_pointing_azimuth"],
+                self.data["telescope_pointing_altitude"],
                 frame="altaz",
             )
             reco_direction = pointing.spherical_offsets_by(reco_spherical_offset_az, reco_spherical_offset_alt)
-            prediction_table = hstack([prediction_table, reco_direction.to_table()], join_type="exact")
-            prediction_table.remove_columns(
+            self.data = hstack([self.data, reco_direction.to_table()], join_type="exact")
+            self.data.remove_columns(
                 [
                     "telescope_pointing_azimuth",
                     "telescope_pointing_altitude",
                 ]
             )
-            prediction_table.sort(["obs_id", "event_id"])
+            self.data.sort(["obs_id", "event_id"])
             write_table(
-                prediction_table,
+                self.data,
                 self.output_path,
                 f"/dl2/event/telescope/geometry/{self.reco_algo}/tel_{self.tel_id:03d}",
             )
@@ -263,10 +254,10 @@ class MonoPredictionTool(Tool):
             reco_energy = u.Quantity(
                 np.power(10, np.squeeze(self.predict_data["energy"])), unit=u.TeV
             )
-            prediction_table.add_column(reco_energy, name="energy")
+            self.data.add_column(reco_energy, name="energy")
             # Save the prediction to the output file
             write_table(
-                prediction_table,
+                self.data,
                 self.output_path,
                 f"/dl2/event/telescope/energy/{self.reco_algo}/tel_{self.tel_id:03d}",
             )
