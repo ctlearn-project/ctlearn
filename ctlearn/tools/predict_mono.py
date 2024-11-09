@@ -178,11 +178,10 @@ class MonoPredictionTool(Tool):
         self.log.info("Starting the prediction...")
 
         data, predict_data = [], []
-        self.table_length = 10 * self.batch_size
         # Iterate over the data in chunks based on the batch size
         for start in range(0, self.table_length, self.batch_size):
             stop = min(start + self.batch_size, self.table_length)
-            print(f"Processing chunk from {start} to {stop - 1}")
+            self.log.debug(f"Processing chunk from {start} to {stop - 1}")
             # Read the data
             dl1_table = read_table(self.input_url, self.table_name, start=start, stop=stop)
             image_data = []
