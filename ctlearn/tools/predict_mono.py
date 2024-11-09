@@ -197,7 +197,7 @@ class MonoPredictionTool(Tool):
                 input_data = input_data["input"]
             # Predict the data using the loaded model
             predict_data.append(Table(self.model.predict_on_batch(input_data)))
-            dl1_table.keep_columns(["obs_id", "event_id", "tel_id", "is_valid"])
+            dl1_table.keep_columns(["obs_id", "event_id", "tel_id"])
             data.append(dl1_table)
 
         self.predict_data = vstack(predict_data)
