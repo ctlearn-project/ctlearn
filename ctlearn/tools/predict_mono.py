@@ -1,18 +1,21 @@
 """
-Predict from pixel-wise image data
+Tool to predict the gammaness, energy and direction in monoscopic mode using ``CTLearnModel`` on R1/DL1a data using the ``DLDataReader`` and ``DLDataLoader``.
 """
 
-import pathlib
 import atexit
-
+import pathlib
 import numpy as np
-from astropy import units as u
-import shutil
-import tables
 import tensorflow as tf
-import keras
+
+from astropy import units as u
 from astropy.coordinates.earth import EarthLocation
 from astropy.coordinates import SkyCoord
+from astropy.table import (
+    Table,
+    hstack,
+    vstack,
+    join,
+)
 
 from ctapipe.core import Tool
 from ctapipe.core.tool import ToolConfigurationError
@@ -29,35 +32,59 @@ from ctapipe.core.traits import (
     Unicode,
     classes_with_traits,
 )
-from astropy.table import (
-    Table,
-    hstack,
-    vstack,
-    join,
-)
 from ctapipe.io import read_table, write_table, HDF5Merger
 from ctlearn.core.model import LoadedModel
-from dl1_data_handler.reader import DLDataReader, ProcessType, get_unmapped_image, get_unmapped_waveform
+from dl1_data_handler.reader import DLDataReader, ProcessType
 from dl1_data_handler.loader import DLDataLoader
 
 
 class MonoPredictionTool(Tool):
     """
-    Perform statistics calculation for pixel-wise image data
+    Tool to predict the gammaness, energy and direction from R1/DL1a data using a ``~ctlearn.core.model.LoadedModel``.
+
+    The tool predicts the gammaness, energy and direction from pixel-wise image or waveform data.
+    The input data is loaded from the input url using the ``~dl1_data_handler.reader.DLDataReader`` and
+    ``~dl1_data_handler.loader.DLDataLoader`` and the prediction is performed using the `~ctlearn.core.model.LoadedModel`.
     """
 
     name = "MonoPredictionTool"
-    description = "Perform statistics calculation for pixel-wise image data"
+    description = __doc__
 
     examples = """
-    To calculate statistics of pixel-wise image data files:
+    To predict the gammaness from pixel-wise image data using a loaded CTLearn model:
+    > ctlearn-predict-mono \\
+        --input_url input.dl1.h5 \\
+        --MonoPredictionTool.tel_id=1 \\
+        --MonoPredictionTool.batch_size=64 \\
+        --MonoPredictionTool.dl1dh_reader_type=DLImageReader \\
+        --DLImageReader.clean=True \\
+        --DLImageReader.image_mapper_type=BilinearMapper \\
+        --LoadedModel.load_model_from="/path/to/your/type/ctlearn_model.cpk" \\
+        --no-dl1-images \\
+        --no-true-images \\
+        --reco type \\
+        --output output.dl2.h5 \\
+        --overwrite \\
 
-    > ctapipe-calculate-pixel-statistics --input_url input.dl1.h5 --overwrite
-
+    To predict the energy from pixel-wise waveform data using a loaded CTLearn model:
+    > ctlearn-predict-mono \\
+        --input_url input.r1.h5 \\
+        --MonoPredictionTool.tel_id=1 \\
+        --MonoPredictionTool.dl1dh_reader_type=DLWaveformReader \\
+        --DLWaveformReader.sequnce_length=20 \\
+        --DLWaveformReader.image_mapper_type=BilinearMapper \\
+        --LoadedModel.load_model_from="/path/to/your/energy/ctlearn_model.cpk" \\
+        --no-r0-waveforms \\
+        --no-r1-waveforms \\
+        --no-dl1-images \\
+        --no-true-images \\
+        --reco energy \\
+        --output output.dl2.h5 \\
+        --overwrite \\
     """
 
     input_url = Path(
-        help="Input LST-1 HDF5 files including pixel-wise image data",
+        help="Input ctapipe HDF5 files including pixel-wise image or waveform data",
         allow_none=True,
         exists=True,
         directory_ok=False,
@@ -73,15 +100,6 @@ class MonoPredictionTool(Tool):
     dl1dh_reader_type = ComponentName(DLDataReader, default_value="DLImageReader").tag(
         config=True
     )
-
-    load_model_from = Path(
-        default_value=None,
-        help="Path to a Keras model file (Keras3) or directory Keras2)",
-        allow_none=True,
-        exists=True,
-        directory_ok=True,
-        file_ok=True,
-    ).tag(config=True)
 
     reco_algo = Unicode(
         default_value="CTLearn",
@@ -107,10 +125,12 @@ class MonoPredictionTool(Tool):
     ).tag(config=True)
 
     output_path = Path(
-        default_value="./dl2_prediction.h5",
+        default_value="./output.dl2.h5",
         allow_none=False,
         help="Output path to save the dl2 prediction results",
     ).tag(config=True)
+
+    overwrite = Bool(help="Overwrite the table in the output file if it exists").tag(config=True)
 
     aliases = {
         ("i", "input_url"): "MonoPredictionTool.input_url",
@@ -119,6 +139,18 @@ class MonoPredictionTool(Tool):
     }
 
     flags = {
+        **flag(
+            "r0-waveforms",
+            "HDF5Merger.r0_waveforms",
+            "Include r0 waveforms",
+            "Exclude r0 waveforms",
+        ),
+        **flag(
+            "r1-waveforms",
+            "HDF5Merger.r1_waveforms",
+            "Include r1 waveforms",
+            "Exclude r1 waveforms",
+        ),
         **flag(
             "dl1-parameters",
             "HDF5Merger.dl1_parameters",
@@ -143,17 +175,26 @@ class MonoPredictionTool(Tool):
             "Include true images",
             "Exclude true images",
         ),
+        "overwrite": (
+            {"MonoPredictionTool": {"overwrite": True}},
+            "Overwrite existing files",
+        ),
     }
 
-    classes = classes_with_traits(DLDataReader)
+    classes = classes_with_traits(DLDataReader) + classes_with_traits(LoadedModel)
 
     def setup(self):
-
+        # Copy selected tables from the input file to the output file 
+        # if the output file does not exist
         if not self.output_path.exists():
             self.log.info("Copying to output destination.")
             with HDF5Merger(self.output_path, parent=self) as merger:
                 merger(self.input_url)
 
+        # Create a MirroredStrategy.
+        self.strategy = tf.distribute.MirroredStrategy()
+        atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore
+        self.log.info("Number of devices: %s", self.strategy.num_replicas_in_sync)
 
         # Set up the data reader
         self.log.info("Loading data reader:")
@@ -162,102 +203,126 @@ class MonoPredictionTool(Tool):
             input_url_signal=[self.input_url],
             parent=self,
         )
+        # Set up the data loaders for prediction
+        indices = list(range(self.dl1dh_reader._get_n_events()))
+        self.dl1dh_loader = DLDataLoader(
+            self.dl1dh_reader,
+            indices,
+            tasks=self.reco_tasks,
+            batch_size=self.batch_size * self.strategy.num_replicas_in_sync,
+        )
 
-        self.table_name = f"/dl1/event/telescope/images/tel_{self.tel_id:03d}"
-
-        # Get the number of rows in the table
-        with tables.open_file(self.input_url) as input_file:
-            self.table_length = len(input_file.get_node(self.table_name))
+        # Keras is only considering the last complete batch.
+        # In prediction mode we don't want to loose the last
+        # uncomplete batch, so we are creating an additional
+        # batch generator for the remaining events.
+        self.dl1dh_loader_last_batch = None
+        last_batch_size = len(indices) % self.batch_size
+        if last_batch_size > 0:
+            last_batch_indices = indices[-last_batch_size:]
+            self.dl1dh_loader_last_batch = DLDataLoader(
+                self.dl1dh_reader,
+                last_batch_indices,
+                tasks=self.reco_tasks,
+                batch_size=last_batch_size,
+            )
 
         # Load the model from the specified path
         self.log.info("Loading the model.")
-        self.model = keras.saving.load_model(self.load_model_from)
+        image_shape = self.dl1dh_reader.image_mappers[
+            self.dl1dh_reader.cam_name
+        ].image_shape
+        if self.dl1dh_reader_type == "DLImageReader":
+            channel = len(self.dl1dh_reader.img_channels)
+        elif self.dl1dh_reader_type == "DLWaveformReader":
+            channel = self.dl1dh_reader.sequnce_length
+        input_shape = (image_shape, image_shape, channel)
+        self.model = LoadedModel(
+            input_shape=input_shape, tasks=self.reco_tasks, parent=self
+        ).model
 
     def start(self):
         self.log.info("Starting the prediction...")
-
-        data, predict_data = [], []
-        # Iterate over the data in chunks based on the batch size
-        for start in range(0, self.table_length, self.batch_size):
-            stop = min(start + self.batch_size, self.table_length)
-            self.log.debug(f"Processing chunk from {start} to {stop - 1}")
-            # Read the data
-            dl1_table = read_table(self.input_url, self.table_name, start=start, stop=stop)
-            image_data = []
-            for event in dl1_table:
-                # Get the unmapped image
-                image = get_unmapped_image(
-                    event, self.dl1dh_reader.img_channels, self.dl1dh_reader.transforms
-                )
-                image_data.append(self.dl1dh_reader.image_mappers[self.dl1dh_reader.cam_name].map_image(image))
-            input_data = {"input": np.array(image_data)}
-            # Temp fix for supporting keras2 & keras3
-            if int(keras.__version__.split(".")[0]) >= 3:
-                input_data = input_data["input"]
-            # Predict the data using the loaded model
-            predict_data.append(Table(self.model.predict_on_batch(input_data)))
-            dl1_table.keep_columns(["obs_id", "event_id", "tel_id"])
-            data.append(dl1_table)
-
-        self.predict_data = vstack(predict_data)
-        self.data = vstack(data)
+        # Predict the data using the loaded model
+        self.predict_data = Table(self.model.predict(self.dl1dh_loader))
+        # Predict the last batch and stack the results to the prediction data
+        if self.dl1dh_loader_last_batch is not None:
+            self.predict_data = vstack(
+                [
+                    self.predict_data,
+                    Table(self.model.predict(self.dl1dh_loader_last_batch)),
+                ]
+            )
 
     def finish(self):
-
+        # Retrieve the IDs from the example_identifiers of the dl1dh for the prediction table
+        prediction_table = self.dl1dh_reader.example_identifiers
+        prediction_table.keep_columns(["obs_id", "event_id", "tel_id"])
         # Fill the prediction table with the prediction results based on the different tasks
         if "type" in self.reco_tasks:
-            self.data.add_column(self.predict_data["col1"], name="prediction")
+            prediction_table.add_column(self.predict_data["col1"], name="prediction")
             # Save the prediction to the output file
             write_table(
-                self.data,
+                prediction_table,
                 self.output_path,
                 f"/dl2/event/telescope/classification/{self.reco_algo}/tel_{self.tel_id:03d}",
+                overwrite=self.overwrite,
             )
         if "direction" in self.reco_tasks:
             if self.dl1dh_reader.process_type == ProcessType.Simulation:
+                # Read the telescope pointing table
                 tel_pointing = read_table(
                     self.input_url,
                     f"/configuration/telescope/pointing/tel_{self.tel_id:03d}",
                 )
-                self.data = join(
-                    left=self.data,
+                # Join the prediction table with the telescope pointing table
+                prediction_table = join(
+                    left=prediction_table,
                     right=tel_pointing,
                     keys=["obs_id", "tel_id"],
                 )
+                prediction_table.sort(["obs_id", "event_id", "tel_id"])
             # Save the prediction to the output file
             reco_spherical_offset_az = u.Quantity(self.predict_data["direction"].T[0], unit=u.deg)
             reco_spherical_offset_alt = u.Quantity(self.predict_data["direction"].T[1], unit=u.deg)
-
             # Set the telescope pointing of the SkyOffsetSeparation tranform to the fix pointing
             pointing = SkyCoord(
-                self.data["telescope_pointing_azimuth"],
-                self.data["telescope_pointing_altitude"],
+                prediction_table["telescope_pointing_azimuth"],
+                prediction_table["telescope_pointing_altitude"],
                 frame="altaz",
             )
-            reco_direction = pointing.spherical_offsets_by(reco_spherical_offset_az, reco_spherical_offset_alt)
-            self.data = hstack([self.data, reco_direction.to_table()], join_type="exact")
-            self.data.remove_columns(
+            # Calculate the reconstructed direction (az, alt) based on the telescope pointing
+            reco_direction = pointing.spherical_offsets_by(reco_spherical_offset_az, reco_spherical_offset_alt).to_table()
+            # Add the reconstructed direction (az, alt) to the prediction table
+            prediction_table.add_column(reco_direction["az"], name="az")
+            prediction_table.add_column(reco_direction["alt"], name="alt")
+            # Remove the telescope pointing columns
+            prediction_table.remove_columns(
                 [
                     "telescope_pointing_azimuth",
                     "telescope_pointing_altitude",
                 ]
             )
-            self.data.sort(["obs_id", "event_id"])
+            # Save the prediction to the output file
             write_table(
-                self.data,
+                prediction_table,
                 self.output_path,
                 f"/dl2/event/telescope/geometry/{self.reco_algo}/tel_{self.tel_id:03d}",
+                overwrite=self.overwrite,
             )
         if "energy" in self.reco_tasks:
+            # Convert the reconstructed energy from log10(TeV) to TeV
             reco_energy = u.Quantity(
                 np.power(10, np.squeeze(self.predict_data["energy"])), unit=u.TeV
             )
-            self.data.add_column(reco_energy, name="energy")
+            # Add the reconstructed energy to the prediction table
+            prediction_table.add_column(reco_energy, name="energy")
             # Save the prediction to the output file
             write_table(
-                self.data,
+                prediction_table,
                 self.output_path,
                 f"/dl2/event/telescope/energy/{self.reco_algo}/tel_{self.tel_id:03d}",
+                overwrite=self.overwrite,
             )
 
         self.log.info("Tool is shutting down")

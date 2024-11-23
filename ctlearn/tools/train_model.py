@@ -32,12 +32,12 @@ from ctlearn.utils import validate_trait_dict
 
 class TrainCTLearnModel(Tool):
     """
-    Tool to train a `~ctlearn.core.model.CTLearnModel` on R1/DL1a data.
+    Tool to train a ``~ctlearn.core.model.CTLearnModel`` on R1/DL1a data.
 
     The tool trains a CTLearn model on the input data (R1 calibrated waveforms or DL1a images) and
     saves the trained model in the output directory. The input data is loaded from the input directories
-    for signal and background events using the ``DLDataReader`` and ``DLDataLoader``. The tool supports
-    the following reconstruction tasks:
+    for signal and background events using the ``~dl1_data_handler.reader.DLDataReader`` and
+    ``~dl1_data_handler.loader.DLDataLoader``. The tool supports the following reconstruction tasks:
     - Classification of the primary particle type (gamma/proton)
     - Regression of the primary particle energy
     - Regression of the primary particle arrival direction
@@ -55,7 +55,7 @@ class TrainCTLearnModel(Tool):
         --background /path/to/your/protons_dl1_dir/ \\
         --pattern-background "proton_*_run1.dl1.h5" \\
         --pattern-background "proton_*_run10.dl1.h5" \\
-        --output /path/to/your/output_dir/type/ \\
+        --output /path/to/your/type/ \\
         --reco type \\
 
     To train a CTLearn model for the regression of the primary particle energy:
@@ -63,7 +63,7 @@ class TrainCTLearnModel(Tool):
         --signal /path/to/your/gammas_dl1_dir/ \\
         --pattern-signal "gamma_*_run1.dl1.h5" \\
         --pattern-signal "gamma_*_run10.dl1.h5" \\
-        --output /path/to/your/output_dir/energy/ \\
+        --output /path/to/your/energy/ \\
         --reco energy \\
     
     To train a CTLearn model for the regression of the primary particle arrival direction:
@@ -71,7 +71,7 @@ class TrainCTLearnModel(Tool):
         --signal /path/to/your/gammas_dl1_dir/ \\
         --pattern-signal "gamma_*_run1.dl1.h5" \\
         --pattern-signal "gamma_*_run10.dl1.h5" \\
-        --output /path/to/your/output_dir/direction/ \\
+        --output /path/to/your/direction/ \\
         --reco direction \\
     """
 
