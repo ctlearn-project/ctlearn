@@ -97,23 +97,28 @@ class LST1MonoPredictionTool(Tool):
     ).tag(config=True)
 
     channels = List(
-        trait=CaselessStrEnum(["image", "peak_time"]),
+        trait=CaselessStrEnum(
+            [
+                "image",
+                "cleaned_image",
+                "peak_time",
+                "relative_peak_time",
+                "cleaned_peak_time",
+                "cleaned_relative_peak_time"
+            ]
+        ),
         default_value=["image", "peak_time"],
-        allow_none=True, 
+        allow_none=False,
         help=(
-            "Set data loading mode. "
-            "Mono: single images of one telescope type "
-            "Stereo: events including multiple telescope types "
-        )
-
+            "Set the input channels to be loaded from the DL1 event data. "
+            "image: integrated charges, "
+            "cleaned_image: integrated charges cleaned with the DL1 cleaning mask, "
+            "peak_time: extracted peak arrival times, "
+            "relative_peak_time: extracted relative peak arrival times, "
+            "cleaned_peak_time: extracted peak arrival times cleaned with the DL1 cleaning mask,"
+            "cleaned_relative_peak_time: extracted relative peak arrival times cleaned with the DL1 cleaning mask."
+        ),
     ).tag(config=True)
-
-    clean = Bool(
-        default_value=False,
-        allow_none=True,
-        help="Set whether to apply the DL1 cleaning mask to the integrated images.",
-    ).tag(config=True)
-    
 
     output_path = Path(
         default_value="./dl2_prediction.h5",
@@ -195,16 +200,6 @@ class LST1MonoPredictionTool(Tool):
         #    self.image_mapper_type, geometry=cam_geom[self.camera_name], interpolation_image_shape=114, subarray=self.subarray, parent=self
         #)
         print(self.image_mappers)
-        
-
-        # Integrated charges and peak arrival times (DL1a)
-        if self.clean:
-            self.img_channels = [
-                "cleaned_" + channel
-                for channel in self.channels
-            ]
-        else:
-            self.img_channels = self.channels
 
         # Get offset and scaling of images
         self.transforms = {}
@@ -247,7 +242,7 @@ class LST1MonoPredictionTool(Tool):
             for event in dl1_table:
                 # Get the unmapped image
                 image = get_unmapped_image(
-                    event, self.img_channels, self.transforms
+                    event, self.channels, self.transforms
                 )
                 data.append(self.image_mappers[self.camera_name].map_image(image))
             input_data = {"input": np.array(data)}

@@ -57,7 +57,8 @@ class MonoPredictionTool(Tool):
         --MonoPredictionTool.tel_id=1 \\
         --MonoPredictionTool.batch_size=64 \\
         --MonoPredictionTool.dl1dh_reader_type=DLImageReader \\
-        --DLImageReader.clean=True \\
+        --DLImageReader.channels=cleaned_image \\
+        --DLImageReader.channels=cleaned_relative_peak_time \\
         --DLImageReader.image_mapper_type=BilinearMapper \\
         --LoadedModel.load_model_from="/path/to/your/type/ctlearn_model.cpk" \\
         --no-dl1-images \\
@@ -233,10 +234,10 @@ class MonoPredictionTool(Tool):
             self.dl1dh_reader.cam_name
         ].image_shape
         if self.dl1dh_reader_type == "DLImageReader":
-            channel = len(self.dl1dh_reader.img_channels)
+            channels = len(self.dl1dh_reader.channels)
         elif self.dl1dh_reader_type == "DLWaveformReader":
-            channel = self.dl1dh_reader.sequnce_length
-        input_shape = (image_shape, image_shape, channel)
+            channels = self.dl1dh_reader.sequnce_length
+        input_shape = (image_shape, image_shape, channels)
         self.model = LoadedModel(
             input_shape=input_shape, tasks=self.reco_tasks, parent=self
         ).model

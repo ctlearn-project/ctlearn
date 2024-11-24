@@ -462,7 +462,6 @@ class TrainCTLearnModel(Tool):
         return losses, metrics
 
 
-
 def main():
     # Run the tool
     tool = TrainCTLearnModel()
