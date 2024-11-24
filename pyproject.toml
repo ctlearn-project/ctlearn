@@ -40,7 +40,7 @@ dependencies = [
     "tensorflow>=2.14,<2.18",
     "pydot",
     "pyirf",
-    "ctapipe",
+    "ctapipe>=0.23.0, <0.24.0",
 ]
 
 dynamic = ["version"]

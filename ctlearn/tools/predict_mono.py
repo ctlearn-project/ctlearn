@@ -32,6 +32,7 @@ from ctapipe.core.traits import (
     Unicode,
     classes_with_traits,
 )
+from ctapipe.monitoring.interpolation import PointingInterpolator
 from ctapipe.io import read_table, write_table, HDF5Merger
 from ctlearn.core.model import LoadedModel
 from dl1_data_handler.reader import DLDataReader, ProcessType
@@ -270,6 +271,10 @@ class MonoPredictionTool(Tool):
                 overwrite=self.overwrite,
             )
         if "direction" in self.reco_tasks:
+            # For the direction task, the prediction is the spherical offset (az, alt)
+            # from the telescope pointing. The telescope pointing is read from the
+            # configuration tree for simulated data and interpolated from the monitoring
+            # tree using the trigger timestamps for observational data.
             if self.dl1dh_reader.process_type == ProcessType.Simulation:
                 # Read the telescope pointing table
                 tel_pointing = read_table(
@@ -283,10 +288,32 @@ class MonoPredictionTool(Tool):
                     keys=["obs_id", "tel_id"],
                 )
                 prediction_table.sort(["obs_id", "event_id", "tel_id"])
-            # Save the prediction to the output file
+            elif self.dl1dh_reader.process_type == ProcessType.Observation:
+                # Initialize the pointing interpolator from ctapipe
+                pointing_interpolator = PointingInterpolator(bounds_error=False, extrapolate=True)
+                # Get the telescope pointing from the dl1dh reader
+                tel_pointing = self.dl1dh_reader.telescope_pointings[f"tel_{self.tel_id:03d}"]
+                # Get the telescope trigger table from the dl1dh reader
+                tel_trigger_table = self.dl1dh_reader.tel_trigger_table[
+                    self.dl1dh_reader.tel_trigger_table["tel_id"]== self.tel_id
+                ]
+                # Sort the telescope trigger table just in case
+                tel_trigger_table.sort(["obs_id", "event_id", "tel_id"])
+                # Check if the number of predicted events matches the number of triggers
+                if len(self.predict_data["direction"].T[0]) != len(tel_trigger_table):
+                    raise ValueError(
+                        f"The number of predicted events ({len(self.predict_data["direction"].T[0])}) ",
+                        f"does not match the number of triggers ({len(tel_trigger_table)})."
+                    )
+                # Interpolate the telescope pointing
+                tel_altitude, tel_azimuth = pointing_interpolator(self.tel_id, tel_trigger_table['time'])
+                # Save the telescope pointing (az, alt) to the prediction table
+                prediction_table.add_column(tel_azimuth, name="telescope_pointing_azimuth")
+                prediction_table.add_column(tel_altitude, name="telescope_pointing_altitude")
+            # Convert reconstructed spherical offset (az, alt) to SkyCoord
             reco_spherical_offset_az = u.Quantity(self.predict_data["direction"].T[0], unit=u.deg)
             reco_spherical_offset_alt = u.Quantity(self.predict_data["direction"].T[1], unit=u.deg)
-            # Set the telescope pointing of the SkyOffsetSeparation tranform to the fix pointing
+            # Set the telescope pointing of the SkyOffsetSeparation tranformation
             pointing = SkyCoord(
                 prediction_table["telescope_pointing_azimuth"],
                 prediction_table["telescope_pointing_altitude"],
@@ -297,7 +324,7 @@ class MonoPredictionTool(Tool):
             # Add the reconstructed direction (az, alt) to the prediction table
             prediction_table.add_column(reco_direction["az"], name="az")
             prediction_table.add_column(reco_direction["alt"], name="alt")
-            # Remove the telescope pointing columns
+            # Remove the telescope pointing columns from the prediction table
             prediction_table.remove_columns(
                 [
                     "telescope_pointing_azimuth",
