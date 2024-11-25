@@ -302,7 +302,7 @@ class MonoPredictionTool(Tool):
                 # Check if the number of predicted events matches the number of triggers
                 if len(self.predict_data["direction"].T[0]) != len(tel_trigger_table):
                     raise ValueError(
-                        f"The number of predicted events ({len(self.predict_data["direction"].T[0])}) ",
+                        f"The number of predicted events ({len(self.predict_data['direction'].T[0])}) ",
                         f"does not match the number of triggers ({len(tel_trigger_table)})."
                     )
                 # Interpolate the telescope pointing
