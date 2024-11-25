@@ -293,20 +293,15 @@ class MonoPredictionTool(Tool):
                 pointing_interpolator = PointingInterpolator(bounds_error=False, extrapolate=True)
                 # Get the telescope pointing from the dl1dh reader
                 tel_pointing = self.dl1dh_reader.telescope_pointings[f"tel_{self.tel_id:03d}"]
-                # Get the telescope trigger table from the dl1dh reader
-                tel_trigger_table = self.dl1dh_reader.tel_trigger_table[
-                    self.dl1dh_reader.tel_trigger_table["tel_id"]== self.tel_id
-                ]
-                # Sort the telescope trigger table just in case
-                tel_trigger_table.sort(["obs_id", "event_id", "tel_id"])
-                # Check if the number of predicted events matches the number of triggers
-                if len(self.predict_data["direction"].T[0]) != len(tel_trigger_table):
-                    raise ValueError(
-                        f"The number of predicted events ({len(self.predict_data['direction'].T[0])}) ",
-                        f"does not match the number of triggers ({len(tel_trigger_table)})."
-                    )
+                # Join the prediction table with the telescope trigger table from the dl1dh reader
+                prediction_table = join(
+                    left=prediction_table,
+                    right=self.dl1dh_reader.tel_trigger_table,
+                    keys=["obs_id", "event_id", "tel_id"],
+                )
+                prediction_table.sort(["obs_id", "event_id", "tel_id"])
                 # Interpolate the telescope pointing
-                tel_altitude, tel_azimuth = pointing_interpolator(self.tel_id, tel_trigger_table['time'])
+                tel_altitude, tel_azimuth = pointing_interpolator(self.tel_id, prediction_table['time'])
                 # Save the telescope pointing (az, alt) to the prediction table
                 prediction_table.add_column(tel_azimuth, name="telescope_pointing_azimuth")
                 prediction_table.add_column(tel_altitude, name="telescope_pointing_altitude")
@@ -324,13 +319,8 @@ class MonoPredictionTool(Tool):
             # Add the reconstructed direction (az, alt) to the prediction table
             prediction_table.add_column(reco_direction["az"], name="az")
             prediction_table.add_column(reco_direction["alt"], name="alt")
-            # Remove the telescope pointing columns from the prediction table
-            prediction_table.remove_columns(
-                [
-                    "telescope_pointing_azimuth",
-                    "telescope_pointing_altitude",
-                ]
-            )
+            # Remove the telescope pointing columns and trigger time from the prediction table
+            prediction_table.keep_columns(["obs_id", "event_id", "tel_id", "az", "alt"])
             # Save the prediction to the output file
             write_table(
                 prediction_table,
