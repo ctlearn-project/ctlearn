@@ -35,7 +35,6 @@ from ctapipe.core.traits import (
 )
 from ctapipe.monitoring.interpolation import PointingInterpolator
 from ctapipe.io import read_table, write_table, HDF5Merger
-from ctlearn.core.model import LoadedModel
 from dl1_data_handler.reader import DLDataReader, ProcessType
 from dl1_data_handler.loader import DLDataLoader
 
