@@ -264,7 +264,7 @@ class MonoPredictionTool(Tool):
         # Perform the prediction and fill the prediction table with the prediction results
         # based on the different selected tasks
         if self.load_type_model_from is not None:
-            self.log.info("Predicting the model for the classification of the primary particle type.")
+            self.log.info("Predicting for the classification of the primary particle type.")
             # Predict the data using the loaded type_model
             predict_data = self._predict_with_model(
                 self.load_type_model_from,
@@ -278,9 +278,10 @@ class MonoPredictionTool(Tool):
                 self.output_path,
                 f"/dl2/event/telescope/classification/{self.reco_algo}/tel_{self.tel_id:03d}",
             )
+            prediction_table.keep_columns(["obs_id", "event_id", "tel_id"])
 
         if self.load_energy_model_from is not None:
-            self.log.info("Predicting the model for the regression of the primary particle energy.")
+            self.log.info("Predicting for the regression of the primary particle energy.")
             # Predict the data using the loaded energy_model
             predict_data = self._predict_with_model(
                 self.load_energy_model_from,
@@ -299,9 +300,10 @@ class MonoPredictionTool(Tool):
                 self.output_path,
                 f"/dl2/event/telescope/energy/{self.reco_algo}/tel_{self.tel_id:03d}",
             )
+            prediction_table.keep_columns(["obs_id", "event_id", "tel_id"])
         
         if self.load_direction_model_from is not None:
-            self.log.info("Predicting the model for the regression of the primary particle arrival direction.")
+            self.log.info("Predicting for the regression of the primary particle arrival direction.")
             # Predict the data using the loaded direction_model
             predict_data = self._predict_with_model(
                 self.load_direction_model_from,
