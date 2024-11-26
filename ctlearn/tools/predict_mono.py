@@ -243,7 +243,7 @@ class MonoPredictionTool(Tool):
         self.dl1dh_loader = DLDataLoader(
             self.dl1dh_reader,
             indices,
-            tasks=["type", "energy", "direction"],
+            tasks=[],
             batch_size=self.batch_size * self.strategy.num_replicas_in_sync,
         )
         # Keras is only considering the last complete batch.
@@ -257,14 +257,14 @@ class MonoPredictionTool(Tool):
             self.dl1dh_loader_last_batch = DLDataLoader(
                 self.dl1dh_reader,
                 last_batch_indices,
-                tasks=["type", "energy", "direction"],
+                tasks=[],
                 batch_size=last_batch_size,
             )
 
     def start(self):
         self.log.info("Starting the prediction...")
         # Retrieve the IDs from the example_identifiers of the dl1dh for the prediction table
-        prediction_table = self.dl1dh_reader.example_identifiers
+        prediction_table = self.dl1dh_reader.example_identifiers.copy()
         prediction_table.keep_columns(["obs_id", "event_id", "tel_id"])
         # Retrieve the IDs from the tel_trigger_table of the dl1dh for the final output table
         output_identifiers = self.dl1dh_reader.tel_trigger_table[
