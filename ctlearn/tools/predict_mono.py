@@ -159,7 +159,9 @@ class MonoPredictionTool(Tool):
         help="Output path to save the dl2 prediction results",
     ).tag(config=True)
 
-    overwrite = Bool(help="Overwrite the table in the output file if it exists").tag(config=True)
+    overwrite = Bool(help="Overwrite the table in the output file if it exists").tag(
+        config=True
+    )
 
     aliases = {
         ("i", "input_url"): "MonoPredictionTool.input_url",
@@ -215,7 +217,7 @@ class MonoPredictionTool(Tool):
     classes = classes_with_traits(DLDataReader)
 
     def setup(self):
-        # Copy selected tables from the input file to the output file 
+        # Copy selected tables from the input file to the output file
         self.log.info("Copying to output destination.")
         with HDF5Merger(self.output_path, parent=self) as merger:
             merger(self.input_url)
@@ -233,7 +235,9 @@ class MonoPredictionTool(Tool):
             input_url_signal=[self.input_url],
             parent=self,
         )
-        self.log.info("  Number of events loaded: %s", self.dl1dh_reader._get_n_events())
+        self.log.info(
+            "  Number of events loaded: %s", self.dl1dh_reader._get_n_events()
+        )
         # Set up the data loaders for prediction
         indices = list(range(self.dl1dh_reader._get_n_events()))
         self.dl1dh_loader = DLDataLoader(
@@ -264,20 +268,18 @@ class MonoPredictionTool(Tool):
         prediction_table.keep_columns(["obs_id", "event_id", "tel_id"])
         # Retrieve the IDs from the tel_trigger_table of the dl1dh for the final output table
         output_identifiers = self.dl1dh_reader.tel_trigger_table[
-            self.dl1dh_reader.tel_trigger_table["tel_id"]==self.tel_id
+            self.dl1dh_reader.tel_trigger_table["tel_id"] == self.tel_id
         ]
         output_identifiers.keep_columns(["obs_id", "event_id", "tel_id"])
         output_identifiers.sort(["obs_id", "event_id", "tel_id"])
         # Perform the prediction and fill the prediction table with the prediction results
         # based on the different selected tasks
         if self.load_type_model_from is not None:
-            self.log.info("Predicting for the classification of the primary particle type.")
-            # Predict the data using the loaded type_model
-            predict_data = self._predict_with_model(
-                self.load_type_model_from,
-                self.dl1dh_loader,
-                self.dl1dh_loader_last_batch
+            self.log.info(
+                "Predicting for the classification of the primary particle type."
             )
+            # Predict the data using the loaded type_model
+            predict_data = self._predict_with_model(self.load_type_model_from)
             prediction_table.add_column(predict_data["col1"], name="prediction")
             # Produce output table with NaNs for missing predictions
             output_table = join(
@@ -296,13 +298,11 @@ class MonoPredictionTool(Tool):
             prediction_table.keep_columns(["obs_id", "event_id", "tel_id"])
 
         if self.load_energy_model_from is not None:
-            self.log.info("Predicting for the regression of the primary particle energy.")
-            # Predict the data using the loaded energy_model
-            predict_data = self._predict_with_model(
-                self.load_energy_model_from,
-                self.dl1dh_loader,
-                self.dl1dh_loader_last_batch
+            self.log.info(
+                "Predicting for the regression of the primary particle energy."
             )
+            # Predict the data using the loaded energy_model
+            predict_data = self._predict_with_model(self.load_energy_model_from)
             # Convert the reconstructed energy from log10(TeV) to TeV
             reco_energy = u.Quantity(
                 np.power(10, np.squeeze(predict_data["energy"])), unit=u.TeV
@@ -324,15 +324,13 @@ class MonoPredictionTool(Tool):
                 f"/dl2/event/telescope/energy/{self.reco_algo}/tel_{self.tel_id:03d}",
             )
             prediction_table.keep_columns(["obs_id", "event_id", "tel_id"])
-        
+
         if self.load_direction_model_from is not None:
-            self.log.info("Predicting for the regression of the primary particle arrival direction.")
-            # Predict the data using the loaded direction_model
-            predict_data = self._predict_with_model(
-                self.load_direction_model_from,
-                self.dl1dh_loader,
-                self.dl1dh_loader_last_batch
+            self.log.info(
+                "Predicting for the regression of the primary particle arrival direction."
             )
+            # Predict the data using the loaded direction_model
+            predict_data = self._predict_with_model(self.load_direction_model_from)
             # For the direction task, the prediction is the spherical offset (az, alt)
             # from the telescope pointing. The telescope pointing is read from the
             # configuration tree for simulated data and interpolated from the monitoring
@@ -352,9 +350,13 @@ class MonoPredictionTool(Tool):
                 )
             elif self.dl1dh_reader.process_type == ProcessType.Observation:
                 # Initialize the pointing interpolator from ctapipe
-                pointing_interpolator = PointingInterpolator(bounds_error=False, extrapolate=True)
+                pointing_interpolator = PointingInterpolator(
+                    bounds_error=False, extrapolate=True
+                )
                 # Get the telescope pointing from the dl1dh reader
-                tel_pointing = self.dl1dh_reader.telescope_pointings[f"tel_{self.tel_id:03d}"]
+                tel_pointing = self.dl1dh_reader.telescope_pointings[
+                    f"tel_{self.tel_id:03d}"
+                ]
                 # Join the prediction table with the telescope trigger table from the dl1dh reader
                 prediction_table = join(
                     left=prediction_table,
@@ -363,13 +365,23 @@ class MonoPredictionTool(Tool):
                     keep_order=True,
                 )
                 # Interpolate the telescope pointing
-                tel_altitude, tel_azimuth = pointing_interpolator(self.tel_id, prediction_table['time'])
+                tel_altitude, tel_azimuth = pointing_interpolator(
+                    self.tel_id, prediction_table["time"]
+                )
                 # Save the telescope pointing (az, alt) to the prediction table
-                prediction_table.add_column(tel_azimuth, name="telescope_pointing_azimuth")
-                prediction_table.add_column(tel_altitude, name="telescope_pointing_altitude")
+                prediction_table.add_column(
+                    tel_azimuth, name="telescope_pointing_azimuth"
+                )
+                prediction_table.add_column(
+                    tel_altitude, name="telescope_pointing_altitude"
+                )
             # Convert reconstructed spherical offset (az, alt) to SkyCoord
-            reco_spherical_offset_az = u.Quantity(predict_data["direction"].T[0], unit=u.deg)
-            reco_spherical_offset_alt = u.Quantity(predict_data["direction"].T[1], unit=u.deg)
+            reco_spherical_offset_az = u.Quantity(
+                predict_data["direction"].T[0], unit=u.deg
+            )
+            reco_spherical_offset_alt = u.Quantity(
+                predict_data["direction"].T[1], unit=u.deg
+            )
             # Set the telescope pointing of the SkyOffsetSeparation tranformation
             pointing = SkyCoord(
                 prediction_table["telescope_pointing_azimuth"],
@@ -377,7 +389,9 @@ class MonoPredictionTool(Tool):
                 frame="altaz",
             )
             # Calculate the reconstructed direction (az, alt) based on the telescope pointing
-            reco_direction = pointing.spherical_offsets_by(reco_spherical_offset_az, reco_spherical_offset_alt).to_table()
+            reco_direction = pointing.spherical_offsets_by(
+                reco_spherical_offset_az, reco_spherical_offset_alt
+            ).to_table()
             # Add the reconstructed direction (az, alt) to the prediction table
             prediction_table.add_column(reco_direction["az"], name="az")
             prediction_table.add_column(reco_direction["alt"], name="alt")
@@ -398,12 +412,10 @@ class MonoPredictionTool(Tool):
                 f"/dl2/event/telescope/geometry/{self.reco_algo}/tel_{self.tel_id:03d}",
             )
 
-
     def finish(self):
         self.log.info("Tool is shutting down")
 
-
-    def _predict_with_model(model_path, data_loader, last_batch_loader=None):
+    def _predict_with_model(self, model_path):
         """
         Load and predict with a CTLearn model.
 
@@ -414,10 +426,6 @@ class MonoPredictionTool(Tool):
         ----------
         model_path : str
             Path to a Keras model file (Keras3) or directory (Keras2).
-        data_loader : DLDataLoader
-            Data loader for the main batches.
-        last_batch_loader : DLDataLoader, optional
-            Data loader for the last batch.
 
         Returns
         -------
@@ -427,10 +435,12 @@ class MonoPredictionTool(Tool):
         # Load the model from the specified path
         model = keras.saving.load_model(model_path)
         # Predict the data using the loaded model
-        predict_data = Table(model.predict(data_loader))
+        predict_data = Table(model.predict(self.dl1dh_loader))
         # Predict the last batch and stack the results to the prediction data
-        if last_batch_loader is not None:
-            predict_data = vstack([predict_data, Table(model.predict(last_batch_loader))])
+        if self.dl1dh_loader_last_batch is not None:
+            predict_data = vstack(
+                [predict_data, Table(model.predict(self.dl1dh_loader_last_batch))]
+            )
         return predict_data
 
 
