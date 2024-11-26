@@ -369,6 +369,8 @@ class MonoPredictionTool(Tool):
                 tel_pointing = self.dl1dh_reader.telescope_pointings[
                     f"tel_{self.tel_id:03d}"
                 ]
+                # Add the telescope pointing table to the pointing interpolator
+                pointing_interpolator.add_table(self.tel_id, tel_pointing)
                 # Join the prediction table with the telescope trigger table from the dl1dh reader
                 prediction_table = join(
                     left=prediction_table,
