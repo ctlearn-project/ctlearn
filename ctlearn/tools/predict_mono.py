@@ -301,7 +301,7 @@ class MonoPredictionTool(Tool):
             self.log.info(
                 "DL2 prediction data was stored in '%s' under '%s'",
                 self.output_path,
-                f"/dl2/event/telescope/geometry/{self.reco_algo}/tel_{self.tel_id:03d}",
+                f"/dl2/event/telescope/classification/{self.reco_algo}/tel_{self.tel_id:03d}",
             )
             prediction_table.keep_columns(["obs_id", "event_id", "tel_id"])
             output_table.keep_columns(["obs_id", "event_id", "tel_id"])
@@ -331,7 +331,7 @@ class MonoPredictionTool(Tool):
             self.log.info(
                 "DL2 prediction data was stored in '%s' under '%s'",
                 self.output_path,
-                f"/dl2/event/telescope/geometry/{self.reco_algo}/tel_{self.tel_id:03d}",
+                f"/dl2/event/telescope/energy/{self.reco_algo}/tel_{self.tel_id:03d}",
             )
             prediction_table.keep_columns(["obs_id", "event_id", "tel_id"])
             output_table.keep_columns(["obs_id", "event_id", "tel_id"])
