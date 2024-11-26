@@ -260,6 +260,12 @@ class MonoPredictionTool(Tool):
         # Retrieve the IDs from the example_identifiers of the dl1dh for the prediction table
         prediction_table = self.dl1dh_reader.example_identifiers
         prediction_table.keep_columns(["obs_id", "event_id", "tel_id"])
+        # Retrieve the IDs from the tel_trigger_table of the dl1dh for the final output table
+        output_identifiers = self.dl1dh_reader.tel_trigger_table[
+            self.dl1dh_reader.tel_trigger_table["tel_id"]==self.tel_id
+        ]
+        output_identifiers.keep_columns(["obs_id", "event_id", "tel_id"])
+        output_identifiers.sort(["obs_id", "event_id", "tel_id"])
         # Perform the prediction and fill the prediction table with the prediction results
         # based on the different selected tasks
         if self.load_type_model_from is not None:
@@ -271,9 +277,17 @@ class MonoPredictionTool(Tool):
                 self.dl1dh_loader_last_batch
             )
             prediction_table.add_column(predict_data["col1"], name="prediction")
+            # Produce output table with NaNs for missing predictions
+            output_table = join(
+                output_identifiers,
+                prediction_table,
+                join_type="left",
+                keys=["obs_id", "event_id", "tel_id"],
+                keep_order=True,
+            )
             # Save the prediction to the output file
             write_table(
-                prediction_table,
+                output_table,
                 self.output_path,
                 f"/dl2/event/telescope/classification/{self.reco_algo}/tel_{self.tel_id:03d}",
             )
@@ -293,9 +307,17 @@ class MonoPredictionTool(Tool):
             )
             # Add the reconstructed energy to the prediction table
             prediction_table.add_column(reco_energy, name="energy")
+            # Produce output table with NaNs for missing predictions
+            output_table = join(
+                output_identifiers,
+                prediction_table,
+                join_type="left",
+                keys=["obs_id", "event_id", "tel_id"],
+                keep_order=True,
+            )
             # Save the prediction to the output file
             write_table(
-                prediction_table,
+                output_table,
                 self.output_path,
                 f"/dl2/event/telescope/energy/{self.reco_algo}/tel_{self.tel_id:03d}",
             )
@@ -324,8 +346,8 @@ class MonoPredictionTool(Tool):
                     left=prediction_table,
                     right=tel_pointing,
                     keys=["obs_id", "tel_id"],
+                    keep_order=True,
                 )
-                prediction_table.sort(["obs_id", "event_id", "tel_id"])
             elif self.dl1dh_reader.process_type == ProcessType.Observation:
                 # Initialize the pointing interpolator from ctapipe
                 pointing_interpolator = PointingInterpolator(bounds_error=False, extrapolate=True)
@@ -336,8 +358,8 @@ class MonoPredictionTool(Tool):
                     left=prediction_table,
                     right=self.dl1dh_reader.tel_trigger_table,
                     keys=["obs_id", "event_id", "tel_id"],
+                    keep_order=True,
                 )
-                prediction_table.sort(["obs_id", "event_id", "tel_id"])
                 # Interpolate the telescope pointing
                 tel_altitude, tel_azimuth = pointing_interpolator(self.tel_id, prediction_table['time'])
                 # Save the telescope pointing (az, alt) to the prediction table
@@ -359,9 +381,17 @@ class MonoPredictionTool(Tool):
             prediction_table.add_column(reco_direction["alt"], name="alt")
             # Remove the telescope pointing columns and trigger time from the prediction table
             prediction_table.keep_columns(["obs_id", "event_id", "tel_id", "az", "alt"])
+            # Produce output table with NaNs for missing predictions
+            output_table = join(
+                output_identifiers,
+                prediction_table,
+                join_type="left",
+                keys=["obs_id", "event_id", "tel_id"],
+                keep_order=True,
+            )
             # Save the prediction to the output file
             write_table(
-                prediction_table,
+                output_table,
                 self.output_path,
                 f"/dl2/event/telescope/geometry/{self.reco_algo}/tel_{self.tel_id:03d}",
             )
