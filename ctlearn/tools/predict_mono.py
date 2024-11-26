@@ -16,6 +16,7 @@ from astropy.table import (
     hstack,
     vstack,
     join,
+    setdiff,
 )
 
 from ctapipe.core import Tool
@@ -271,7 +272,7 @@ class MonoPredictionTool(Tool):
             self.dl1dh_reader.tel_trigger_table["tel_id"] == self.tel_id
         ]
         output_identifiers.keep_columns(["obs_id", "event_id", "tel_id"])
-        output_identifiers.sort(["obs_id", "event_id", "tel_id"])
+        output_table = setdiff(output_identifiers, prediction_table, keys=["obs_id", "event_id", "tel_id"])
         # Perform the prediction and fill the prediction table with the prediction results
         # based on the different selected tasks
         if self.load_type_model_from is not None:
@@ -282,21 +283,22 @@ class MonoPredictionTool(Tool):
             predict_data = self._predict_with_model(self.load_type_model_from)
             prediction_table.add_column(predict_data["col1"], name="prediction")
             # Produce output table with NaNs for missing predictions
-            output_table = join(
-                output_identifiers,
-                prediction_table,
-                join_type="left",
-                keys=["obs_id", "event_id", "tel_id"],
-            )
-            # TODO: use keep_order for astropy v7.0.0
-            output_table.sort(["obs_id", "event_id", "tel_id"])
+            output_table.add_column(np.nan * np.ones(len(output_table)), name="prediction")
+            classification_table = vstack([output_table, prediction_table])
+            classification_table.sort(["obs_id", "event_id", "tel_id"])
             # Save the prediction to the output file
             write_table(
-                output_table,
+                classification_table,
                 self.output_path,
                 f"/dl2/event/telescope/classification/{self.reco_algo}/tel_{self.tel_id:03d}",
             )
+            self.log.info(
+                "DL2 prediction data was stored in '%s' under '%s'",
+                self.output_path,
+                f"/dl2/event/telescope/geometry/{self.reco_algo}/tel_{self.tel_id:03d}",
+            )
             prediction_table.keep_columns(["obs_id", "event_id", "tel_id"])
+            output_table.keep_columns(["obs_id", "event_id", "tel_id"])
 
         if self.load_energy_model_from is not None:
             self.log.info(
@@ -311,21 +313,22 @@ class MonoPredictionTool(Tool):
             # Add the reconstructed energy to the prediction table
             prediction_table.add_column(reco_energy, name="energy")
             # Produce output table with NaNs for missing predictions
-            output_table = join(
-                output_identifiers,
-                prediction_table,
-                join_type="left",
-                keys=["obs_id", "event_id", "tel_id"],
-            )
-            # TODO: use keep_order for astropy v7.0.0
-            output_table.sort(["obs_id", "event_id", "tel_id"])
+            output_table.add_column(np.nan * np.ones(len(output_table)), name="energy")
+            energy_table = vstack([output_table, prediction_table])
+            energy_table.sort(["obs_id", "event_id", "tel_id"])
             # Save the prediction to the output file
             write_table(
-                output_table,
+                energy_table,
                 self.output_path,
                 f"/dl2/event/telescope/energy/{self.reco_algo}/tel_{self.tel_id:03d}",
             )
+            self.log.info(
+                "DL2 prediction data was stored in '%s' under '%s'",
+                self.output_path,
+                f"/dl2/event/telescope/geometry/{self.reco_algo}/tel_{self.tel_id:03d}",
+            )
             prediction_table.keep_columns(["obs_id", "event_id", "tel_id"])
+            output_table.keep_columns(["obs_id", "event_id", "tel_id"])
 
         if self.load_direction_model_from is not None:
             self.log.info(
@@ -402,17 +405,18 @@ class MonoPredictionTool(Tool):
             # Remove the telescope pointing columns and trigger time from the prediction table
             prediction_table.keep_columns(["obs_id", "event_id", "tel_id", "az", "alt"])
             # Produce output table with NaNs for missing predictions
-            output_table = join(
-                output_identifiers,
-                prediction_table,
-                join_type="left",
-                keys=["obs_id", "event_id", "tel_id"],
-            )
-            # TODO: use keep_order for astropy v7.0.0
-            output_table.sort(["obs_id", "event_id", "tel_id"])
-            # Save the prediction to the output file
+            output_table.add_column(np.nan * np.ones(len(output_table)), name="az")
+            output_table.add_column(np.nan * np.ones(len(output_table)), name="alt")
+            direction_table = vstack([output_table, prediction_table])
+            direction_table.sort(["obs_id", "event_id", "tel_id"])
+            self.log.info("Saving the prediction to the output file.")
             write_table(
-                output_table,
+                direction_table,
+                self.output_path,
+                f"/dl2/event/telescope/geometry/{self.reco_algo}/tel_{self.tel_id:03d}",
+            )
+            self.log.info(
+                "DL2 prediction data was stored in '%s' under '%s'",
                 self.output_path,
                 f"/dl2/event/telescope/geometry/{self.reco_algo}/tel_{self.tel_id:03d}",
             )
