@@ -227,11 +227,13 @@ class MonoPredictionTool(Tool):
 
         # Set up the data reader
         self.log.info("Loading data reader:")
+        self.log.info("  For a large dataset, this may take a while...")
         self.dl1dh_reader = DLDataReader.from_name(
             self.dl1dh_reader_type,
             input_url_signal=[self.input_url],
             parent=self,
         )
+        self.log.info("  Number of events loaded: %s", self.dl1dh_reader._get_n_events())
         # Set up the data loaders for prediction
         indices = list(range(self.dl1dh_reader._get_n_events()))
         self.dl1dh_loader = DLDataLoader(
