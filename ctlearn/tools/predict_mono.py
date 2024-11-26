@@ -287,8 +287,9 @@ class MonoPredictionTool(Tool):
                 prediction_table,
                 join_type="left",
                 keys=["obs_id", "event_id", "tel_id"],
-                keep_order=True,
             )
+            # TODO: use keep_order for astropy v7.0.0
+            output_table.sort(["obs_id", "event_id", "tel_id"])
             # Save the prediction to the output file
             write_table(
                 output_table,
@@ -315,8 +316,9 @@ class MonoPredictionTool(Tool):
                 prediction_table,
                 join_type="left",
                 keys=["obs_id", "event_id", "tel_id"],
-                keep_order=True,
             )
+            # TODO: use keep_order for astropy v7.0.0
+            output_table.sort(["obs_id", "event_id", "tel_id"])
             # Save the prediction to the output file
             write_table(
                 output_table,
@@ -346,8 +348,9 @@ class MonoPredictionTool(Tool):
                     left=prediction_table,
                     right=tel_pointing,
                     keys=["obs_id", "tel_id"],
-                    keep_order=True,
                 )
+                # TODO: use keep_order for astropy v7.0.0
+                prediction_table.sort(["obs_id", "event_id", "tel_id"])
             elif self.dl1dh_reader.process_type == ProcessType.Observation:
                 # Initialize the pointing interpolator from ctapipe
                 pointing_interpolator = PointingInterpolator(
@@ -362,8 +365,9 @@ class MonoPredictionTool(Tool):
                     left=prediction_table,
                     right=self.dl1dh_reader.tel_trigger_table,
                     keys=["obs_id", "event_id", "tel_id"],
-                    keep_order=True,
                 )
+                # TODO: use keep_order for astropy v7.0.0
+                prediction_table.sort(["obs_id", "event_id", "tel_id"])
                 # Interpolate the telescope pointing
                 tel_altitude, tel_azimuth = pointing_interpolator(
                     self.tel_id, prediction_table["time"]
@@ -403,8 +407,9 @@ class MonoPredictionTool(Tool):
                 prediction_table,
                 join_type="left",
                 keys=["obs_id", "event_id", "tel_id"],
-                keep_order=True,
             )
+            # TODO: use keep_order for astropy v7.0.0
+            output_table.sort(["obs_id", "event_id", "tel_id"])
             # Save the prediction to the output file
             write_table(
                 output_table,
