@@ -239,6 +239,12 @@ class MonoPredictionTool(Tool):
         self.log.info(
             "  Number of events loaded: %s", self.dl1dh_reader._get_n_events()
         )
+        # Check if the number of events is enough to form a batch
+        if self.dl1dh_reader._get_n_events() < self.batch_size:
+            raise ToolConfigurationError(
+                f"{self.dl1dh_reader._get_n_events()} events are not enough "
+                f"to form a batch of size {self.batch_size}. Reduce the batch size."
+            )
         # Set up the data loaders for prediction
         indices = list(range(self.dl1dh_reader._get_n_events()))
         self.dl1dh_loader = DLDataLoader(

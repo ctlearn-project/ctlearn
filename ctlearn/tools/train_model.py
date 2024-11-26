@@ -246,7 +246,12 @@ class TrainCTLearnModel(Tool):
         )
 
         self.log.info("  Number of events loaded: %s", self.dl1dh_reader._get_n_events())
-
+        # Check if the number of events is enough to form a batch
+        if self.dl1dh_reader._get_n_events() < self.batch_size:
+            raise (
+                f"{self.dl1dh_reader._get_n_events()} events are not enough "
+                f"to form a batch of size {self.batch_size}. Reduce the batch size."
+            )
         # Check if there are at least two classes in the reader for the particle classification
         if self.dl1dh_reader.class_weight is None and "type" in self.reco_tasks:
             raise ValueError(
