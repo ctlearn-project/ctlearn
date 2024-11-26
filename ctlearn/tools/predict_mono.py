@@ -237,7 +237,7 @@ class MonoPredictionTool(Tool):
         self.dl1dh_loader = DLDataLoader(
             self.dl1dh_reader,
             indices,
-            tasks=self.reco_tasks,
+            tasks=[],
             batch_size=self.batch_size * self.strategy.num_replicas_in_sync,
         )
         # Keras is only considering the last complete batch.
@@ -251,7 +251,7 @@ class MonoPredictionTool(Tool):
             self.dl1dh_loader_last_batch = DLDataLoader(
                 self.dl1dh_reader,
                 last_batch_indices,
-                tasks=self.reco_tasks,
+                tasks=[],
                 batch_size=last_batch_size,
             )
 
