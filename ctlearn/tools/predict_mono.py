@@ -245,40 +245,21 @@ class MonoPredictionTool(Tool):
                 f"{self.dl1dh_reader._get_n_events()} events are not enough "
                 f"to form a batch of size {self.batch_size}. Reduce the batch size."
             )
-        # Set up the data loaders for prediction
-        indices = list(range(self.dl1dh_reader._get_n_events()))
-        self.dl1dh_loader = DLDataLoader(
-            self.dl1dh_reader,
-            indices,
-            tasks=[],
-            batch_size=self.batch_size * self.strategy.num_replicas_in_sync,
-        )
-        # Keras is only considering the last complete batch.
-        # In prediction mode we don't want to loose the last
-        # uncomplete batch, so we are creating an additional
-        # batch generator for the remaining events.
-        self.dl1dh_loader_last_batch = None
-        last_batch_size = len(indices) % self.batch_size
-        if last_batch_size > 0:
-            last_batch_indices = indices[-last_batch_size:]
-            self.dl1dh_loader_last_batch = DLDataLoader(
-                self.dl1dh_reader,
-                last_batch_indices,
-                tasks=[],
-                batch_size=last_batch_size,
-            )
+        # Set the indices for the data loaders
+        self.indices = list(range(self.dl1dh_reader._get_n_events()))
+        self.last_batch_size = len(indices) % self.batch_size
 
     def start(self):
         self.log.info("Starting the prediction...")
         # Retrieve the IDs from the example_identifiers of the dl1dh for the prediction table
         example_identifiers = self.dl1dh_reader.example_identifiers.copy()
-        example_identifiers.keep_columns(["obs_id", "event_id", "tel_id"])
         # Retrieve the IDs from the tel_trigger_table of the dl1dh for the final output table
-        all_identifiers = self.dl1dh_reader.tel_trigger_table[
+        tel_trigger_table = self.dl1dh_reader.tel_trigger_table[
             self.dl1dh_reader.tel_trigger_table["tel_id"] == self.tel_id
         ]
+        all_identifiers = tel_trigger_table.copy()
         all_identifiers.keep_columns(["obs_id", "event_id", "tel_id"])
-        nonexample_identifiers = setdiff(all_identifiers, example_identifiers.copy(), keys=["obs_id", "event_id", "tel_id"])
+        nonexample_identifiers = setdiff(all_identifiers, example_identifiers, keys=["obs_id", "event_id", "tel_id"])
         if len(nonexample_identifiers) > 0:
             nonexample_identifiers.sort(["obs_id", "event_id", "tel_id"])
         # Perform the prediction and fill the prediction table with the prediction results
@@ -296,6 +277,7 @@ class MonoPredictionTool(Tool):
                 nan_table = nonexample_identifiers.copy()
                 nan_table.add_column(np.nan * np.ones(len(nan_table)), name="prediction")
                 classification_table = vstack([classification_table, nan_table])
+            classification_table.keep_columns(["obs_id", "event_id", "tel_id", "prediction"])
             classification_table.sort(["obs_id", "event_id", "tel_id"])
             # Save the prediction to the output file
             write_table(
@@ -327,6 +309,7 @@ class MonoPredictionTool(Tool):
                 nan_table = nonexample_identifiers.copy()
                 nan_table.add_column(np.nan * np.ones(len(nan_table)), name="energy")
                 energy_table = vstack([energy_table, nan_table])
+            energy_table.keep_columns(["obs_id", "event_id", "tel_id", "energy"])
             energy_table.sort(["obs_id", "event_id", "tel_id"])
             # Save the prediction to the output file
             write_table(
@@ -379,7 +362,7 @@ class MonoPredictionTool(Tool):
                 # Join the prediction table with the telescope trigger table from the dl1dh reader
                 direction_table = join(
                     left=direction_table,
-                    right=self.dl1dh_reader.tel_trigger_table,
+                    right=tel_trigger_table,
                     keys=["obs_id", "event_id", "tel_id"],
                 )
                 # TODO: use keep_order for astropy v7.0.0
@@ -456,14 +439,34 @@ class MonoPredictionTool(Tool):
         predict_data : astropy.table.Table
             Table containing the prediction results.
         """
+        # Create a DLDataLoader for the data reader
+        dl1dh_loader = DLDataLoader(
+            self.dl1dh_reader,
+            self.indices,
+            tasks=[],
+            batch_size=self.batch_size * self.strategy.num_replicas_in_sync,
+        )
+        # Keras is only considering the last complete batch.
+        # In prediction mode we don't want to loose the last
+        # uncomplete batch, so we are creating an additional
+        # batch generator for the remaining events.
+        dl1dh_loader_last_batch = None
+        if self.last_batch_size > 0:
+            last_batch_indices = indices[-self.last_batch_size:]
+            dl1dh_loader_last_batch = DLDataLoader(
+                self.dl1dh_reader,
+                self.last_batch_indices,
+                tasks=[],
+                batch_size=self.last_batch_size,
+            )
         # Load the model from the specified path
         model = keras.saving.load_model(model_path)
         # Predict the data using the loaded model
-        predict_data = Table(model.predict(self.dl1dh_loader))
+        predict_data = Table(model.predict(dl1dh_loader))
         # Predict the last batch and stack the results to the prediction data
-        if self.dl1dh_loader_last_batch is not None:
+        if dl1dh_loader_last_batch is not None:
             predict_data = vstack(
-                [predict_data, Table(model.predict(self.dl1dh_loader_last_batch))]
+                [predict_data, Table(model.predict(dl1dh_loader_last_batch))]
             )
         return predict_data
 
