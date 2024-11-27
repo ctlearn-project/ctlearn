@@ -413,6 +413,7 @@ class MonoPredictionTool(Tool):
                 nan_table.add_column(np.nan * np.ones(len(nan_table)), name="az")
                 nan_table.add_column(np.nan * np.ones(len(nan_table)), name="alt")
                 if self.store_event_wise_pointing:
+                    nan_table.add_column(np.nan * np.ones(len(nan_table)), name="time")
                     nan_table.add_column(np.nan * np.ones(len(nan_table)), name="telescope_pointing_azimuth")
                     nan_table.add_column(np.nan * np.ones(len(nan_table)), name="telescope_pointing_altitude")
                 direction_table = vstack([direction_table, nan_table])
