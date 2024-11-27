@@ -456,7 +456,7 @@ class MonoPredictionTool(Tool):
             last_batch_indices = self.indices[-self.last_batch_size:]
             dl1dh_loader_last_batch = DLDataLoader(
                 self.dl1dh_reader,
-                self.last_batch_indices,
+                last_batch_indices,
                 tasks=[],
                 batch_size=self.last_batch_size,
             )
