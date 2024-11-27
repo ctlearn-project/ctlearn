@@ -247,7 +247,7 @@ class MonoPredictionTool(Tool):
             )
         # Set the indices for the data loaders
         self.indices = list(range(self.dl1dh_reader._get_n_events()))
-        self.last_batch_size = len(indices) % self.batch_size
+        self.last_batch_size = len(self.indices) % self.batch_size
 
     def start(self):
         self.log.info("Starting the prediction...")
@@ -439,7 +439,8 @@ class MonoPredictionTool(Tool):
         predict_data : astropy.table.Table
             Table containing the prediction results.
         """
-        # Create a DLDataLoader for the data reader
+        # Create a new DLDataLoader for each task
+        # It turned out to be more robust to initialize the DLDataLoader separately.
         dl1dh_loader = DLDataLoader(
             self.dl1dh_reader,
             self.indices,
@@ -452,7 +453,7 @@ class MonoPredictionTool(Tool):
         # batch generator for the remaining events.
         dl1dh_loader_last_batch = None
         if self.last_batch_size > 0:
-            last_batch_indices = indices[-self.last_batch_size:]
+            last_batch_indices = self.indices[-self.last_batch_size:]
             dl1dh_loader_last_batch = DLDataLoader(
                 self.dl1dh_reader,
                 self.last_batch_indices,
