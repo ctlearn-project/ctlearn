@@ -278,7 +278,7 @@ class MonoPredictionTool(Tool):
             self.dl1dh_reader.tel_trigger_table["tel_id"] == self.tel_id
         ]
         all_identifiers.keep_columns(["obs_id", "event_id", "tel_id"])
-        nonexample_identifiers = setdiff(all_identifiers, example_identifiers, keys=["obs_id", "event_id", "tel_id"])
+        nonexample_identifiers = setdiff(all_identifiers, example_identifiers.copy(), keys=["obs_id", "event_id", "tel_id"])
         if len(nonexample_identifiers) > 0:
             nonexample_identifiers.sort(["obs_id", "event_id", "tel_id"])
         # Perform the prediction and fill the prediction table with the prediction results
