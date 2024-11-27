@@ -271,14 +271,17 @@ class MonoPredictionTool(Tool):
     def start(self):
         self.log.info("Starting the prediction...")
         # Retrieve the IDs from the example_identifiers of the dl1dh for the prediction table
-        prediction_table = self.dl1dh_reader.example_identifiers.copy()
-        prediction_table.keep_columns(["obs_id", "event_id", "tel_id"])
+        example_identifiers = self.dl1dh_reader.example_identifiers.copy()
+        example_identifiers.keep_columns(["obs_id", "event_id", "tel_id"])
+        example_identifiers.sort(["obs_id", "event_id", "tel_id"])
         # Retrieve the IDs from the tel_trigger_table of the dl1dh for the final output table
-        output_identifiers = self.dl1dh_reader.tel_trigger_table[
+        all_identifiers = self.dl1dh_reader.tel_trigger_table[
             self.dl1dh_reader.tel_trigger_table["tel_id"] == self.tel_id
         ]
-        output_identifiers.keep_columns(["obs_id", "event_id", "tel_id"])
-        output_table = setdiff(output_identifiers, prediction_table, keys=["obs_id", "event_id", "tel_id"])
+        all_identifiers.keep_columns(["obs_id", "event_id", "tel_id"])
+        nonexample_identifiers = setdiff(all_identifiers, example_identifiers, keys=["obs_id", "event_id", "tel_id"])
+        if len(nonexample_identifiers) > 0:
+            nonexample_identifiers.sort(["obs_id", "event_id", "tel_id"])
         # Perform the prediction and fill the prediction table with the prediction results
         # based on the different selected tasks
         if self.load_type_model_from is not None:
@@ -287,10 +290,13 @@ class MonoPredictionTool(Tool):
             )
             # Predict the data using the loaded type_model
             predict_data = self._predict_with_model(self.load_type_model_from)
-            prediction_table.add_column(predict_data["col1"], name="prediction")
+            classification_table = example_identifiers.copy()
+            classification_table.add_column(predict_data["col1"], name="prediction")
             # Produce output table with NaNs for missing predictions
-            output_table.add_column(np.nan * np.ones(len(output_table)), name="prediction")
-            classification_table = vstack([output_table, prediction_table])
+            if len(nonexample_identifiers) > 0:
+                nan_table = nonexample_identifiers.copy()
+                nan_table.add_column(np.nan * np.ones(len(nan_table)), name="prediction")
+                classification_table = vstack([classification_table, nan_table])
             classification_table.sort(["obs_id", "event_id", "tel_id"])
             # Save the prediction to the output file
             write_table(
@@ -303,8 +309,6 @@ class MonoPredictionTool(Tool):
                 self.output_path,
                 f"/dl2/event/telescope/classification/{self.reco_algo}/tel_{self.tel_id:03d}",
             )
-            prediction_table.keep_columns(["obs_id", "event_id", "tel_id"])
-            output_table.keep_columns(["obs_id", "event_id", "tel_id"])
 
         if self.load_energy_model_from is not None:
             self.log.info(
@@ -317,10 +321,13 @@ class MonoPredictionTool(Tool):
                 np.power(10, np.squeeze(predict_data["energy"])), unit=u.TeV
             )
             # Add the reconstructed energy to the prediction table
-            prediction_table.add_column(reco_energy, name="energy")
+            energy_table = example_identifiers.copy()
+            energy_table.add_column(reco_energy, name="energy")
             # Produce output table with NaNs for missing predictions
-            output_table.add_column(np.nan * np.ones(len(output_table)), name="energy")
-            energy_table = vstack([output_table, prediction_table])
+            if len(nonexample_identifiers) > 0:
+                nan_table = nonexample_identifiers.copy()
+                nan_table.add_column(np.nan * np.ones(len(nan_table)), name="energy")
+                energy_table = vstack([energy_table, nan_table])
             energy_table.sort(["obs_id", "event_id", "tel_id"])
             # Save the prediction to the output file
             write_table(
@@ -333,8 +340,6 @@ class MonoPredictionTool(Tool):
                 self.output_path,
                 f"/dl2/event/telescope/energy/{self.reco_algo}/tel_{self.tel_id:03d}",
             )
-            prediction_table.keep_columns(["obs_id", "event_id", "tel_id"])
-            output_table.keep_columns(["obs_id", "event_id", "tel_id"])
 
         if self.load_direction_model_from is not None:
             self.log.info(
@@ -346,6 +351,7 @@ class MonoPredictionTool(Tool):
             # from the telescope pointing. The telescope pointing is read from the
             # configuration tree for simulated data and interpolated from the monitoring
             # tree using the trigger timestamps for observational data.
+            direction_table = example_identifiers.copy()
             if self.dl1dh_reader.process_type == ProcessType.Simulation:
                 # Read the telescope pointing table
                 tel_pointing = read_table(
@@ -353,13 +359,13 @@ class MonoPredictionTool(Tool):
                     f"/configuration/telescope/pointing/tel_{self.tel_id:03d}",
                 )
                 # Join the prediction table with the telescope pointing table
-                prediction_table = join(
-                    left=prediction_table,
+                direction_table = join(
+                    left=direction_table,
                     right=tel_pointing,
                     keys=["obs_id", "tel_id"],
                 )
                 # TODO: use keep_order for astropy v7.0.0
-                prediction_table.sort(["obs_id", "event_id", "tel_id"])
+                direction_table.sort(["obs_id", "event_id", "tel_id"])
             elif self.dl1dh_reader.process_type == ProcessType.Observation:
                 # Initialize the pointing interpolator from ctapipe
                 pointing_interpolator = PointingInterpolator(
@@ -372,22 +378,22 @@ class MonoPredictionTool(Tool):
                 # Add the telescope pointing table to the pointing interpolator
                 pointing_interpolator.add_table(self.tel_id, tel_pointing)
                 # Join the prediction table with the telescope trigger table from the dl1dh reader
-                prediction_table = join(
-                    left=prediction_table,
+                direction_table = join(
+                    left=direction_table,
                     right=self.dl1dh_reader.tel_trigger_table,
                     keys=["obs_id", "event_id", "tel_id"],
                 )
                 # TODO: use keep_order for astropy v7.0.0
-                prediction_table.sort(["obs_id", "event_id", "tel_id"])
+                direction_table.sort(["obs_id", "event_id", "tel_id"])
                 # Interpolate the telescope pointing
                 tel_altitude, tel_azimuth = pointing_interpolator(
-                    self.tel_id, prediction_table["time"]
+                    self.tel_id, direction_table["time"]
                 )
                 # Save the telescope pointing (az, alt) to the prediction table
-                prediction_table.add_column(
+                direction_table.add_column(
                     tel_azimuth, name="telescope_pointing_azimuth"
                 )
-                prediction_table.add_column(
+                direction_table.add_column(
                     tel_altitude, name="telescope_pointing_altitude"
                 )
             # Convert reconstructed spherical offset (az, alt) to SkyCoord
@@ -399,8 +405,8 @@ class MonoPredictionTool(Tool):
             )
             # Set the telescope pointing of the SkyOffsetSeparation tranformation
             pointing = SkyCoord(
-                prediction_table["telescope_pointing_azimuth"],
-                prediction_table["telescope_pointing_altitude"],
+                direction_table["telescope_pointing_azimuth"],
+                direction_table["telescope_pointing_altitude"],
                 frame="altaz",
             )
             # Calculate the reconstructed direction (az, alt) based on the telescope pointing
@@ -408,14 +414,16 @@ class MonoPredictionTool(Tool):
                 reco_spherical_offset_az, reco_spherical_offset_alt
             ).to_table()
             # Add the reconstructed direction (az, alt) to the prediction table
-            prediction_table.add_column(reco_direction["az"], name="az")
-            prediction_table.add_column(reco_direction["alt"], name="alt")
+            direction_table.add_column(reco_direction["az"], name="az")
+            direction_table.add_column(reco_direction["alt"], name="alt")
             # Remove the telescope pointing columns and trigger time from the prediction table
-            prediction_table.keep_columns(["obs_id", "event_id", "tel_id", "az", "alt"])
+            direction_table.keep_columns(["obs_id", "event_id", "tel_id", "az", "alt"])
             # Produce output table with NaNs for missing predictions
-            output_table.add_column(np.nan * np.ones(len(output_table)), name="az")
-            output_table.add_column(np.nan * np.ones(len(output_table)), name="alt")
-            direction_table = vstack([output_table, prediction_table])
+            if len(nonexample_identifiers) > 0:
+                nan_table = nonexample_identifiers.copy()
+                nan_table.add_column(np.nan * np.ones(len(nan_table)), name="az")
+                nan_table.add_column(np.nan * np.ones(len(nan_table)), name="alt")
+                direction_table = vstack([direction_table, nan_table])
             direction_table.sort(["obs_id", "event_id", "tel_id"])
             self.log.info("Saving the prediction to the output file.")
             write_table(
