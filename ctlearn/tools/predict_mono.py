@@ -273,7 +273,6 @@ class MonoPredictionTool(Tool):
         # Retrieve the IDs from the example_identifiers of the dl1dh for the prediction table
         example_identifiers = self.dl1dh_reader.example_identifiers.copy()
         example_identifiers.keep_columns(["obs_id", "event_id", "tel_id"])
-        example_identifiers.sort(["obs_id", "event_id", "tel_id"])
         # Retrieve the IDs from the tel_trigger_table of the dl1dh for the final output table
         all_identifiers = self.dl1dh_reader.tel_trigger_table[
             self.dl1dh_reader.tel_trigger_table["tel_id"] == self.tel_id
