@@ -96,6 +96,7 @@ class MonoPredictionTool(Tool):
         file_ok=True,
     ).tag(config=True)
 
+    #FIXME: Select the telescope ID from dl1dh reader
     tel_id = Int(
         default_value=1,
         allow_none=False,
@@ -146,6 +147,12 @@ class MonoPredictionTool(Tool):
         exists=True,
         directory_ok=True,
         file_ok=True,
+    ).tag(config=True)
+
+    store_event_wise_pointing = Bool(
+        default_value=True,
+        allow_none=False,
+        help="Store the event-wise telescope pointing in the output file.",
     ).tag(config=True)
 
     batch_size = Int(
@@ -253,6 +260,7 @@ class MonoPredictionTool(Tool):
         self.log.info("Starting the prediction...")
         # Retrieve the IDs from the example_identifiers of the dl1dh for the prediction table
         example_identifiers = self.dl1dh_reader.example_identifiers.copy()
+        example_identifiers.keep_columns(["obs_id", "event_id", "tel_id"])
         # Retrieve the IDs from the tel_trigger_table of the dl1dh for the final output table
         tel_trigger_table = self.dl1dh_reader.tel_trigger_table[
             self.dl1dh_reader.tel_trigger_table["tel_id"] == self.tel_id
@@ -277,7 +285,6 @@ class MonoPredictionTool(Tool):
                 nan_table = nonexample_identifiers.copy()
                 nan_table.add_column(np.nan * np.ones(len(nan_table)), name="prediction")
                 classification_table = vstack([classification_table, nan_table])
-            classification_table.keep_columns(["obs_id", "event_id", "tel_id", "prediction"])
             classification_table.sort(["obs_id", "event_id", "tel_id"])
             # Save the prediction to the output file
             write_table(
@@ -309,7 +316,6 @@ class MonoPredictionTool(Tool):
                 nan_table = nonexample_identifiers.copy()
                 nan_table.add_column(np.nan * np.ones(len(nan_table)), name="energy")
                 energy_table = vstack([energy_table, nan_table])
-            energy_table.keep_columns(["obs_id", "event_id", "tel_id", "energy"])
             energy_table.sort(["obs_id", "event_id", "tel_id"])
             # Save the prediction to the output file
             write_table(
@@ -399,12 +405,16 @@ class MonoPredictionTool(Tool):
             direction_table.add_column(reco_direction["az"], name="az")
             direction_table.add_column(reco_direction["alt"], name="alt")
             # Remove the telescope pointing columns and trigger time from the prediction table
-            direction_table.keep_columns(["obs_id", "event_id", "tel_id", "az", "alt"])
+            if not self.store_event_wise_pointing:
+                direction_table.keep_columns(["obs_id", "event_id", "tel_id", "az", "alt"])
             # Produce output table with NaNs for missing predictions
             if len(nonexample_identifiers) > 0:
                 nan_table = nonexample_identifiers.copy()
                 nan_table.add_column(np.nan * np.ones(len(nan_table)), name="az")
                 nan_table.add_column(np.nan * np.ones(len(nan_table)), name="alt")
+                if self.store_event_wise_pointing:
+                    nan_table.add_column(np.nan * np.ones(len(nan_table)), name="telescope_pointing_azimuth")
+                    nan_table.add_column(np.nan * np.ones(len(nan_table)), name="telescope_pointing_altitude")
                 direction_table = vstack([direction_table, nan_table])
             direction_table.sort(["obs_id", "event_id", "tel_id"])
             self.log.info("Saving the prediction to the output file.")
