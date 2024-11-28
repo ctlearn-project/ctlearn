@@ -214,10 +214,10 @@ class LST1PredictionTool(Tool):
             geometry=cam_geom[self.camera_name], subarray=self.subarray, parent=self
         )
 
-        if self.input_shape[0] != self.image_mappers[self.camera_name].image_shape[0]:
+        if self.input_shape[0] != self.image_mappers[self.camera_name].image_shape:
             raise ToolConfigurationError(
                 f"The input shape of the model ('{self.input_shape[0]}') does not match "
-                f"the image shape of the ImageMapper ('{self.image_mappers[self.camera_name].image_shape[0]}'). "
+                f"the image shape of the ImageMapper ('{self.image_mappers[self.camera_name].image_shape}'). "
                 f"Use '--BilinearMapper.interpolation_image_shape={self.input_shape[0]}' ."
             )
 
