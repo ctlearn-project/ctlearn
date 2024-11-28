@@ -10,6 +10,7 @@ from astropy.table import Table
 import tables
 import keras
 from astropy.coordinates.earth import EarthLocation
+from astropy.coordinates import SkyCoord
 from astropy.time import Time
 from traitlets.config.loader import Config
 
