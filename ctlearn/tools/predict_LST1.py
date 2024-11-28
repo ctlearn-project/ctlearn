@@ -23,6 +23,7 @@ from ctapipe.core.traits import (
     Dict,
     List,
     CaselessStrEnum,
+    ComponentName,
     Unicode,
     classes_with_traits,
 )
