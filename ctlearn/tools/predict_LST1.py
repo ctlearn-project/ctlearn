@@ -220,6 +220,8 @@ class LST1PredictionTool(Tool):
                 f"the image shape of the ImageMapper ('{self.image_mappers[self.camera_name].image_shape}'). "
                 f"Use '--BilinearMapper.interpolation_image_shape={self.input_shape[0]}' ."
             )
+        print(self.input_shape[0])
+        print(self.image_mappers[self.camera_name].image_shape)
 
         # Get offset and scaling of images
         self.transforms = {}
@@ -256,7 +258,8 @@ class LST1PredictionTool(Tool):
         tel_az = u.Quantity(output_identifiers["az_tel"], unit=u.rad)
         tel_alt = u.Quantity(output_identifiers["alt_tel"], unit=u.rad)
         event_type = output_identifiers["event_type"]
-        time = (Time(output_identifiers["dragon_time"] * u.s, format='unix') - self.epoch).to('mjd')
+        time = (Time(output_identifiers["dragon_time"] * u.s, format='unix') - self.epoch).to(u.s)
+        time.format = 'mjd'
         print(time)
         output_identifiers.keep_columns(["obs_id", "event_id", "tel_id"])
         output_identifiers.sort(["obs_id", "event_id", "tel_id"])
