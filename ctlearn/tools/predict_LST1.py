@@ -304,6 +304,7 @@ class LST1PredictionTool(Tool):
                 classification_table,
                 self.output_path,
                 f"/dl2/event/telescope/classification/{self.reco_algo}/tel_{self.tel_id:03d}",
+                self.overwrite,
             )
             self.log.info(
                 "DL2 prediction data was stored in '%s' under '%s'",
@@ -323,6 +324,7 @@ class LST1PredictionTool(Tool):
                 energy_table,
                 self.output_path,
                 f"/dl2/event/telescope/energy/{self.reco_algo}/tel_{self.tel_id:03d}",
+                self.overwrite,
             )
             self.log.info(
                 "DL2 prediction data was stored in '%s' under '%s'",
@@ -357,6 +359,7 @@ class LST1PredictionTool(Tool):
                 direction_table,
                 self.output_path,
                 f"/dl2/event/telescope/geometry/{self.reco_algo}/tel_{self.tel_id:03d}",
+                self.overwrite,
             )
             self.log.info(
                 "DL2 prediction data was stored in '%s' under '%s'",
