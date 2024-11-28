@@ -350,7 +350,7 @@ class LST1PredictionTool(Tool):
             self.overwrite,
         )
         self.log.info(
-            "DL1 subarray trigger table was stored in '%s' under '%s'",
+            "DL1 parameters table was stored in '%s' under '%s'",
             self.output_path,
             f"/dl1/event/telescope/parameters/tel_{self.tel_id:03d}",
         )
