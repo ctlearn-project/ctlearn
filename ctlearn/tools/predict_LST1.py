@@ -29,7 +29,7 @@ from ctapipe.core.traits import (
 from ctapipe.instrument import SubarrayDescription, CameraGeometry
 from ctapipe.io import read_table, write_table
 from ctlearn.core.model import LoadedModel
-from dl1_data_handler.image_mapper import BilinearMapper
+from dl1_data_handler.image_mapper import ImageMapper
 from dl1_data_handler.reader import get_unmapped_image, get_unmapped_waveform
 
 
@@ -161,7 +161,7 @@ class LST1PredictionTool(Tool):
         ),
     }
 
-    classes = classes_with_traits(BilinearMapper)
+    classes = classes_with_traits(ImageMapper)
 
     def setup(self):
 
