@@ -128,6 +128,10 @@ class LST1PredictionTool(Tool):
         ),
     ).tag(config=True)
 
+    image_mapper_type = ComponentName(ImageMapper, default_value="BilinearMapper").tag(
+        config=True
+    )
+
     store_event_wise_pointing = Bool(
         default_value=True,
         allow_none=False,
@@ -193,7 +197,6 @@ class LST1PredictionTool(Tool):
             input_shape = self.keras_model_direction.input_shape[1:]
 
         # Create the image mappers
-        self.epoch = Time("1970-01-01T00:00:00", scale="utc")
         pos = {1: [50.0, 50.0, 16.0] * u.m}
         tel = {1: "LST_LST_LSTCam"}
         LOCATION = EarthLocation(lon=-17 * u.deg, lat=28 * u.deg, height=2200 * u.m)
@@ -211,7 +214,7 @@ class LST1PredictionTool(Tool):
                 )
             )
             cam_geom = CameraGeometry(
-                name="LSTCam",
+                name="RealLSTCam",
                 pix_id=cam_geom_table.cols.pix_id[:],
                 pix_type="hexagon",
                 pix_x=u.Quantity(cam_geom_table.cols.pix_x[:], u.cm),
@@ -220,17 +223,18 @@ class LST1PredictionTool(Tool):
                 pix_rotation="100.893deg",
                 cam_rotation="0deg",
             )
-        self.image_mapper = BilinearMapper(
+        self.image_mapper = ImageMapper.from_name(
+            name=self.image_mapper_type,
             geometry=cam_geom,
             subarray=self.subarray,
             parent=self,
         )
-
+        # Check if the input shape of the model matches the image shape of the ImageMapper
         if input_shape[0] != self.image_mapper.image_shape:
             raise ToolConfigurationError(
                 f"The input shape of the model ('{input_shape[0]}') does not match "
                 f"the image shape of the ImageMapper ('{self.image_mapper.image_shape}'). "
-                f"Use '--BilinearMapper.interpolation_image_shape={input_shape[0]}' ."
+                f"Use e.g. '--BilinearMapper.interpolation_image_shape={input_shape[0]}' ."
             )
 
         # Get offset and scaling of images
@@ -242,7 +246,6 @@ class LST1PredictionTool(Tool):
         # Get the number of rows in the table
         with tables.open_file(self.input_url) as input_file:
             img_table_v_attrs = input_file.get_node(self.image_table_name)._v_attrs
-            print(img_table_v_attrs)
 
         # Check the transform value used for the file compression
         if "CTAFIELD_3_TRANSFORM_SCALE" in img_table_v_attrs:
@@ -268,7 +271,6 @@ class LST1PredictionTool(Tool):
         tel_az = u.Quantity(parameter_table["az_tel"], unit=u.rad).to(u.deg)
         tel_alt = u.Quantity(parameter_table["alt_tel"], unit=u.rad).to(u.deg)
         event_type = parameter_table["event_type"]
-        # Create new Time object from the dragon_time just that vitables visulize mjd
         time = Time(parameter_table["dragon_time"] * u.s, format="unix")
         time.format = "mjd"
         output_identifiers.keep_columns(["obs_id", "event_id", "tel_id"])
@@ -324,7 +326,6 @@ class LST1PredictionTool(Tool):
             [
                 "obs_id",
                 "event_id",
-                "tel_id",
                 "hillas_intensity",
                 "hillas_fov_lon",
                 "hillas_fov_lat",
@@ -342,6 +343,7 @@ class LST1PredictionTool(Tool):
                 "morphology_n_islands",
             ]
         )
+        parameter_table.add_column(self.tel_id, name="tel_id", index=2)
         # Save the dl1 parameters table to the output file
         write_table(
             parameter_table,
