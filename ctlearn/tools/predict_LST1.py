@@ -10,6 +10,7 @@ from astropy.table import Table
 import tables
 import keras
 from astropy.coordinates.earth import EarthLocation
+from astropy.time import Time
 from traitlets.config.loader import Config
 
 from ctapipe.core import Tool
@@ -102,15 +103,6 @@ class LST1PredictionTool(Tool):
         help="Size of the batch to perform inference of the neural network.",
     ).tag(config=True)
 
-    image_mapper_type = Unicode(
-        default_value="BilinearMapper",
-        allow_none=False,
-        help=(
-            "Instances of ``ImageMapper`` transforming a raw 1D vector into a 2D image. "
-            "Different mapping methods can be selected for the telescope type."
-        ),
-    ).tag(config=True)
-
     channels = List(
         trait=CaselessStrEnum(
             [
@@ -133,6 +125,12 @@ class LST1PredictionTool(Tool):
             "cleaned_peak_time: extracted peak arrival times cleaned with the DL1 cleaning mask,"
             "cleaned_relative_peak_time: extracted relative peak arrival times cleaned with the DL1 cleaning mask."
         ),
+    ).tag(config=True)
+
+    store_event_wise_pointing = Bool(
+        default_value=True,
+        allow_none=False,
+        help="Store the event-wise telescope pointing in the output file.",
     ).tag(config=True)
 
     output_path = Path(
@@ -158,7 +156,7 @@ class LST1PredictionTool(Tool):
         ),
     }
 
-    classes = classes_with_traits(ImageMapper)
+    classes = classes_with_traits(BilinearMapper)
 
     def setup(self):
 
@@ -186,6 +184,7 @@ class LST1PredictionTool(Tool):
             self.input_shape = self.keras_model_type.input_shape[1:]
 
         # Create the image mappers
+        self.epoch = Time('1970-01-01T00:00:00', scale='utc')
         pos = {1 : [50.0, 50.0, 16.0] * u.m}
         tel = {1 : "LST_LST_LSTCam"}
         LOCATION = EarthLocation(lon=-17 * u.deg, lat=28 * u.deg, height=2200 * u.m)
@@ -200,7 +199,6 @@ class LST1PredictionTool(Tool):
         self.camera_name = "LSTCam"
         with tables.open_file(self.input_url) as input_file:
             cam_geom_table = input_file.root.configuration.instrument.telescope.camera._f_get_child("geometry_0")
-            # TODO: find out why this is not working
             cam_geom[self.camera_name] = CameraGeometry(
                 name=self.camera_name,
                 pix_id=cam_geom_table.cols.pix_id[:],
@@ -211,36 +209,16 @@ class LST1PredictionTool(Tool):
                 pix_rotation="100.893deg",
                 cam_rotation="0deg",
             )
-            '''
-            cam_geom_table = read_table(self.input_url, "/configuration/instrument/telescope/camera/geometry_0")            
-            cam_geom[self.camera_name] = CameraGeometry(
-                name=self.camera_name,
-                pix_id=cam_geom_table["pix_id"],
-                pix_type=cam_geom_table.meta['PIX_TYPE'],
-                pix_x=cam_geom_table["pix_x"],
-                pix_y=cam_geom_table["pix_y"],
-                pix_area=cam_geom_table["pix_area"],
-                pix_rotation=cam_geom_table.meta['PIX_ROT'] * u.deg,
-                cam_rotation=cam_geom_table.meta['CAM_ROT'] * u.deg,
-            )
-            '''
-        print(self.input_shape[0])
-        # Add padding from the image shape by hand
-        mapper_config = Config(
-            {
-                "ImageMapper": {
-                    "interpolation_image_shape": self.input_shape[0],
-                },
-            }
-        )
         self.image_mappers[self.camera_name] = BilinearMapper(
-            geometry=cam_geom[self.camera_name], subarray=self.subarray, config=mapper_config
+            geometry=cam_geom[self.camera_name], subarray=self.subarray, parent=self
         )
-        #self.image_mappers[self.camera_name] = ImageMapper.from_name(
-        #    self.image_mapper_type, geometry=cam_geom[self.camera_name], subarray=self.subarray, config=mapper_config, parent=self
-        #)
-        #print(self.image_mappers)
-        print(self.image_mappers[self.camera_name].image_shape)
+
+        if self.input_shape[0] != self.image_mappers[self.camera_name].image_shape[0]:
+            raise ToolConfigurationError(
+                f"The input shape of the model ('{self.input_shape[0]}') does not match "
+                f"the image shape of the ImageMapper ('{self.image_mappers[self.camera_name].image_shape[0]'). "
+                f"Use '--BilinearMapper.interpolation_image_shape={self.input_shape[0]}' ."
+            )
 
         # Get offset and scaling of images
         self.transforms = {}
@@ -277,7 +255,8 @@ class LST1PredictionTool(Tool):
         tel_az = u.Quantity(output_identifiers["az_tel"], unit=u.rad)
         tel_alt = u.Quantity(output_identifiers["alt_tel"], unit=u.rad)
         event_type = output_identifiers["event_type"]
-        time = output_identifiers["dragon_time"]
+        time = (Time(output_identifiers["dragon_time"] * u.s, format='unix') - self.epoch).to('mjd')
+        print(time)
         output_identifiers.keep_columns(["obs_id", "event_id", "tel_id"])
         output_identifiers.sort(["obs_id", "event_id", "tel_id"])
         prediction, energy, az, alt = [], [], [], []
@@ -364,6 +343,14 @@ class LST1PredictionTool(Tool):
             # Add the reconstructed direction (az, alt) to the prediction table
             direction_table.add_column(reco_direction["az"], name="az")
             direction_table.add_column(reco_direction["alt"], name="alt")
+
+            if self.store_event_wise_pointing:
+                # Add the event-wise telescope pointing to the prediction table
+                direction_table.add_column(tel_az, name="telescope_pointing_azimuth")
+                direction_table.add_column(tel_alt, name="telescope_pointing_altitude")
+                # Add the timestamp of the event to the prediction table
+                direction_table.add_column(time, name="time")
+            
             # Save the prediction to the output file
             write_table(
                 direction_table,
