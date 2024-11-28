@@ -255,14 +255,16 @@ class LST1PredictionTool(Tool):
         self.log.info("Starting the prediction...")
 
         output_identifiers = read_table(self.input_url, self.parameter_table_name)
-        tel_az = u.Quantity(output_identifiers["az_tel"], unit=u.rad).to(u.deg)
-        tel_alt = u.Quantity(output_identifiers["alt_tel"], unit=u.rad).to(u.deg)
-        event_type = output_identifiers["event_type"]
-        time = (Time(output_identifiers["dragon_time"] * u.s, format='unix'))
-        time.format = 'mjd'
-        print(time)
+        parameter_table = output_identifiers.copy()
         output_identifiers.keep_columns(["obs_id", "event_id", "tel_id"])
         output_identifiers.sort(["obs_id", "event_id", "tel_id"])
+        tel_az = u.Quantity(parameter_table["az_tel"], unit=u.rad).to(u.deg)
+        tel_alt = u.Quantity(parameter_table["alt_tel"], unit=u.rad).to(u.deg)
+        event_type = parameter_table["event_type"]
+        # Create new Time object from the dragon_time just that vitables visulize mjd
+        dragon_time = Time(parameter_table["dragon_time"] * u.s, format='unix')
+        time = Time(dragon_time.to_value('mjd'), format='mjd')
+        print(time)
         prediction, energy, az, alt = [], [], [], []
         print(self.table_length)
         # Iterate over the data in chunks based on the batch size
