@@ -12,7 +12,6 @@ import keras
 from astropy.coordinates.earth import EarthLocation
 from astropy.coordinates import SkyCoord
 from astropy.time import Time
-from traitlets.config.loader import Config
 
 from ctapipe.core import Tool
 from ctapipe.core.tool import ToolConfigurationError
@@ -30,7 +29,7 @@ from ctapipe.core.traits import (
 from ctapipe.instrument import SubarrayDescription, CameraGeometry
 from ctapipe.io import read_table, write_table
 from ctlearn.core.model import LoadedModel
-from dl1_data_handler.image_mapper import ImageMapper, BilinearMapper
+from dl1_data_handler.image_mapper import BilinearMapper
 from dl1_data_handler.reader import get_unmapped_image, get_unmapped_waveform
 
 class LST1PredictionTool(Tool):
@@ -38,7 +37,7 @@ class LST1PredictionTool(Tool):
     Perform statistics calculation for pixel-wise image data
     """
 
-    name = "StatisticsCalculatorTool"
+    name = "LST1PredictionTool"
     description = "Perform statistics calculation for pixel-wise image data"
 
     examples = """
@@ -174,15 +173,15 @@ class LST1PredictionTool(Tool):
         if self.load_type_model_from is not None:
             self.log.info("Loading the type model from %s.", self.load_type_model_from)
             self.keras_model_type = keras.saving.load_model(self.load_type_model_from)
-            self.input_shape = self.keras_model_type.input_shape[1:]
+            input_shape = self.keras_model_type.input_shape[1:]
         if self.load_energy_model_from is not None:
             self.log.info("Loading the energy model from %s.", self.load_energy_model_from)
             self.keras_model_energy = keras.saving.load_model(self.load_energy_model_from)
-            self.input_shape = self.keras_model_energy.input_shape[1:]
+            input_shape = self.keras_model_energy.input_shape[1:]
         if self.load_direction_model_from is not None:
             self.log.info("Loading the direction model from %s.", self.load_direction_model_from)
             self.keras_model_direction = keras.saving.load_model(self.load_direction_model_from)
-            self.input_shape = self.keras_model_direction.input_shape[1:]
+            input_shape = self.keras_model_direction.input_shape[1:]
 
         # Create the image mappers
         self.epoch = Time('1970-01-01T00:00:00', scale='utc')
@@ -195,13 +194,11 @@ class LST1PredictionTool(Tool):
             tel_descriptions=tel,
             reference_location=LOCATION,
         )
-        self.image_mappers = {}
         cam_geom = {}
-        self.camera_name = "LSTCam"
         with tables.open_file(self.input_url) as input_file:
             cam_geom_table = input_file.root.configuration.instrument.telescope.camera._f_get_child("geometry_0")
-            cam_geom[self.camera_name] = CameraGeometry(
-                name=self.camera_name,
+            cam_geom = CameraGeometry(
+                name="LSTCam",
                 pix_id=cam_geom_table.cols.pix_id[:],
                 pix_type="hexagon",
                 pix_x=u.Quantity(cam_geom_table.cols.pix_x[:], u.cm),
@@ -210,18 +207,16 @@ class LST1PredictionTool(Tool):
                 pix_rotation="100.893deg",
                 cam_rotation="0deg",
             )
-        self.image_mappers[self.camera_name] = BilinearMapper(
-            geometry=cam_geom[self.camera_name], subarray=self.subarray, parent=self
+        self.image_mapper = BilinearMapper(
+            geometry=cam_geom, subarray=self.subarray, parent=self,
         )
 
-        if self.input_shape[0] != self.image_mappers[self.camera_name].image_shape:
+        if input_shape[0] != self.image_mapper.image_shape:
             raise ToolConfigurationError(
-                f"The input shape of the model ('{self.input_shape[0]}') does not match "
-                f"the image shape of the ImageMapper ('{self.image_mappers[self.camera_name].image_shape}'). "
-                f"Use '--BilinearMapper.interpolation_image_shape={self.input_shape[0]}' ."
+                f"The input shape of the model ('{input_shape[0]}') does not match "
+                f"the image shape of the ImageMapper ('{self.image_mapper.image_shape}'). "
+                f"Use '--BilinearMapper.interpolation_image_shape={input_shape[0]}' ."
             )
-        print(self.input_shape[0])
-        print(self.image_mappers[self.camera_name].image_shape)
 
         # Get offset and scaling of images
         self.transforms = {}
@@ -257,16 +252,44 @@ class LST1PredictionTool(Tool):
         output_identifiers = read_table(self.input_url, self.parameter_table_name)
         parameter_table = output_identifiers.copy()
         output_identifiers.keep_columns(["obs_id", "event_id", "tel_id"])
-        output_identifiers.sort(["obs_id", "event_id", "tel_id"])
         tel_az = u.Quantity(parameter_table["az_tel"], unit=u.rad).to(u.deg)
         tel_alt = u.Quantity(parameter_table["alt_tel"], unit=u.rad).to(u.deg)
         event_type = parameter_table["event_type"]
         # Create new Time object from the dragon_time just that vitables visulize mjd
-        dragon_time = Time(parameter_table["dragon_time"] * u.s, format='unix')
-        time = Time(dragon_time.to_value('mjd'), format='mjd')
-        print(time)
+        time = Time(parameter_table["dragon_time"] * u.s, format='unix')
+        time.format = 'mjd'
+        # Create the dl1 telescope trigger table
+        trigger_table = output_identifiers.copy()
+        trigger_table.add_column(time, name="time")
+        trigger_table.add_column(-1, name="n_trigger_pixels")
+        write_table(
+            trigger_table,
+            self.output_path,
+            "/dl1/event/telescope/trigger",
+            self.overwrite,
+        )
+        self.log.info(
+            "DL1 trigger table was stored in '%s' under '%s'",
+            self.output_path,
+            "/dl1/event/telescope/trigger",
+        )
+        trigger_table.keep_columns(["obs_id", "event_id", "time"])
+        trigger_table.add_column([True], name="tel_with_trigger")
+        trigger_table.add_column(event_type, name="event_type")
+        # Save the dl1 subrray trigger table to the output file
+        write_table(
+            trigger_table,
+            self.output_path,
+            "/dl1/event/subarray/trigger",
+            self.overwrite,
+        )
+        self.log.info(
+            "DL1 trigger table was stored in '%s' under '%s'",
+            self.output_path,
+            "/dl1/event/subarray/trigger",
+        )
+
         prediction, energy, az, alt = [], [], [], []
-        print(self.table_length)
         # Iterate over the data in chunks based on the batch size
         for start in range(0, self.table_length, self.batch_size):
             stop = min(start + self.batch_size, self.table_length)
@@ -279,7 +302,7 @@ class LST1PredictionTool(Tool):
                 image = get_unmapped_image(
                     event, self.channels, self.transforms
                 )
-                data.append(self.image_mappers[self.camera_name].map_image(image))
+                data.append(self.image_mapper.map_image(image))
             input_data = {"input": np.array(data)}
             # Temp fix for supporting keras2 & keras3
             if int(keras.__version__.split(".")[0]) >= 3:
@@ -287,17 +310,12 @@ class LST1PredictionTool(Tool):
 
             if self.load_type_model_from is not None:
                 predict_data = self.keras_model_type.predict_on_batch(input_data)
-                #print(predict_data)
-                #print(predict_data[:, 1])
                 prediction.extend(predict_data[:, 1])
             if self.load_energy_model_from is not None:
                 predict_data = self.keras_model_energy.predict_on_batch(input_data)
-                #print(predict_data)
                 energy.extend(predict_data["energy"])
             if self.load_direction_model_from is not None:
                 predict_data = self.keras_model_direction.predict_on_batch(input_data)
-                #print(predict_data)
-
                 az.extend(predict_data["direction"].T[0])
                 alt.extend(predict_data["direction"].T[1])
 
