@@ -413,9 +413,19 @@ class MonoPredictionTool(Tool):
                 nan_table.add_column(np.nan * np.ones(len(nan_table)), name="az")
                 nan_table.add_column(np.nan * np.ones(len(nan_table)), name="alt")
                 if self.store_event_wise_pointing:
-                    nan_table.add_column(np.nan * np.ones(len(nan_table)), name="time")
-                    nan_table.add_column(np.nan * np.ones(len(nan_table)), name="telescope_pointing_azimuth")
-                    nan_table.add_column(np.nan * np.ones(len(nan_table)), name="telescope_pointing_altitude")
+                    nan_table = join(
+                        left=nan_table,
+                        right=tel_trigger_table,
+                        keys=["obs_id", "event_id", "tel_id"],
+                    )
+                    # TODO: use keep_order for astropy v7.0.0
+                    nan_table.sort(["obs_id", "event_id", "tel_id"])
+                    nan_table.remove_column("n_trigger_pixels")
+                    nan_tel_altitude, nan_tel_azimuth = pointing_interpolator(
+                        self.tel_id, nan_table["time"]
+                    )
+                    nan_table.add_column(nan_tel_azimuth, name="telescope_pointing_azimuth")
+                    nan_table.add_column(nan_tel_altitude, name="telescope_pointing_altitude")
                 direction_table = vstack([direction_table, nan_table])
             direction_table.sort(["obs_id", "event_id", "tel_id"])
             self.log.info("Saving the prediction to the output file.")
