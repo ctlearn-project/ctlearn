@@ -255,10 +255,10 @@ class LST1PredictionTool(Tool):
         self.log.info("Starting the prediction...")
 
         output_identifiers = read_table(self.input_url, self.parameter_table_name)
-        tel_az = u.Quantity(output_identifiers["az_tel"], unit=u.rad)
-        tel_alt = u.Quantity(output_identifiers["alt_tel"], unit=u.rad)
+        tel_az = u.Quantity(output_identifiers["az_tel"], unit=u.rad).to(u.deg)
+        tel_alt = u.Quantity(output_identifiers["alt_tel"], unit=u.rad).to(u.deg)
         event_type = output_identifiers["event_type"]
-        time = (Time(output_identifiers["dragon_time"] * u.s, format='unix') - self.epoch).to(u.s)
+        time = (Time(output_identifiers["dragon_time"] * u.s, format='unix'))
         time.format = 'mjd'
         print(time)
         output_identifiers.keep_columns(["obs_id", "event_id", "tel_id"])
