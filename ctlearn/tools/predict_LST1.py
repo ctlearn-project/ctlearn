@@ -178,11 +178,11 @@ class LST1PredictionTool(Tool):
         if self.load_energy_model_from is not None:
             self.log.info("Loading the energy model from %s.", self.load_energy_model_from)
             self.keras_model_energy = keras.saving.load_model(self.load_energy_model_from)
-            self.input_shape = self.keras_model_type.input_shape[1:]
+            self.input_shape = self.keras_model_energy.input_shape[1:]
         if self.load_direction_model_from is not None:
             self.log.info("Loading the direction model from %s.", self.load_direction_model_from)
             self.keras_model_direction = keras.saving.load_model(self.load_direction_model_from)
-            self.input_shape = self.keras_model_type.input_shape[1:]
+            self.input_shape = self.keras_model_direction.input_shape[1:]
 
         # Create the image mappers
         self.epoch = Time('1970-01-01T00:00:00', scale='utc')
