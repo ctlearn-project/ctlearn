@@ -197,7 +197,7 @@ class LST1PredictionTool(Tool):
             )
             input_shape = self.keras_model_direction.input_shape[1:]
 
-        # Create the image mappers
+        # Create the SubarrayDescription
         pos = {1: [50.0, 50.0, 16.0] * u.m}
         tel = {1: "LST_LST_LSTCam"}
         LOCATION = EarthLocation(lon=-17 * u.deg, lat=28 * u.deg, height=2200 * u.m)
@@ -207,6 +207,9 @@ class LST1PredictionTool(Tool):
             tel_descriptions=tel,
             reference_location=LOCATION,
         )
+        # Write the SubarrayDescription to the output file
+        self.subarray.to_hdf(self.output_path, overwrite=self.overwrite)
+        # Create the CameraGeometry
         cam_geom = {}
         with tables.open_file(self.input_url) as input_file:
             cam_geom_table = (
@@ -224,6 +227,7 @@ class LST1PredictionTool(Tool):
                 pix_rotation="100.893deg",
                 cam_rotation="0deg",
             )
+        # Create the ImageMapper
         self.image_mapper = ImageMapper.from_name(
             name=self.image_mapper_type,
             geometry=cam_geom,
