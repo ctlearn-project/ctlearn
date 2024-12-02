@@ -108,6 +108,24 @@ class TrainCTLearnModel(Tool):
         DLDataReader, default_value="DLImageReader"
     ).tag(config=True)
 
+    stack_telescope_images = Bool(
+        default_value=False,
+        allow_none=False,
+        help=(
+            "Set whether to stack the telescope images in the data loader. "
+            "Requires DLDataReader mode to be ``stereo``."
+        ),
+    ).tag(config=True)
+
+    sort_by_intensity = Bool(
+        default_value=False,
+        allow_none=True,
+        help=(
+            "Set whether to sort the telescope images by intensity in the data loader. "
+            "Requires DLDataReader mode to be ``stereo``."
+        ),
+    ).tag(config=True)
+
     model_type = ComponentName(
         CTLearnModel, default_value="ResNet"
     ).tag(config=True)
@@ -244,7 +262,6 @@ class TrainCTLearnModel(Tool):
             input_url_background=sorted(self.input_url_background),
             parent=self,
         )
-
         self.log.info("  Number of events loaded: %s", self.dl1dh_reader._get_n_events())
         # Check if the number of events is enough to form a batch
         if self.dl1dh_reader._get_n_events() < self.batch_size:
@@ -256,6 +273,21 @@ class TrainCTLearnModel(Tool):
         if self.dl1dh_reader.class_weight is None and "type" in self.reco_tasks:
             raise ValueError(
                 "Classification task selected but less than two classes are present in the data."
+            )
+        # Check if stereo mode is selected for stacking telescope images
+        if self.stack_telescope_images and self.dl1dh_reader.mode == "mono":
+            raise ToolConfigurationError(
+                f"Cannot stack telescope images in mono mode. Use stereo mode for stacking."
+            )
+        # Ckeck if only one telescope type is selected for stacking telescope images
+        if self.stack_telescope_images and len(list(self.dl1dh_reader.selected_telescopes)) > 1:
+            raise ToolConfigurationError(
+                f"Cannot stack telescope images from multiple telescope types. Use only one telescope type."
+            )
+        # Check if sorting by intensity is disabled for stacking telescope images
+        if self.stack_telescope_images and self.sort_by_intensity:
+            raise ToolConfigurationError(
+                f"Cannot stack telescope images when sorting by intensity. Disable sorting by intensity."
             )
 
         # Set up the data loaders for training and validation
@@ -272,7 +304,8 @@ class TrainCTLearnModel(Tool):
             tasks=self.reco_tasks,
             batch_size=self.batch_size*self.strategy.num_replicas_in_sync,
             random_seed=self.random_seed,
-            #stack_telescope_images=stack_telescope_images,
+            sort_by_intensity=self.sort_by_intensity,
+            stack_telescope_images=self.stack_telescope_images,
         )
         self.dl1dh_validation_loader = DLDataLoader(
             self.dl1dh_reader,
@@ -280,7 +313,8 @@ class TrainCTLearnModel(Tool):
             tasks=self.reco_tasks,
             batch_size=self.batch_size*self.strategy.num_replicas_in_sync,
             random_seed=self.random_seed,
-            #stack_telescope_images=stack_telescope_images,
+            sort_by_intensity=self.sort_by_intensity,
+            stack_telescope_images=self.stack_telescope_images,
         )
 
         # Set up the callbacks
