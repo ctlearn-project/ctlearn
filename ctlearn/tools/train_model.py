@@ -265,7 +265,7 @@ class TrainCTLearnModel(Tool):
         self.log.info("  Number of events loaded: %s", self.dl1dh_reader._get_n_events())
         # Check if the number of events is enough to form a batch
         if self.dl1dh_reader._get_n_events() < self.batch_size:
-            raise (
+            raise ValueError(
                 f"{self.dl1dh_reader._get_n_events()} events are not enough "
                 f"to form a batch of size {self.batch_size}. Reduce the batch size."
             )
