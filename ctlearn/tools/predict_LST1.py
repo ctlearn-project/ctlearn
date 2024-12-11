@@ -27,7 +27,8 @@ from ctapipe.core.traits import (
     Unicode,
     classes_with_traits,
 )
-from ctapipe.instrument import SubarrayDescription, CameraGeometry
+from ctapipe.instrument import SubarrayDescription, CameraDescription, CameraGeometry, CameraReadout, TelescopeDescription
+from ctapipe.instrument.optics import OpticsDescription, ReflectorShape, SizeType
 from ctapipe.io import read_table, write_table
 from ctlearn.core.model import LoadedModel
 from dl1_data_handler.image_mapper import ImageMapper
@@ -124,7 +125,7 @@ class LST1PredictionTool(Tool):
             "cleaned_image: integrated charges cleaned with the DL1 cleaning mask, "
             "peak_time: extracted peak arrival times, "
             "relative_peak_time: extracted relative peak arrival times, "
-            "cleaned_peak_time: extracted peak arrival times cleaned with the DL1 cleaning mask,"
+            "cleaned_peak_time: extracted peak arrival times cleaned with the DL1 cleaning mask, "
             "cleaned_relative_peak_time: extracted relative peak arrival times cleaned with the DL1 cleaning mask."
         ),
     ).tag(config=True)
@@ -132,6 +133,15 @@ class LST1PredictionTool(Tool):
     image_mapper_type = ComponentName(ImageMapper, default_value="BilinearMapper").tag(
         config=True
     )
+
+    override_obs_id = Int(
+        default_value=None,
+        allow_none=True,
+        help=(
+            "Use the given obs_id instead of the default one. "
+            "Needed to merge subruns later with ctapipe-merge."
+        ),
+    ).tag(config=True)
 
     store_event_wise_pointing = Bool(
         default_value=True,
@@ -197,19 +207,7 @@ class LST1PredictionTool(Tool):
             )
             input_shape = self.keras_model_direction.input_shape[1:]
 
-        # Create the SubarrayDescription
-        pos = {1: [50.0, 50.0, 16.0] * u.m}
-        tel = {1: "LST_LST_LSTCam"}
-        LOCATION = EarthLocation(lon=-17 * u.deg, lat=28 * u.deg, height=2200 * u.m)
-        self.subarray = SubarrayDescription(
-            "LST-1 of CTAO-North",
-            tel_positions=pos,
-            tel_descriptions=tel,
-            reference_location=LOCATION,
-        )
-        # Write the SubarrayDescription to the output file
-        self.subarray.to_hdf(self.output_path, overwrite=self.overwrite)
-        # Create the CameraGeometry
+        # Create the CameraGeometry and Frankenstein CameraReadout
         cam_geom = {}
         with tables.open_file(self.input_url) as input_file:
             cam_geom_table = (
@@ -227,6 +225,53 @@ class LST1PredictionTool(Tool):
                 pix_rotation="100.893deg",
                 cam_rotation="0deg",
             )
+            readout = CameraReadout(
+                name="FrankensteinLSTReadout",
+                sampling_rate=u.Quantity(1, u.GHz),
+                reference_pulse_shape=np.ones((2, 20)).astype(np.float64),
+                reference_pulse_sample_width=u.Quantity(0.5, u.ns),
+                n_pixels=1855,
+                n_channels=2,
+                n_samples=40,
+            )
+            camera = CameraDescription(
+                name="RealLSTCam",
+                geometry=cam_geom,
+                readout=readout,
+            )
+            optics_table = (
+                input_file.root.configuration.instrument.telescope._f_get_child(
+                    "optics"
+                )
+            )
+            optics = OpticsDescription(
+                name="RealLSTOptics",
+                size_type=SizeType.LST,
+                reflector_shape=ReflectorShape.PARABOLIC,
+                n_mirrors=optics_table.cols.num_mirrors[0],
+                n_mirror_tiles=optics_table.cols.num_mirror_tiles[0],
+                mirror_area=u.Quantity(optics_table.cols.mirror_area[0], u.m**2),
+                equivalent_focal_length=u.Quantity(optics_table.cols.equivalent_focal_length[0], u.m),
+                effective_focal_length=u.Quantity(29.30565, u.m),
+            )
+        # Create the SubarrayDescription of a frankenstein LST-1
+        pos = {1: [50.0, 50.0, 16.0] * u.m}
+        frankenstein_lst = TelescopeDescription(
+            name="Frankenstein-LST-1",
+            optics=optics,
+            camera=camera,
+        )
+        tel = {1: frankenstein_lst}
+        LOCATION = EarthLocation(lon=-17 * u.deg, lat=28 * u.deg, height=2200 * u.m)
+        self.subarray = SubarrayDescription(
+            "Frankenstein-LST-1 subarray",
+            tel_positions=pos,
+            tel_descriptions=tel,
+            reference_location=LOCATION,
+        )
+        # Write the SubarrayDescription to the output file
+        self.subarray.to_hdf(self.output_path, overwrite=self.overwrite)
+        self.log.info("SubarrayDescription was stored in '%s'", self.output_path)
         # Create the ImageMapper
         self.image_mapper = ImageMapper.from_name(
             name=self.image_mapper_type,
@@ -272,6 +317,8 @@ class LST1PredictionTool(Tool):
         self.log.info("Starting the prediction...")
 
         output_identifiers = read_table(self.input_url, self.parameter_table_name)
+        if self.override_obs_id is not None:
+            output_identifiers['obs_id'] = self.override_obs_id
         parameter_table = output_identifiers.copy()
         tel_az = u.Quantity(parameter_table["az_tel"], unit=u.rad).to(u.deg)
         tel_alt = u.Quantity(parameter_table["alt_tel"], unit=u.rad).to(u.deg)
@@ -287,7 +334,7 @@ class LST1PredictionTool(Tool):
             trigger_table,
             self.output_path,
             "/dl1/event/telescope/trigger",
-            self.overwrite,
+            overwrite=self.overwrite,
         )
         self.log.info(
             "DL1 telescope trigger table was stored in '%s' under '%s'",
@@ -304,7 +351,7 @@ class LST1PredictionTool(Tool):
             trigger_table,
             self.output_path,
             "/dl1/event/subarray/trigger",
-            self.overwrite,
+            overwrite=self.overwrite,
         )
         self.log.info(
             "DL1 subarray trigger table was stored in '%s' under '%s'",
@@ -354,7 +401,7 @@ class LST1PredictionTool(Tool):
             parameter_table,
             self.output_path,
             f"/dl1/event/telescope/parameters/tel_{self.tel_id:03d}",
-            self.overwrite,
+            overwrite=self.overwrite,
         )
         self.log.info(
             "DL1 parameters table was stored in '%s' under '%s'",
@@ -400,7 +447,7 @@ class LST1PredictionTool(Tool):
                 classification_table,
                 self.output_path,
                 f"/dl2/event/telescope/classification/{self.reco_algo}/tel_{self.tel_id:03d}",
-                self.overwrite,
+                overwrite=self.overwrite,
             )
             self.log.info(
                 "DL2 prediction data was stored in '%s' under '%s'",
@@ -418,7 +465,7 @@ class LST1PredictionTool(Tool):
                 energy_table,
                 self.output_path,
                 f"/dl2/event/telescope/energy/{self.reco_algo}/tel_{self.tel_id:03d}",
-                self.overwrite,
+                overwrite=self.overwrite,
             )
             self.log.info(
                 "DL2 prediction data was stored in '%s' under '%s'",
@@ -453,7 +500,7 @@ class LST1PredictionTool(Tool):
                 direction_table,
                 self.output_path,
                 f"/dl2/event/telescope/geometry/{self.reco_algo}/tel_{self.tel_id:03d}",
-                self.overwrite,
+                overwrite=self.overwrite,
             )
             self.log.info(
                 "DL2 prediction data was stored in '%s' under '%s'",
