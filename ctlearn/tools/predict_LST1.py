@@ -470,6 +470,8 @@ class LST1PredictionTool(Tool):
             reference_location = ctapipe_io_lst.constants.LST1_LOCATION
 
         camera_geom = ctapipe_io_lst.load_camera_geometry()
+        # Needs to be renamed  because the ImageMapper smooths the pixel positions
+        camera_geom.name  = "RealLSTCam"
 
         # get info on the camera readout:
         daq_time_per_sample, pulse_shape_time_step, pulse_shapes = ctapipe_io_lst.read_pulse_shapes()
