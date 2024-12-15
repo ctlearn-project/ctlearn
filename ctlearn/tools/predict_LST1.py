@@ -176,6 +176,15 @@ class LST1PredictionTool(Tool):
 
     def setup(self):
 
+        self.log.info("Make sure 'ctapipe_io_lst' is installed in your enviroment!")
+        try:
+            import ctapipe_io_lst
+            from ctapipe_io_lst.constants import (
+                LST1_LOCATION, N_GAINS, N_PIXELS_MODULE, N_SAMPLES, N_PIXELS
+            )
+
+        except ImportError:
+            raise ImportError("'ctapipe_io_lst' is not installed in your environment!")
         # Save dl1 image and parameters tree schemas and tel id for easy access
         self.image_table_name = "/dl1/event/telescope/image/LST_LSTCam"
         self.parameter_table_name = "/dl1/event/telescope/parameters/LST_LSTCam"
@@ -207,75 +216,15 @@ class LST1PredictionTool(Tool):
             )
             input_shape = self.keras_model_direction.input_shape[1:]
 
-        # Create the CameraGeometry and Frankenstein CameraReadout
-        cam_geom = {}
-        with tables.open_file(self.input_url) as input_file:
-            cam_geom_table = (
-                input_file.root.configuration.instrument.telescope.camera._f_get_child(
-                    "geometry_0"
-                )
-            )
-            cam_geom = CameraGeometry(
-                name="RealLSTCam",
-                pix_id=cam_geom_table.cols.pix_id[:],
-                pix_type="hexagon",
-                pix_x=u.Quantity(cam_geom_table.cols.pix_x[:], u.cm),
-                pix_y=u.Quantity(cam_geom_table.cols.pix_y[:], u.cm),
-                pix_area=u.Quantity(cam_geom_table.cols.pix_area[:], u.cm**2),
-                pix_rotation="100.893deg",
-                cam_rotation="0deg",
-            )
-            readout = CameraReadout(
-                name="FrankensteinLSTReadout",
-                sampling_rate=u.Quantity(1, u.GHz),
-                reference_pulse_shape=np.ones((2, 20)).astype(np.float64),
-                reference_pulse_sample_width=u.Quantity(0.5, u.ns),
-                n_pixels=1855,
-                n_channels=2,
-                n_samples=40,
-            )
-            camera = CameraDescription(
-                name="RealLSTCam",
-                geometry=cam_geom,
-                readout=readout,
-            )
-            optics_table = (
-                input_file.root.configuration.instrument.telescope._f_get_child(
-                    "optics"
-                )
-            )
-            optics = OpticsDescription(
-                name="RealLSTOptics",
-                size_type=SizeType.LST,
-                reflector_shape=ReflectorShape.PARABOLIC,
-                n_mirrors=optics_table.cols.num_mirrors[0],
-                n_mirror_tiles=optics_table.cols.num_mirror_tiles[0],
-                mirror_area=u.Quantity(optics_table.cols.mirror_area[0], u.m**2),
-                equivalent_focal_length=u.Quantity(optics_table.cols.equivalent_focal_length[0], u.m),
-                effective_focal_length=u.Quantity(29.30565, u.m),
-            )
-        # Create the SubarrayDescription of a frankenstein LST-1
-        pos = {1: [50.0, 50.0, 16.0] * u.m}
-        frankenstein_lst = TelescopeDescription(
-            name="Frankenstein-LST-1",
-            optics=optics,
-            camera=camera,
-        )
-        tel = {1: frankenstein_lst}
-        LOCATION = EarthLocation(lon=-17 * u.deg, lat=28 * u.deg, height=2200 * u.m)
-        self.subarray = SubarrayDescription(
-            "Frankenstein-LST-1 subarray",
-            tel_positions=pos,
-            tel_descriptions=tel,
-            reference_location=LOCATION,
-        )
+        # Create the SubarrayDescription of the LST-1 telescope
+        self.subarray = self.create_subarray(tel_id=self.tel_id)
         # Write the SubarrayDescription to the output file
         self.subarray.to_hdf(self.output_path, overwrite=self.overwrite)
         self.log.info("SubarrayDescription was stored in '%s'", self.output_path)
         # Create the ImageMapper
         self.image_mapper = ImageMapper.from_name(
             name=self.image_mapper_type,
-            geometry=cam_geom,
+            geometry=self.subarray.tel[self.tel_id].camera.geometry,
             subarray=self.subarray,
             parent=self,
         )
@@ -511,6 +460,57 @@ class LST1PredictionTool(Tool):
     def finish(self):
         self.log.info("Tool is shutting down")
 
+    def create_subarray(tel_id=1, reference_location=None):
+        """
+        Obtain a single-lst subarray description (Code taken from ctapipe_io_lst)
+
+        Returns
+        -------
+        ctapipe.instrument.SubarrayDescription
+        """
+        if reference_location is None:
+            reference_location = ctapipe_io_lst.constants.LST1_LOCATION
+
+        camera_geom = ctapipe_io_lst.load_camera_geometry()
+
+        # get info on the camera readout:
+        daq_time_per_sample, pulse_shape_time_step, pulse_shapes = ctapipe_io_lst.read_pulse_shapes()
+
+        camera_readout = CameraReadout(
+            name='LSTCam',
+            n_pixels=ctapipe_io_lst.constants.N_PIXELS,
+            n_channels=ctapipe_io_lst.constants.N_GAINS,
+            n_samples=ctapipe_io_lst.constants.N_SAMPLES,
+            sampling_rate=(1 / daq_time_per_sample).to(u.GHz),
+            reference_pulse_shape=pulse_shapes,
+            reference_pulse_sample_width=pulse_shape_time_step,
+        )
+
+        camera = CameraDescription(name='LSTCam', geometry=camera_geom, readout=camera_readout)
+
+        lst_tel_descr = TelescopeDescription(
+            name='LST', optics=ctapipe_io_lst.OPTICS, camera=camera
+        )
+
+        tel_descriptions = {tel_id: lst_tel_descr}
+
+        try:
+            location = LST_LOCATIONS[tel_id]
+        except KeyError:
+            known = list(LST_LOCATIONS.keys())
+            msg = f"Location missing for tel_id={tel_id}. Known tel_ids: {known}. Is this LST data?"
+            raise KeyError(msg) from None
+
+        ground_frame = ctapipe_io_lst.ground_frame.ground_frame_from_earth_location(location, reference_location)
+        tel_positions = {tel_id: ground_frame.cartesian.xyz}
+        subarray = SubarrayDescription(
+            name=f"LST-{tel_id} subarray",
+            tel_descriptions=tel_descriptions,
+            tel_positions=tel_positions,
+            reference_location=reference_location,
+        )
+
+        return subarray
 
 def main():
     # Run the tool
