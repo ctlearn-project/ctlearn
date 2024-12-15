@@ -176,15 +176,6 @@ class LST1PredictionTool(Tool):
 
     def setup(self):
 
-        self.log.info("Make sure 'ctapipe_io_lst' is installed in your enviroment!")
-        try:
-            import ctapipe_io_lst
-            from ctapipe_io_lst.constants import (
-                LST1_LOCATION, N_GAINS, N_PIXELS_MODULE, N_SAMPLES, N_PIXELS
-            )
-
-        except ImportError:
-            raise ImportError("'ctapipe_io_lst' is not installed in your environment!")
         # Save dl1 image and parameters tree schemas and tel id for easy access
         self.image_table_name = "/dl1/event/telescope/image/LST_LSTCam"
         self.parameter_table_name = "/dl1/event/telescope/parameters/LST_LSTCam"
@@ -217,7 +208,7 @@ class LST1PredictionTool(Tool):
             input_shape = self.keras_model_direction.input_shape[1:]
 
         # Create the SubarrayDescription of the LST-1 telescope
-        self.subarray = self.create_subarray(tel_id=self.tel_id)
+        self.subarray = self._create_subarray()
         # Write the SubarrayDescription to the output file
         self.subarray.to_hdf(self.output_path, overwrite=self.overwrite)
         self.log.info("SubarrayDescription was stored in '%s'", self.output_path)
@@ -460,7 +451,7 @@ class LST1PredictionTool(Tool):
     def finish(self):
         self.log.info("Tool is shutting down")
 
-    def create_subarray(tel_id=1, reference_location=None):
+    def _create_subarray(self, tel_id=1, reference_location=None):
         """
         Obtain a single-lst subarray description (Code taken from ctapipe_io_lst)
 
@@ -468,6 +459,13 @@ class LST1PredictionTool(Tool):
         -------
         ctapipe.instrument.SubarrayDescription
         """
+
+        self.log.info("Make sure 'ctapipe_io_lst' is installed in your enviroment!")
+        try:
+            import ctapipe_io_lst
+        except ImportError:
+            raise ImportError("'ctapipe_io_lst' is not installed in your environment!")
+
         if reference_location is None:
             reference_location = ctapipe_io_lst.constants.LST1_LOCATION
 
@@ -495,9 +493,9 @@ class LST1PredictionTool(Tool):
         tel_descriptions = {tel_id: lst_tel_descr}
 
         try:
-            location = LST_LOCATIONS[tel_id]
+            location = ctapipe_io_lst.constants.LST_LOCATIONS[tel_id]
         except KeyError:
-            known = list(LST_LOCATIONS.keys())
+            known = list(ctapipe_io_lst.constants.LST_LOCATIONS.keys())
             msg = f"Location missing for tel_id={tel_id}. Known tel_ids: {known}. Is this LST data?"
             raise KeyError(msg) from None
 
