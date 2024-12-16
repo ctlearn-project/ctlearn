@@ -13,6 +13,7 @@ from astropy.coordinates.earth import EarthLocation
 from astropy.coordinates import SkyCoord
 from astropy.time import Time
 
+rom ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.core import Tool
 from ctapipe.core.tool import ToolConfigurationError
 from ctapipe.core.traits import (
@@ -140,6 +141,15 @@ class LST1PredictionTool(Tool):
         help=(
             "Use the given obs_id instead of the default one. "
             "Needed to merge subruns later with ctapipe-merge."
+        ),
+    ).tag(config=True)
+
+    transform_to_EngineeringCameraFrame = Bool(
+       default_value=True,
+        allow_none=False,
+        help=(
+            "Transform  the camera geometry to the EngineeringCameraFrame. "
+            "Needed if training was done in this frame."
         ),
     ).tag(config=True)
 
@@ -472,7 +482,8 @@ class LST1PredictionTool(Tool):
         camera_geom = ctapipe_io_lst.load_camera_geometry()
         # Needs to be renamed  because the ImageMapper smooths the pixel positions
         camera_geom.name  = "RealLSTCam"
-
+        if self.transform_to_EngineeringCameraFrame:
+            camera_geom = camera_geom.transform_to(EngineeringCameraFrame(focal_length=ctapipe_io_lst.OPTICS.effective_focal_length))
         # get info on the camera readout:
         daq_time_per_sample, pulse_shape_time_step, pulse_shapes = ctapipe_io_lst.read_pulse_shapes()
 
