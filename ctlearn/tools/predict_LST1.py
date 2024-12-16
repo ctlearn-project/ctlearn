@@ -13,7 +13,7 @@ from astropy.coordinates.earth import EarthLocation
 from astropy.coordinates import SkyCoord
 from astropy.time import Time
 
-rom ctapipe.coordinates import EngineeringCameraFrame
+from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.core import Tool
 from ctapipe.core.tool import ToolConfigurationError
 from ctapipe.core.traits import (
