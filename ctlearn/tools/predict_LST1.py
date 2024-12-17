@@ -153,12 +153,6 @@ class LST1PredictionTool(Tool):
         ),
     ).tag(config=True)
 
-    store_event_wise_pointing = Bool(
-        default_value=True,
-        allow_none=False,
-        help="Store the event-wise telescope pointing in the output file.",
-    ).tag(config=True)
-
     output_path = Path(
         default_value="./output.dl2.h5",
         allow_none=False,
@@ -274,7 +268,26 @@ class LST1PredictionTool(Tool):
         tel_alt = u.Quantity(parameter_table["alt_tel"], unit=u.rad).to(u.deg)
         event_type = parameter_table["event_type"]
         time = Time(parameter_table["dragon_time"] * u.s, format="unix")
+        # Create the pointing table
+        # This table is used to store the telescope pointing per event
+        pointing_table = QTable()
+        pointing_table.add_column(time, name="time")
+        pointing_table.add_column(tel_az, name="azimuth")
+        pointing_table.add_column(tel_alt, name="altitude")
+        write_table(
+            pointing_table,
+            self.output_path,
+            f"/dl0/monitoring/telescope/pointing/tel_{self.tel_id:03d}",
+            overwrite=self.overwrite,
+        )
+        self.log.info(
+            "DL0 telescope pointing table was stored in '%s' under '%s'",
+            self.output_path,
+            f"/dl0/monitoring/telescope/pointing/tel_{self.tel_id:03d}",
+        )
+        # Set the time format to MJD since in the other table we store the time in MJD
         time.format = "mjd"
+        # Keep only the necessary columns for the creation of tables
         output_identifiers.keep_columns(["obs_id", "event_id", "tel_id"])
         # Create the dl1 telescope trigger table
         trigger_table = output_identifiers.copy()
@@ -437,14 +450,6 @@ class LST1PredictionTool(Tool):
             # Add the reconstructed direction (az, alt) to the prediction table
             direction_table.add_column(reco_direction["az"], name="az")
             direction_table.add_column(reco_direction["alt"], name="alt")
-
-            if self.store_event_wise_pointing:
-                # Add the event-wise telescope pointing to the prediction table
-                direction_table.add_column(tel_az, name="telescope_pointing_azimuth")
-                direction_table.add_column(tel_alt, name="telescope_pointing_altitude")
-                # Add the timestamp of the event to the prediction table
-                direction_table.add_column(time, name="time")
-
             # Save the prediction to the output file
             write_table(
                 direction_table,
