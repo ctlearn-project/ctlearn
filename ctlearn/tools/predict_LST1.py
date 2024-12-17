@@ -6,7 +6,7 @@ import pathlib
 
 import numpy as np
 from astropy import units as u
-from astropy.table import Table
+from astropy.table import Table, QTable
 import tables
 import keras
 from astropy.coordinates.earth import EarthLocation
@@ -277,13 +277,13 @@ class LST1PredictionTool(Tool):
         write_table(
             pointing_table,
             self.output_path,
-            f"/dl0/monitoring/telescope/pointing/tel_{self.tel_id:03d}",
+            f"/dl1/monitoring/telescope/pointing/tel_{self.tel_id:03d}",
             overwrite=self.overwrite,
         )
         self.log.info(
-            "DL0 telescope pointing table was stored in '%s' under '%s'",
+            "DL1 telescope pointing table was stored in '%s' under '%s'",
             self.output_path,
-            f"/dl0/monitoring/telescope/pointing/tel_{self.tel_id:03d}",
+            f"/dl1/monitoring/telescope/pointing/tel_{self.tel_id:03d}",
         )
         # Set the time format to MJD since in the other table we store the time in MJD
         time.format = "mjd"
