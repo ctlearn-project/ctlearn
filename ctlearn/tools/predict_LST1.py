@@ -6,13 +6,23 @@ import pathlib
 
 import numpy as np
 from astropy import units as u
-from astropy.table import Table, QTable
+from astropy.table import Table
 import tables
 import keras
 from astropy.coordinates.earth import EarthLocation
 from astropy.coordinates import SkyCoord
 from astropy.time import Time
 
+from ctapipe.containers import (
+    TelEventIndexContainer,
+    EventIndexContainer,
+    TelescopePointingContainer,
+    TelescopeTriggerContainer,
+    TriggerContainer,
+    ParticleClassificationContainer,
+    ReconstructedGeometryContainer,
+    ReconstructedEnergyContainer,
+)
 from ctapipe.coordinates import EngineeringCameraFrame
 from ctapipe.core import Tool
 from ctapipe.core.tool import ToolConfigurationError
@@ -28,9 +38,17 @@ from ctapipe.core.traits import (
     Unicode,
     classes_with_traits,
 )
-from ctapipe.instrument import SubarrayDescription, CameraDescription, CameraGeometry, CameraReadout, TelescopeDescription
+from ctapipe.instrument import (
+    SubarrayDescription,
+    CameraDescription,
+    CameraGeometry,
+    CameraReadout,
+    TelescopeDescription,
+)
 from ctapipe.instrument.optics import OpticsDescription, ReflectorShape, SizeType
 from ctapipe.io import read_table, write_table
+from ctapipe.reco.utils import add_defaults_and_meta
+
 from ctlearn.core.model import LoadedModel
 from dl1_data_handler.image_mapper import ImageMapper
 from dl1_data_handler.reader import get_unmapped_image, get_unmapped_waveform
@@ -59,7 +77,7 @@ class LST1PredictionTool(Tool):
         file_ok=True,
     ).tag(config=True)
 
-    reco_algo = Unicode(
+    prefix = Unicode(
         default_value="CTLearn",
         allow_none=False,
         help="Name of the reconstruction algorithm used to generate the dl2 data.",
@@ -145,7 +163,7 @@ class LST1PredictionTool(Tool):
     ).tag(config=True)
 
     transform_to_EngineeringCameraFrame = Bool(
-       default_value=True,
+        default_value=True,
         allow_none=False,
         help=(
             "Transform  the camera geometry to the EngineeringCameraFrame. "
@@ -179,7 +197,6 @@ class LST1PredictionTool(Tool):
     classes = classes_with_traits(ImageMapper)
 
     def setup(self):
-
         # Save dl1 image and parameters tree schemas and tel id for easy access
         self.image_table_name = "/dl1/event/telescope/image/LST_LSTCam"
         self.parameter_table_name = "/dl1/event/telescope/parameters/LST_LSTCam"
@@ -262,18 +279,25 @@ class LST1PredictionTool(Tool):
 
         output_identifiers = read_table(self.input_url, self.parameter_table_name)
         if self.override_obs_id is not None:
-            output_identifiers['obs_id'] = self.override_obs_id
+            output_identifiers["obs_id"] = self.override_obs_id
         parameter_table = output_identifiers.copy()
-        tel_az = u.Quantity(parameter_table["az_tel"], unit=u.rad).to(u.deg)
-        tel_alt = u.Quantity(parameter_table["alt_tel"], unit=u.rad).to(u.deg)
+        tel_az = u.Quantity(parameter_table["az_tel"], unit=u.rad)
+        tel_alt = u.Quantity(parameter_table["alt_tel"], unit=u.rad)
         event_type = parameter_table["event_type"]
         time = Time(parameter_table["dragon_time"] * u.s, format="unix")
         # Create the pointing table
         # This table is used to store the telescope pointing per event
-        pointing_table = QTable()
-        pointing_table.add_column(time, name="time")
-        pointing_table.add_column(tel_az, name="azimuth")
-        pointing_table.add_column(tel_alt, name="altitude")
+        pointing_table = Table(
+            {
+                "time": time,
+                "azimuth": tel_az,
+                "altitude": tel_alt,
+            }
+        )
+        add_defaults_and_meta(
+            pointing_table,
+            TelescopePointingContainer,
+        )
         write_table(
             pointing_table,
             self.output_path,
@@ -290,11 +314,20 @@ class LST1PredictionTool(Tool):
         # Keep only the necessary columns for the creation of tables
         output_identifiers.keep_columns(["obs_id", "event_id", "tel_id"])
         # Create the dl1 telescope trigger table
-        trigger_table = output_identifiers.copy()
-        trigger_table.add_column(time, name="time")
-        trigger_table.add_column(-1, name="n_trigger_pixels")
+        tel_trigger_table = output_identifiers.copy()
+        tel_trigger_table.add_column(time, name="time")
+        tel_trigger_table.add_column(-1, name="n_trigger_pixels")
+        # Add the default values and meta data to the table
+        add_defaults_and_meta(
+            tel_trigger_table,
+            TelEventIndexContainer,
+        )
+        add_defaults_and_meta(
+            tel_trigger_table,
+            TelescopeTriggerContainer,
+        )
         write_table(
-            trigger_table,
+            tel_trigger_table,
             self.output_path,
             "/dl1/event/telescope/trigger",
             overwrite=self.overwrite,
@@ -309,6 +342,15 @@ class LST1PredictionTool(Tool):
             np.ones((len(trigger_table), 1), dtype=bool), name="tel_with_trigger"
         )
         trigger_table.add_column(event_type, name="event_type")
+        # Add the default values and meta data to the table
+        add_defaults_and_meta(
+            trigger_table,
+            EventIndexContainer,
+        )
+        add_defaults_and_meta(
+            trigger_table,
+            TriggerContainer,
+        )
         # Save the dl1 subrray trigger table to the output file
         write_table(
             trigger_table,
@@ -359,6 +401,11 @@ class LST1PredictionTool(Tool):
             ]
         )
         parameter_table.add_column(self.tel_id, name="tel_id", index=2)
+        # Add the default values and meta data to the table
+        add_defaults_and_meta(
+            parameter_table,
+            TelEventIndexContainer,
+        )
         # Save the dl1 parameters table to the output file
         write_table(
             parameter_table,
@@ -404,36 +451,72 @@ class LST1PredictionTool(Tool):
 
         if self.load_type_model_from is not None:
             classification_table = output_identifiers.copy()
-            classification_table.add_column(prediction, name="prediction")
+            classification_table.add_column(
+                prediction, name=f"{self.prefix}_tel_prediction"
+            )
+            classification_table.add_column(
+                ~np.isnan(prediction, dtype=bool), name=f"{self.prefix}_tel_is_valid"
+            )
+            classification_table.add_column(
+                np.nan, name=f"{self.prefix}_tel_goodness_of_fit"
+            )
+            # Add the default values and meta data to the table
+            add_defaults_and_meta(
+                classification_table,
+                TelEventIndexContainer,
+            )
+            add_defaults_and_meta(
+                classification_table,
+                ParticleClassificationContainer,
+                prefix=self.prefix,
+                add_tel_prefix=True,
+            )
             # Save the prediction to the output file
             write_table(
                 classification_table,
                 self.output_path,
-                f"/dl2/event/telescope/classification/{self.reco_algo}/tel_{self.tel_id:03d}",
+                f"/dl2/event/telescope/classification/{self.prefix}/tel_{self.tel_id:03d}",
                 overwrite=self.overwrite,
             )
             self.log.info(
                 "DL2 prediction data was stored in '%s' under '%s'",
                 self.output_path,
-                f"/dl2/event/telescope/classification/{self.reco_algo}/tel_{self.tel_id:03d}",
+                f"/dl2/event/telescope/classification/{self.prefix}/tel_{self.tel_id:03d}",
             )
         if self.load_energy_model_from is not None:
             energy_table = output_identifiers.copy()
             # Convert the reconstructed energy from log10(TeV) to TeV
             reco_energy = u.Quantity(np.power(10, np.squeeze(energy)), unit=u.TeV)
             # Add the reconstructed energy to the prediction table
-            energy_table.add_column(reco_energy, name="energy")
+            energy_table.add_column(reco_energy, name=f"{self.prefix}_tel_energy")
+            energy_table.add_column(
+                ~np.isnan(reco_energy.data, dtype=bool),
+                name=f"{self.prefix}_tel_is_valid",
+            )
+            energy_table.add_column(np.nan, name=f"{self.prefix}_tel_energy_uncert")
+            energy_table.add_column(np.nan, name=f"{self.prefix}_tel_goodness_of_fit")
+            # Add the default values and meta data to the table
+            add_defaults_and_meta(
+                energy_table,
+                TelEventIndexContainer,
+            )
+            add_defaults_and_meta(
+                energy_table,
+                ReconstructedEnergyContainer,
+                prefix=self.prefix,
+                add_tel_prefix=True,
+            )
             # Save the prediction to the output file
             write_table(
                 energy_table,
                 self.output_path,
-                f"/dl2/event/telescope/energy/{self.reco_algo}/tel_{self.tel_id:03d}",
+                f"/dl2/event/telescope/energy/{self.prefix}/tel_{self.tel_id:03d}",
                 overwrite=self.overwrite,
             )
             self.log.info(
                 "DL2 prediction data was stored in '%s' under '%s'",
                 self.output_path,
-                f"/dl2/event/telescope/energy/{self.reco_algo}/tel_{self.tel_id:03d}",
+                f"/dl2/event/telescope/energy/{self.prefix}/tel_{self.tel_id:03d}",
             )
 
         if self.load_direction_model_from is not None:
@@ -448,19 +531,43 @@ class LST1PredictionTool(Tool):
                 reco_spherical_offset_az, reco_spherical_offset_alt
             ).to_table()
             # Add the reconstructed direction (az, alt) to the prediction table
-            direction_table.add_column(reco_direction["az"], name="az")
-            direction_table.add_column(reco_direction["alt"], name="alt")
+            direction_table.add_column(
+                reco_direction["az"], name=f"{self.prefix}_tel_az"
+            )
+            direction_table.add_column(
+                reco_direction["alt"], name=f"{self.prefix}_tel_alt"
+            )
+            direction_table.add_column(np.nan, name=f"{self.prefix}_tel_az_uncert")
+            direction_table.add_column(np.nan, name=f"{self.prefix}_tel_alt_uncert")
+            direction_table.add_column(
+                ~np.isnan(reco_direction["az"].data, dtype=bool),
+                name=f"{self.prefix}_tel_is_valid",
+            )
+            direction_table.add_column(
+                np.nan, name=f"{self.prefix}_tel_goodness_of_fit"
+            )
+            # Add the default values and meta data to the table
+            add_defaults_and_meta(
+                direction_table,
+                TelEventIndexContainer,
+            )
+            add_defaults_and_meta(
+                direction_table,
+                ReconstructedGeometryContainer,
+                prefix=self.prefix,
+                add_tel_prefix=True,
+            )
             # Save the prediction to the output file
             write_table(
                 direction_table,
                 self.output_path,
-                f"/dl2/event/telescope/geometry/{self.reco_algo}/tel_{self.tel_id:03d}",
+                f"/dl2/event/telescope/geometry/{self.prefix}/tel_{self.tel_id:03d}",
                 overwrite=self.overwrite,
             )
             self.log.info(
                 "DL2 prediction data was stored in '%s' under '%s'",
                 self.output_path,
-                f"/dl2/event/telescope/geometry/{self.reco_algo}/tel_{self.tel_id:03d}",
+                f"/dl2/event/telescope/geometry/{self.prefix}/tel_{self.tel_id:03d}",
             )
 
     def finish(self):
@@ -486,14 +593,22 @@ class LST1PredictionTool(Tool):
 
         camera_geom = ctapipe_io_lst.load_camera_geometry()
         # Needs to be renamed  because the ImageMapper smooths the pixel positions
-        camera_geom.name  = "RealLSTCam"
+        camera_geom.name = "RealLSTCam"
         if self.transform_to_EngineeringCameraFrame:
-            camera_geom = camera_geom.transform_to(EngineeringCameraFrame(focal_length=ctapipe_io_lst.OPTICS.effective_focal_length))
+            camera_geom = camera_geom.transform_to(
+                EngineeringCameraFrame(
+                    focal_length=ctapipe_io_lst.OPTICS.effective_focal_length
+                )
+            )
         # get info on the camera readout:
-        daq_time_per_sample, pulse_shape_time_step, pulse_shapes = ctapipe_io_lst.read_pulse_shapes()
+        (
+            daq_time_per_sample,
+            pulse_shape_time_step,
+            pulse_shapes,
+        ) = ctapipe_io_lst.read_pulse_shapes()
 
         camera_readout = CameraReadout(
-            name='LSTCam',
+            name="LSTCam",
             n_pixels=ctapipe_io_lst.constants.N_PIXELS,
             n_channels=ctapipe_io_lst.constants.N_GAINS,
             n_samples=ctapipe_io_lst.constants.N_SAMPLES,
@@ -502,10 +617,12 @@ class LST1PredictionTool(Tool):
             reference_pulse_sample_width=pulse_shape_time_step,
         )
 
-        camera = CameraDescription(name='LSTCam', geometry=camera_geom, readout=camera_readout)
+        camera = CameraDescription(
+            name="LSTCam", geometry=camera_geom, readout=camera_readout
+        )
 
         lst_tel_descr = TelescopeDescription(
-            name='LST', optics=ctapipe_io_lst.OPTICS, camera=camera
+            name="LST", optics=ctapipe_io_lst.OPTICS, camera=camera
         )
 
         tel_descriptions = {tel_id: lst_tel_descr}
@@ -517,7 +634,9 @@ class LST1PredictionTool(Tool):
             msg = f"Location missing for tel_id={tel_id}. Known tel_ids: {known}. Is this LST data?"
             raise KeyError(msg) from None
 
-        ground_frame = ctapipe_io_lst.ground_frame.ground_frame_from_earth_location(location, reference_location)
+        ground_frame = ctapipe_io_lst.ground_frame.ground_frame_from_earth_location(
+            location, reference_location
+        )
         tel_positions = {tel_id: ground_frame.cartesian.xyz}
         subarray = SubarrayDescription(
             name=f"LST-{tel_id} subarray",
@@ -527,6 +646,7 @@ class LST1PredictionTool(Tool):
         )
 
         return subarray
+
 
 def main():
     # Run the tool
