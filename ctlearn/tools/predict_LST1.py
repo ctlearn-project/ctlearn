@@ -314,20 +314,20 @@ class LST1PredictionTool(Tool):
         # Keep only the necessary columns for the creation of tables
         output_identifiers.keep_columns(["obs_id", "event_id", "tel_id"])
         # Create the dl1 telescope trigger table
-        tel_trigger_table = output_identifiers.copy()
-        tel_trigger_table.add_column(time, name="time")
-        tel_trigger_table.add_column(-1, name="n_trigger_pixels")
+        trigger_table = output_identifiers.copy()
+        trigger_table.add_column(time, name="time")
+        trigger_table.add_column(-1, name="n_trigger_pixels")
         # Add the default values and meta data to the table
         add_defaults_and_meta(
-            tel_trigger_table,
+            trigger_table,
             TelEventIndexContainer,
         )
         add_defaults_and_meta(
-            tel_trigger_table,
+            trigger_table,
             TelescopeTriggerContainer,
         )
         write_table(
-            tel_trigger_table,
+            trigger_table,
             self.output_path,
             "/dl1/event/telescope/trigger",
             overwrite=self.overwrite,
