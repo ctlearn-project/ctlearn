@@ -317,15 +317,6 @@ class LST1PredictionTool(Tool):
         trigger_table = output_identifiers.copy()
         trigger_table.add_column(time, name="time")
         trigger_table.add_column(-1, name="n_trigger_pixels")
-        # Add the default values and meta data to the table
-        add_defaults_and_meta(
-            trigger_table,
-            TelEventIndexContainer,
-        )
-        add_defaults_and_meta(
-            trigger_table,
-            TelescopeTriggerContainer,
-        )
         write_table(
             trigger_table,
             self.output_path,
@@ -342,15 +333,6 @@ class LST1PredictionTool(Tool):
             np.ones((len(trigger_table), 1), dtype=bool), name="tel_with_trigger"
         )
         trigger_table.add_column(event_type, name="event_type")
-        # Add the default values and meta data to the table
-        add_defaults_and_meta(
-            trigger_table,
-            EventIndexContainer,
-        )
-        add_defaults_and_meta(
-            trigger_table,
-            TriggerContainer,
-        )
         # Save the dl1 subrray trigger table to the output file
         write_table(
             trigger_table,
