@@ -278,6 +278,7 @@ class LST1PredictionTool(Tool):
         self.log.info("Starting the prediction...")
 
         output_identifiers = read_table(self.input_url, self.parameter_table_name)
+        output_identifiers.meta = {}
         if self.override_obs_id is not None:
             output_identifiers["obs_id"] = self.override_obs_id
         parameter_table = output_identifiers.copy()
@@ -293,10 +294,6 @@ class LST1PredictionTool(Tool):
                 "azimuth": tel_az,
                 "altitude": tel_alt,
             }
-        )
-        add_defaults_and_meta(
-            pointing_table,
-            TelescopePointingContainer,
         )
         write_table(
             pointing_table,
@@ -347,8 +344,8 @@ class LST1PredictionTool(Tool):
         )
         # Create the dl1 parameters table
         parameter_table.rename_column("intensity", "hillas_intensity")
-        parameter_table.rename_column("x", "hillas_fov_lon")
-        parameter_table.rename_column("y", "hillas_fov_lat")
+        parameter_table.rename_column("x", "hillas_x")
+        parameter_table.rename_column("y", "hillas_y")
         parameter_table.rename_column("phi", "hillas_phi")
         parameter_table.rename_column("psi", "hillas_psi")
         parameter_table.rename_column("length", "hillas_length")
@@ -366,8 +363,8 @@ class LST1PredictionTool(Tool):
                 "obs_id",
                 "event_id",
                 "hillas_intensity",
-                "hillas_fov_lon",
-                "hillas_fov_lat",
+                "hillas_x",
+                "hillas_y",
                 "hillas_phi",
                 "hillas_psi",
                 "hillas_length",
@@ -383,11 +380,6 @@ class LST1PredictionTool(Tool):
             ]
         )
         parameter_table.add_column(self.tel_id, name="tel_id", index=2)
-        # Add the default values and meta data to the table
-        add_defaults_and_meta(
-            parameter_table,
-            TelEventIndexContainer,
-        )
         # Save the dl1 parameters table to the output file
         write_table(
             parameter_table,
@@ -445,10 +437,6 @@ class LST1PredictionTool(Tool):
             # Add the default values and meta data to the table
             add_defaults_and_meta(
                 classification_table,
-                TelEventIndexContainer,
-            )
-            add_defaults_and_meta(
-                classification_table,
                 ParticleClassificationContainer,
                 prefix=self.prefix,
                 add_tel_prefix=True,
@@ -478,10 +466,6 @@ class LST1PredictionTool(Tool):
             energy_table.add_column(np.nan, name=f"{self.prefix}_tel_energy_uncert")
             energy_table.add_column(np.nan, name=f"{self.prefix}_tel_goodness_of_fit")
             # Add the default values and meta data to the table
-            add_defaults_and_meta(
-                energy_table,
-                TelEventIndexContainer,
-            )
             add_defaults_and_meta(
                 energy_table,
                 ReconstructedEnergyContainer,
@@ -529,10 +513,6 @@ class LST1PredictionTool(Tool):
                 np.nan, name=f"{self.prefix}_tel_goodness_of_fit"
             )
             # Add the default values and meta data to the table
-            add_defaults_and_meta(
-                direction_table,
-                TelEventIndexContainer,
-            )
             add_defaults_and_meta(
                 direction_table,
                 ReconstructedGeometryContainer,
