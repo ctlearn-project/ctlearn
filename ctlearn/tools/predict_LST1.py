@@ -53,6 +53,9 @@ from ctlearn.core.model import LoadedModel
 from dl1_data_handler.image_mapper import ImageMapper
 from dl1_data_handler.reader import get_unmapped_image, get_unmapped_waveform
 
+POINTING_GROUP = "/dl1/monitoring/telescope/pointing"
+DL2_TELESCOPE_GROUP = "/dl2/event/telescope"
+TELESCOPE_EVENT_KEYS = ["obs_id", "event_id", "tel_id"]
 
 class LST1PredictionTool(Tool):
     """
@@ -298,18 +301,18 @@ class LST1PredictionTool(Tool):
         write_table(
             pointing_table,
             self.output_path,
-            f"/dl1/monitoring/telescope/pointing/tel_{self.tel_id:03d}",
+            f"{POINTING_GROUP}/tel_{self.tel_id:03d}",
             overwrite=self.overwrite,
         )
         self.log.info(
             "DL1 telescope pointing table was stored in '%s' under '%s'",
             self.output_path,
-            f"/dl1/monitoring/telescope/pointing/tel_{self.tel_id:03d}",
+            f"{POINTING_GROUP}/tel_{self.tel_id:03d}",
         )
         # Set the time format to MJD since in the other table we store the time in MJD
         time.format = "mjd"
         # Keep only the necessary columns for the creation of tables
-        output_identifiers.keep_columns(["obs_id", "event_id", "tel_id"])
+        output_identifiers.keep_columns(TELESCOPE_EVENT_KEYS)
         # Create the dl1 telescope trigger table
         trigger_table = output_identifiers.copy()
         trigger_table.add_column(time, name="time")
@@ -431,9 +434,6 @@ class LST1PredictionTool(Tool):
             classification_table.add_column(
                 ~np.isnan(prediction, dtype=bool), name=f"{self.prefix}_tel_is_valid"
             )
-            classification_table.add_column(
-                np.nan, name=f"{self.prefix}_tel_goodness_of_fit"
-            )
             # Add the default values and meta data to the table
             add_defaults_and_meta(
                 classification_table,
@@ -445,13 +445,13 @@ class LST1PredictionTool(Tool):
             write_table(
                 classification_table,
                 self.output_path,
-                f"/dl2/event/telescope/classification/{self.prefix}/tel_{self.tel_id:03d}",
+                f"{DL2_TELESCOPE_GROUP}/classification/{self.prefix}/tel_{self.tel_id:03d}",
                 overwrite=self.overwrite,
             )
             self.log.info(
                 "DL2 prediction data was stored in '%s' under '%s'",
                 self.output_path,
-                f"/dl2/event/telescope/classification/{self.prefix}/tel_{self.tel_id:03d}",
+                f"{DL2_TELESCOPE_GROUP}/classification/{self.prefix}/tel_{self.tel_id:03d}",
             )
         if self.load_energy_model_from is not None:
             energy_table = output_identifiers.copy()
@@ -463,8 +463,6 @@ class LST1PredictionTool(Tool):
                 ~np.isnan(reco_energy.data, dtype=bool),
                 name=f"{self.prefix}_tel_is_valid",
             )
-            energy_table.add_column(np.nan, name=f"{self.prefix}_tel_energy_uncert")
-            energy_table.add_column(np.nan, name=f"{self.prefix}_tel_goodness_of_fit")
             # Add the default values and meta data to the table
             add_defaults_and_meta(
                 energy_table,
@@ -476,13 +474,13 @@ class LST1PredictionTool(Tool):
             write_table(
                 energy_table,
                 self.output_path,
-                f"/dl2/event/telescope/energy/{self.prefix}/tel_{self.tel_id:03d}",
+                f"{DL2_TELESCOPE_GROUP}/energy/{self.prefix}/tel_{self.tel_id:03d}",
                 overwrite=self.overwrite,
             )
             self.log.info(
                 "DL2 prediction data was stored in '%s' under '%s'",
                 self.output_path,
-                f"/dl2/event/telescope/energy/{self.prefix}/tel_{self.tel_id:03d}",
+                f"{DL2_TELESCOPE_GROUP}/energy/{self.prefix}/tel_{self.tel_id:03d}",
             )
 
         if self.load_direction_model_from is not None:
@@ -503,14 +501,9 @@ class LST1PredictionTool(Tool):
             direction_table.add_column(
                 reco_direction["alt"], name=f"{self.prefix}_tel_alt"
             )
-            direction_table.add_column(np.nan, name=f"{self.prefix}_tel_az_uncert")
-            direction_table.add_column(np.nan, name=f"{self.prefix}_tel_alt_uncert")
             direction_table.add_column(
                 ~np.isnan(reco_direction["az"].data, dtype=bool),
                 name=f"{self.prefix}_tel_is_valid",
-            )
-            direction_table.add_column(
-                np.nan, name=f"{self.prefix}_tel_goodness_of_fit"
             )
             # Add the default values and meta data to the table
             add_defaults_and_meta(
@@ -523,13 +516,13 @@ class LST1PredictionTool(Tool):
             write_table(
                 direction_table,
                 self.output_path,
-                f"/dl2/event/telescope/geometry/{self.prefix}/tel_{self.tel_id:03d}",
+                f"{DL2_TELESCOPE_GROUP}/geometry/{self.prefix}/tel_{self.tel_id:03d}",
                 overwrite=self.overwrite,
             )
             self.log.info(
                 "DL2 prediction data was stored in '%s' under '%s'",
                 self.output_path,
-                f"/dl2/event/telescope/geometry/{self.prefix}/tel_{self.tel_id:03d}",
+                f"{DL2_TELESCOPE_GROUP}/geometry/{self.prefix}/tel_{self.tel_id:03d}",
             )
 
     def finish(self):
