@@ -201,13 +201,13 @@ class LST1PredictionTool(Tool):
 
     def setup(self):
         # Save dl1 image and parameters tree schemas and tel id for easy access
-        self.image_table_name = "/dl1/event/telescope/image/LST_LSTCam"
+        self.image_table_path = "/dl1/event/telescope/image/LST_LSTCam"
         self.parameter_table_name = "/dl1/event/telescope/parameters/LST_LSTCam"
         self.tel_id = 1
 
         # Get the number of rows in the table
         with tables.open_file(self.input_url) as input_file:
-            self.table_length = len(input_file.get_node(self.image_table_name))
+            self.table_length = len(input_file.get_node(self.image_table_path))
 
         # Load the models from the specified paths
         if self.load_type_model_from is not None:
@@ -259,7 +259,7 @@ class LST1PredictionTool(Tool):
         self.transforms["peak_time_offset"] = 0
         # Get the number of rows in the table
         with tables.open_file(self.input_url) as input_file:
-            img_table_v_attrs = input_file.get_node(self.image_table_name)._v_attrs
+            img_table_v_attrs = input_file.get_node(self.image_table_path)._v_attrs
 
         # Check the transform value used for the file compression
         if "CTAFIELD_3_TRANSFORM_SCALE" in img_table_v_attrs:
@@ -403,7 +403,7 @@ class LST1PredictionTool(Tool):
             self.log.debug("Processing chunk from '%d' to '%d'.", start, stop - 1)
             # Read the data
             dl1_table = read_table(
-                self.input_url, self.image_table_name, start=start, stop=stop
+                self.input_url, self.image_table_path, start=start, stop=stop
             )
             data = []
             for event in dl1_table:

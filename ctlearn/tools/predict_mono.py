@@ -260,207 +260,302 @@ class MonoPredictionTool(Tool):
         # Retrieve the IDs from the example_identifiers of the dl1dh for the prediction table
         example_identifiers = self.dl1dh_reader.example_identifiers.copy()
         example_identifiers.keep_columns(TELESCOPE_EVENT_KEYS)
-        # Retrieve the IDs from the tel_trigger_table of the dl1dh for the final output table
-        tel_trigger_table = self.dl1dh_reader.tel_trigger_table[
-            self.dl1dh_reader.tel_trigger_table["tel_id"] == self.tel_id
-        ]
-        all_identifiers = tel_trigger_table.copy()
-        all_identifiers.keep_columns(TELESCOPE_EVENT_KEYS)
-        nonexample_identifiers = setdiff(all_identifiers, example_identifiers, keys=TELESCOPE_EVENT_KEYS)
-        if len(nonexample_identifiers) > 0:
-            nonexample_identifiers.sort(TELESCOPE_EVENT_KEYS)
-        # Perform the prediction and fill the prediction table with the prediction results
-        # based on the different selected tasks
-        if self.load_type_model_from is not None:
-            self.log.info(
-                "Predicting for the classification of the primary particle type."
-            )
-            # Predict the data using the loaded type_model
-            predict_data = self._predict_with_model(self.load_type_model_from)
-            classification_table = example_identifiers.copy()
-            classification_table.add_column(predict_data["col1"], name=f"{self.prefix}_tel_prediction")
-            # Produce output table with NaNs for missing predictions
-            if len(nonexample_identifiers) > 0:
-                nan_table = nonexample_identifiers.copy()
-                nan_table.add_column(np.nan * np.ones(len(nan_table)), name=f"{self.prefix}_tel_prediction")
-                classification_table = vstack([classification_table, nan_table])
-            classification_table.sort(TELESCOPE_EVENT_KEYS)
-            classification_table.add_column(
-                ~np.isnan(prediction, dtype=bool), name=f"{self.prefix}_tel_is_valid"
-            )
-            # Add the default values and meta data to the table
-            add_defaults_and_meta(
-                classification_table,
-                ParticleClassificationContainer,
-                prefix=self.prefix,
-                add_tel_prefix=True,
-            )
-            # Save the prediction to the output file
-            write_table(
-                classification_table,
-                self.output_path,
-                f"{DL2_TELESCOPE_GROUP}/classification/{self.prefix}/tel_{self.tel_id:03d}",
-            )
-            self.log.info(
-                "DL2 prediction data was stored in '%s' under '%s'",
-                self.output_path,
-                f"{DL2_TELESCOPE_GROUP}/classification/{self.prefix}/tel_{self.tel_id:03d}",
-            )
-
-        if self.load_energy_model_from is not None:
-            self.log.info(
-                "Predicting for the regression of the primary particle energy."
-            )
-            # Predict the data using the loaded energy_model
-            predict_data = self._predict_with_model(self.load_energy_model_from)
-            # Convert the reconstructed energy from log10(TeV) to TeV
-            reco_energy = u.Quantity(
-                np.power(10, np.squeeze(predict_data["energy"])), unit=u.TeV
-            )
-            # Add the reconstructed energy to the prediction table
-            energy_table = example_identifiers.copy()
-            energy_table.add_column(reco_energy, name=f"{self.prefix}_tel_energy")
-            energy_table.add_column(
-                ~np.isnan(reco_energy.data, dtype=bool),
-                name=f"{self.prefix}_tel_is_valid",
-            )
-            # Produce output table with NaNs for missing predictions
-            if len(nonexample_identifiers) > 0:
-                nan_table = nonexample_identifiers.copy()
-                nan_table.add_column(np.nan * np.ones(len(nan_table)), name=f"{self.prefix}_tel_energy")
-                nan_table.add_column(np.nan * np.ones(len(nan_table)), name=f"{self.prefix}_tel_is_valid")
-                energy_table = vstack([energy_table, nan_table])
-            energy_table.sort(TELESCOPE_EVENT_KEYS)
-            # Save the prediction to the output file
-            write_table(
-                energy_table,
-                self.output_path,
-                f"{DL2_TELESCOPE_GROUP}/energy/{self.prefix}/tel_{self.tel_id:03d}",
-            )
-            self.log.info(
-                "DL2 prediction data was stored in '%s' under '%s'",
-                self.output_path,
-                f"{DL2_TELESCOPE_GROUP}/energy/{self.prefix}/tel_{self.tel_id:03d}",
-            )
-
-        if self.load_direction_model_from is not None:
-            self.log.info(
-                "Predicting for the regression of the primary particle arrival direction."
-            )
-            # Predict the data using the loaded direction_model
-            predict_data = self._predict_with_model(self.load_direction_model_from)
-            # For the direction task, the prediction is the spherical offset (az, alt)
-            # from the telescope pointing. The telescope pointing is read from the
-            # configuration tree for simulated data and interpolated from the monitoring
-            # tree using the trigger timestamps for observational data.
-            direction_table = example_identifiers.copy()
-            if self.dl1dh_reader.process_type == ProcessType.Simulation:
-                # Read the telescope pointing table
-                tel_pointing = read_table(
-                    self.input_url,
-                    f"{FIXED_POINTING_GROUP}/tel_{self.tel_id:03d}",
-                )
-                # Join the prediction table with the telescope pointing table
-                direction_table = join(
-                    left=direction_table,
-                    right=tel_pointing,
-                    keys=["obs_id", "tel_id"],
-                )
-                # TODO: use keep_order for astropy v7.0.0
-                direction_table.sort(TELESCOPE_EVENT_KEYS)
-            elif self.dl1dh_reader.process_type == ProcessType.Observation:
-                # Initialize the pointing interpolator from ctapipe
-                pointing_interpolator = PointingInterpolator(
-                    bounds_error=False, extrapolate=True
-                )
-                # Get the telescope pointing from the dl1dh reader
-                tel_pointing = self.dl1dh_reader.telescope_pointings[
-                    f"tel_{self.tel_id:03d}"
+        self.dl1dh_reader.mode == "mono":
+            for tel_id in self.selected_telescopes[self.tel_type]:
+                # Retrieve the example identifiers for the selected telescope
+                tel_example_identifiers = example_identifiers[example_identifiers["tel_id"] == tel_id]
+                # Retrieve the IDs from the tel_trigger_table of the dl1dh for the final output table
+                tel_trigger_table = self.dl1dh_reader.tel_trigger_table[
+                    self.dl1dh_reader.tel_trigger_table["tel_id"] == tel_id
                 ]
-                # Add the telescope pointing table to the pointing interpolator
-                pointing_interpolator.add_table(self.tel_id, tel_pointing)
-                # Join the prediction table with the telescope trigger table from the dl1dh reader
-                direction_table = join(
-                    left=direction_table,
+                all_identifiers = tel_trigger_table.copy()
+                all_identifiers.keep_columns(TELESCOPE_EVENT_KEYS)
+                nonexample_identifiers = setdiff(all_identifiers, tel_example_identifiers, keys=TELESCOPE_EVENT_KEYS)
+                if len(nonexample_identifiers) > 0:
+                    nonexample_identifiers.sort(TELESCOPE_EVENT_KEYS)
+                # Perform the prediction and fill the prediction table with the prediction results
+                # based on the different selected tasks
+                if self.load_type_model_from is not None:
+                    self.predict_classification(
+                        tel_example_identifiers,
+                        nonexample_identifiers,
+                        f"{DL2_TELESCOPE_GROUP}/classification/{self.prefix}/tel_{tel_id:03d}",
+                    )
+                if self.load_energy_model_from is not None:
+                    self.predict_energy(
+                        tel_example_identifiers,
+                        nonexample_identifiers,
+                        f"{DL2_TELESCOPE_GROUP}/energy/{self.prefix}/tel_{tel_id:03d}",
+                    )
+                if self.load_direction_model_from is not None:
+                    self.predict_direction(
+                        tel_example_identifiers,
+                        nonexample_identifiers,
+                        f"{DL2_TELESCOPE_GROUP}/geometry/{self.prefix}/tel_{self.tel_id:03d}",
+                    )
+        if.dl1dh_reader.mode == "stereo":
+            # Retrieve the IDs from the tel_trigger_table of the dl1dh for the final output table
+            tel_trigger_table = self.dl1dh_reader.tel_trigger_table[
+                self.dl1dh_reader.tel_trigger_table["tel_id"] == tel_id
+            ]
+            all_identifiers = tel_trigger_table.copy()
+            all_identifiers.keep_columns(TELESCOPE_EVENT_KEYS)
+            nonexample_identifiers = setdiff(all_identifiers, example_identifiers, keys=TELESCOPE_EVENT_KEYS)
+            if len(nonexample_identifiers) > 0:
+                nonexample_identifiers.sort(TELESCOPE_EVENT_KEYS)
+            # Perform the prediction and fill the prediction table with the prediction results
+            # based on the different selected tasks
+            if self.load_type_model_from is not None:
+                self.predict_classification(
+                    tel_example_identifiers,
+                    nonexample_identifiers,
+                    f"{DL2_SUBARRAY_GROUP}/classification/{self.prefix}",
+                    stereo=True,
+
+                )
+            if self.load_energy_model_from is not None:
+                self.predict_energy(
+                    example_identifiers,
+                    nonexample_identifiers,
+                    f"{DL2_SUBARRAY_GROUP}/energy/{self.prefix}",
+                    stereo=True,
+                )
+            if self.load_direction_model_from is not None:
+                self.predict_direction(
+                    example_identifiers,
+                    nonexample_identifiers,
+                    f"{DL2_SUBARRAY_GROUP}/geometry/{self.prefix}",
+                    stereo=True,
+                )
+
+    def finish(self):
+        self.log.info("Tool is shutting down")
+
+    def predict_classification(self, example_identifiers, nonexample_identifiers, output_table_path, stereo=False):
+        """
+        Predict the classification of the primary particle type and save the results.
+
+        Parameters:
+        -----------
+        example_identifiers : astropy.table.Table
+            Table containing the example identifiers.
+        nonexample_identifiers : astropy.table.Table
+            Table containing the non-example identifiers.
+        output_table_path : str
+            Telescope ID to process and store the prediction results.
+        """
+        self.log.info(
+            "Predicting for the classification of the primary particle type."
+        )
+        # Predict the data using the loaded type_model
+        predict_data = self._predict_with_model(self.load_type_model_from)
+        classification_table = example_identifiers.copy()
+        classification_table.add_column(predict_data["col1"], name=f"{self.prefix}_tel_prediction")
+        # Produce output table with NaNs for missing predictions
+        if len(nonexample_identifiers) > 0:
+            nan_table = nonexample_identifiers.copy()
+            nan_table.add_column(np.nan * np.ones(len(nan_table)), name=f"{self.prefix}_tel_prediction")
+            classification_table = vstack([classification_table, nan_table])
+        classification_table.sort(TELESCOPE_EVENT_KEYS)
+        classification_table.add_column(
+            ~np.isnan(prediction, dtype=bool), name=f"{self.prefix}_tel_is_valid"
+        )
+        # Add the default values and meta data to the table
+        add_defaults_and_meta(
+            classification_table,
+            ParticleClassificationContainer,
+            prefix=self.prefix,
+            add_tel_prefix=True,
+        )
+        # Save the prediction to the output file
+        write_table(
+            classification_table,
+            self.output_path,
+            output_table_path,
+        )
+        self.log.info(
+            "DL2 prediction data was stored in '%s' under '%s'",
+            self.output_path,
+            output_table_path,
+        )
+
+    def predict_energy(self, example_identifiers, nonexample_identifiers, output_table_path, stereo=False):
+        """
+        Predict the energy of the primary particle and save the results.
+
+        Parameters:
+        -----------
+        example_identifiers : astropy.table.Table
+            Table containing the example identifiers.
+        nonexample_identifiers : astropy.table.Table
+            Table containing the non-example identifiers.
+        output_table_path : str
+            Telescope ID to process and store the prediction results.
+        """
+        self.log.info(
+            "Predicting for the regression of the primary particle energy."
+        )
+        # Predict the data using the loaded energy_model
+        predict_data = self._predict_with_model(self.load_energy_model_from)
+        # Convert the reconstructed energy from log10(TeV) to TeV
+        reco_energy = u.Quantity(
+            np.power(10, np.squeeze(predict_data["energy"])), unit=u.TeV
+        )
+        # Add the reconstructed energy to the prediction table
+        energy_table = example_identifiers.copy()
+        energy_table.add_column(reco_energy, name=f"{self.prefix}_tel_energy")
+        energy_table.add_column(
+            ~np.isnan(reco_energy.data, dtype=bool),
+            name=f"{self.prefix}_tel_is_valid",
+        )
+        # Produce output table with NaNs for missing predictions
+        if len(nonexample_identifiers) > 0:
+            nan_table = nonexample_identifiers.copy()
+            nan_table.add_column(np.nan * np.ones(len(nan_table)), name=f"{self.prefix}_tel_energy")
+            nan_table.add_column(np.nan * np.ones(len(nan_table)), name=f"{self.prefix}_tel_is_valid")
+            energy_table = vstack([energy_table, nan_table])
+        energy_table.sort(TELESCOPE_EVENT_KEYS)
+        # Save the prediction to the output file
+        write_table(
+            energy_table,
+            self.output_path,
+            output_table_path,
+        )
+        self.log.info(
+            "DL2 prediction data was stored in '%s' under '%s'",
+            self.output_path,
+            output_table_path,
+            )
+
+    def predict_direction(self, example_identifiers, nonexample_identifiers, output_table_path, stereo=False):
+        """
+        Predict the arrival direction of the primary particle and save the results.
+
+        Parameters:
+        -----------
+        example_identifiers : astropy.table.Table
+            Table containing the example identifiers.
+        nonexample_identifiers : astropy.table.Table
+            Table containing the non-example identifiers.
+        output_table_path : str
+            Telescope ID to process and store the prediction results.
+        """
+
+        self.log.info(
+            "Predicting for the regression of the primary particle arrival direction."
+        )
+        # Predict the data using the loaded direction_model
+        predict_data = self._predict_with_model(self.load_direction_model_from)
+        # For the direction task, the prediction is the spherical offset (az, alt)
+        # from the telescope pointing. The telescope pointing is read from the
+        # configuration tree for simulated data and interpolated from the monitoring
+        # tree using the trigger timestamps for observational data.
+        direction_table = example_identifiers.copy()
+        if self.dl1dh_reader.process_type == ProcessType.Simulation:
+            # Read the telescope pointing table
+            tel_pointing = read_table(
+                self.input_url,
+                f"{FIXED_POINTING_GROUP}/tel_{self.tel_id:03d}",
+            )
+            # Join the prediction table with the telescope pointing table
+            direction_table = join(
+                left=direction_table,
+                right=tel_pointing,
+                keys=["obs_id", "tel_id"],
+            )
+            # TODO: use keep_order for astropy v7.0.0
+            direction_table.sort(TELESCOPE_EVENT_KEYS)
+        elif self.dl1dh_reader.process_type == ProcessType.Observation:
+            # Initialize the pointing interpolator from ctapipe
+            pointing_interpolator = PointingInterpolator(
+                bounds_error=False, extrapolate=True
+            )
+            # Get the telescope pointing from the dl1dh reader
+            tel_pointing = self.dl1dh_reader.telescope_pointings[
+                f"tel_{self.tel_id:03d}"
+            ]
+            # Add the telescope pointing table to the pointing interpolator
+            pointing_interpolator.add_table(self.tel_id, tel_pointing)
+            # Join the prediction table with the telescope trigger table from the dl1dh reader
+            direction_table = join(
+                left=direction_table,
+                right=tel_trigger_table,
+                keys=TELESCOPE_EVENT_KEYS,
+            )
+            # TODO: use keep_order for astropy v7.0.0
+            direction_table.sort(TELESCOPE_EVENT_KEYS)
+            # Interpolate the telescope pointing
+            tel_altitude, tel_azimuth = pointing_interpolator(
+                self.tel_id, direction_table["time"]
+            )
+            # Save the telescope pointing (az, alt) to the prediction table
+            direction_table.add_column(
+                tel_azimuth, name="telescope_pointing_azimuth"
+            )
+            direction_table.add_column(
+                tel_altitude, name="telescope_pointing_altitude"
+            )
+        # Convert reconstructed spherical offset (az, alt) to SkyCoord
+        reco_spherical_offset_az = u.Quantity(
+            predict_data["direction"].T[0], unit=u.deg
+        )
+        reco_spherical_offset_alt = u.Quantity(
+            predict_data["direction"].T[1], unit=u.deg
+        )
+        # Set the telescope pointing of the SkyOffsetSeparation tranformation
+        pointing = SkyCoord(
+            direction_table["telescope_pointing_azimuth"],
+            direction_table["telescope_pointing_altitude"],
+            frame="altaz",
+        )
+        # Calculate the reconstructed direction (az, alt) based on the telescope pointing
+        reco_direction = pointing.spherical_offsets_by(
+            reco_spherical_offset_az, reco_spherical_offset_alt
+        ).to_table()
+        # Add the reconstructed direction (az, alt) to the prediction table
+        direction_table.add_column(reco_direction["az"], name=f"{self.prefix}_tel_az")
+        direction_table.add_column(reco_direction["alt"], name=f"{self.prefix}_tel_alt")
+        direction_table.add_column(
+            ~np.isnan(reco_direction["az"].data, dtype=bool),
+            name=f"{self.prefix}_tel_is_valid",
+        )
+        # Remove the telescope pointing columns and trigger time from the prediction table
+        if not self.store_event_wise_pointing:
+            direction_table.keep_columns(["obs_id", "event_id", "tel_id", "az", "alt"])
+        # Produce output table with NaNs for missing predictions
+        if len(nonexample_identifiers) > 0:
+            nan_table = nonexample_identifiers.copy()
+            nan_table.add_column(np.nan * np.ones(len(nan_table)), name=f"{self.prefix}_tel_az")
+            nan_table.add_column(np.nan * np.ones(len(nan_table)), name=f"{self.prefix}_tel_alt")
+            nan_table.add_column(np.nan * np.ones(len(nan_table)), name=f"{self.prefix}_tel_is_valid")
+            if self.store_event_wise_pointing:
+                nan_table = join(
+                    left=nan_table,
                     right=tel_trigger_table,
                     keys=TELESCOPE_EVENT_KEYS,
                 )
                 # TODO: use keep_order for astropy v7.0.0
-                direction_table.sort(TELESCOPE_EVENT_KEYS)
-                # Interpolate the telescope pointing
-                tel_altitude, tel_azimuth = pointing_interpolator(
-                    self.tel_id, direction_table["time"]
+                nan_table.sort(TELESCOPE_EVENT_KEYS)
+                nan_table.remove_column("n_trigger_pixels")
+                nan_tel_altitude, nan_tel_azimuth = pointing_interpolator(
+                    self.tel_id, nan_table["time"]
                 )
-                # Save the telescope pointing (az, alt) to the prediction table
-                direction_table.add_column(
-                    tel_azimuth, name="telescope_pointing_azimuth"
-                )
-                direction_table.add_column(
-                    tel_altitude, name="telescope_pointing_altitude"
-                )
-            # Convert reconstructed spherical offset (az, alt) to SkyCoord
-            reco_spherical_offset_az = u.Quantity(
-                predict_data["direction"].T[0], unit=u.deg
-            )
-            reco_spherical_offset_alt = u.Quantity(
-                predict_data["direction"].T[1], unit=u.deg
-            )
-            # Set the telescope pointing of the SkyOffsetSeparation tranformation
-            pointing = SkyCoord(
-                direction_table["telescope_pointing_azimuth"],
-                direction_table["telescope_pointing_altitude"],
-                frame="altaz",
-            )
-            # Calculate the reconstructed direction (az, alt) based on the telescope pointing
-            reco_direction = pointing.spherical_offsets_by(
-                reco_spherical_offset_az, reco_spherical_offset_alt
-            ).to_table()
-            # Add the reconstructed direction (az, alt) to the prediction table
-            direction_table.add_column(reco_direction["az"], name=f"{self.prefix}_tel_az")
-            direction_table.add_column(reco_direction["alt"], name=f"{self.prefix}_tel_alt")
-            direction_table.add_column(
-                ~np.isnan(reco_direction["az"].data, dtype=bool),
-                name=f"{self.prefix}_tel_is_valid",
-            )
-            # Remove the telescope pointing columns and trigger time from the prediction table
-            if not self.store_event_wise_pointing:
-                direction_table.keep_columns(["obs_id", "event_id", "tel_id", "az", "alt"])
-            # Produce output table with NaNs for missing predictions
-            if len(nonexample_identifiers) > 0:
-                nan_table = nonexample_identifiers.copy()
-                nan_table.add_column(np.nan * np.ones(len(nan_table)), name=f"{self.prefix}_tel_az")
-                nan_table.add_column(np.nan * np.ones(len(nan_table)), name=f"{self.prefix}_tel_alt")
-                nan_table.add_column(np.nan * np.ones(len(nan_table)), name=f"{self.prefix}_tel_is_valid")
-                if self.store_event_wise_pointing:
-                    nan_table = join(
-                        left=nan_table,
-                        right=tel_trigger_table,
-                        keys=TELESCOPE_EVENT_KEYS,
-                    )
-                    # TODO: use keep_order for astropy v7.0.0
-                    nan_table.sort(TELESCOPE_EVENT_KEYS)
-                    nan_table.remove_column("n_trigger_pixels")
-                    nan_tel_altitude, nan_tel_azimuth = pointing_interpolator(
-                        self.tel_id, nan_table["time"]
-                    )
-                    nan_table.add_column(nan_tel_azimuth, name="telescope_pointing_azimuth")
-                    nan_table.add_column(nan_tel_altitude, name="telescope_pointing_altitude")
-                direction_table = vstack([direction_table, nan_table])
-            direction_table.sort(TELESCOPE_EVENT_KEYS)
-            self.log.info("Saving the prediction to the output file.")
-            write_table(
-                direction_table,
-                self.output_path,
-                f"{DL2_TELESCOPE_GROUP}/geometry/{self.prefix}/tel_{self.tel_id:03d}",
-            )
-            self.log.info(
-                "DL2 prediction data was stored in '%s' under '%s'",
-                self.output_path,
-                f"{DL2_TELESCOPE_GROUP}/geometry/{self.prefix}/tel_{self.tel_id:03d}",
-            )
+                nan_table.add_column(nan_tel_azimuth, name="telescope_pointing_azimuth")
+                nan_table.add_column(nan_tel_altitude, name="telescope_pointing_altitude")
+            direction_table = vstack([direction_table, nan_table])
+        direction_table.sort(TELESCOPE_EVENT_KEYS)
+        self.log.info("Saving the prediction to the output file.")
+        write_table(
+            direction_table,
+            self.output_path,
+            output_table_path,
+        )
+        self.log.info(
+            "DL2 prediction data was stored in '%s' under '%s'",
+            self.output_path,
+            output_table_path,
+        )
 
-    def finish(self):
-        self.log.info("Tool is shutting down")
 
     def _predict_with_model(self, model_path):
         """
