@@ -47,6 +47,7 @@ from ctapipe.instrument import (
 )
 from ctapipe.instrument.optics import OpticsDescription, ReflectorShape, SizeType
 from ctapipe.io import read_table, write_table
+from ctapipe.monitoring.interpolation import PointingInterpolator
 from ctapipe.reco.utils import add_defaults_and_meta
 
 from ctlearn.core.model import LoadedModel
