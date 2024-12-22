@@ -51,11 +51,17 @@ from ctapipe.reco.utils import add_defaults_and_meta
 
 from ctlearn.core.model import LoadedModel
 from dl1_data_handler.image_mapper import ImageMapper
-from dl1_data_handler.reader import get_unmapped_image, get_unmapped_waveform, TableQualityQuery
+from dl1_data_handler.reader import (
+    get_unmapped_image,
+    get_unmapped_waveform,
+    TableQualityQuery,
+)
 
 POINTING_GROUP = "/dl1/monitoring/telescope/pointing"
 DL2_TELESCOPE_GROUP = "/dl2/event/telescope"
+SUBARRAY_EVENT_KEYS = ["obs_id", "event_id"]
 TELESCOPE_EVENT_KEYS = ["obs_id", "event_id", "tel_id"]
+
 
 class LST1PredictionTool(Tool):
     """
@@ -412,7 +418,7 @@ class LST1PredictionTool(Tool):
             dl1_table = join(
                 left=dl1_table,
                 right=parameter_table,
-                keys=["event_id"],
+                keys=TELESCOPE_EVENT_KEYS,
             )
             # Initialize a boolean mask to True for all events in the sliced dl1 table
             passes_quality_checks = np.ones(len(dl1_table), dtype=bool)
@@ -454,10 +460,11 @@ class LST1PredictionTool(Tool):
                 "tel_id": np.full(len(event_id), self.tel_id, dtype=int),
             }
         )
-        nonexample_identifiers = setdiff(all_identifiers, example_identifiers, keys=TELESCOPE_EVENT_KEYS)
+        nonexample_identifiers = setdiff(
+            all_identifiers, example_identifiers, keys=TELESCOPE_EVENT_KEYS
+        )
         if len(nonexample_identifiers) > 0:
             nonexample_identifiers.sort(TELESCOPE_EVENT_KEYS)
-
         if self.load_type_model_from is not None:
             classification_table = example_identifiers.copy()
             classification_table.add_column(
@@ -466,11 +473,18 @@ class LST1PredictionTool(Tool):
             # Produce output table with NaNs for missing predictions
             if len(nonexample_identifiers) > 0:
                 nan_table = nonexample_identifiers.copy()
-                nan_table.add_column(np.nan * np.ones(len(nan_table)), name=f"{self.prefix}_tel_prediction")
+                nan_table.add_column(
+                    np.nan * np.ones(len(nan_table)),
+                    name=f"{self.prefix}_tel_prediction",
+                )
                 classification_table = vstack([classification_table, nan_table])
             classification_table.sort(TELESCOPE_EVENT_KEYS)
             classification_table.add_column(
-                ~np.isnan(prediction, dtype=bool), name=f"{self.prefix}_tel_is_valid"
+                ~np.isnan(
+                    classification_table[f"{self.prefix}_tel_prediction"].data,
+                    dtype=bool,
+                ),
+                name=f"{self.prefix}_tel_is_valid",
             )
             # Add the default values and meta data to the table
             add_defaults_and_meta(
@@ -500,11 +514,14 @@ class LST1PredictionTool(Tool):
             # Produce output table with NaNs for missing predictions
             if len(nonexample_identifiers) > 0:
                 nan_table = nonexample_identifiers.copy()
-                nan_table.add_column(np.nan * np.ones(len(nan_table)), name=f"{self.prefix}_tel_energy")
+                nan_table.add_column(
+                    np.nan * np.ones(len(nan_table)),
+                    name=f"{self.prefix}_tel_energy",
+                )
                 energy_table = vstack([energy_table, nan_table])
             energy_table.sort(TELESCOPE_EVENT_KEYS)
             energy_table.add_column(
-                ~np.isnan(reco_energy.data, dtype=bool),
+                ~np.isnan(energy_table[f"{self.prefix}_tel_energy"].data, dtype=bool),
                 name=f"{self.prefix}_tel_is_valid",
             )
             # Add the default values and meta data to the table
@@ -529,12 +546,32 @@ class LST1PredictionTool(Tool):
 
         if self.load_direction_model_from is not None:
             direction_table = example_identifiers.copy()
+            direction_table = join(
+                left=direction_table,
+                right=trigger_table,
+                keys=SUBARRAY_EVENT_KEYS,
+            )
             # Convert reconstructed spherical offset (az, alt) to SkyCoord
             reco_spherical_offset_az = u.Quantity(az, unit=u.deg)
             reco_spherical_offset_alt = u.Quantity(alt, unit=u.deg)
             # Set the telescope pointing of the SkyOffsetSeparation tranformation
-            pointing = SkyCoord(tel_az, tel_alt, frame="altaz")
+            # Initialize the pointing interpolator from ctapipe
+            pointing_interpolator = PointingInterpolator(
+                bounds_error=False, extrapolate=True
+            )
+            tel_pointing = SkyCoord(tel_az, tel_alt, frame="altaz")
+            # Add the telescope pointing table to the pointing interpolator
+            pointing_interpolator.add_table(self.tel_id, tel_pointing)
             # Calculate the reconstructed direction (az, alt) based on the telescope pointing
+            # Interpolate the telescope pointing
+            tel_altitude, tel_azimuth = pointing_interpolator(
+                self.tel_id, direction_table["time"]
+            )
+            pointing = SkyCoord(
+                tel_azimuth,
+                tel_altitude,
+                frame="altaz",
+            )
             reco_direction = pointing.spherical_offsets_by(
                 reco_spherical_offset_az, reco_spherical_offset_alt
             ).to_table()
@@ -548,12 +585,20 @@ class LST1PredictionTool(Tool):
             # Produce output table with NaNs for missing predictions
             if len(nonexample_identifiers) > 0:
                 nan_table = nonexample_identifiers.copy()
-                nan_table.add_column(np.nan * np.ones(len(nan_table)), name=f"{self.prefix}_tel_az")
-                nan_table.add_column(np.nan * np.ones(len(nan_table)), name=f"{self.prefix}_tel_alt")
+                nan_table.add_column(
+                    np.nan * np.ones(len(nan_table)), name=f"{self.prefix}_tel_az"
+                )
+                nan_table.add_column(
+                    np.nan * np.ones(len(nan_table)), name=f"{self.prefix}_tel_alt"
+                )
                 direction_table = vstack([direction_table, nan_table])
+            direction_table.keep_columns(
+                TELESCOPE_EVENT_KEYS
+                + [f"{self.prefix}_tel_az", f"{self.prefix}_tel_alt"]
+            )
             direction_table.sort(TELESCOPE_EVENT_KEYS)
             direction_table.add_column(
-                ~np.isnan(reco_direction["az"].data, dtype=bool),
+                ~np.isnan(direction_table[f"{self.prefix}_tel_az"].data, dtype=bool),
                 name=f"{self.prefix}_tel_is_valid",
             )
             # Add the default values and meta data to the table
