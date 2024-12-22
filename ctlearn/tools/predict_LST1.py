@@ -6,7 +6,7 @@ import pathlib
 
 import numpy as np
 from astropy import units as u
-from astropy.table import Table
+from astropy.table import Table, join
 import tables
 import keras
 from astropy.coordinates.earth import EarthLocation
@@ -280,11 +280,12 @@ class LST1PredictionTool(Tool):
     def start(self):
         self.log.info("Starting the prediction...")
 
-        output_identifiers = read_table(self.input_url, self.parameter_table_name)
-        output_identifiers.meta = {}
+        all_identifiers = read_table(self.input_url, self.parameter_table_name)
+        all_identifiers.meta = {}
         if self.override_obs_id is not None:
-            output_identifiers["obs_id"] = self.override_obs_id
-        parameter_table = output_identifiers.copy()
+            all_identifiers["obs_id"] = self.override_obs_id
+        self.obs_id = all_identifiers["obs_id"][0]
+        parameter_table = all_identifiers.copy()
         tel_az = u.Quantity(parameter_table["az_tel"], unit=u.rad)
         tel_alt = u.Quantity(parameter_table["alt_tel"], unit=u.rad)
         event_type = parameter_table["event_type"]
@@ -312,9 +313,9 @@ class LST1PredictionTool(Tool):
         # Set the time format to MJD since in the other table we store the time in MJD
         time.format = "mjd"
         # Keep only the necessary columns for the creation of tables
-        output_identifiers.keep_columns(TELESCOPE_EVENT_KEYS)
+        all_identifiers.keep_columns(TELESCOPE_EVENT_KEYS)
         # Create the dl1 telescope trigger table
-        trigger_table = output_identifiers.copy()
+        trigger_table = all_identifiers.copy()
         trigger_table.add_column(time, name="time")
         trigger_table.add_column(-1, name="n_trigger_pixels")
         write_table(
@@ -396,7 +397,7 @@ class LST1PredictionTool(Tool):
             f"/dl1/event/telescope/parameters/tel_{self.tel_id:03d}",
         )
 
-        prediction, energy, az, alt = [], [], [], []
+        event_id, prediction, energy, az, alt = [], [], [], [], []
         # Iterate over the data in chunks based on the batch size
         for start in range(0, self.table_length, self.batch_size):
             stop = min(start + self.batch_size, self.table_length)
@@ -405,6 +406,22 @@ class LST1PredictionTool(Tool):
             dl1_table = read_table(
                 self.input_url, self.image_table_path, start=start, stop=stop
             )
+            # Join the dl1 table with the parameter table to perform quality selection
+            dl1_table = join(
+                left=dl1_table,
+                right=parameter_table,
+                keys=["event_id"],
+            )
+            # Initialize a boolean mask to True for all events in the sliced dl1 table
+            passes_quality_checks = np.ones(len(dl1_table), dtype=bool)
+            # Quality selection based on the dl1b parameter
+            if self.quality_query:
+                passes_quality_checks = self.quality_query.get_table_mask(dl1_table)
+            # Apply the mask to filter events that are not fufilling the quality criteria
+            dl1_table = dl1_table[passes_quality_checks]
+            if len(dl1_table) == 0:
+                self.log.debug("No events passed the quality selection.")
+                continue
             data = []
             for event in dl1_table:
                 # Get the unmapped image
@@ -415,6 +432,7 @@ class LST1PredictionTool(Tool):
             if int(keras.__version__.split(".")[0]) >= 3:
                 input_data = input_data["input"]
 
+            event_id.extend(dl1_table["event_id"].data)
             if self.load_type_model_from is not None:
                 predict_data = self.keras_model_type.predict_on_batch(input_data)
                 prediction.extend(predict_data[:, 1])
@@ -426,11 +444,29 @@ class LST1PredictionTool(Tool):
                 az.extend(predict_data["direction"].T[0])
                 alt.extend(predict_data["direction"].T[1])
 
+        # Create the prediction tables
+        example_identifiers = Table(
+            {
+                "obs_id": np.full(len(event_id), self.obs_id, dtype=int),
+                "event_id": event_id,
+                "tel_id": np.full(len(event_id), self.tel_id, dtype=int),
+            }
+        )
+        nonexample_identifiers = setdiff(all_identifiers, example_identifiers, keys=TELESCOPE_EVENT_KEYS)
+        if len(nonexample_identifiers) > 0:
+            nonexample_identifiers.sort(TELESCOPE_EVENT_KEYS)
+
         if self.load_type_model_from is not None:
-            classification_table = output_identifiers.copy()
+            classification_table = example_identifiers.copy()
             classification_table.add_column(
                 prediction, name=f"{self.prefix}_tel_prediction"
             )
+            # Produce output table with NaNs for missing predictions
+            if len(nonexample_identifiers) > 0:
+                nan_table = nonexample_identifiers.copy()
+                nan_table.add_column(np.nan * np.ones(len(nan_table)), name=f"{self.prefix}_tel_prediction")
+                classification_table = vstack([classification_table, nan_table])
+            classification_table.sort(TELESCOPE_EVENT_KEYS)
             classification_table.add_column(
                 ~np.isnan(prediction, dtype=bool), name=f"{self.prefix}_tel_is_valid"
             )
@@ -454,11 +490,17 @@ class LST1PredictionTool(Tool):
                 f"{DL2_TELESCOPE_GROUP}/classification/{self.prefix}/tel_{self.tel_id:03d}",
             )
         if self.load_energy_model_from is not None:
-            energy_table = output_identifiers.copy()
+            energy_table = example_identifiers.copy()
             # Convert the reconstructed energy from log10(TeV) to TeV
             reco_energy = u.Quantity(np.power(10, np.squeeze(energy)), unit=u.TeV)
             # Add the reconstructed energy to the prediction table
             energy_table.add_column(reco_energy, name=f"{self.prefix}_tel_energy")
+            # Produce output table with NaNs for missing predictions
+            if len(nonexample_identifiers) > 0:
+                nan_table = nonexample_identifiers.copy()
+                nan_table.add_column(np.nan * np.ones(len(nan_table)), name=f"{self.prefix}_tel_energy")
+                energy_table = vstack([energy_table, nan_table])
+            energy_table.sort(TELESCOPE_EVENT_KEYS)
             energy_table.add_column(
                 ~np.isnan(reco_energy.data, dtype=bool),
                 name=f"{self.prefix}_tel_is_valid",
@@ -484,7 +526,7 @@ class LST1PredictionTool(Tool):
             )
 
         if self.load_direction_model_from is not None:
-            direction_table = output_identifiers.copy()
+            direction_table = example_identifiers.copy()
             # Convert reconstructed spherical offset (az, alt) to SkyCoord
             reco_spherical_offset_az = u.Quantity(az, unit=u.deg)
             reco_spherical_offset_alt = u.Quantity(alt, unit=u.deg)
@@ -501,6 +543,13 @@ class LST1PredictionTool(Tool):
             direction_table.add_column(
                 reco_direction["alt"], name=f"{self.prefix}_tel_alt"
             )
+            # Produce output table with NaNs for missing predictions
+            if len(nonexample_identifiers) > 0:
+                nan_table = nonexample_identifiers.copy()
+                nan_table.add_column(np.nan * np.ones(len(nan_table)), name=f"{self.prefix}_tel_az")
+                nan_table.add_column(np.nan * np.ones(len(nan_table)), name=f"{self.prefix}_tel_alt")
+                direction_table = vstack([direction_table, nan_table])
+            direction_table.sort(TELESCOPE_EVENT_KEYS)
             direction_table.add_column(
                 ~np.isnan(reco_direction["az"].data, dtype=bool),
                 name=f"{self.prefix}_tel_is_valid",
