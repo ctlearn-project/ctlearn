@@ -51,7 +51,7 @@ from ctapipe.reco.utils import add_defaults_and_meta
 
 from ctlearn.core.model import LoadedModel
 from dl1_data_handler.image_mapper import ImageMapper
-from dl1_data_handler.reader import get_unmapped_image, get_unmapped_waveform
+from dl1_data_handler.reader import get_unmapped_image, get_unmapped_waveform, TableQualityQuery
 
 POINTING_GROUP = "/dl1/monitoring/telescope/pointing"
 DL2_TELESCOPE_GROUP = "/dl2/event/telescope"
@@ -236,6 +236,8 @@ class LST1PredictionTool(Tool):
         # Write the SubarrayDescription to the output file
         self.subarray.to_hdf(self.output_path, overwrite=self.overwrite)
         self.log.info("SubarrayDescription was stored in '%s'", self.output_path)
+        # Initialize the Table data quality query
+        self.quality_query = TableQualityQuery(parent=self)
         # Create the ImageMapper
         self.image_mapper = ImageMapper.from_name(
             name=self.image_mapper_type,
