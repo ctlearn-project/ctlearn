@@ -287,7 +287,6 @@ class LST1PredictionTool(Tool):
             ]
 
     def start(self):
-        self.log.info("Starting the prediction...")
 
         all_identifiers = read_table(self.input_url, self.parameter_table_name)
         all_identifiers.meta = {}
@@ -406,6 +405,7 @@ class LST1PredictionTool(Tool):
             f"/dl1/event/telescope/parameters/tel_{self.tel_id:03d}",
         )
 
+        self.log.info("Starting the prediction...")
         event_id, prediction, energy, az, alt = [], [], [], [], []
         # Iterate over the data in chunks based on the batch size
         for start in range(0, self.table_length, self.batch_size):
@@ -560,9 +560,8 @@ class LST1PredictionTool(Tool):
             pointing_interpolator = PointingInterpolator(
                 bounds_error=False, extrapolate=True
             )
-            tel_pointing = SkyCoord(tel_az, tel_alt, frame="altaz")
             # Add the telescope pointing table to the pointing interpolator
-            pointing_interpolator.add_table(self.tel_id, tel_pointing)
+            pointing_interpolator.add_table(self.tel_id, pointing_table)
             # Calculate the reconstructed direction (az, alt) based on the telescope pointing
             # Interpolate the telescope pointing
             tel_altitude, tel_azimuth = pointing_interpolator(
