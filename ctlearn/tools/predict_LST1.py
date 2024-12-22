@@ -419,7 +419,7 @@ class LST1PredictionTool(Tool):
             dl1_table = join(
                 left=dl1_table,
                 right=parameter_table,
-                keys=TELESCOPE_EVENT_KEYS,
+                keys=["event_id"],
             )
             # Initialize a boolean mask to True for all events in the sliced dl1 table
             passes_quality_checks = np.ones(len(dl1_table), dtype=bool)
