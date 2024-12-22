@@ -6,7 +6,7 @@ import pathlib
 
 import numpy as np
 from astropy import units as u
-from astropy.table import Table, join
+from astropy.table import Table, join, setdiff
 import tables
 import keras
 from astropy.coordinates.earth import EarthLocation
@@ -123,7 +123,7 @@ class LST1PredictionTool(Tool):
     ).tag(config=True)
 
     batch_size = Int(
-        default_value=64,
+        default_value=128,
         allow_none=False,
         help="Size of the batch to perform inference of the neural network.",
     ).tag(config=True)
