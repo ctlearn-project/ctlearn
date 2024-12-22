@@ -6,7 +6,7 @@ import pathlib
 
 import numpy as np
 from astropy import units as u
-from astropy.table import Table, join, setdiff
+from astropy.table import Table, join, setdiff, vstack
 import tables
 import keras
 from astropy.coordinates.earth import EarthLocation
