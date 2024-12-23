@@ -47,7 +47,6 @@ from ctapipe.instrument import (
 )
 from ctapipe.instrument.optics import OpticsDescription, ReflectorShape, SizeType
 from ctapipe.io import read_table, write_table
-from ctapipe.monitoring.interpolation import PointingInterpolator
 from ctapipe.reco.utils import add_defaults_and_meta
 
 from ctlearn.core.model import LoadedModel
@@ -405,8 +404,18 @@ class LST1PredictionTool(Tool):
             f"/dl1/event/telescope/parameters/tel_{self.tel_id:03d}",
         )
 
+        # Add additional columns to the parameter table
+        # which are not present in the originl DL1 parameter table.
+        # They are needed for applying the quality selection.
+        parameter_table.add_column(event_type, name="event_type")
+        parameter_table.add_column(tel_az, name="tel_az")
+        parameter_table.add_column(tel_alt, name="tel_alt")
+        # Only select cosmic events for the prediction
+        parameter_table = parameter_table[parameter_table["event_type"]==32]
+
         self.log.info("Starting the prediction...")
-        event_id, prediction, energy, az, alt = [], [], [], [], []
+        event_id, tel_azimuth, tel_altitude = [], [], []
+        prediction, energy, az, alt = [], [], [], []
         # Iterate over the data in chunks based on the batch size
         for start in range(0, self.table_length, self.batch_size):
             stop = min(start + self.batch_size, self.table_length)
@@ -442,6 +451,8 @@ class LST1PredictionTool(Tool):
                 input_data = input_data["input"]
 
             event_id.extend(dl1_table["event_id"].data)
+            tel_azimuth.extend(dl1_table["tel_az"].data)
+            tel_altitude.extend(dl1_table["tel_alt"].data)
             if self.load_type_model_from is not None:
                 predict_data = self.keras_model_type.predict_on_batch(input_data)
                 prediction.extend(predict_data[:, 1])
@@ -556,20 +567,9 @@ class LST1PredictionTool(Tool):
             reco_spherical_offset_az = u.Quantity(az, unit=u.deg)
             reco_spherical_offset_alt = u.Quantity(alt, unit=u.deg)
             # Set the telescope pointing of the SkyOffsetSeparation tranformation
-            # Initialize the pointing interpolator from ctapipe
-            pointing_interpolator = PointingInterpolator(
-                bounds_error=False, extrapolate=True
-            )
-            # Add the telescope pointing table to the pointing interpolator
-            pointing_interpolator.add_table(self.tel_id, pointing_table)
-            # Calculate the reconstructed direction (az, alt) based on the telescope pointing
-            # Interpolate the telescope pointing
-            tel_altitude, tel_azimuth = pointing_interpolator(
-                self.tel_id, direction_table["time"]
-            )
             pointing = SkyCoord(
-                tel_azimuth,
-                tel_altitude,
+                u.Quantity(tel_azimuth, unit=u.rad),
+                u.Quantity(tel_altitude, unit=u.rad),
                 frame="altaz",
             )
             reco_direction = pointing.spherical_offsets_by(
