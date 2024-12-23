@@ -558,11 +558,6 @@ class LST1PredictionTool(Tool):
 
         if self.load_direction_model_from is not None:
             direction_table = example_identifiers.copy()
-            direction_table = join(
-                left=direction_table,
-                right=trigger_table,
-                keys=SUBARRAY_EVENT_KEYS,
-            )
             # Convert reconstructed spherical offset (az, alt) to SkyCoord
             reco_spherical_offset_az = u.Quantity(az, unit=u.deg)
             reco_spherical_offset_alt = u.Quantity(alt, unit=u.deg)
