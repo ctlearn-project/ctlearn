@@ -1,5 +1,5 @@
 """
-Predict from pixel-wise image data
+Predict the gammaness, energy and arrival direction from lstchain DL1 data.
 """
 
 import pathlib
@@ -65,17 +65,37 @@ TELESCOPE_EVENT_KEYS = ["obs_id", "event_id", "tel_id"]
 
 class LST1PredictionTool(Tool):
     """
-    Perform statistics calculation for pixel-wise image data
+    Tool to predict the gammaness, energy and arrival direction from lstchain DL1 data.
+
+    This tool is used to predict the gammaness, energy and arrival direction
+    from pixel-wise image data in lstchain format. The tool loads the trained models
+    from the specified paths and performs inference on the input data. The
+    input data is expected to be in the DL1 format of lstchain and the output data is
+    stored in the DL2 format of ctapipe. Besides the DL2 predictions, the tool creates
+    the SubarrayDescription of the LST-1 telescope and stores it in the output file.
+    In addition, the tool also creates the trigger, pointing and DL1 parameters tables
+    and stores them in the output file.
+
+    CAUTION: The tool is designed to work with the DL1 data format of lstchain only.
     """
 
     name = "LST1PredictionTool"
-    description = "Perform statistics calculation for pixel-wise image data"
+    description = __doc__
 
     examples = """
-    To calculate statistics of pixel-wise image data files:
-
-    > ctapipe-calculate-pixel-statistics --input_url input.dl1.h5 --overwrite
-
+    To predict from DL1 lstchain data using trained CTLearn models:
+    > ctlearn-predict-model \\
+        --input_url input.subrun.lstchain.dl1.h5 \\
+        --LST1PredictionTool.batch_size=64 \\
+        --LST1PredictionTool.dl1dh_reader_type=DLImageReader \\
+        --LST1PredictionTool.channels=cleaned_image \\
+        --LST1PredictionTool.channels=cleaned_relative_peak_time \\
+        --LST1PredictionTool.image_mapper_type=BilinearMapper \\
+        --type_model="/path/to/your/type/ctlearn_model.cpk" \\
+        --energy_model="/path/to/your/energy/ctlearn_model.cpk" \\
+        --direction_model="/path/to/your/direction/ctlearn_model.cpk" \\
+        --output output.dl2.h5 \\
+        --overwrite \\
     """
 
     input_url = Path(
@@ -175,7 +195,7 @@ class LST1PredictionTool(Tool):
         default_value=True,
         allow_none=False,
         help=(
-            "Transform  the camera geometry to the EngineeringCameraFrame. "
+            "Transform the camera geometry to the EngineeringCameraFrame. "
             "Needed if training was done in this frame."
         ),
     ).tag(config=True)

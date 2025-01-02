@@ -69,7 +69,7 @@ class PredictCTLearnModel(Tool):
     description = __doc__
 
     examples = """
-    To predict from pixel-wise image data using trained CTLearn models:
+    To predict from pixel-wise image data in mono mode using trained CTLearn models:
     > ctlearn-predict-model \\
         --input_url input.dl1.h5 \\
         --PredictCTLearnModel.batch_size=64 \\
@@ -77,25 +77,42 @@ class PredictCTLearnModel(Tool):
         --DLImageReader.channels=cleaned_image \\
         --DLImageReader.channels=cleaned_relative_peak_time \\
         --DLImageReader.image_mapper_type=BilinearMapper \\
-        --type_model="/path/to/your/type/ctlearn_model.cpk" \\
-        --energy_model="/path/to/your/energy/ctlearn_model.cpk" \\
-        --direction_model="/path/to/your/direction/ctlearn_model.cpk" \\
-        --run-merger-tool \\
+        --type_model="/path/to/your/mono/type/ctlearn_model.cpk" \\
+        --energy_model="/path/to/your/mono/energy/ctlearn_model.cpk" \\
+        --direction_model="/path/to/your/mono/direction/ctlearn_model.cpk" \\
+        --use-HDF5Merger \\
         --no-dl1-images \\
         --no-true-images \\
         --output output.dl2.h5 \\
         --PredictCTLearnModel.overwrite_tables=True \\
+    
+    To predict from pixel-wise image data in stereo mode using trained CTLearn models:
+    > ctlearn-predict-model \\
+        --input_url input.dl1.h5 \\
+        --PredictCTLearnModel.batch_size=16 \\
+        --PredictCTLearnModel.dl1dh_reader_type=DLImageReader \\
+        --DLImageReader.channels=cleaned_image \\
+        --DLImageReader.channels=cleaned_relative_peak_time \\
+        --DLImageReader.image_mapper_type=BilinearMapper \\
+        --DLImageReader.mode=stereo \\
+        --DLImageReader.min_telescopes=2 \\
+        --PredictCTLearnModel.stack_telescope_images=True \\
+        --type_model="/path/to/your/stereo/type/ctlearn_model.cpk" \\
+        --energy_model="/path/to/your/stereo/energy/ctlearn_model.cpk" \\
+        --direction_model="/path/to/your/stereo/direction/ctlearn_model.cpk" \\
+        --output output.dl2.h5 \\
+        --PredictCTLearnModel.overwrite_tables=True \\
 
-    To predict from pixel-wise waveform data using trained CTLearn models:
+    To predict from pixel-wise waveform data in mono mode using trained CTLearn models:
     > ctlearn-predict-model \\
         --input_url input.r1.h5 \\
         --PredictCTLearnModel.dl1dh_reader_type=DLWaveformReader \\
         --DLWaveformReader.sequnce_length=20 \\
         --DLWaveformReader.image_mapper_type=BilinearMapper \\
-        --type_model="/path/to/your/type/ctlearn_model.cpk" \\
-        --energy_model="/path/to/your/energy/ctlearn_model.cpk" \\
-        --direction_model="/path/to/your/direction/ctlearn_model.cpk" \\
-        --run-merger-tool \\
+        --type_model="/path/to/your/mono_waveform/type/ctlearn_model.cpk" \\
+        --energy_model="/path/to/your/mono_waveform/energy/ctlearn_model.cpk" \\
+        --direction_model="/path/to/your/mono_waveform/direction/ctlearn_model.cpk" \\
+        --use-HDF5Merger \\
         --no-r0-waveforms \\
         --no-r1-waveforms \\
         --no-dl1-images \\
@@ -112,13 +129,13 @@ class PredictCTLearnModel(Tool):
         file_ok=True,
     ).tag(config=True)
 
-    run_HDF5Merger_tool = Bool(
-        default_value=False,
+    use_HDF5Merger = Bool(
+        default_value=True,
         allow_none=False,
         help=(
-            "Set whether to run the HDF5Merger tool to copy the selected tables "
-            "from the input file to the output file. CAUTION: This can not be used "
-            "if the output file already exists."
+            "Set whether to use the HDF5Merger component to copy the selected tables "
+            "from the input file to the output file. CAUTION: This can only be used "
+            "if the output file not exists."
         ),
     ).tag(config=True)
 
@@ -214,10 +231,10 @@ class PredictCTLearnModel(Tool):
 
     flags = {
         **flag(
-            "run-merger-tool",
-            "PredictCTLearnModel.run_HDF5Merger_tool",
-            "Run the HDF5Merger tool (CAUTION: This can not be used if the output file already exists)",
-            "Do not run the HDF5Merger tool",
+            "use-HDF5Merger",
+            "PredictCTLearnModel.use_HDF5Merger",
+            "Copy data using the HDF5Merger component (CAUTION: This can not be used if the output file already exists)",
+            "Do not copy data using the HDF5Merger component",
         ),
         **flag(
             "r0-waveforms",
@@ -260,12 +277,12 @@ class PredictCTLearnModel(Tool):
     classes = classes_with_traits(DLDataReader)
 
     def setup(self):
-        # Check if the ctapipe HDF5Merger tool is enabled
-        if self.run_HDF5Merger_tool:
+        # Check if the ctapipe HDF5Merger component is enabled
+        if self.use_HDF5Merger:
             if os.path.exists(self.output_path):
                 raise ToolConfigurationError(
-                    f"The output file '{self.output_path}' already exists. "
-                    "Please use '--no-run-merger-tool' to disable the HDF5Merger tool."
+                    f"The output file '{self.output_path}' already exists. Please use "
+                    "'--no-use-HDF5Merger' to disable the usage of the HDF5Merger component."
                 )
             # Copy selected tables from the input file to the output file
             self.log.info("Copying to output destination.")
@@ -273,7 +290,7 @@ class PredictCTLearnModel(Tool):
                 merger(self.input_url)
         else:
             self.log.info(
-                "No copy to output destination, since the merge tool is disabled."
+                "No copy to output destination, since the usage of the HDF5Merger component is disabled."
             )
 
         # Create a MirroredStrategy.
