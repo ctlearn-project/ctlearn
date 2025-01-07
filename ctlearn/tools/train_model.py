@@ -255,14 +255,17 @@ class TrainCTLearnModel(Tool):
 
         # Set up the data reader
         self.log.info("Loading data:")
-        self.log.info("  For a large dataset, this may take a while...")
+        self.log.info("For a large dataset, this may take a while...")
         self.dl1dh_reader = DLDataReader.from_name(
             self.dl1dh_reader_type,
             input_url_signal=sorted(self.input_url_signal),
             input_url_background=sorted(self.input_url_background),
             parent=self,
         )
-        self.log.info("  Number of events loaded: %s", self.dl1dh_reader._get_n_events())
+        self.log.info("Number of events loaded: %s", self.dl1dh_reader._get_n_events())
+        if "type" in self.reco_tasks:
+            self.log.info("Number of signal events: %d", self.dl1dh_reader.n_signal_events)
+            self.log.info("Number of background events: %d", self.dl1dh_reader.n_bkg_events)
         # Check if the number of events is enough to form a batch
         if self.dl1dh_reader._get_n_events() < self.batch_size:
             raise ValueError(

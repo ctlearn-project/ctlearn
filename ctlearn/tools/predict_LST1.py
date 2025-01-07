@@ -3,14 +3,13 @@ Predict the gammaness, energy and arrival direction from lstchain DL1 data.
 """
 
 import pathlib
-
 import numpy as np
-from astropy import units as u
-from astropy.table import Table, join, setdiff, vstack
 import tables
 import keras
+from astropy import units as u
 from astropy.coordinates.earth import EarthLocation
 from astropy.coordinates import SkyCoord
+from astropy.table import Table, join, setdiff, vstack
 from astropy.time import Time
 
 from ctapipe.containers import (
@@ -55,6 +54,8 @@ from dl1_data_handler.reader import (
     get_unmapped_image,
     get_unmapped_waveform,
     TableQualityQuery,
+    REFERENCE_LOCATION,
+    LST_EPOCH,
 )
 
 POINTING_GROUP = "/dl1/monitoring/telescope/pointing"
@@ -586,6 +587,8 @@ class LST1PredictionTool(Tool):
                 u.Quantity(tel_azimuth, unit=u.rad),
                 u.Quantity(tel_altitude, unit=u.rad),
                 frame="altaz",
+                location=REFERENCE_LOCATION,
+                obstime=LST_EPOCH,
             )
             reco_direction = pointing.spherical_offsets_by(
                 reco_spherical_offset_az, reco_spherical_offset_alt

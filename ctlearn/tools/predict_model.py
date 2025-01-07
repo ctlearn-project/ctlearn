@@ -43,13 +43,15 @@ from ctapipe.core.traits import (
 from ctapipe.monitoring.interpolation import PointingInterpolator
 from ctapipe.io import read_table, write_table, HDF5Merger
 from ctapipe.reco.utils import add_defaults_and_meta
-from dl1_data_handler.reader import DLDataReader, ProcessType
+from dl1_data_handler.reader import DLDataReader, ProcessType, REFERENCE_LOCATION, LST_EPOCH
 from dl1_data_handler.loader import DLDataLoader
 
 SIMULATION_CONFIG_TABLE = "/configuration/simulation/run"
 FIXED_POINTING_GROUP = "/configuration/telescope/pointing"
 POINTING_GROUP = "/dl1/monitoring/telescope/pointing"
 SUBARRAY_POINTING_GROUP = "/dl1/monitoring/subarray/pointing"
+DL1_TELESCOPE_GROUP = "/dl1/event/telescope"
+DL1_SUBARRAY_GROUP = "/dl1/event/subarray"
 DL2_SUBARRAY_GROUP = "/dl2/event/subarray"
 DL2_TELESCOPE_GROUP = "/dl2/event/telescope"
 SUBARRAY_EVENT_KEYS = ["obs_id", "event_id"]
@@ -80,6 +82,7 @@ class PredictCTLearnModel(Tool):
         --type_model="/path/to/your/mono/type/ctlearn_model.cpk" \\
         --energy_model="/path/to/your/mono/energy/ctlearn_model.cpk" \\
         --direction_model="/path/to/your/mono/direction/ctlearn_model.cpk" \\
+        --dl1-features \\
         --use-HDF5Merger \\
         --no-dl1-images \\
         --no-true-images \\
@@ -136,6 +139,15 @@ class PredictCTLearnModel(Tool):
             "Set whether to use the HDF5Merger component to copy the selected tables "
             "from the input file to the output file. CAUTION: This can only be used "
             "if the output file not exists."
+        ),
+    ).tag(config=True)
+
+    dl1_features = Bool(
+        default_value=False,
+        allow_none=False,
+        help=(
+            "Set whether to extract and store the DL1 feature vectors in the output file. "
+            "CAUTION: This can only be used if the DLDataReader mode is ``mono``."
         ),
     ).tag(config=True)
 
@@ -221,6 +233,17 @@ class PredictCTLearnModel(Tool):
         help="Overwrite the table in the output file if it exists",
     ).tag(config=True)
 
+    keras_verbose = Int(
+        default_value=1,
+        min=0,
+        max=2,
+        allow_none=False,
+        help=(
+            "Verbosity mode of Keras during the prediction: "
+            "0 = silent, 1 = progress bar, 2 = one line per call."
+        ),
+    ).tag(config=True)
+
     aliases = {
         ("i", "input_url"): "PredictCTLearnModel.input_url",
         ("t", "type_model"): "PredictCTLearnModel.load_type_model_from",
@@ -230,6 +253,12 @@ class PredictCTLearnModel(Tool):
     }
 
     flags = {
+        **flag(
+            "dl1-features",
+            "PredictCTLearnModel.dl1_features",
+            "Include dl1 features (CAUTION: This can not be used if DLDataReader mode is ``stereo``)",
+            "Exclude dl1 features",
+        ),
         **flag(
             "use-HDF5Merger",
             "PredictCTLearnModel.use_HDF5Merger",
@@ -300,15 +329,13 @@ class PredictCTLearnModel(Tool):
 
         # Set up the data reader
         self.log.info("Loading data reader:")
-        self.log.info("  For a large dataset, this may take a while...")
+        self.log.info("For a large dataset, this may take a while...")
         self.dl1dh_reader = DLDataReader.from_name(
             self.dl1dh_reader_type,
             input_url_signal=[self.input_url],
             parent=self,
         )
-        self.log.info(
-            "  Number of events loaded: %s", self.dl1dh_reader._get_n_events()
-        )
+        self.log.info("Number of events loaded: %s", self.dl1dh_reader._get_n_events())
         # Check if the number of events is enough to form a batch
         if self.dl1dh_reader._get_n_events() < self.batch_size:
             raise ToolConfigurationError(
@@ -365,12 +392,15 @@ class PredictCTLearnModel(Tool):
         self.log.info("Starting the prediction...")
         if self.load_type_model_from is not None:
             # Predict the energy of the primary particle
-            classification_table = self._predict_classification(example_identifiers)
+            classification_table, classification_feature_vectors = (
+                self._predict_classification(example_identifiers)
+            )
             # Produce output table with NaNs for missing predictions
             if len(nonexample_identifiers) > 0:
                 nan_table = self._create_nan_table(
                     nonexample_identifiers,
                     columns=[f"{self.prefix}_tel_prediction"],
+                    shapes=[(len(nonexample_identifiers),)],
                 )
                 classification_table = vstack([classification_table, nan_table])
             # Add is_valid column to the energy table
@@ -439,12 +469,15 @@ class PredictCTLearnModel(Tool):
 
         if self.load_energy_model_from is not None:
             # Predict the energy of the primary particle
-            energy_table = self._predict_energy(example_identifiers)
+            energy_table, energy_feature_vectors = self._predict_energy(
+                example_identifiers
+            )
             # Produce output table with NaNs for missing predictions
             if len(nonexample_identifiers) > 0:
                 nan_table = self._create_nan_table(
                     nonexample_identifiers,
                     columns=[f"{self.prefix}_tel_energy"],
+                    shapes=[(len(nonexample_identifiers),)],
                 )
                 energy_table = vstack([energy_table, nan_table])
             # Add is_valid column to the energy table
@@ -522,15 +555,21 @@ class PredictCTLearnModel(Tool):
                     keys=SUBARRAY_EVENT_KEYS,
                 )
             # Predict the arrival direction of the primary particle
-            direction_table = self._predict_direction(example_identifiers)
+            direction_table, direction_feature_vectors = self._predict_direction(
+                example_identifiers
+            )
             # Produce output table with NaNs for missing predictions
             if len(nonexample_identifiers) > 0:
                 nan_table = self._create_nan_table(
                     nonexample_identifiers,
                     columns=[f"{self.prefix}_tel_alt", f"{self.prefix}_tel_az"],
+                    shapes=[
+                        (len(nonexample_identifiers),),
+                        (len(nonexample_identifiers),),
+                    ],
                 )
                 direction_table = vstack([direction_table, nan_table])
-            # Add is_valid column to the direcction table
+            # Add is_valid column to the direction table
             direction_table.add_column(
                 ~np.isnan(direction_table[f"{self.prefix}_tel_alt"].data, dtype=bool),
                 name=f"{self.prefix}_tel_is_valid",
@@ -594,6 +633,70 @@ class PredictCTLearnModel(Tool):
                     f"{DL2_SUBARRAY_GROUP}/geometry/{self.prefix}",
                 )
 
+        # Create the feature vector table if the DL1 features are enabled
+        if self.dl1_features:
+            feature_vector_table = self._create_feature_vectors_table(
+                example_identifiers,
+                nonexample_identifiers,
+                classification_feature_vectors,
+                energy_feature_vectors,
+                direction_feature_vectors,
+            )
+            # Loop over the selected telescopes and store the feature vectors
+            # for each telescope in the output file. The feature vectors are stored
+            # in the DL1_TELESCOPE_GROUP/features/{prefix}/tel_{tel_id:03d} table.
+            if self.dl1dh_reader.mode == "mono":
+                for tel_id in self.dl1dh_reader.selected_telescopes[
+                    self.dl1dh_reader.tel_type
+                ]:
+                    # Retrieve the example identifiers for the selected telescope
+                    telescope_mask = feature_vector_table["tel_id"] == tel_id
+                    feature_vectors_tel_table = feature_vector_table[telescope_mask]
+                    feature_vectors_tel_table.sort(TELESCOPE_EVENT_KEYS)
+                    # Save the prediction to the output file
+                    write_table(
+                        feature_vectors_tel_table,
+                        self.output_path,
+                        f"{DL1_TELESCOPE_GROUP}/features/{self.prefix}/tel_{tel_id:03d}",
+                        overwrite=self.overwrite_tables,
+                    )
+                    self.log.info(
+                        "DL1 feature vectors was stored in '%s' under '%s'",
+                        self.output_path,
+                        f"{DL1_TELESCOPE_GROUP}/features/{self.prefix}/tel_{tel_id:03d}",
+                    )
+
+            elif self.dl1dh_reader.mode == "stereo":
+                # Rename the columns for the stereo mode
+                feature_vector_table.rename_column(
+                    f"{self.prefix}_tel_classification_feature_vectors",
+                    f"{self.prefix}_classification_feature_vectors",
+                )
+                feature_vector_table.rename_column(
+                    f"{self.prefix}_tel_energy_feature_vectors",
+                    f"{self.prefix}_energy_feature_vectors",
+                )
+                feature_vector_table.rename_column(
+                    f"{self.prefix}_tel_direction_feature_vectors",
+                    f"{self.prefix}_direction_feature_vectors",
+                )
+                feature_vector_table.rename_column(
+                    f"{self.prefix}_tel_is_valid", f"{self.prefix}_is_valid"
+                )
+                feature_vector_table.sort(SUBARRAY_EVENT_KEYS)
+                # Save the prediction to the output file
+                write_table(
+                    feature_vector_table,
+                    self.output_path,
+                    f"{DL1_SUBARRAY_GROUP}/features/{self.prefix}",
+                    overwrite=self.overwrite_tables,
+                )
+                self.log.info(
+                    "DL1 feature vectors was stored in '%s' under '%s'",
+                    self.output_path,
+                    f"{DL1_SUBARRAY_GROUP}/features/{self.prefix}",
+                )
+
     def finish(self):
         self.log.info("Tool is shutting down")
 
@@ -613,6 +716,8 @@ class PredictCTLearnModel(Tool):
         -------
         predict_data : astropy.table.Table
             Table containing the prediction results.
+        feature_vectors : np.ndarray
+            Feature vectors extracted from the backbone model.
         """
         # Create a new DLDataLoader for each task
         # It turned out to be more robust to initialize the DLDataLoader separately.
@@ -641,14 +746,78 @@ class PredictCTLearnModel(Tool):
             )
         # Load the model from the specified path
         model = keras.saving.load_model(model_path)
-        # Predict the data using the loaded model
-        predict_data = Table(model.predict(dl1dh_loader))
-        # Predict the last batch and stack the results to the prediction data
-        if dl1dh_loader_last_batch is not None:
-            predict_data = vstack(
-                [predict_data, Table(model.predict(dl1dh_loader_last_batch))]
+        prediction_colname = (
+            model.layers[-1].name if model.layers[-1].name != "softmax" else "type"
+        )
+        backbone_model, feature_vectors = None, None
+        if self.dl1_features:
+            # Get the backbone model which is the second layer of the model
+            backbone_model = model.get_layer(index=1)
+            # Create a new head model with the same layers as the original model.
+            # The output of the backbone model is the input of the head model.
+            backbone_output_shape = keras.Input(model.layers[2].input_shape[1:])
+            x = backbone_output_shape
+            for layer in model.layers[2:]:
+                x = layer(x)
+            head = keras.Model(inputs=backbone_output_shape, outputs=x)
+            # Apply the backbone model with the data loader to retrieve the feature vectors
+            feature_vectors = backbone_model.predict(
+                dl1dh_loader, verbose=self.keras_verbose
             )
-        return predict_data
+            # Apply the head model with the feature vectors to retrieve the prediction
+            predict_data = Table(
+                {
+                    prediction_colname: head.predict(
+                        feature_vectors, verbose=self.keras_verbose
+                    )
+                }
+            )
+            # Predict the last batch and stack the results to the prediction data
+            if dl1dh_loader_last_batch is not None:
+                feature_vectors_last_batch = backbone_model.predict(
+                    dl1dh_loader_last_batch, verbose=self.keras_verbose
+                )
+                feature_vectors = np.concatenate(
+                    (feature_vectors, feature_vectors_last_batch)
+                )
+                predict_data = vstack(
+                    [
+                        predict_data,
+                        Table(
+                            {
+                                prediction_colname: head.predict(
+                                    feature_vectors_last_batch,
+                                    verbose=self.keras_verbose,
+                                )
+                            }
+                        ),
+                    ]
+                )
+        else:
+            # Predict the data using the loaded model
+            predict_data = model.predict(dl1dh_loader, verbose=self.keras_verbose)
+            # Create a astropy table with the prediction results
+            # The classification task has a softmax layer as the last layer
+            # which returns the probabilities for each class in an array, while
+            # the regression tasks have output neurons which returns the
+            # predicted value for the task in a dictionary.
+            if prediction_colname == "type":
+                predict_data = Table({prediction_colname: predict_data})
+            else:
+                predict_data = Table(predict_data)
+            # Predict the last batch and stack the results to the prediction data
+            if dl1dh_loader_last_batch is not None:
+                predict_data_last_batch = model.predict(
+                    dl1dh_loader_last_batch, verbose=self.keras_verbose
+                )
+                if model.layers[-1].name == "type":
+                    predict_data_last_batch = Table(
+                        {prediction_colname: predict_data_last_batch}
+                    )
+                else:
+                    predict_data_last_batch = Table(predict_data_last_batch)
+                predict_data = vstack([predict_data, predict_data_last_batch])
+        return predict_data, feature_vectors
 
     def _predict_classification(self, example_identifiers):
         """
@@ -663,16 +832,22 @@ class PredictCTLearnModel(Tool):
         classification_table : astropy.table.Table
             Table containing the example identifiers with an additional column for the
             predicted classification score ('gammaness').
+        feature_vectors : np.ndarray
+            Feature vectors extracted from the backbone model.
         """
-        self.log.info("Predicting for the classification of the primary particle type.")
+        self.log.info(
+            "Predicting for the classification of the primary particle type..."
+        )
         # Predict the data using the loaded type_model
-        predict_data = self._predict_with_model(self.load_type_model_from)
-        # Add the predicted classification score ('gammaness') to the prediction table
+        predict_data, feature_vectors = self._predict_with_model(
+            self.load_type_model_from
+        )
+        # Create prediction table and add the predicted classification score ('gammaness')
         classification_table = example_identifiers.copy()
         classification_table.add_column(
-            predict_data["col1"], name=f"{self.prefix}_tel_prediction"
+            predict_data["type"].T[0], name=f"{self.prefix}_tel_prediction"
         )
-        return classification_table
+        return classification_table, feature_vectors
 
     def _predict_energy(self, example_identifiers):
         """
@@ -687,18 +862,23 @@ class PredictCTLearnModel(Tool):
         energy_table : astropy.table.Table
             Table containing the example identifiers with an additional column for the
             reconstructed energy in TeV.
+        feature_vectors : np.ndarray
+            Feature vectors extracted from the backbone model.
         """
-        self.log.info("Predicting for the regression of the primary particle energy.")
+        self.log.info("Predicting for the regression of the primary particle energy...")
         # Predict the data using the loaded energy_model
-        predict_data = self._predict_with_model(self.load_energy_model_from)
+        predict_data, feature_vectors = self._predict_with_model(
+            self.load_energy_model_from
+        )
         # Convert the reconstructed energy from log10(TeV) to TeV
         reco_energy = u.Quantity(
-            np.power(10, np.squeeze(predict_data["energy"])), unit=u.TeV
+            np.power(10, np.squeeze(predict_data["energy"])),
+            unit=u.TeV,
         )
-        # Add the reconstructed energy to the prediction table
+        # Create prediction table and add the reconstructed energy in TeV
         energy_table = example_identifiers.copy()
         energy_table.add_column(reco_energy, name=f"{self.prefix}_tel_energy")
-        return energy_table
+        return energy_table, feature_vectors
 
     def _predict_direction(self, example_identifiers):
         """
@@ -719,12 +899,16 @@ class PredictCTLearnModel(Tool):
             Table containing the example identifiers with an additional column for the
             reconstructed direction in SkyCoord (alt, az). The telescope pointing information
             is removed from the table.
+        feature_vectors : np.ndarray
+            Feature vectors extracted from the backbone model.
         """
         self.log.info(
-            "Predicting for the regression of the primary particle arrival direction."
+            "Predicting for the regression of the primary particle arrival direction..."
         )
         # Predict the data using the loaded direction_model
-        predict_data = self._predict_with_model(self.load_direction_model_from)
+        predict_data, feature_vectors = self._predict_with_model(
+            self.load_direction_model_from
+        )
         # For the direction task, the prediction is the spherical offset (alt, az)
         # from the telescope pointing. Convert reconstructed spherical offset (alt, az) to SkyCoord
         reco_spherical_offset_az = u.Quantity(
@@ -740,6 +924,8 @@ class PredictCTLearnModel(Tool):
             direction_table["pointing_azimuth"],
             direction_table["pointing_altitude"],
             frame="altaz",
+            location=REFERENCE_LOCATION,
+            obstime=LST_EPOCH,
         )
         # Keep only the necessary columns for the prediction table and remove the
         # telescope pointings and trigger timestamps
@@ -753,9 +939,9 @@ class PredictCTLearnModel(Tool):
         # Add the reconstructed direction (alt, az) to the prediction table
         direction_table.add_column(reco_direction["alt"], name=f"{self.prefix}_tel_alt")
         direction_table.add_column(reco_direction["az"], name=f"{self.prefix}_tel_az")
-        return direction_table
+        return direction_table, feature_vectors
 
-    def _create_nan_table(self, nonexample_identifiers, columns):
+    def _create_nan_table(self, nonexample_identifiers, columns, shapes):
         """
         Create a table with NaNs for missing predictions.
 
@@ -766,8 +952,10 @@ class PredictCTLearnModel(Tool):
         -----------
         nonexample_identifiers : astropy.table.Table
             Table containing the non-example identifiers.
-        columns : list
+        columns : list of str
             List of column names to create in the table.
+        shapes : list of shapes
+            List of shapes for the columns to create in the table.
 
         Returns:
         --------
@@ -776,8 +964,8 @@ class PredictCTLearnModel(Tool):
         """
         # Create a table with NaNs for missing predictions
         nan_table = nonexample_identifiers.copy()
-        for column_name in columns:
-            nan_table.add_column(np.nan * np.ones(len(nan_table)), name=column_name)
+        for column_name, shape in zip(columns, shapes):
+            nan_table.add_column(np.full(shape, np.nan), name=column_name)
         # Add that no telescope is valid for the non-example identifiers in stereo mode
         if self.dl1dh_reader.mode == "stereo":
             nan_table.add_column(
@@ -974,6 +1162,109 @@ class PredictCTLearnModel(Tool):
                 f"{SUBARRAY_POINTING_GROUP}",
             )
         return pointing_info
+
+    def _create_feature_vectors_table(
+        self,
+        example_identifiers,
+        nonexample_identifiers=None,
+        classification_feature_vectors=None,
+        energy_feature_vectors=None,
+        direction_feature_vectors=None,
+    ):
+        """
+        Create the table for the DL1 feature vectors.
+
+        This method creates a table with the DL1 feature vectors for the example identifiers and fill NaNs for
+        non-example identifiers. The feature vectors are stored in the columns of the table. The table also
+        contains a column for the valid predictions.
+
+        Parameters:
+        -----------
+        example_identifiers : astropy.table.Table
+            Table containing the example identifiers.
+        nonexample_identifiers : astropy.table.Table or None
+            Table containing the non-example identifiers to fill the NaNs.
+        classification_feature_vectors : np.ndarray or None
+            Array containing the classification feature vectors.
+        energy_feature_vectors : np.ndarray or None
+            Array containing the energy feature vectors.
+        direction_feature_vectors : np.ndarray or None
+            Array containing the direction feature vectors.
+
+        Returns:
+        --------
+        feature_vector_table : astropy.table.Table
+            Table containing the DL1 feature vectors for the example and non-example identifiers.
+        """
+        # Create the feature vector table
+        feature_vector_table = example_identifiers.copy()
+        feature_vector_table.remove_columns(
+            ["pointing_azimuth", "pointing_altitude", "time"]
+        )
+        columns_list, shapes_list = [], []
+        if classification_feature_vectors is not None:
+            is_valid_col = ~np.isnan(
+                np.min(classification_feature_vectors, axis=1), dtype=bool
+            )
+            feature_vector_table.add_column(
+                classification_feature_vectors,
+                name=f"{self.prefix}_tel_classification_feature_vectors",
+            )
+            if nonexample_identifiers is not None:
+                columns_list.append(f"{self.prefix}_tel_classification_feature_vectors")
+                shapes_list.append(
+                    (
+                        len(nonexample_identifiers),
+                        classification_feature_vectors.shape[1],
+                    )
+                )
+        if energy_feature_vectors is not None:
+            is_valid_col = ~np.isnan(np.min(energy_feature_vectors, axis=1), dtype=bool)
+            feature_vector_table.add_column(
+                energy_feature_vectors, name=f"{self.prefix}_tel_energy_feature_vectors"
+            )
+            if nonexample_identifiers is not None:
+                columns_list.append(f"{self.prefix}_tel_energy_feature_vectors")
+                shapes_list.append(
+                    (
+                        len(nonexample_identifiers),
+                        energy_feature_vectors.shape[1],
+                    )
+                )
+        if direction_feature_vectors is not None:
+            is_valid_col = ~np.isnan(
+                np.min(direction_feature_vectors, axis=1), dtype=bool
+            )
+            feature_vector_table.add_column(
+                direction_feature_vectors,
+                name=f"{self.prefix}_tel_direction_feature_vectors",
+            )
+            if nonexample_identifiers is not None:
+                columns_list.append(f"{self.prefix}_tel_direction_feature_vectors")
+                shapes_list.append(
+                    (
+                        len(nonexample_identifiers),
+                        direction_feature_vectors.shape[1],
+                    )
+                )
+        # Produce output table with NaNs for missing predictions
+        if nonexample_identifiers is not None:
+            if len(nonexample_identifiers) > 0:
+                nan_table = self._create_nan_table(
+                    nonexample_identifiers,
+                    columns=columns_list,
+                    shapes=shapes_list,
+                )
+                feature_vector_table = vstack([feature_vector_table, nan_table])
+                is_valid_col = np.concatenate(
+                    (is_valid_col, np.zeros(len(nonexample_identifiers), dtype=bool))
+                )
+        # Add is_valid column to the feature vector table
+        feature_vector_table.add_column(
+            is_valid_col,
+            name=f"{self.prefix}_tel_is_valid",
+        )
+        return feature_vector_table
 
 
 def main():
