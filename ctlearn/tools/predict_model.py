@@ -43,7 +43,12 @@ from ctapipe.core.traits import (
 from ctapipe.monitoring.interpolation import PointingInterpolator
 from ctapipe.io import read_table, write_table, HDF5Merger
 from ctapipe.reco.utils import add_defaults_and_meta
-from dl1_data_handler.reader import DLDataReader, ProcessType, REFERENCE_LOCATION, LST_EPOCH
+from dl1_data_handler.reader import (
+    DLDataReader,
+    ProcessType,
+    REFERENCE_LOCATION,
+    LST_EPOCH,
+)
 from dl1_data_handler.loader import DLDataLoader
 
 SIMULATION_CONFIG_TABLE = "/configuration/simulation/run"
@@ -375,7 +380,11 @@ class PredictCTLearnModel(Tool):
             survival_telescopes = []
             for subarray_event in self.dl1dh_reader.example_identifiers_grouped.groups:
                 survival_mask = np.zeros(len(self.dl1dh_reader.tel_ids), dtype=bool)
-                survival_mask[subarray_event["tel_id"].data - 1] = True
+                survival_tels = [
+                    self.dl1dh_reader.subarray.tel_indices[tel_id]
+                    for tel_id in subarray_event["tel_id"].data
+                ]
+                survival_mask[survival_tels] = True
                 survival_telescopes.append(survival_mask)
             # Add the survival telescopes to the example_identifiers
             example_identifiers.add_column(
