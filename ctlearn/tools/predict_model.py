@@ -150,10 +150,19 @@ class PredictCTLearnModel(Tool):
     dl1_features = Bool(
         default_value=False,
         allow_none=False,
-        help=(
-            "Set whether to extract and store the DL1 feature vectors in the output file. "
-            "CAUTION: This can only be used if the DLDataReader mode is ``mono``."
-        ),
+        help="Set whether to include the dl1 feature vectors in the output file.",
+    ).tag(config=True)
+
+    dl2_telescope = Bool(
+        default_value=True,
+        allow_none=False,
+        help="Whether to include dl2 telescope-event-wise data in the output file."
+    ).tag(config=True)
+
+    dl2_subarray = Bool(
+        default_value=True,
+        allow_none=False,
+        help="Whether to include dl2 subarray-event-wise data in the output file."
     ).tag(config=True)
 
     dl1dh_reader_type = ComponentName(DLDataReader, default_value="DLImageReader").tag(
@@ -261,9 +270,22 @@ class PredictCTLearnModel(Tool):
         **flag(
             "dl1-features",
             "PredictCTLearnModel.dl1_features",
-            "Include dl1 features (CAUTION: This can not be used if DLDataReader mode is ``stereo``)",
+            "Include dl1 features",
             "Exclude dl1 features",
         ),
+        **flag(
+            "dl2-telescope",
+            "PredictCTLearnModel.dl2_telescope",
+            "Include dl2 telescope-event-wise data in the output file",
+            "Exclude dl2 telescope-event-wise data in the output file",
+        ),
+        **flag(
+            "dl2-subarray",
+            "PredictCTLearnModel.dl2_subarray",
+            "Include dl2 telescope-event-wise data in the output file",
+            "Exclude dl2 telescope-event-wise data in the output file",
+        ),
+
         **flag(
             "use-HDF5Merger",
             "PredictCTLearnModel.use_HDF5Merger",
@@ -420,7 +442,7 @@ class PredictCTLearnModel(Tool):
                 ),
                 name=f"{self.prefix}_tel_is_valid",
             )
-            if self.dl1dh_reader.mode == "mono":
+            if self.dl1dh_reader.mode == "mono" and self.dl2_telescope:
                 for tel_id in self.dl1dh_reader.selected_telescopes[
                     self.dl1dh_reader.tel_type
                 ]:
@@ -448,7 +470,7 @@ class PredictCTLearnModel(Tool):
                         f"{DL2_TELESCOPE_GROUP}/classification/{self.prefix}/tel_{tel_id:03d}",
                     )
 
-            elif self.dl1dh_reader.mode == "stereo":
+            elif self.dl1dh_reader.mode == "stereo" and self.dl2_subarray:
                 # Rename the columns for the stereo mode
                 classification_table.rename_column(
                     f"{self.prefix}_tel_prediction", f"{self.prefix}_prediction"
@@ -494,7 +516,7 @@ class PredictCTLearnModel(Tool):
                 ~np.isnan(energy_table[f"{self.prefix}_tel_energy"].data, dtype=bool),
                 name=f"{self.prefix}_tel_is_valid",
             )
-            if self.dl1dh_reader.mode == "mono":
+            if self.dl1dh_reader.mode == "mono" and self.dl2_telescope:
                 for tel_id in self.dl1dh_reader.selected_telescopes[
                     self.dl1dh_reader.tel_type
                 ]:
@@ -522,7 +544,7 @@ class PredictCTLearnModel(Tool):
                         f"{DL2_TELESCOPE_GROUP}/energy/{self.prefix}/tel_{tel_id:03d}",
                     )
 
-            elif self.dl1dh_reader.mode == "stereo":
+            elif self.dl1dh_reader.mode == "stereo" and self.dl2_subarray:
                 # Rename the columns for the stereo mode
                 energy_table.rename_column(
                     f"{self.prefix}_tel_energy", f"{self.prefix}_energy"
@@ -583,7 +605,7 @@ class PredictCTLearnModel(Tool):
                 ~np.isnan(direction_table[f"{self.prefix}_tel_alt"].data, dtype=bool),
                 name=f"{self.prefix}_tel_is_valid",
             )
-            if self.dl1dh_reader.mode == "mono":
+            if self.dl1dh_reader.mode == "mono" and self.dl2_telescope:
                 for tel_id in self.dl1dh_reader.selected_telescopes[
                     self.dl1dh_reader.tel_type
                 ]:
@@ -611,7 +633,7 @@ class PredictCTLearnModel(Tool):
                         f"{DL2_TELESCOPE_GROUP}/geometry/{self.prefix}/tel_{tel_id:03d}",
                     )
 
-            elif self.dl1dh_reader.mode == "stereo":
+            elif self.dl1dh_reader.mode == "stereo" and self.dl2_subarray:
                 # Rename the columns for the stereo mode
                 direction_table.rename_column(
                     f"{self.prefix}_tel_alt", f"{self.prefix}_alt"
