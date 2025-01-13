@@ -256,6 +256,11 @@ class TrainCTLearnModel(Tool):
         # Set up the data reader
         self.log.info("Loading data:")
         self.log.info("For a large dataset, this may take a while...")
+        if self.dl1dh_reader_type == "DLFeatureVectorReader":
+            raise NotImplementedError(
+                "'DLFeatureVectorReader' is not supported in CTLearn yet. "
+                "Missing stereo CTLearnModel implementation."
+            )
         self.dl1dh_reader = DLDataReader.from_name(
             self.dl1dh_reader_type,
             input_url_signal=sorted(self.input_url_signal),
@@ -276,12 +281,6 @@ class TrainCTLearnModel(Tool):
         if self.dl1dh_reader.class_weight is None and "type" in self.reco_tasks:
             raise ValueError(
                 "Classification task selected but less than two classes are present in the data."
-            )
-        # TODO: Add support for multiple telescope types and remove the NotImplementedError
-        if len(list(self.dl1dh_reader.selected_telescopes)) > 1:
-            raise NotImplementedError(
-                "More than one telescope type selected. "
-                "Currently, only one telescope type is supported."
             )
         # Check if stereo mode is selected for stacking telescope images
         if self.stack_telescope_images and self.dl1dh_reader.mode == "mono":
