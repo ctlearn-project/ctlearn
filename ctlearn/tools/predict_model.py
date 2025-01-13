@@ -62,6 +62,11 @@ DL2_TELESCOPE_GROUP = "/dl2/event/telescope"
 SUBARRAY_EVENT_KEYS = ["obs_id", "event_id"]
 TELESCOPE_EVENT_KEYS = ["obs_id", "event_id", "tel_id"]
 
+__all__ = [
+    "PredictCTLearnModel",
+    "MonoPredictCTLearnModel",
+    "StereoPredictCTLearnModel",
+]
 
 class PredictCTLearnModel(Tool):
     """
@@ -70,63 +75,6 @@ class PredictCTLearnModel(Tool):
     The tool predicts the gammaness, energy and arrival direction from pixel-wise image or waveform data.
     The input data is loaded from the input url using the ``~dl1_data_handler.reader.DLDataReader`` and
     ``~dl1_data_handler.loader.DLDataLoader`` and the prediction is performed using the CTLearn models.
-    """
-
-    name = "PredictCTLearnModel"
-    description = __doc__
-
-    examples = """
-    To predict from pixel-wise image data in mono mode using trained CTLearn models:
-    > ctlearn-predict-model \\
-        --input_url input.dl1.h5 \\
-        --PredictCTLearnModel.batch_size=64 \\
-        --PredictCTLearnModel.dl1dh_reader_type=DLImageReader \\
-        --DLImageReader.channels=cleaned_image \\
-        --DLImageReader.channels=cleaned_relative_peak_time \\
-        --DLImageReader.image_mapper_type=BilinearMapper \\
-        --type_model="/path/to/your/mono/type/ctlearn_model.cpk" \\
-        --energy_model="/path/to/your/mono/energy/ctlearn_model.cpk" \\
-        --direction_model="/path/to/your/mono/direction/ctlearn_model.cpk" \\
-        --dl1-features \\
-        --use-HDF5Merger \\
-        --no-dl1-images \\
-        --no-true-images \\
-        --output output.dl2.h5 \\
-        --PredictCTLearnModel.overwrite_tables=True \\
-    
-    To predict from pixel-wise image data in stereo mode using trained CTLearn models:
-    > ctlearn-predict-model \\
-        --input_url input.dl1.h5 \\
-        --PredictCTLearnModel.batch_size=16 \\
-        --PredictCTLearnModel.dl1dh_reader_type=DLImageReader \\
-        --DLImageReader.channels=cleaned_image \\
-        --DLImageReader.channels=cleaned_relative_peak_time \\
-        --DLImageReader.image_mapper_type=BilinearMapper \\
-        --DLImageReader.mode=stereo \\
-        --DLImageReader.min_telescopes=2 \\
-        --PredictCTLearnModel.stack_telescope_images=True \\
-        --type_model="/path/to/your/stereo/type/ctlearn_model.cpk" \\
-        --energy_model="/path/to/your/stereo/energy/ctlearn_model.cpk" \\
-        --direction_model="/path/to/your/stereo/direction/ctlearn_model.cpk" \\
-        --output output.dl2.h5 \\
-        --PredictCTLearnModel.overwrite_tables=True \\
-
-    To predict from pixel-wise waveform data in mono mode using trained CTLearn models:
-    > ctlearn-predict-model \\
-        --input_url input.r1.h5 \\
-        --PredictCTLearnModel.dl1dh_reader_type=DLWaveformReader \\
-        --DLWaveformReader.sequnce_length=20 \\
-        --DLWaveformReader.image_mapper_type=BilinearMapper \\
-        --type_model="/path/to/your/mono_waveform/type/ctlearn_model.cpk" \\
-        --energy_model="/path/to/your/mono_waveform/energy/ctlearn_model.cpk" \\
-        --direction_model="/path/to/your/mono_waveform/direction/ctlearn_model.cpk" \\
-        --use-HDF5Merger \\
-        --no-r0-waveforms \\
-        --no-r1-waveforms \\
-        --no-dl1-images \\
-        --no-true-images \\
-        --output output.dl2.h5 \\
-        --PredictCTLearnModel.overwrite_tables=True \\
     """
 
     input_url = Path(
@@ -372,361 +320,6 @@ class PredictCTLearnModel(Tool):
         # Set the indices for the data loaders
         self.indices = list(range(self.dl1dh_reader._get_n_events()))
         self.last_batch_size = len(self.indices) % self.batch_size
-
-    def start(self):
-        self.log.info("Processing the telescope pointings...")
-        # Retrieve the IDs from the dl1dh for the prediction tables
-        if self.dl1dh_reader.mode == "mono":
-            example_identifiers = self.dl1dh_reader.example_identifiers.copy()
-            example_identifiers.keep_columns(TELESCOPE_EVENT_KEYS)
-            all_identifiers = self.dl1dh_reader.tel_trigger_table.copy()
-            all_identifiers.keep_columns(TELESCOPE_EVENT_KEYS + ["time"])
-            nonexample_identifiers = setdiff(
-                all_identifiers, example_identifiers, keys=TELESCOPE_EVENT_KEYS
-            )
-            nonexample_identifiers.remove_column("time")
-            # Pointing table for the mono mode for MC simulation
-            if self.dl1dh_reader.process_type == ProcessType.Simulation:
-                pointing_info = self._store_mc_telescope_pointing(all_identifiers)
-
-        elif self.dl1dh_reader.mode == "stereo":
-            example_identifiers = self.dl1dh_reader.unique_example_identifiers.copy()
-            example_identifiers.keep_columns(SUBARRAY_EVENT_KEYS)
-            all_identifiers = self.dl1dh_reader.subarray_trigger_table.copy()
-            all_identifiers.keep_columns(SUBARRAY_EVENT_KEYS + ["time"])
-            nonexample_identifiers = setdiff(
-                all_identifiers, example_identifiers, keys=SUBARRAY_EVENT_KEYS
-            )
-            nonexample_identifiers.remove_column("time")
-            # Construct the survival telescopes for each event of the example_identifiers
-            survival_telescopes = []
-            for subarray_event in self.dl1dh_reader.example_identifiers_grouped.groups:
-                survival_mask = np.zeros(len(self.dl1dh_reader.tel_ids), dtype=bool)
-                survival_tels = [
-                    self.dl1dh_reader.subarray.tel_indices[tel_id]
-                    for tel_id in subarray_event["tel_id"].data
-                ]
-                survival_mask[survival_tels] = True
-                survival_telescopes.append(survival_mask)
-            # Add the survival telescopes to the example_identifiers
-            example_identifiers.add_column(
-                survival_telescopes, name=f"{self.prefix}_telescopes"
-            )
-            # Pointing table for the stereo mode for MC simulation
-            if self.dl1dh_reader.process_type == ProcessType.Simulation:
-                pointing_info = self._store_mc_subarray_pointing(all_identifiers)
-
-        # Pointing table for the observation mode
-        if self.dl1dh_reader.process_type == ProcessType.Observation:
-            pointing_info = self._store_pointing(all_identifiers)
-
-        self.log.info("Starting the prediction...")
-        if self.load_type_model_from is not None:
-            # Predict the energy of the primary particle
-            classification_table, classification_feature_vectors = (
-                self._predict_classification(example_identifiers)
-            )
-            # Produce output table with NaNs for missing predictions
-            if len(nonexample_identifiers) > 0:
-                nan_table = self._create_nan_table(
-                    nonexample_identifiers,
-                    columns=[f"{self.prefix}_tel_prediction"],
-                    shapes=[(len(nonexample_identifiers),)],
-                )
-                classification_table = vstack([classification_table, nan_table])
-            # Add is_valid column to the energy table
-            classification_table.add_column(
-                ~np.isnan(
-                    classification_table[f"{self.prefix}_tel_prediction"].data,
-                    dtype=bool,
-                ),
-                name=f"{self.prefix}_tel_is_valid",
-            )
-            if self.dl1dh_reader.mode == "mono" and self.dl2_telescope:
-                for tel_id in self.dl1dh_reader.selected_telescopes[
-                    self.dl1dh_reader.tel_type
-                ]:
-                    # Retrieve the example identifiers for the selected telescope
-                    telescope_mask = classification_table["tel_id"] == tel_id
-                    classification_tel_table = classification_table[telescope_mask]
-                    classification_tel_table.sort(TELESCOPE_EVENT_KEYS)
-                    # Add the default values and meta data to the table
-                    add_defaults_and_meta(
-                        classification_tel_table,
-                        ParticleClassificationContainer,
-                        prefix=self.prefix,
-                        add_tel_prefix=True,
-                    )
-                    # Save the prediction to the output file for the selected telescope
-                    write_table(
-                        classification_tel_table,
-                        self.output_path,
-                        f"{DL2_TELESCOPE_GROUP}/classification/{self.prefix}/tel_{tel_id:03d}",
-                        overwrite=self.overwrite_tables,
-                    )
-                    self.log.info(
-                        "DL2 prediction data was stored in '%s' under '%s'",
-                        self.output_path,
-                        f"{DL2_TELESCOPE_GROUP}/classification/{self.prefix}/tel_{tel_id:03d}",
-                    )
-
-            elif self.dl1dh_reader.mode == "stereo" and self.dl2_subarray:
-                # Rename the columns for the stereo mode
-                classification_table.rename_column(
-                    f"{self.prefix}_tel_prediction", f"{self.prefix}_prediction"
-                )
-                classification_table.rename_column(
-                    f"{self.prefix}_tel_is_valid", f"{self.prefix}_is_valid"
-                )
-                classification_table.sort(SUBARRAY_EVENT_KEYS)
-                # Add the default values and meta data to the table
-                add_defaults_and_meta(
-                    classification_table,
-                    ParticleClassificationContainer,
-                    prefix=self.prefix,
-                )
-                # Save the prediction to the output file
-                write_table(
-                    classification_table,
-                    self.output_path,
-                    f"{DL2_SUBARRAY_GROUP}/classification/{self.prefix}",
-                    overwrite=self.overwrite_tables,
-                )
-                self.log.info(
-                    "DL2 prediction data was stored in '%s' under '%s'",
-                    self.output_path,
-                    f"{DL2_SUBARRAY_GROUP}/classification/{self.prefix}",
-                )
-
-        if self.load_energy_model_from is not None:
-            # Predict the energy of the primary particle
-            energy_table, energy_feature_vectors = self._predict_energy(
-                example_identifiers
-            )
-            # Produce output table with NaNs for missing predictions
-            if len(nonexample_identifiers) > 0:
-                nan_table = self._create_nan_table(
-                    nonexample_identifiers,
-                    columns=[f"{self.prefix}_tel_energy"],
-                    shapes=[(len(nonexample_identifiers),)],
-                )
-                energy_table = vstack([energy_table, nan_table])
-            # Add is_valid column to the energy table
-            energy_table.add_column(
-                ~np.isnan(energy_table[f"{self.prefix}_tel_energy"].data, dtype=bool),
-                name=f"{self.prefix}_tel_is_valid",
-            )
-            if self.dl1dh_reader.mode == "mono" and self.dl2_telescope:
-                for tel_id in self.dl1dh_reader.selected_telescopes[
-                    self.dl1dh_reader.tel_type
-                ]:
-                    # Retrieve the example identifiers for the selected telescope
-                    telescope_mask = energy_table["tel_id"] == tel_id
-                    energy_tel_table = energy_table[telescope_mask]
-                    energy_tel_table.sort(TELESCOPE_EVENT_KEYS)
-                    # Add the default values and meta data to the table
-                    add_defaults_and_meta(
-                        energy_tel_table,
-                        ReconstructedEnergyContainer,
-                        prefix=self.prefix,
-                        add_tel_prefix=True,
-                    )
-                    # Save the prediction to the output file
-                    write_table(
-                        energy_tel_table,
-                        self.output_path,
-                        f"{DL2_TELESCOPE_GROUP}/energy/{self.prefix}/tel_{tel_id:03d}",
-                        overwrite=self.overwrite_tables,
-                    )
-                    self.log.info(
-                        "DL2 prediction data was stored in '%s' under '%s'",
-                        self.output_path,
-                        f"{DL2_TELESCOPE_GROUP}/energy/{self.prefix}/tel_{tel_id:03d}",
-                    )
-
-            elif self.dl1dh_reader.mode == "stereo" and self.dl2_subarray:
-                # Rename the columns for the stereo mode
-                energy_table.rename_column(
-                    f"{self.prefix}_tel_energy", f"{self.prefix}_energy"
-                )
-                energy_table.rename_column(
-                    f"{self.prefix}_tel_is_valid", f"{self.prefix}_is_valid"
-                )
-                energy_table.sort(SUBARRAY_EVENT_KEYS)
-                # Add the default values and meta data to the table
-                add_defaults_and_meta(
-                    energy_table,
-                    ReconstructedEnergyContainer,
-                    prefix=self.prefix,
-                )
-                # Save the prediction to the output file
-                write_table(
-                    energy_table,
-                    self.output_path,
-                    f"{DL2_SUBARRAY_GROUP}/energy/{self.prefix}",
-                    overwrite=self.overwrite_tables,
-                )
-                self.log.info(
-                    "DL2 prediction data was stored in '%s' under '%s'",
-                    self.output_path,
-                    f"{DL2_SUBARRAY_GROUP}/energy/{self.prefix}",
-                )
-        if self.load_direction_model_from is not None:
-            # Join the prediction table with the telescope pointing table
-            if self.dl1dh_reader.mode == "mono":
-                example_identifiers = join(
-                    left=example_identifiers,
-                    right=pointing_info,
-                    keys=TELESCOPE_EVENT_KEYS,
-                )
-            elif self.dl1dh_reader.mode == "stereo":
-                example_identifiers = join(
-                    left=example_identifiers,
-                    right=pointing_info,
-                    keys=SUBARRAY_EVENT_KEYS,
-                )
-            # Predict the arrival direction of the primary particle
-            direction_table, direction_feature_vectors = self._predict_direction(
-                example_identifiers
-            )
-            # Produce output table with NaNs for missing predictions
-            if len(nonexample_identifiers) > 0:
-                nan_table = self._create_nan_table(
-                    nonexample_identifiers,
-                    columns=[f"{self.prefix}_tel_alt", f"{self.prefix}_tel_az"],
-                    shapes=[
-                        (len(nonexample_identifiers),),
-                        (len(nonexample_identifiers),),
-                    ],
-                )
-                direction_table = vstack([direction_table, nan_table])
-            # Add is_valid column to the direction table
-            direction_table.add_column(
-                ~np.isnan(direction_table[f"{self.prefix}_tel_alt"].data, dtype=bool),
-                name=f"{self.prefix}_tel_is_valid",
-            )
-            if self.dl1dh_reader.mode == "mono" and self.dl2_telescope:
-                for tel_id in self.dl1dh_reader.selected_telescopes[
-                    self.dl1dh_reader.tel_type
-                ]:
-                    # Retrieve the example identifiers for the selected telescope
-                    telescope_mask = direction_table["tel_id"] == tel_id
-                    direction_tel_table = direction_table[telescope_mask]
-                    direction_tel_table.sort(TELESCOPE_EVENT_KEYS)
-                    # Add the default values and meta data to the table
-                    add_defaults_and_meta(
-                        direction_tel_table,
-                        ReconstructedGeometryContainer,
-                        prefix=self.prefix,
-                        add_tel_prefix=True,
-                    )
-                    # Save the prediction to the output file
-                    write_table(
-                        direction_tel_table,
-                        self.output_path,
-                        f"{DL2_TELESCOPE_GROUP}/geometry/{self.prefix}/tel_{tel_id:03d}",
-                        overwrite=self.overwrite_tables,
-                    )
-                    self.log.info(
-                        "DL2 prediction data was stored in '%s' under '%s'",
-                        self.output_path,
-                        f"{DL2_TELESCOPE_GROUP}/geometry/{self.prefix}/tel_{tel_id:03d}",
-                    )
-
-            elif self.dl1dh_reader.mode == "stereo" and self.dl2_subarray:
-                # Rename the columns for the stereo mode
-                direction_table.rename_column(
-                    f"{self.prefix}_tel_alt", f"{self.prefix}_alt"
-                )
-                direction_table.rename_column(
-                    f"{self.prefix}_tel_az", f"{self.prefix}_az"
-                )
-                direction_table.rename_column(
-                    f"{self.prefix}_tel_is_valid", f"{self.prefix}_is_valid"
-                )
-                direction_table.sort(SUBARRAY_EVENT_KEYS)
-                # Add the default values and meta data to the table
-                add_defaults_and_meta(
-                    direction_table,
-                    ReconstructedGeometryContainer,
-                    prefix=self.prefix,
-                )
-                # Save the prediction to the output file
-                write_table(
-                    direction_table,
-                    self.output_path,
-                    f"{DL2_SUBARRAY_GROUP}/geometry/{self.prefix}",
-                    overwrite=self.overwrite_tables,
-                )
-                self.log.info(
-                    "DL2 prediction data was stored in '%s' under '%s'",
-                    self.output_path,
-                    f"{DL2_SUBARRAY_GROUP}/geometry/{self.prefix}",
-                )
-
-        # Create the feature vector table if the DL1 features are enabled
-        if self.dl1_features:
-            feature_vector_table = self._create_feature_vectors_table(
-                example_identifiers,
-                nonexample_identifiers,
-                classification_feature_vectors,
-                energy_feature_vectors,
-                direction_feature_vectors,
-            )
-            # Loop over the selected telescopes and store the feature vectors
-            # for each telescope in the output file. The feature vectors are stored
-            # in the DL1_TELESCOPE_GROUP/features/{prefix}/tel_{tel_id:03d} table.
-            if self.dl1dh_reader.mode == "mono":
-                for tel_id in self.dl1dh_reader.selected_telescopes[
-                    self.dl1dh_reader.tel_type
-                ]:
-                    # Retrieve the example identifiers for the selected telescope
-                    telescope_mask = feature_vector_table["tel_id"] == tel_id
-                    feature_vectors_tel_table = feature_vector_table[telescope_mask]
-                    feature_vectors_tel_table.sort(TELESCOPE_EVENT_KEYS)
-                    # Save the prediction to the output file
-                    write_table(
-                        feature_vectors_tel_table,
-                        self.output_path,
-                        f"{DL1_TELESCOPE_GROUP}/features/{self.prefix}/tel_{tel_id:03d}",
-                        overwrite=self.overwrite_tables,
-                    )
-                    self.log.info(
-                        "DL1 feature vectors was stored in '%s' under '%s'",
-                        self.output_path,
-                        f"{DL1_TELESCOPE_GROUP}/features/{self.prefix}/tel_{tel_id:03d}",
-                    )
-
-            elif self.dl1dh_reader.mode == "stereo":
-                # Rename the columns for the stereo mode
-                feature_vector_table.rename_column(
-                    f"{self.prefix}_tel_classification_feature_vectors",
-                    f"{self.prefix}_classification_feature_vectors",
-                )
-                feature_vector_table.rename_column(
-                    f"{self.prefix}_tel_energy_feature_vectors",
-                    f"{self.prefix}_energy_feature_vectors",
-                )
-                feature_vector_table.rename_column(
-                    f"{self.prefix}_tel_direction_feature_vectors",
-                    f"{self.prefix}_direction_feature_vectors",
-                )
-                feature_vector_table.rename_column(
-                    f"{self.prefix}_tel_is_valid", f"{self.prefix}_is_valid"
-                )
-                feature_vector_table.sort(SUBARRAY_EVENT_KEYS)
-                # Save the prediction to the output file
-                write_table(
-                    feature_vector_table,
-                    self.output_path,
-                    f"{DL1_SUBARRAY_GROUP}/features/{self.prefix}",
-                    overwrite=self.overwrite_tables,
-                )
-                self.log.info(
-                    "DL1 feature vectors was stored in '%s' under '%s'",
-                    self.output_path,
-                    f"{DL1_SUBARRAY_GROUP}/features/{self.prefix}",
-                )
 
     def finish(self):
         self.log.info("Tool is shutting down")
@@ -1008,106 +601,6 @@ class PredictCTLearnModel(Tool):
             )
         return nan_table
 
-    def _store_mc_subarray_pointing(self, all_identifiers):
-        """
-        Store the subarray pointing table from MC simulation to the output file.
-
-        Parameters:
-        -----------
-        all_identifiers : astropy.table.Table
-            Table containing the subarray pointing information.
-        """
-        # Read the subarray pointing table
-        pointing_info = read_table(
-            self.input_url,
-            f"{SIMULATION_CONFIG_TABLE}",
-        )
-        # Assuming min_az = max_az and min_alt = max_alt
-        pointing_info.keep_columns(["obs_id", "min_az", "min_alt"])
-        pointing_info.rename_column("min_az", "pointing_azimuth")
-        pointing_info.rename_column("min_alt", "pointing_altitude")
-        # Join the prediction table with the telescope pointing table
-        pointing_info = join(
-            left=pointing_info,
-            right=all_identifiers,
-            keys=["obs_id"],
-        )
-        # TODO: use keep_order for astropy v7.0.0
-        pointing_info.sort(SUBARRAY_EVENT_KEYS)
-        # Create the pointing table
-        pointing_table = Table(
-            {
-                "time": pointing_info["time"],
-                "array_azimuth": pointing_info["pointing_azimuth"],
-                "array_altitude": pointing_info["pointing_altitude"],
-                "array_ra": np.nan * np.ones(len(pointing_info)),
-                "array_dec": np.nan * np.ones(len(pointing_info)),
-            }
-        )
-        # Save the pointing table to the output file
-        write_table(
-            pointing_table,
-            self.output_path,
-            f"{SUBARRAY_POINTING_GROUP}",
-            overwrite=self.overwrite_tables,
-        )
-        self.log.info(
-            "DL1 subarray pointing table was stored in '%s' under '%s'",
-            self.output_path,
-            f"{SUBARRAY_POINTING_GROUP}",
-        )
-        return pointing_info
-
-    def _store_mc_telescope_pointing(self, all_identifiers):
-        """
-        Store the telescope pointing table from MC simulation to the output file.
-
-        Parameters:
-        -----------
-        all_identifiers : astropy.table.Table
-            Table containing the telescope pointing information.
-        """
-
-        # Pointing table for the mono mode
-        pointing_info = self.dl1dh_reader.get_tel_pointing(
-            self.input_url, self.dl1dh_reader.tel_ids
-        )
-        pointing_info.rename_column("telescope_pointing_azimuth", "pointing_azimuth")
-        pointing_info.rename_column("telescope_pointing_altitude", "pointing_altitude")
-        # Join the prediction table with the telescope pointing table
-        pointing_info = join(
-            left=pointing_info,
-            right=all_identifiers,
-            keys=["obs_id", "tel_id"],
-        )
-        # TODO: use keep_order for astropy v7.0.0
-        pointing_info.sort(TELESCOPE_EVENT_KEYS)
-        # Create the pointing table for each telescope
-        for tel_id in self.dl1dh_reader.selected_telescopes[self.dl1dh_reader.tel_type]:
-            # Retrieve the example identifiers for the selected telescope
-            telescope_mask = pointing_info["tel_id"] == tel_id
-            tel_pointing_info = pointing_info[telescope_mask]
-            tel_pointing_info.sort(TELESCOPE_EVENT_KEYS)
-            tel_pointing_table = Table(
-                {
-                    "time": tel_pointing_info["time"],
-                    "azimuth": tel_pointing_info["pointing_azimuth"],
-                    "altitude": tel_pointing_info["pointing_altitude"],
-                }
-            )
-            write_table(
-                tel_pointing_table,
-                self.output_path,
-                f"{POINTING_GROUP}/tel_{tel_id:03d}",
-                overwrite=self.overwrite_tables,
-            )
-            self.log.info(
-                "DL1 telescope pointing table was stored in '%s' under '%s'",
-                self.output_path,
-                f"{POINTING_GROUP}/tel_{tel_id:03d}",
-            )
-        return pointing_info
-
     def _store_pointing(self, all_identifiers):
         """
         Store the telescope pointing table from  to the output file.
@@ -1298,11 +791,628 @@ class PredictCTLearnModel(Tool):
         return feature_vector_table
 
 
-def main():
+class MonoPredictCTLearnModel(PredictCTLearnModel):
+    """
+    Tool to predict the gammaness, energy and arrival direction from R1/DL1a data using CTLearn models.
+
+    The tool predicts the gammaness, energy and arrival direction from pixel-wise image or waveform data.
+    The input data is loaded from the input url using the ``~dl1_data_handler.reader.DLDataReader`` and
+    ``~dl1_data_handler.loader.DLDataLoader`` and the prediction is performed using the CTLearn models.
+    """
+
+    name = "ctlearn-predict-mono-model"
+    description = __doc__
+
+    examples = """
+    To predict from pixel-wise image data in mono mode using trained CTLearn models:
+    > ctlearn-predict-mono-model \\
+        --input_url input.dl1.h5 \\
+        --PredictCTLearnModel.batch_size=64 \\
+        --PredictCTLearnModel.dl1dh_reader_type=DLImageReader \\
+        --DLImageReader.channels=cleaned_image \\
+        --DLImageReader.channels=cleaned_relative_peak_time \\
+        --DLImageReader.image_mapper_type=BilinearMapper \\
+        --type_model="/path/to/your/mono/type/ctlearn_model.cpk" \\
+        --energy_model="/path/to/your/mono/energy/ctlearn_model.cpk" \\
+        --direction_model="/path/to/your/mono/direction/ctlearn_model.cpk" \\
+        --dl1-features \\
+        --use-HDF5Merger \\
+        --no-dl1-images \\
+        --no-true-images \\
+        --output output.dl2.h5 \\
+        --PredictCTLearnModel.overwrite_tables=True \\
+
+    To predict from pixel-wise waveform data in mono mode using trained CTLearn models:
+    > ctlearn-predict-mono-model \\
+        --input_url input.r1.h5 \\
+        --PredictCTLearnModel.dl1dh_reader_type=DLWaveformReader \\
+        --DLWaveformReader.sequnce_length=20 \\
+        --DLWaveformReader.image_mapper_type=BilinearMapper \\
+        --type_model="/path/to/your/mono_waveform/type/ctlearn_model.cpk" \\
+        --energy_model="/path/to/your/mono_waveform/energy/ctlearn_model.cpk" \\
+        --direction_model="/path/to/your/mono_waveform/direction/ctlearn_model.cpk" \\
+        --use-HDF5Merger \\
+        --no-r0-waveforms \\
+        --no-r1-waveforms \\
+        --no-dl1-images \\
+        --no-true-images \\
+        --output output.dl2.h5 \\
+        --PredictCTLearnModel.overwrite_tables=True \\
+    """
+
+    def start(self):
+        self.log.info("Processing the telescope pointings...")
+        # Retrieve the IDs from the dl1dh for the prediction tables
+        example_identifiers = self.dl1dh_reader.example_identifiers.copy()
+        example_identifiers.keep_columns(TELESCOPE_EVENT_KEYS)
+        all_identifiers = self.dl1dh_reader.tel_trigger_table.copy()
+        all_identifiers.keep_columns(TELESCOPE_EVENT_KEYS + ["time"])
+        nonexample_identifiers = setdiff(
+            all_identifiers, example_identifiers, keys=TELESCOPE_EVENT_KEYS
+        )
+        nonexample_identifiers.remove_column("time")
+        # Pointing table for the mono mode for MC simulation
+        if self.dl1dh_reader.process_type == ProcessType.Simulation:
+            pointing_info = self._store_mc_telescope_pointing(all_identifiers)
+
+        # Pointing table for the observation mode
+        if self.dl1dh_reader.process_type == ProcessType.Observation:
+            pointing_info = super()._store_pointing(all_identifiers)
+
+        self.log.info("Starting the prediction...")
+        if self.load_type_model_from is not None:
+            # Predict the energy of the primary particle
+            classification_table, classification_feature_vectors = (
+                super()._predict_classification(example_identifiers)
+            )
+            if self.dl2_telescope:
+                # Produce output table with NaNs for missing predictions
+                if len(nonexample_identifiers) > 0:
+                    nan_table = super()._create_nan_table(
+                        nonexample_identifiers,
+                        columns=[f"{self.prefix}_tel_prediction"],
+                        shapes=[(len(nonexample_identifiers),)],
+                    )
+                    classification_table = vstack([classification_table, nan_table])
+                # Add is_valid column to the energy table
+                classification_table.add_column(
+                    ~np.isnan(
+                        classification_table[f"{self.prefix}_tel_prediction"].data,
+                        dtype=bool,
+                    ),
+                    name=f"{self.prefix}_tel_is_valid",
+                )
+                for tel_id in self.dl1dh_reader.selected_telescopes[
+                    self.dl1dh_reader.tel_type
+                ]:
+                    # Retrieve the example identifiers for the selected telescope
+                    telescope_mask = classification_table["tel_id"] == tel_id
+                    classification_tel_table = classification_table[telescope_mask]
+                    classification_tel_table.sort(TELESCOPE_EVENT_KEYS)
+                    # Add the default values and meta data to the table
+                    add_defaults_and_meta(
+                        classification_tel_table,
+                        ParticleClassificationContainer,
+                        prefix=self.prefix,
+                        add_tel_prefix=True,
+                    )
+                    # Save the prediction to the output file for the selected telescope
+                    write_table(
+                        classification_tel_table,
+                        self.output_path,
+                        f"{DL2_TELESCOPE_GROUP}/classification/{self.prefix}/tel_{tel_id:03d}",
+                        overwrite=self.overwrite_tables,
+                    )
+                    self.log.info(
+                        "DL2 prediction data was stored in '%s' under '%s'",
+                        self.output_path,
+                        f"{DL2_TELESCOPE_GROUP}/classification/{self.prefix}/tel_{tel_id:03d}",
+                    )
+        if self.load_energy_model_from is not None:
+            # Predict the energy of the primary particle
+            energy_table, energy_feature_vectors = super()._predict_energy(
+                example_identifiers
+            )
+            if self.dl2_telescope:
+                # Produce output table with NaNs for missing predictions
+                if len(nonexample_identifiers) > 0:
+                    nan_table = super()._create_nan_table(
+                        nonexample_identifiers,
+                        columns=[f"{self.prefix}_tel_energy"],
+                        shapes=[(len(nonexample_identifiers),)],
+                    )
+                    energy_table = vstack([energy_table, nan_table])
+                # Add is_valid column to the energy table
+                energy_table.add_column(
+                    ~np.isnan(energy_table[f"{self.prefix}_tel_energy"].data, dtype=bool),
+                    name=f"{self.prefix}_tel_is_valid",
+                )
+                for tel_id in self.dl1dh_reader.selected_telescopes[
+                    self.dl1dh_reader.tel_type
+                ]:
+                    # Retrieve the example identifiers for the selected telescope
+                    telescope_mask = energy_table["tel_id"] == tel_id
+                    energy_tel_table = energy_table[telescope_mask]
+                    energy_tel_table.sort(TELESCOPE_EVENT_KEYS)
+                    # Add the default values and meta data to the table
+                    add_defaults_and_meta(
+                        energy_tel_table,
+                        ReconstructedEnergyContainer,
+                        prefix=self.prefix,
+                        add_tel_prefix=True,
+                    )
+                    # Save the prediction to the output file
+                    write_table(
+                        energy_tel_table,
+                        self.output_path,
+                        f"{DL2_TELESCOPE_GROUP}/energy/{self.prefix}/tel_{tel_id:03d}",
+                        overwrite=self.overwrite_tables,
+                    )
+                    self.log.info(
+                        "DL2 prediction data was stored in '%s' under '%s'",
+                        self.output_path,
+                        f"{DL2_TELESCOPE_GROUP}/energy/{self.prefix}/tel_{tel_id:03d}",
+                    )
+        if self.load_direction_model_from is not None:
+            # Join the prediction table with the telescope pointing table
+            example_identifiers = join(
+                left=example_identifiers,
+                right=pointing_info,
+                keys=TELESCOPE_EVENT_KEYS,
+            )
+            # Predict the arrival direction of the primary particle
+            direction_table, direction_feature_vectors = super()._predict_direction(
+                example_identifiers
+            )
+            if self.dl2_telescope:
+                # Produce output table with NaNs for missing predictions
+                if len(nonexample_identifiers) > 0:
+                    nan_table = super()._create_nan_table(
+                        nonexample_identifiers,
+                        columns=[f"{self.prefix}_tel_alt", f"{self.prefix}_tel_az"],
+                        shapes=[
+                            (len(nonexample_identifiers),),
+                            (len(nonexample_identifiers),),
+                        ],
+                    )
+                    direction_table = vstack([direction_table, nan_table])
+                # Add is_valid column to the direction table
+                direction_table.add_column(
+                    ~np.isnan(direction_table[f"{self.prefix}_tel_alt"].data, dtype=bool),
+                    name=f"{self.prefix}_tel_is_valid",
+                )
+                for tel_id in self.dl1dh_reader.selected_telescopes[
+                    self.dl1dh_reader.tel_type
+                ]:
+                    # Retrieve the example identifiers for the selected telescope
+                    telescope_mask = direction_table["tel_id"] == tel_id
+                    direction_tel_table = direction_table[telescope_mask]
+                    direction_tel_table.sort(TELESCOPE_EVENT_KEYS)
+                    # Add the default values and meta data to the table
+                    add_defaults_and_meta(
+                        direction_tel_table,
+                        ReconstructedGeometryContainer,
+                        prefix=self.prefix,
+                        add_tel_prefix=True,
+                    )
+                    # Save the prediction to the output file
+                    write_table(
+                        direction_tel_table,
+                        self.output_path,
+                        f"{DL2_TELESCOPE_GROUP}/geometry/{self.prefix}/tel_{tel_id:03d}",
+                        overwrite=self.overwrite_tables,
+                    )
+                    self.log.info(
+                        "DL2 prediction data was stored in '%s' under '%s'",
+                        self.output_path,
+                        f"{DL2_TELESCOPE_GROUP}/geometry/{self.prefix}/tel_{tel_id:03d}",
+                    )
+        # Create the feature vector table if the DL1 features are enabled
+        if self.dl1_features:
+            self.log.info("Processing and storing dl1 feature vectors...")
+            feature_vector_table = super()._create_feature_vectors_table(
+                example_identifiers,
+                nonexample_identifiers,
+                classification_feature_vectors,
+                energy_feature_vectors,
+                direction_feature_vectors,
+            )
+            # Loop over the selected telescopes and store the feature vectors
+            # for each telescope in the output file. The feature vectors are stored
+            # in the DL1_TELESCOPE_GROUP/features/{prefix}/tel_{tel_id:03d} table.
+            for tel_id in self.dl1dh_reader.selected_telescopes[
+                self.dl1dh_reader.tel_type
+            ]:
+                # Retrieve the example identifiers for the selected telescope
+                telescope_mask = feature_vector_table["tel_id"] == tel_id
+                feature_vectors_tel_table = feature_vector_table[telescope_mask]
+                feature_vectors_tel_table.sort(TELESCOPE_EVENT_KEYS)
+                # Save the prediction to the output file
+                write_table(
+                    feature_vectors_tel_table,
+                    self.output_path,
+                    f"{DL1_TELESCOPE_GROUP}/features/{self.prefix}/tel_{tel_id:03d}",
+                    overwrite=self.overwrite_tables,
+                )
+                self.log.info(
+                    "DL1 feature vectors was stored in '%s' under '%s'",
+                    self.output_path,
+                    f"{DL1_TELESCOPE_GROUP}/features/{self.prefix}/tel_{tel_id:03d}",
+                )
+
+    def _store_mc_telescope_pointing(self, all_identifiers):
+        """
+        Store the telescope pointing table from MC simulation to the output file.
+
+        Parameters:
+        -----------
+        all_identifiers : astropy.table.Table
+            Table containing the telescope pointing information.
+        """
+
+        # Pointing table for the mono mode
+        pointing_info = self.dl1dh_reader.get_tel_pointing(
+            self.input_url, self.dl1dh_reader.tel_ids
+        )
+        pointing_info.rename_column("telescope_pointing_azimuth", "pointing_azimuth")
+        pointing_info.rename_column("telescope_pointing_altitude", "pointing_altitude")
+        # Join the prediction table with the telescope pointing table
+        pointing_info = join(
+            left=pointing_info,
+            right=all_identifiers,
+            keys=["obs_id", "tel_id"],
+        )
+        # TODO: use keep_order for astropy v7.0.0
+        pointing_info.sort(TELESCOPE_EVENT_KEYS)
+        # Create the pointing table for each telescope
+        for tel_id in self.dl1dh_reader.selected_telescopes[self.dl1dh_reader.tel_type]:
+            # Retrieve the example identifiers for the selected telescope
+            telescope_mask = pointing_info["tel_id"] == tel_id
+            tel_pointing_info = pointing_info[telescope_mask]
+            tel_pointing_info.sort(TELESCOPE_EVENT_KEYS)
+            tel_pointing_table = Table(
+                {
+                    "time": tel_pointing_info["time"],
+                    "azimuth": tel_pointing_info["pointing_azimuth"],
+                    "altitude": tel_pointing_info["pointing_altitude"],
+                }
+            )
+            write_table(
+                tel_pointing_table,
+                self.output_path,
+                f"{POINTING_GROUP}/tel_{tel_id:03d}",
+                overwrite=self.overwrite_tables,
+            )
+            self.log.info(
+                "DL1 telescope pointing table was stored in '%s' under '%s'",
+                self.output_path,
+                f"{POINTING_GROUP}/tel_{tel_id:03d}",
+            )
+        return pointing_info
+
+class StereoPredictCTLearnModel(PredictCTLearnModel):
+    """
+    Tool to predict the gammaness, energy and arrival direction from R1/DL1a data using CTLearn models.
+
+    The tool predicts the gammaness, energy and arrival direction from pixel-wise image or waveform data.
+    The input data is loaded from the input url using the ``~dl1_data_handler.reader.DLDataReader`` and
+    ``~dl1_data_handler.loader.DLDataLoader`` and the prediction is performed using the CTLearn models.
+    """
+
+    name = "ctlearn-predict-stereo-model"
+    description = __doc__
+
+    examples = """
+    To predict from pixel-wise image data in stereo mode using trained CTLearn models:
+    > ctlearn-predict-stereo-model \\
+        --input_url input.dl1.h5 \\
+        --PredictCTLearnModel.batch_size=16 \\
+        --PredictCTLearnModel.dl1dh_reader_type=DLImageReader \\
+        --DLImageReader.channels=cleaned_image \\
+        --DLImageReader.channels=cleaned_relative_peak_time \\
+        --DLImageReader.image_mapper_type=BilinearMapper \\
+        --DLImageReader.mode=stereo \\
+        --DLImageReader.min_telescopes=2 \\
+        --PredictCTLearnModel.stack_telescope_images=True \\
+        --type_model="/path/to/your/stereo/type/ctlearn_model.cpk" \\
+        --energy_model="/path/to/your/stereo/energy/ctlearn_model.cpk" \\
+        --direction_model="/path/to/your/stereo/direction/ctlearn_model.cpk" \\
+        --output output.dl2.h5 \\
+        --PredictCTLearnModel.overwrite_tables=True \\
+    """
+
+    def start(self):
+        self.log.info("Processing the telescope pointings...")
+        # Retrieve the IDs from the dl1dh for the prediction tables
+        example_identifiers = self.dl1dh_reader.unique_example_identifiers.copy()
+        example_identifiers.keep_columns(SUBARRAY_EVENT_KEYS)
+        all_identifiers = self.dl1dh_reader.subarray_trigger_table.copy()
+        all_identifiers.keep_columns(SUBARRAY_EVENT_KEYS + ["time"])
+        nonexample_identifiers = setdiff(
+            all_identifiers, example_identifiers, keys=SUBARRAY_EVENT_KEYS
+        )
+        nonexample_identifiers.remove_column("time")
+        # Construct the survival telescopes for each event of the example_identifiers
+        survival_telescopes = []
+        for subarray_event in self.dl1dh_reader.example_identifiers_grouped.groups:
+            survival_mask = np.zeros(len(self.dl1dh_reader.tel_ids), dtype=bool)
+            survival_tels = [
+                self.dl1dh_reader.subarray.tel_indices[tel_id]
+                for tel_id in subarray_event["tel_id"].data
+            ]
+            survival_mask[survival_tels] = True
+            survival_telescopes.append(survival_mask)
+        # Add the survival telescopes to the example_identifiers
+        example_identifiers.add_column(
+            survival_telescopes, name=f"{self.prefix}_telescopes"
+        )
+        # Pointing table for the stereo mode for MC simulation
+        if self.dl1dh_reader.process_type == ProcessType.Simulation:
+            pointing_info = self._store_mc_subarray_pointing(all_identifiers)
+
+        # Pointing table for the observation mode
+        if self.dl1dh_reader.process_type == ProcessType.Observation:
+            pointing_info = super()._store_pointing(all_identifiers)
+
+        self.log.info("Starting the prediction...")
+        if self.load_type_model_from is not None:
+            # Predict the energy of the primary particle
+            classification_table, classification_feature_vectors = (
+                super()._predict_classification(example_identifiers)
+            )
+            if self.dl2_subarray:
+                # Produce output table with NaNs for missing predictions
+                if len(nonexample_identifiers) > 0:
+                    nan_table = super()._create_nan_table(
+                        nonexample_identifiers,
+                        columns=[f"{self.prefix}_tel_prediction"],
+                        shapes=[(len(nonexample_identifiers),)],
+                    )
+                    classification_table = vstack([classification_table, nan_table])
+                # Add is_valid column to the energy table
+                classification_table.add_column(
+                    ~np.isnan(
+                        classification_table[f"{self.prefix}_tel_prediction"].data,
+                        dtype=bool,
+                    ),
+                    name=f"{self.prefix}_tel_is_valid",
+                )
+                # Rename the columns for the stereo mode
+                classification_table.rename_column(
+                    f"{self.prefix}_tel_prediction", f"{self.prefix}_prediction"
+                )
+                classification_table.rename_column(
+                    f"{self.prefix}_tel_is_valid", f"{self.prefix}_is_valid"
+                )
+                classification_table.sort(SUBARRAY_EVENT_KEYS)
+                # Add the default values and meta data to the table
+                add_defaults_and_meta(
+                    classification_table,
+                    ParticleClassificationContainer,
+                    prefix=self.prefix,
+                )
+                # Save the prediction to the output file
+                write_table(
+                    classification_table,
+                    self.output_path,
+                    f"{DL2_SUBARRAY_GROUP}/classification/{self.prefix}",
+                    overwrite=self.overwrite_tables,
+                )
+                self.log.info(
+                    "DL2 prediction data was stored in '%s' under '%s'",
+                    self.output_path,
+                    f"{DL2_SUBARRAY_GROUP}/classification/{self.prefix}",
+                )
+
+        if self.load_energy_model_from is not None:
+            # Predict the energy of the primary particle
+            energy_table, energy_feature_vectors = super()._predict_energy(
+                example_identifiers
+            )
+            if self.dl2_subarray:
+                # Produce output table with NaNs for missing predictions
+                if len(nonexample_identifiers) > 0:
+                    nan_table = super()._create_nan_table(
+                        nonexample_identifiers,
+                        columns=[f"{self.prefix}_tel_energy"],
+                        shapes=[(len(nonexample_identifiers),)],
+                    )
+                    energy_table = vstack([energy_table, nan_table])
+                # Add is_valid column to the energy table
+                energy_table.add_column(
+                    ~np.isnan(energy_table[f"{self.prefix}_tel_energy"].data, dtype=bool),
+                    name=f"{self.prefix}_tel_is_valid",
+                )
+                # Rename the columns for the stereo mode
+                energy_table.rename_column(
+                    f"{self.prefix}_tel_energy", f"{self.prefix}_energy"
+                )
+                energy_table.rename_column(
+                    f"{self.prefix}_tel_is_valid", f"{self.prefix}_is_valid"
+                )
+                energy_table.sort(SUBARRAY_EVENT_KEYS)
+                # Add the default values and meta data to the table
+                add_defaults_and_meta(
+                    energy_table,
+                    ReconstructedEnergyContainer,
+                    prefix=self.prefix,
+                )
+                # Save the prediction to the output file
+                write_table(
+                    energy_table,
+                    self.output_path,
+                    f"{DL2_SUBARRAY_GROUP}/energy/{self.prefix}",
+                    overwrite=self.overwrite_tables,
+                )
+                self.log.info(
+                    "DL2 prediction data was stored in '%s' under '%s'",
+                    self.output_path,
+                    f"{DL2_SUBARRAY_GROUP}/energy/{self.prefix}",
+                )
+        if self.load_direction_model_from is not None:
+            # Join the prediction table with the telescope pointing table
+            example_identifiers = join(
+                left=example_identifiers,
+                right=pointing_info,
+                keys=SUBARRAY_EVENT_KEYS,
+            )
+            # Predict the arrival direction of the primary particle
+            direction_table, direction_feature_vectors = super()._predict_direction(
+                example_identifiers
+            )
+            if self.dl2_subarray:
+                # Produce output table with NaNs for missing predictions
+                if len(nonexample_identifiers) > 0:
+                    nan_table = super()._create_nan_table(
+                        nonexample_identifiers,
+                        columns=[f"{self.prefix}_tel_alt", f"{self.prefix}_tel_az"],
+                        shapes=[
+                            (len(nonexample_identifiers),),
+                            (len(nonexample_identifiers),),
+                        ],
+                    )
+                    direction_table = vstack([direction_table, nan_table])
+                # Add is_valid column to the direction table
+                direction_table.add_column(
+                    ~np.isnan(direction_table[f"{self.prefix}_tel_alt"].data, dtype=bool),
+                    name=f"{self.prefix}_tel_is_valid",
+                )
+                # Rename the columns for the stereo mode
+                direction_table.rename_column(
+                    f"{self.prefix}_tel_alt", f"{self.prefix}_alt"
+                )
+                direction_table.rename_column(
+                    f"{self.prefix}_tel_az", f"{self.prefix}_az"
+                )
+                direction_table.rename_column(
+                    f"{self.prefix}_tel_is_valid", f"{self.prefix}_is_valid"
+                )
+                direction_table.sort(SUBARRAY_EVENT_KEYS)
+                # Add the default values and meta data to the table
+                add_defaults_and_meta(
+                    direction_table,
+                    ReconstructedGeometryContainer,
+                    prefix=self.prefix,
+                )
+                # Save the prediction to the output file
+                write_table(
+                    direction_table,
+                    self.output_path,
+                    f"{DL2_SUBARRAY_GROUP}/geometry/{self.prefix}",
+                    overwrite=self.overwrite_tables,
+                )
+                self.log.info(
+                    "DL2 prediction data was stored in '%s' under '%s'",
+                    self.output_path,
+                    f"{DL2_SUBARRAY_GROUP}/geometry/{self.prefix}",
+                )
+
+        # Create the feature vector table if the DL1 features are enabled
+        if self.dl1_features:
+            self.log.info("Processing and storing dl1 feature vectors...")
+            feature_vector_table = super()._create_feature_vectors_table(
+                example_identifiers,
+                nonexample_identifiers,
+                classification_feature_vectors,
+                energy_feature_vectors,
+                direction_feature_vectors,
+            )
+            # Loop over the selected telescopes and store the feature vectors
+            # for each telescope in the output file. The feature vectors are stored
+            # in the DL1_TELESCOPE_GROUP/features/{prefix}/tel_{tel_id:03d} table.
+            # Rename the columns for the stereo mode
+            feature_vector_table.rename_column(
+                f"{self.prefix}_tel_classification_feature_vectors",
+                f"{self.prefix}_classification_feature_vectors",
+            )
+            feature_vector_table.rename_column(
+                f"{self.prefix}_tel_energy_feature_vectors",
+                f"{self.prefix}_energy_feature_vectors",
+            )
+            feature_vector_table.rename_column(
+                f"{self.prefix}_tel_direction_feature_vectors",
+                f"{self.prefix}_direction_feature_vectors",
+            )
+            feature_vector_table.rename_column(
+                f"{self.prefix}_tel_is_valid", f"{self.prefix}_is_valid"
+            )
+            feature_vector_table.sort(SUBARRAY_EVENT_KEYS)
+            # Save the prediction to the output file
+            write_table(
+                feature_vector_table,
+                self.output_path,
+                f"{DL1_SUBARRAY_GROUP}/features/{self.prefix}",
+                overwrite=self.overwrite_tables,
+            )
+            self.log.info(
+                "DL1 feature vectors was stored in '%s' under '%s'",
+                self.output_path,
+                f"{DL1_SUBARRAY_GROUP}/features/{self.prefix}",
+            )
+
+    def _store_mc_subarray_pointing(self, all_identifiers):
+        """
+        Store the subarray pointing table from MC simulation to the output file.
+
+        Parameters:
+        -----------
+        all_identifiers : astropy.table.Table
+            Table containing the subarray pointing information.
+        """
+        # Read the subarray pointing table
+        pointing_info = read_table(
+            self.input_url,
+            f"{SIMULATION_CONFIG_TABLE}",
+        )
+        # Assuming min_az = max_az and min_alt = max_alt
+        pointing_info.keep_columns(["obs_id", "min_az", "min_alt"])
+        pointing_info.rename_column("min_az", "pointing_azimuth")
+        pointing_info.rename_column("min_alt", "pointing_altitude")
+        # Join the prediction table with the telescope pointing table
+        pointing_info = join(
+            left=pointing_info,
+            right=all_identifiers,
+            keys=["obs_id"],
+        )
+        # TODO: use keep_order for astropy v7.0.0
+        pointing_info.sort(SUBARRAY_EVENT_KEYS)
+        # Create the pointing table
+        pointing_table = Table(
+            {
+                "time": pointing_info["time"],
+                "array_azimuth": pointing_info["pointing_azimuth"],
+                "array_altitude": pointing_info["pointing_altitude"],
+                "array_ra": np.nan * np.ones(len(pointing_info)),
+                "array_dec": np.nan * np.ones(len(pointing_info)),
+            }
+        )
+        # Save the pointing table to the output file
+        write_table(
+            pointing_table,
+            self.output_path,
+            f"{SUBARRAY_POINTING_GROUP}",
+            overwrite=self.overwrite_tables,
+        )
+        self.log.info(
+            "DL1 subarray pointing table was stored in '%s' under '%s'",
+            self.output_path,
+            f"{SUBARRAY_POINTING_GROUP}",
+        )
+        return pointing_info
+
+
+def mono_tool():
     # Run the tool
-    tool = PredictCTLearnModel()
-    tool.run()
+    mono_tool = MonoPredictCTLearnModel()
+    mono_tool.run()
 
+def stereo_tool():
+    # Run the tool
+    stereo_tool = StereoPredictCTLearnModel()
+    stereo_tool.run()
 
-if __name__ == "main":
-    main()
+if __name__ == "mono_tool":
+    mono_tool()
+
+if __name__ == "stereo_tool":
+    stereo_tool()
