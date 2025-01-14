@@ -1,5 +1,5 @@
 """
-Tool to predict the gammaness, energy and arrival direction in monoscopic and stereoscopic mode using ``CTLearnModel`` on R1/DL1a data using the ``DLDataReader`` and ``DLDataLoader``.
+Tools to predict the gammaness, energy and arrival direction in monoscopic and stereoscopic mode using ``CTLearnModel`` on R1/DL1 data using the ``DLDataReader`` and ``DLDataLoader``.
 """
 
 import atexit
@@ -70,11 +70,81 @@ __all__ = [
 
 class PredictCTLearnModel(Tool):
     """
-    Tool to predict the gammaness, energy and arrival direction from R1/DL1a data using CTLearn models.
+    Base tool to predict the gammaness, energy and arrival direction from R1/DL1 data using CTLearn models.
 
-    The tool predicts the gammaness, energy and arrival direction from pixel-wise image or waveform data.
-    The input data is loaded from the input url using the ``~dl1_data_handler.reader.DLDataReader`` and
-    ``~dl1_data_handler.loader.DLDataLoader`` and the prediction is performed using the CTLearn models.
+    This class handles the prediction of the gammaness, energy and arrival direction from pixel-wise image
+    or waveform data. It also supports the extraction of the feature vectors from the backbone submodel to
+    store them in the output file. The input data is loaded from the input url using the
+    ``~dl1_data_handler.reader.DLDataReader`` and ``~dl1_data_handler.loader.DLDataLoader``.
+    The prediction is performed using the CTLearn models. The data is stored in the output file
+    following the ctapipe DL2 data format. The ``start`` method is implemented in the subclasses to
+    handle the prediction for mono and stereo mode.
+
+    Attributes
+    ----------
+    input_url : pathlib.Path
+        Input ctapipe HDF5 files including pixel-wise image or waveform data.
+    use_HDF5Merger : bool
+        Set whether to use the HDF5Merger component to copy the selected tables from the input file to the output file.
+    dl1_features : bool
+        Set whether to include the dl1 feature vectors in the output file.
+    dl2_telescope : bool
+        Set whether to include dl2 telescope-event-wise data in the output file.
+    dl2_subarray : bool
+        Set whether to include dl2 subarray-event-wise data in the output file.
+    dl1dh_reader : dl1_data_handler.reader.DLDataReader
+        DLDataReader object to read the data.
+    dl1dh_reader_type : str
+        Type of the DLDataReader to use for the prediction.
+    stack_telescope_images : bool
+        Set whether to stack the telescope images in the data loader. Requires ``stereo``.
+    sort_by_intensity : bool
+        Set whether to sort the telescope images by intensity in the data loader. Requires ``stereo``.
+    prefix : str
+        Name of the reconstruction algorithm used to generate the dl2 data.
+    load_type_model_from : pathlib.Path
+        Path to a Keras model file (Keras3) or directory (Keras2) for the classification of the primary particle type.
+    load_energy_model_from : pathlib.Path
+        Path to a Keras model file (Keras3) or directory (Keras2) for the regression of the primary particle energy.
+    load_direction_model_from : pathlib.Path
+        Path to a Keras model file (Keras3) or directory (Keras2) for the regression of the primary particle arrival direction.
+    output_path : pathlib.Path
+        Output path to save the dl2 prediction results.
+    overwrite_tables : bool
+        Overwrite the table in the output file if it exists.
+    keras_verbose : int
+        Verbosity mode of Keras during the prediction.
+    strategy : tf.distribute.Strategy
+        MirroredStrategy to distribute the prediction.
+    dl1dh_loader : dl1_data_handler.loader.DLDataLoader
+        DLDataLoader object to load the data.
+    indices : list of int
+        List of indices for the data loaders.
+    batch_size : int
+        Size of the batch to perform inference of the neural network.
+    last_batch_size : int
+        Size of the last batch in the data loaders.
+
+    Methods
+    -------
+    setup()
+        Set up the tool.
+    finish()
+        Finish the tool.
+    _predict_with_model(model_path)
+        Load and predict with a CTLearn model.
+    _predict_classification(example_identifiers)
+        Predict the classification of the primary particle type.
+    _predict_energy(example_identifiers)
+        Predict the energy of the primary particle.
+    _predict_direction(example_identifiers)
+        Predict the arrival direction of the primary particle.
+    _create_nan_table(nonexample_identifiers, columns, shapes)
+        Create a table with NaNs for missing predictions.
+    _store_pointing(all_identifiers)
+        Store the telescope pointing table from to the output file.
+    _create_feature_vectors_table(example_identifiers, nonexample_identifiers, classification_feature_vectors, energy_feature_vectors, direction_feature_vectors)
+        Create the table for the DL1 feature vectors.
     """
 
     input_url = Path(
@@ -104,13 +174,13 @@ class PredictCTLearnModel(Tool):
     dl2_telescope = Bool(
         default_value=True,
         allow_none=False,
-        help="Whether to include dl2 telescope-event-wise data in the output file."
+        help="Set whether to include dl2 telescope-event-wise data in the output file."
     ).tag(config=True)
 
     dl2_subarray = Bool(
         default_value=True,
         allow_none=False,
-        help="Whether to include dl2 subarray-event-wise data in the output file."
+        help="Set whether to include dl2 subarray-event-wise data in the output file."
     ).tag(config=True)
 
     dl1dh_reader_type = ComponentName(DLDataReader, default_value="DLImageReader").tag(
@@ -761,10 +831,10 @@ class PredictCTLearnModel(Tool):
             )
             feature_vector_table.add_column(
                 direction_feature_vectors,
-                name=f"{self.prefix}_tel_direction_feature_vectors",
+                name=f"{self.prefix}_tel_geometry_feature_vectors",
             )
             if nonexample_identifiers is not None:
-                columns_list.append(f"{self.prefix}_tel_direction_feature_vectors")
+                columns_list.append(f"{self.prefix}_tel_geometry_feature_vectors")
                 shapes_list.append(
                     (
                         len(nonexample_identifiers),
@@ -793,11 +863,27 @@ class PredictCTLearnModel(Tool):
 
 class MonoPredictCTLearnModel(PredictCTLearnModel):
     """
-    Tool to predict the gammaness, energy and arrival direction from R1/DL1a data using CTLearn models.
+    Tool to predict the gammaness, energy and arrival direction from monoscopic R1/DL1 data using CTLearn models.
 
-    The tool predicts the gammaness, energy and arrival direction from pixel-wise image or waveform data.
-    The input data is loaded from the input url using the ``~dl1_data_handler.reader.DLDataReader`` and
-    ``~dl1_data_handler.loader.DLDataLoader`` and the prediction is performed using the CTLearn models.
+    This tool extends the ``PredictCTLearnModel`` to specifically handle monoscopic R1/DL1 data. The prediction
+    is performed using the CTLearn models. The data is stored in the output file following the ctapipe DL2 data format.
+    It also stores the telescope pointing monitoring and DL1 feature vectors (if selected) in the output file.
+
+    Attributes
+    ----------
+    name : str
+        Name of the tool.
+    description : str
+        Description of the tool.
+    examples : str
+        Examples of how to use the tool.
+
+    Methods
+    -------
+    start()
+        Start the tool.
+    _store_mc_telescope_pointing(all_identifiers)
+        Store the telescope pointing table for the mono mode for MC simulation.
     """
 
     name = "ctlearn-predict-mono-model"
@@ -1092,11 +1178,27 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
 
 class StereoPredictCTLearnModel(PredictCTLearnModel):
     """
-    Tool to predict the gammaness, energy and arrival direction from R1/DL1a data using CTLearn models.
+    Tool to predict the gammaness, energy and arrival direction from R1/DL1 stereoscopic data using CTLearn models.
 
-    The tool predicts the gammaness, energy and arrival direction from pixel-wise image or waveform data.
-    The input data is loaded from the input url using the ``~dl1_data_handler.reader.DLDataReader`` and
-    ``~dl1_data_handler.loader.DLDataLoader`` and the prediction is performed using the CTLearn models.
+    This tool extends the ``PredictCTLearnModel`` to specifically handle stereoscopic R1/DL1 data. The prediction
+    is performed using the CTLearn models. The data is stored in the output file following the ctapipe DL2 data format.
+    It also stores the telescope/subarray pointing monitoring and DL1 feature vectors (if selected) in the output file.
+
+    Attributes
+    ----------
+    name : str
+        Name of the tool.
+    description : str
+        Description of the tool.
+    examples : str
+        Examples of how to use the tool.
+
+    Methods
+    -------
+    start()
+        Start the tool.
+    _store_mc_subarray_pointing(all_identifiers)
+        Store the subarray pointing table for the stereo mode for MC simulation.
     """
 
     name = "ctlearn-predict-stereo-model"
@@ -1330,8 +1432,8 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                 f"{self.prefix}_energy_feature_vectors",
             )
             feature_vector_table.rename_column(
-                f"{self.prefix}_tel_direction_feature_vectors",
-                f"{self.prefix}_direction_feature_vectors",
+                f"{self.prefix}_tel_geometry_feature_vectors",
+                f"{self.prefix}_geometry_feature_vectors",
             )
             feature_vector_table.rename_column(
                 f"{self.prefix}_tel_is_valid", f"{self.prefix}_is_valid"
