@@ -260,7 +260,7 @@ class PredictCTLearnModel(Tool):
     ).tag(config=True)
 
     overwrite_tables = Bool(
-        default_value=False,
+        default_value=True,
         allow_none=False,
         help="Overwrite the table in the output file if it exists",
     ).tag(config=True)
