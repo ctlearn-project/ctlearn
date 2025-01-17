@@ -68,6 +68,7 @@ __all__ = [
     "StereoPredictCTLearnModel",
 ]
 
+
 class PredictCTLearnModel(Tool):
     """
     Base tool to predict the gammaness, energy and arrival direction from R1/DL1 data using CTLearn models.
@@ -174,13 +175,13 @@ class PredictCTLearnModel(Tool):
     dl2_telescope = Bool(
         default_value=True,
         allow_none=False,
-        help="Set whether to include dl2 telescope-event-wise data in the output file."
+        help="Set whether to include dl2 telescope-event-wise data in the output file.",
     ).tag(config=True)
 
     dl2_subarray = Bool(
         default_value=True,
         allow_none=False,
-        help="Set whether to include dl2 subarray-event-wise data in the output file."
+        help="Set whether to include dl2 subarray-event-wise data in the output file.",
     ).tag(config=True)
 
     dl1dh_reader_type = ComponentName(DLDataReader, default_value="DLImageReader").tag(
@@ -303,7 +304,6 @@ class PredictCTLearnModel(Tool):
             "Include dl2 telescope-event-wise data in the output file",
             "Exclude dl2 telescope-event-wise data in the output file",
         ),
-
         **flag(
             "use-HDF5Merger",
             "PredictCTLearnModel.use_HDF5Merger",
@@ -389,7 +389,9 @@ class PredictCTLearnModel(Tool):
             )
         # Set the indices for the data loaders
         self.indices = list(range(self.dl1dh_reader._get_n_events()))
-        self.last_batch_size = len(self.indices) % self.batch_size
+        self.last_batch_size = len(self.indices) % (
+            self.batch_size * self.strategy.num_replicas_in_sync
+        )
 
     def finish(self):
         self.log.info("Tool is shutting down")
@@ -1010,7 +1012,9 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                     energy_table = vstack([energy_table, nan_table])
                 # Add is_valid column to the energy table
                 energy_table.add_column(
-                    ~np.isnan(energy_table[f"{self.prefix}_tel_energy"].data, dtype=bool),
+                    ~np.isnan(
+                        energy_table[f"{self.prefix}_tel_energy"].data, dtype=bool
+                    ),
                     name=f"{self.prefix}_tel_is_valid",
                 )
                 for tel_id in self.dl1dh_reader.selected_telescopes[
@@ -1064,7 +1068,9 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                     direction_table = vstack([direction_table, nan_table])
                 # Add is_valid column to the direction table
                 direction_table.add_column(
-                    ~np.isnan(direction_table[f"{self.prefix}_tel_alt"].data, dtype=bool),
+                    ~np.isnan(
+                        direction_table[f"{self.prefix}_tel_alt"].data, dtype=bool
+                    ),
                     name=f"{self.prefix}_tel_is_valid",
                 )
                 for tel_id in self.dl1dh_reader.selected_telescopes[
@@ -1175,6 +1181,7 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                 f"{POINTING_GROUP}/tel_{tel_id:03d}",
             )
         return pointing_info
+
 
 class StereoPredictCTLearnModel(PredictCTLearnModel):
     """
@@ -1322,7 +1329,9 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                     energy_table = vstack([energy_table, nan_table])
                 # Add is_valid column to the energy table
                 energy_table.add_column(
-                    ~np.isnan(energy_table[f"{self.prefix}_tel_energy"].data, dtype=bool),
+                    ~np.isnan(
+                        energy_table[f"{self.prefix}_tel_energy"].data, dtype=bool
+                    ),
                     name=f"{self.prefix}_tel_is_valid",
                 )
                 # Rename the columns for the stereo mode
@@ -1376,7 +1385,9 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                     direction_table = vstack([direction_table, nan_table])
                 # Add is_valid column to the direction table
                 direction_table.add_column(
-                    ~np.isnan(direction_table[f"{self.prefix}_tel_alt"].data, dtype=bool),
+                    ~np.isnan(
+                        direction_table[f"{self.prefix}_tel_alt"].data, dtype=bool
+                    ),
                     name=f"{self.prefix}_tel_is_valid",
                 )
                 # Rename the columns for the stereo mode
@@ -1508,10 +1519,12 @@ def mono_tool():
     mono_tool = MonoPredictCTLearnModel()
     mono_tool.run()
 
+
 def stereo_tool():
     # Run the tool
     stereo_tool = StereoPredictCTLearnModel()
     stereo_tool.run()
+
 
 if __name__ == "mono_tool":
     mono_tool()
