@@ -9,9 +9,6 @@ CTLearn workflow
    :align: center
    :width: 75%
 
-.. image:: ../../images/CTLearnTextCTinBox_WhiteBkgd.png
-   :align: center
-   :width: 75%
 
 Download data
 -------------
