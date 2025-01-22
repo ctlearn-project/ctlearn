@@ -6,7 +6,7 @@ CTLearn workflow
 -------------
 .. image:: ../../images/CTLEARN_WORKFLOW.drawio.svg
    :align: center
-   :width: 75%
+   :width: 100%
 
 
 Download data
