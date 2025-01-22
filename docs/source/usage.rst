@@ -56,7 +56,7 @@ This section in its entirety is directly included as the model ``params``\ , ena
 
 Training
 ~~~~~~~~
-.. image:: ../../images/TRAIN_WORKFLOW.drawio.svg
+.. image:: ../../images/TRAIN_WORKFLOW.drawio.png
    :align: center
    :width: 100%
 
