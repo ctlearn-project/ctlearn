@@ -4,6 +4,10 @@ Package usage
 
 CTLearn workflow
 -------------
+.. raw:: html
+   :file: ../../images/ctlearn_wokflow.drawio.html
+   :align: center
+   :width: 75%
 
 .. image:: ../../images/CTLearnTextCTinBox_WhiteBkgd.png
    :align: center
