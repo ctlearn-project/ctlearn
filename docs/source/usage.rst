@@ -4,9 +4,9 @@ Package usage
 
 CTLearn workflow
 -------------
-.. image:: ../../images/CTLEARN_WORKFLOW.drawio.svg
+.. image:: ../../images/initial_workflow.drawio.svg
    :align: center
-   :width: 110%
+   :width: 100%
 
 
 Download data
@@ -56,11 +56,17 @@ This section in its entirety is directly included as the model ``params``\ , ena
 
 Training
 ~~~~~~~~
+.. image:: ../../images/TRAIN_WORKFLOW.drawio.svg
+   :align: center
+   :width: 100%
 
 Set training parameters such as the training/validation split, the number of epochs to run, as well as hyperparameters including the base learning rate and optimizer.
 
 Prediction
 ~~~~~~~~~~
+.. image:: ../../images/PREDICT_WORKFLOW.drawio.svg
+   :align: center
+   :width: 100%
 
 Specify prediction settings such as the path to write the prediction file and whether to save the labels and example identifiers along with the predictions.
 
@@ -146,6 +152,9 @@ View training progress in real time with TensorBoard:
 
 Build IRFs
 ----------
+.. image:: ../../images/IRF.drawio.svg
+   :align: center
+   :width: 100%
 
 Build IRFs and sensitivity curves from CTLearn DL2-like files using pyirf:
 
