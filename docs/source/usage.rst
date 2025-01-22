@@ -4,8 +4,7 @@ Package usage
 
 CTLearn workflow
 -------------
-.. raw:: html
-   :file: ../../images/ctlearn_wokflow.drawio.html
+.. image:: ../../images/CTLEARN_WORKFLOW.drawio.svg
    :align: center
    :width: 75%
 
