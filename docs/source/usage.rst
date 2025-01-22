@@ -5,7 +5,7 @@ Package usage
 CTLearn workflow
 -------------
 
-../../images/ctlearn_wokflow.drawio.html
+.. image:: ../../images/ctlearn_wokflow.drawio.html
 
 Download data
 -------------
