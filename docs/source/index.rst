@@ -6,7 +6,7 @@
 CTLearn: Deep Learning for IACT Event Reconstruction
 ====================================================
 
-.. image:: ../../images/ctlearn_wokflow.drawio.html
+.. image:: ../../images/CTLearnTextCTinBox_WhiteBkgd.png
    :align: center
    :width: 75%
 
