@@ -6,6 +6,8 @@ CTLearn workflow
 -------------
 
 .. image:: ../../images/ctlearn_wokflow.drawio.html
+   :align: center
+   :width: 75%
 
 Download data
 -------------
