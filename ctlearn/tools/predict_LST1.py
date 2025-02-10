@@ -59,6 +59,7 @@ from dl1_data_handler.reader import (
 )
 
 POINTING_GROUP = "/dl1/monitoring/telescope/pointing"
+DL1_TELESCOPE_GROUP = "/dl1/event/telescope"
 DL2_TELESCOPE_GROUP = "/dl2/event/telescope"
 SUBARRAY_EVENT_KEYS = ["obs_id", "event_id"]
 TELESCOPE_EVENT_KEYS = ["obs_id", "event_id", "tel_id"]
@@ -239,24 +240,27 @@ class LST1PredictionTool(Tool):
         # Load the models from the specified paths
         if self.load_type_model_from is not None:
             self.log.info("Loading the type model from %s.", self.load_type_model_from)
-            self.keras_model_type = keras.saving.load_model(self.load_type_model_from)
-            input_shape = self.keras_model_type.input_shape[1:]
+            model_type = keras.saving.load_model(self.load_type_model_from)
+            input_shape = model_type.input_shape[1:]
+            self.backbone_type, self.head_type = self._split_model(model_type)
         if self.load_energy_model_from is not None:
             self.log.info(
                 "Loading the energy model from %s.", self.load_energy_model_from
             )
-            self.keras_model_energy = keras.saving.load_model(
+            model_energy = keras.saving.load_model(
                 self.load_energy_model_from
             )
-            input_shape = self.keras_model_energy.input_shape[1:]
+            input_shape = model_energy.input_shape[1:]
+            self.backbone_energy, self.head_energy = self._split_model(model_energy)
         if self.load_direction_model_from is not None:
             self.log.info(
                 "Loading the direction model from %s.", self.load_direction_model_from
             )
-            self.keras_model_direction = keras.saving.load_model(
+            model_direction = keras.saving.load_model(
                 self.load_direction_model_from
             )
-            input_shape = self.keras_model_direction.input_shape[1:]
+            input_shape = model_direction.input_shape[1:]
+            self.backbone_direction, self.head_direction = self._split_model(model_direction)
 
         # Create the SubarrayDescription of the LST-1 telescope
         self.subarray = self._create_subarray()
@@ -437,6 +441,7 @@ class LST1PredictionTool(Tool):
         self.log.info("Starting the prediction...")
         event_id, tel_azimuth, tel_altitude = [], [], []
         prediction, energy, az, alt = [], [], [], []
+        classification_fvs, energy_fvs, direction_fvs = [], [], []
         # Iterate over the data in chunks based on the batch size
         for start in range(0, self.table_length, self.batch_size):
             stop = min(start + self.batch_size, self.table_length)
@@ -475,13 +480,19 @@ class LST1PredictionTool(Tool):
             tel_azimuth.extend(dl1_table["tel_az"].data)
             tel_altitude.extend(dl1_table["tel_alt"].data)
             if self.load_type_model_from is not None:
-                predict_data = self.keras_model_type.predict_on_batch(input_data)
+                classification_feature_vectors = self.backbone_type.predict_on_batch(input_data)
+                classification_fvs.extend(classification_feature_vectors)
+                predict_data = self.head_type.predict_on_batch(classification_feature_vectors)
                 prediction.extend(predict_data[:, 1])
             if self.load_energy_model_from is not None:
-                predict_data = self.keras_model_energy.predict_on_batch(input_data)
+                energy_feature_vectors = self.backbone_energy.predict_on_batch(input_data)
+                energy_fvs.extend(energy_feature_vectors)
+                predict_data = self.head_energy.predict_on_batch(energy_feature_vectors)
                 energy.extend(predict_data["energy"])
             if self.load_direction_model_from is not None:
-                predict_data = self.keras_model_direction.predict_on_batch(input_data)
+                direction_feature_vectors = self.backbone_direction.predict_on_batch(input_data)
+                direction_fvs.extend(direction_feature_vectors)
+                predict_data = self.head_direction.predict_on_batch(direction_feature_vectors)
                 az.extend(predict_data["direction"].T[0])
                 alt.extend(predict_data["direction"].T[1])
 
@@ -498,6 +509,9 @@ class LST1PredictionTool(Tool):
         )
         if len(nonexample_identifiers) > 0:
             nonexample_identifiers.sort(TELESCOPE_EVENT_KEYS)
+        # Create the feature vector table
+        feature_vector_table = example_identifiers.copy()
+        fvs_columns_list, fvs_shapes_list = [], []
         if self.load_type_model_from is not None:
             classification_table = example_identifiers.copy()
             classification_table.add_column(
@@ -505,10 +519,10 @@ class LST1PredictionTool(Tool):
             )
             # Produce output table with NaNs for missing predictions
             if len(nonexample_identifiers) > 0:
-                nan_table = nonexample_identifiers.copy()
-                nan_table.add_column(
-                    np.nan * np.ones(len(nan_table)),
-                    name=f"{self.prefix}_tel_prediction",
+                nan_table = self._create_nan_table(
+                    nonexample_identifiers,
+                    columns=[f"{self.prefix}_tel_prediction"],
+                    shapes=[(len(nonexample_identifiers),)],
                 )
                 classification_table = vstack([classification_table, nan_table])
             classification_table.sort(TELESCOPE_EVENT_KEYS)
@@ -538,6 +552,22 @@ class LST1PredictionTool(Tool):
                 self.output_path,
                 f"{DL2_TELESCOPE_GROUP}/classification/{self.prefix}/tel_{self.tel_id:03d}",
             )
+            # Adding the feature vectors for the classification
+            is_valid_col = ~np.isnan(
+                np.min(classification_fvs, axis=1), dtype=bool
+            )
+            feature_vector_table.add_column(
+                classification_fvs,
+                name=f"{self.prefix}_tel_classification_feature_vectors",
+            )
+            if nonexample_identifiers is not None:
+                fvs_columns_list.append(f"{self.prefix}_tel_classification_feature_vectors")
+                fvs_shapes_list.append(
+                    (
+                        len(nonexample_identifiers),
+                        classification_fvs.shape[1],
+                    )
+                )
         if self.load_energy_model_from is not None:
             energy_table = example_identifiers.copy()
             # Convert the reconstructed energy from log10(TeV) to TeV
@@ -546,10 +576,10 @@ class LST1PredictionTool(Tool):
             energy_table.add_column(reco_energy, name=f"{self.prefix}_tel_energy")
             # Produce output table with NaNs for missing predictions
             if len(nonexample_identifiers) > 0:
-                nan_table = nonexample_identifiers.copy()
-                nan_table.add_column(
-                    np.nan * np.ones(len(nan_table)),
-                    name=f"{self.prefix}_tel_energy",
+                nan_table = self._create_nan_table(
+                    nonexample_identifiers,
+                    columns=[f"{self.prefix}_tel_energy"],
+                    shapes=[(len(nonexample_identifiers),)],
                 )
                 energy_table = vstack([energy_table, nan_table])
             energy_table.sort(TELESCOPE_EVENT_KEYS)
@@ -576,7 +606,22 @@ class LST1PredictionTool(Tool):
                 self.output_path,
                 f"{DL2_TELESCOPE_GROUP}/energy/{self.prefix}/tel_{self.tel_id:03d}",
             )
-
+            # Adding the feature vectors for the energy regression
+            is_valid_col = ~np.isnan(
+                np.min(energy_fvs, axis=1), dtype=bool
+            )
+            feature_vector_table.add_column(
+                energy_fvs,
+                name=f"{self.prefix}_tel_energy_feature_vectors",
+            )
+            if nonexample_identifiers is not None:
+                fvs_columns_list.append(f"{self.prefix}_tel_energy_feature_vectors")
+                fvs_shapes_list.append(
+                    (
+                        len(nonexample_identifiers),
+                        energy_fvs.shape[1],
+                    )
+                )
         if self.load_direction_model_from is not None:
             direction_table = example_identifiers.copy()
             # Convert reconstructed spherical offset (az, alt) to SkyCoord
@@ -602,12 +647,10 @@ class LST1PredictionTool(Tool):
             )
             # Produce output table with NaNs for missing predictions
             if len(nonexample_identifiers) > 0:
-                nan_table = nonexample_identifiers.copy()
-                nan_table.add_column(
-                    np.nan * np.ones(len(nan_table)), name=f"{self.prefix}_tel_az"
-                )
-                nan_table.add_column(
-                    np.nan * np.ones(len(nan_table)), name=f"{self.prefix}_tel_alt"
+                nan_table = self._create_nan_table(
+                    nonexample_identifiers,
+                    columns=[f"{self.prefix}_tel_az", f"{self.prefix}_tel_alt"],
+                    shapes=[(len(nonexample_identifiers),), (len(nonexample_identifiers),)],
                 )
                 direction_table = vstack([direction_table, nan_table])
             direction_table.keep_columns(
@@ -638,6 +681,51 @@ class LST1PredictionTool(Tool):
                 self.output_path,
                 f"{DL2_TELESCOPE_GROUP}/geometry/{self.prefix}/tel_{self.tel_id:03d}",
             )
+            # Adding the feature vectors for the arrival direction regression
+            is_valid_col = ~np.isnan(
+                np.min(direction_fvs, axis=1), dtype=bool
+            )
+            feature_vector_table.add_column(
+                direction_fvs,
+                name=f"{self.prefix}_tel_direction_feature_vectors",
+            )
+            if nonexample_identifiers is not None:
+                fvs_columns_list.append(f"{self.prefix}_tel_direction_feature_vectors")
+                fvs_shapes_list.append(
+                    (
+                        len(nonexample_identifiers),
+                        direction_fvs.shape[1],
+                    )
+                )
+        # Produce output table with NaNs for missing predictions
+        if nonexample_identifiers is not None:
+            if len(nonexample_identifiers) > 0:
+                nan_table = self._create_nan_table(
+                    nonexample_identifiers,
+                    columns=fvs_columns_list,
+                    shapes=fvs_shapes_list,
+                )
+                feature_vector_table = vstack([feature_vector_table, nan_table])
+                is_valid_col = np.concatenate(
+                    (is_valid_col, np.zeros(len(nonexample_identifiers), dtype=bool))
+                )
+        # Add is_valid column to the feature vector table
+        feature_vector_table.add_column(
+            is_valid_col,
+            name=f"{self.prefix}_tel_is_valid",
+        )
+        # Save the prediction to the output file
+        write_table(
+            feature_vectors_tel_table,
+            self.output_path,
+            f"{DL1_TELESCOPE_GROUP}/features/{self.prefix}/tel_{self.tel_id:03d}",
+            overwrite=self.overwrite_tables,
+        )
+        self.log.info(
+            "DL1 feature vectors was stored in '%s' under '%s'",
+            self.output_path,
+            f"{DL1_TELESCOPE_GROUP}/features/{self.prefix}/tel_{self.tel_id:03d}",
+        )
 
     def finish(self):
         self.log.info("Tool is shutting down")
@@ -715,6 +803,63 @@ class LST1PredictionTool(Tool):
         )
 
         return subarray
+
+    def _split_model(model):
+        """
+        Split the model into backbone and head.
+
+        This method splits the model into backbone and head. The backbone is summarized
+        into a single layer which can be retrieved by the layer index 1. The model input
+        has layer index 0 and the head is the rest of the model with layer index 2 and above.
+
+        Parameters:
+        -----------
+        model : keras.Model
+            Keras model to split into backbone and head.
+
+        Returns:
+        --------
+        backbone : keras.Model
+            Backbone model of the original model.
+        head : keras.Model
+            Head model of the original model.
+        """
+        # Get the backbone model which is the second layer of the model
+        backbone = model.get_layer(index=1)
+        # Create a new head model with the same layers as the original model.
+        # The output of the backbone model is the input of the head model.
+        backbone_output_shape = keras.Input(model.layers[2].input_shape[1:])
+        x = backbone_output_shape
+        for layer in model.layers[2:]:
+            x = layer(x)
+        head = keras.Model(inputs=backbone_output_shape, outputs=x)
+        return backbone, head
+
+    def _create_nan_table(self, nonexample_identifiers, columns, shapes):
+        """
+        Create a table with NaNs for missing predictions.
+
+        This method creates a table with NaNs for missing predictions for the non-example identifiers.
+
+        Parameters:
+        -----------
+        nonexample_identifiers : astropy.table.Table
+            Table containing the non-example identifiers.
+        columns : list of str
+            List of column names to create in the table.
+        shapes : list of shapes
+            List of shapes for the columns to create in the table.
+
+        Returns:
+        --------
+        nan_table : astropy.table.Table
+            Table containing NaNs for missing predictions.
+        """
+        # Create a table with NaNs for missing predictions
+        nan_table = nonexample_identifiers.copy()
+        for column_name, shape in zip(columns, shapes):
+            nan_table.add_column(np.full(shape, np.nan), name=column_name)
+        return nan_table
 
 
 def main():
