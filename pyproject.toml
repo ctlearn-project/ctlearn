@@ -76,4 +76,7 @@ norecursedirs = [
     ".git",
     "notebooks",
     "build",
+    "scripts",
+    "docs",
+    "images"
 ]
