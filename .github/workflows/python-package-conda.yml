@@ -7,8 +7,7 @@ on:
     tags:
       - "**"
   pull_request:
-    types:
-      - "**"
+    types: [synchronize]
     branches:
       - master
     tags:
