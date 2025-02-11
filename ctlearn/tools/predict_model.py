@@ -49,7 +49,7 @@ from dl1_data_handler.reader import (
     REFERENCE_LOCATION,
     LST_EPOCH,
 )
-from dl1_data_handler.loader import DLDataLoader
+from ctlearn.core.loader import DLDataLoader
 
 SIMULATION_CONFIG_TABLE = "/configuration/simulation/run"
 FIXED_POINTING_GROUP = "/configuration/telescope/pointing"
@@ -76,7 +76,7 @@ class PredictCTLearnModel(Tool):
     This class handles the prediction of the gammaness, energy and arrival direction from pixel-wise image
     or waveform data. It also supports the extraction of the feature vectors from the backbone submodel to
     store them in the output file. The input data is loaded from the input url using the
-    ``~dl1_data_handler.reader.DLDataReader`` and ``~dl1_data_handler.loader.DLDataLoader``.
+    ``~dl1_data_handler.reader.DLDataReader`` and ``~ctlearn.core.loader.DLDataLoader``.
     The prediction is performed using the CTLearn models. The data is stored in the output file
     following the ctapipe DL2 data format. The ``start`` method is implemented in the subclasses to
     handle the prediction for mono and stereo mode.
@@ -117,7 +117,7 @@ class PredictCTLearnModel(Tool):
         Verbosity mode of Keras during the prediction.
     strategy : tf.distribute.Strategy
         MirroredStrategy to distribute the prediction.
-    dl1dh_loader : dl1_data_handler.loader.DLDataLoader
+    data_loader : ctlearn.core.loader.DLDataLoader
         DLDataLoader object to load the data.
     indices : list of int
         List of indices for the data loaders.
@@ -417,7 +417,7 @@ class PredictCTLearnModel(Tool):
         """
         # Create a new DLDataLoader for each task
         # It turned out to be more robust to initialize the DLDataLoader separately.
-        dl1dh_loader = DLDataLoader(
+        data_loader = DLDataLoader(
             self.dl1dh_reader,
             self.indices,
             tasks=[],
@@ -429,10 +429,10 @@ class PredictCTLearnModel(Tool):
         # In prediction mode we don't want to loose the last
         # uncomplete batch, so we are creating an additional
         # batch generator for the remaining events.
-        dl1dh_loader_last_batch = None
+        data_loader_last_batch = None
         if self.last_batch_size > 0:
             last_batch_indices = self.indices[-self.last_batch_size :]
-            dl1dh_loader_last_batch = DLDataLoader(
+            data_loader_last_batch = DLDataLoader(
                 self.dl1dh_reader,
                 last_batch_indices,
                 tasks=[],
@@ -458,7 +458,7 @@ class PredictCTLearnModel(Tool):
             head = keras.Model(inputs=backbone_output_shape, outputs=x)
             # Apply the backbone model with the data loader to retrieve the feature vectors
             feature_vectors = backbone_model.predict(
-                dl1dh_loader, verbose=self.keras_verbose
+                data_loader, verbose=self.keras_verbose
             )
             # Apply the head model with the feature vectors to retrieve the prediction
             predict_data = Table(
@@ -469,9 +469,9 @@ class PredictCTLearnModel(Tool):
                 }
             )
             # Predict the last batch and stack the results to the prediction data
-            if dl1dh_loader_last_batch is not None:
+            if data_loader_last_batch is not None:
                 feature_vectors_last_batch = backbone_model.predict(
-                    dl1dh_loader_last_batch, verbose=self.keras_verbose
+                    data_loader_last_batch, verbose=self.keras_verbose
                 )
                 feature_vectors = np.concatenate(
                     (feature_vectors, feature_vectors_last_batch)
@@ -491,7 +491,7 @@ class PredictCTLearnModel(Tool):
                 )
         else:
             # Predict the data using the loaded model
-            predict_data = model.predict(dl1dh_loader, verbose=self.keras_verbose)
+            predict_data = model.predict(data_loader, verbose=self.keras_verbose)
             # Create a astropy table with the prediction results
             # The classification task has a softmax layer as the last layer
             # which returns the probabilities for each class in an array, while
@@ -502,9 +502,9 @@ class PredictCTLearnModel(Tool):
             else:
                 predict_data = Table(predict_data)
             # Predict the last batch and stack the results to the prediction data
-            if dl1dh_loader_last_batch is not None:
+            if data_loader_last_batch is not None:
                 predict_data_last_batch = model.predict(
-                    dl1dh_loader_last_batch, verbose=self.keras_verbose
+                    data_loader_last_batch, verbose=self.keras_verbose
                 )
                 if model.layers[-1].name == "type":
                     predict_data_last_batch = Table(

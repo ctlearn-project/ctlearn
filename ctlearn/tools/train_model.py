@@ -25,7 +25,7 @@ from ctapipe.core.traits import (
     Unicode,
 )
 from dl1_data_handler.reader import DLDataReader
-from dl1_data_handler.loader import DLDataLoader
+from ctlearn.core.loader import DLDataLoader
 from ctlearn.core.model import CTLearnModel
 from ctlearn.utils import validate_trait_dict
 
@@ -306,7 +306,7 @@ class TrainCTLearnModel(Tool):
         n_validation_examples = int(self.validation_split * self.dl1dh_reader._get_n_events())
         training_indices = indices[n_validation_examples:]
         validation_indices = indices[:n_validation_examples]
-        self.dl1dh_training_loader = DLDataLoader(
+        self.training_loader = DLDataLoader(
             self.dl1dh_reader,
             training_indices,
             tasks=self.reco_tasks,
@@ -315,7 +315,7 @@ class TrainCTLearnModel(Tool):
             sort_by_intensity=self.sort_by_intensity,
             stack_telescope_images=self.stack_telescope_images,
         )
-        self.dl1dh_validation_loader = DLDataLoader(
+        self.validation_loader = DLDataLoader(
             self.dl1dh_reader,
             validation_indices,
             tasks=self.reco_tasks,
@@ -374,7 +374,7 @@ class TrainCTLearnModel(Tool):
             self.log.info("Setting up the model.")
             self.model = CTLearnModel.from_name(
                 self.model_type,
-                input_shape=self.dl1dh_training_loader.input_shape,
+                input_shape=self.training_loader.input_shape,
                 tasks=self.reco_tasks,
                 parent=self,
             ).model
@@ -414,8 +414,8 @@ class TrainCTLearnModel(Tool):
         # Train and evaluate the model
         self.log.info("Training and evaluating...")
         self.model.fit(
-            self.dl1dh_training_loader,
-            validation_data=self.dl1dh_validation_loader,
+            self.training_loader,
+            validation_data=self.validation_loader,
             epochs=self.n_epochs,
             class_weight=self.dl1dh_reader.class_weight,
             callbacks=self.callbacks,
