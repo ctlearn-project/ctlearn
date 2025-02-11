@@ -7,7 +7,12 @@ on:
     tags:
       - "**"
   pull_request:
-    types: [opened, reopened, edited]
+    types:
+      - "**"
+    branches:
+      - master
+    tags:
+      - "**"
 
 jobs:
   build:
