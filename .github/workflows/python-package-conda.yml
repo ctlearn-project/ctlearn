@@ -7,12 +7,7 @@ on:
     tags:
       - "**"
   pull_request:
-    types: [synchronize]
-    branches:
-      - master
-    tags:
-      - "**"
-
+    types: [edited]
 jobs:
   build:
     strategy:
