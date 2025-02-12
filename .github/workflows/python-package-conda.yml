@@ -3,11 +3,10 @@ name: CI
 on:
   push:
     branches:
-      - master
+      - "**"
     tags:
       - "**"
-  pull_request_target:
-
+  pull_request:
 
 jobs:
   build:
