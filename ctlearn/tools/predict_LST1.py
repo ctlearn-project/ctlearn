@@ -8,7 +8,7 @@ import tables
 import keras
 from astropy import units as u
 from astropy.coordinates.earth import EarthLocation
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import Angle, SkyCoord
 from astropy.table import Table, join, setdiff, vstack
 from astropy.time import Time
 
@@ -89,7 +89,6 @@ class LST1PredictionTool(Tool):
     > ctlearn-predict-model \\
         --input_url input.subrun.lstchain.dl1.h5 \\
         --LST1PredictionTool.batch_size=64 \\
-        --LST1PredictionTool.dl1dh_reader_type=DLImageReader \\
         --LST1PredictionTool.channels=cleaned_image \\
         --LST1PredictionTool.channels=cleaned_relative_peak_time \\
         --LST1PredictionTool.image_mapper_type=BilinearMapper \\
@@ -193,11 +192,11 @@ class LST1PredictionTool(Tool):
         ),
     ).tag(config=True)
 
-    transform_to_EngineeringCameraFrame = Bool(
+    transform_to_CameraFrame = Bool(
         default_value=True,
         allow_none=False,
         help=(
-            "Transform the camera geometry to the EngineeringCameraFrame. "
+            "Transform the camera geometry to the CameraFrame. "
             "Needed if training was done in this frame."
         ),
     ).tag(config=True)
@@ -748,12 +747,28 @@ class LST1PredictionTool(Tool):
         if reference_location is None:
             reference_location = ctapipe_io_lst.constants.LST1_LOCATION
 
-        camera_geom = ctapipe_io_lst.load_camera_geometry()
+        with tables.open_file(self.input_url) as input_file:
+            cam_geom_table = (
+                input_file.root.configuration.instrument.telescope.camera._f_get_child(
+                    "geometry_0"
+                )
+            )
+            camera_geom = CameraGeometry(
+                name="RealLSTCam",
+                pix_id=cam_geom_table.cols.pix_id[:],
+                pix_type="hexagon",
+                pix_x=u.Quantity(cam_geom_table.cols.pix_x[:], u.cm),
+                pix_y=u.Quantity(cam_geom_table.cols.pix_y[:], u.cm),
+                pix_area=u.Quantity(cam_geom_table.cols.pix_area[:], u.cm**2),
+                pix_rotation=Angle(100.893, u.deg),
+                cam_rotation=Angle(0, u.deg),
+                frame = EngineeringCameraFrame(focal_length=ctapipe_io_lst.OPTICS.effective_focal_length),
+            )
         # Needs to be renamed  because the ImageMapper smooths the pixel positions
         camera_geom.name = "RealLSTCam"
-        if self.transform_to_EngineeringCameraFrame:
+        if self.transform_to_CameraFrame:
             camera_geom = camera_geom.transform_to(
-                EngineeringCameraFrame(
+                CameraFrame(
                     focal_length=ctapipe_io_lst.OPTICS.effective_focal_length
                 )
             )
@@ -804,7 +819,7 @@ class LST1PredictionTool(Tool):
 
         return subarray
 
-    def _split_model(model):
+    def _split_model(self, model):
         """
         Split the model into backbone and head.
 
