@@ -22,7 +22,7 @@ from ctapipe.containers import (
     ReconstructedGeometryContainer,
     ReconstructedEnergyContainer,
 )
-from ctapipe.coordinates import EngineeringCameraFrame
+from ctapipe.coordinates import CameraFrame, EngineeringCameraFrame
 from ctapipe.core import Tool
 from ctapipe.core.tool import ToolConfigurationError
 from ctapipe.core.traits import (
@@ -487,13 +487,13 @@ class LST1PredictionTool(Tool):
                 energy_feature_vectors = self.backbone_energy.predict_on_batch(input_data)
                 energy_fvs.extend(energy_feature_vectors)
                 predict_data = self.head_energy.predict_on_batch(energy_feature_vectors)
-                energy.extend(predict_data["energy"])
+                energy.extend(predict_data.T[0])
             if self.load_direction_model_from is not None:
                 direction_feature_vectors = self.backbone_direction.predict_on_batch(input_data)
                 direction_fvs.extend(direction_feature_vectors)
                 predict_data = self.head_direction.predict_on_batch(direction_feature_vectors)
-                az.extend(predict_data["direction"].T[0])
-                alt.extend(predict_data["direction"].T[1])
+                az.extend(predict_data.T[0])
+                alt.extend(predict_data.T[1])
 
         # Create the prediction tables
         example_identifiers = Table(
