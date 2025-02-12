@@ -27,7 +27,7 @@ classifiers = [
 
 requires-python = ">=3.10"
 dependencies = [
-    "dl1_data_handler>=0.12.0",
+    "dl1_data_handler>=0.13.0",
     "astropy",
     "matplotlib",
     "numpy",
@@ -36,11 +36,11 @@ dependencies = [
     "pyyaml",
     "scikit-learn",
     "ctaplot",
-    "numba>=0.56.2,<0.57",
-    "tensorflow>=2.14,<2.16",
+    "numba",
+    "tensorflow>=2.14,<2.15",
     "pydot",
     "pyirf",
-    "ctapipe",
+    "ctapipe>=0.23.2, <0.24.0",
 ]
 
 dynamic = ["version"]
@@ -61,8 +61,22 @@ repository = "https://github.com/ctlearn-project/ctlearn"
 documentation = "https://ctlearn.readthedocs.io/en/latest/"
 
 [project.scripts]
-ctlearn="ctlearn.run_model:main"
-build_irf="ctlearn.build_irf:main"
+ctlearn-train-model = "ctlearn.tools.train_model:main"
+ctlearn-predict-mono-model = "ctlearn.tools.predict_model:mono_tool"
+ctlearn-predict-stereo-model = "ctlearn.tools.predict_model:stereo_tool"
+ctlearn-predict-LST1= "ctlearn.tools.predict_LST1:main"
 
 [tool.setuptools_scm]
 version_file = "ctlearn/_version.py"
+
+[tool.pytest.ini_options]
+testpaths = ["ctlearn"]
+
+norecursedirs = [
+    ".git",
+    "notebooks",
+    "build",
+    "scripts",
+    "docs",
+    "images"
+]

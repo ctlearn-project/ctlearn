@@ -6,14 +6,15 @@ on:
       - master
     tags:
       - "**"
-  pull_request:
+  pull_request_target:
+
 
 jobs:
   build:
     strategy:
       matrix:
         os: [ubuntu-22.04]
-        pyv: ['3.9', '3.10', '3.11', '3.12']
+        pyv: ['3.10', '3.11', '3.12']
       max-parallel: 5
     runs-on: ${{ matrix.os }}
     steps:
@@ -25,6 +26,8 @@ jobs:
       run: |
         # $CONDA is an environment variable pointing to the root of the miniconda directory
         echo $CONDA/bin >> $GITHUB_PATH
+    - name: Add MKL_THREADING_LAYER variable
+      run:  echo "MKL_THREADING_LAYER=GNU" >> $GITHUB_ENV
     - name: Install dependencies
       run: |
         conda env update --file environment.yml --name base
