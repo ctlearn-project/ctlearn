@@ -716,7 +716,7 @@ class LST1PredictionTool(Tool):
         )
         # Save the prediction to the output file
         write_table(
-            feature_vectors_tel_table,
+            feature_vector_tel_table,
             self.output_path,
             f"{DL1_TELESCOPE_GROUP}/features/{self.prefix}/tel_{self.tel_id:03d}",
             overwrite=self.overwrite_tables,
