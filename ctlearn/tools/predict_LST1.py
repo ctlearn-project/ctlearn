@@ -564,7 +564,7 @@ class LST1PredictionTool(Tool):
                 fvs_shapes_list.append(
                     (
                         len(nonexample_identifiers),
-                        classification_fvs.shape[1],
+                        classification_fvs[0].shape[0],
                     )
                 )
         if self.load_energy_model_from is not None:
@@ -618,7 +618,7 @@ class LST1PredictionTool(Tool):
                 fvs_shapes_list.append(
                     (
                         len(nonexample_identifiers),
-                        energy_fvs.shape[1],
+                        energy_fvs[0].shape[0],
                     )
                 )
         if self.load_direction_model_from is not None:
@@ -693,7 +693,7 @@ class LST1PredictionTool(Tool):
                 fvs_shapes_list.append(
                     (
                         len(nonexample_identifiers),
-                        direction_fvs.shape[1],
+                        direction_fvs[0].shape[0],
                     )
                 )
         # Produce output table with NaNs for missing predictions
@@ -718,7 +718,7 @@ class LST1PredictionTool(Tool):
             feature_vector_table,
             self.output_path,
             f"{DL1_TELESCOPE_GROUP}/features/{self.prefix}/tel_{self.tel_id:03d}",
-            overwrite=self.overwrite_tables,
+            overwrite=self.overwrite,
         )
         self.log.info(
             "DL1 feature vectors was stored in '%s' under '%s'",
