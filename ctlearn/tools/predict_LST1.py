@@ -632,7 +632,7 @@ class LST1PredictionTool(Tool):
                 u.Quantity(tel_altitude, unit=u.rad),
                 frame="altaz",
                 location=REFERENCE_LOCATION,
-                obstime=LST_EPOCH,
+                obstime=time,
             )
             reco_direction = pointing.spherical_offsets_by(
                 reco_spherical_offset_az, reco_spherical_offset_alt
