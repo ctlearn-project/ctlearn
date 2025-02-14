@@ -482,7 +482,7 @@ class LST1PredictionTool(Tool):
             event_id.extend(dl1_table["event_id"].data)
             tel_azimuth.extend(dl1_table["tel_az"].data)
             tel_altitude.extend(dl1_table["tel_alt"].data)
-            trigger_time.extend(dl1_table["time"].data)
+            trigger_time.extend(dl1_table["time"].mjd)
             if self.load_type_model_from is not None:
                 classification_feature_vectors = self.backbone_type.predict_on_batch(input_data)
                 classification_fvs.extend(classification_feature_vectors)
@@ -632,7 +632,7 @@ class LST1PredictionTool(Tool):
             reco_spherical_offset_az = u.Quantity(az, unit=u.deg)
             reco_spherical_offset_alt = u.Quantity(alt, unit=u.deg)
             # Set the telescope pointing of the SkyOffsetSeparation tranformation
-            trigger_time = Time(trigger_time * u.s, format="unix")
+            trigger_time = Time(trigger_time, format="mjd")
             pointing = SkyCoord(
                 u.Quantity(tel_azimuth, unit=u.rad),
                 u.Quantity(tel_altitude, unit=u.rad),
