@@ -454,6 +454,11 @@ class LST1PredictionTool(Tool):
                 right=parameter_table,
                 keys=["event_id"],
             )
+            dl1_table = join(
+                left=dl1_table,
+                right=trigger_table,
+                keys=["event_id"],
+            )
             # Initialize a boolean mask to True for all events in the sliced dl1 table
             passes_quality_checks = np.ones(len(dl1_table), dtype=bool)
             # Quality selection based on the dl1b parameter
@@ -477,7 +482,7 @@ class LST1PredictionTool(Tool):
             event_id.extend(dl1_table["event_id"].data)
             tel_azimuth.extend(dl1_table["tel_az"].data)
             tel_altitude.extend(dl1_table["tel_alt"].data)
-            trigger_time.extend(dl1_table["dragon_time"].data)
+            trigger_time.extend(dl1_table["time"].data)
             if self.load_type_model_from is not None:
                 classification_feature_vectors = self.backbone_type.predict_on_batch(input_data)
                 classification_fvs.extend(classification_feature_vectors)
