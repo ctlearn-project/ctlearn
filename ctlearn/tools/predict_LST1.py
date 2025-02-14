@@ -437,7 +437,7 @@ class LST1PredictionTool(Tool):
         parameter_table = parameter_table[parameter_table["event_type"]==32]
 
         self.log.info("Starting the prediction...")
-        event_id, tel_azimuth, tel_altitude = [], [], []
+        event_id, tel_azimuth, tel_altitude, trigger_time = [], [], [], []
         prediction, energy, az, alt = [], [], [], []
         classification_fvs, energy_fvs, direction_fvs = [], [], []
         # Iterate over the data in chunks based on the batch size
@@ -477,6 +477,7 @@ class LST1PredictionTool(Tool):
             event_id.extend(dl1_table["event_id"].data)
             tel_azimuth.extend(dl1_table["tel_az"].data)
             tel_altitude.extend(dl1_table["tel_alt"].data)
+            trigger_time.extend(dl1_table["dragon_time"].data)
             if self.load_type_model_from is not None:
                 classification_feature_vectors = self.backbone_type.predict_on_batch(input_data)
                 classification_fvs.extend(classification_feature_vectors)
@@ -626,12 +627,13 @@ class LST1PredictionTool(Tool):
             reco_spherical_offset_az = u.Quantity(az, unit=u.deg)
             reco_spherical_offset_alt = u.Quantity(alt, unit=u.deg)
             # Set the telescope pointing of the SkyOffsetSeparation tranformation
+            trigger_time = Time(trigger_time * u.s, format="unix")
             pointing = SkyCoord(
                 u.Quantity(tel_azimuth, unit=u.rad),
                 u.Quantity(tel_altitude, unit=u.rad),
                 frame="altaz",
                 location=self.subarray.reference_location,
-                obstime=time,
+                obstime=trigger_time,
             )
             reco_direction = pointing.spherical_offsets_by(
                 reco_spherical_offset_az, reco_spherical_offset_alt
