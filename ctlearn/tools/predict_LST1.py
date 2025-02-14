@@ -54,7 +54,6 @@ from dl1_data_handler.reader import (
     get_unmapped_image,
     get_unmapped_waveform,
     TableQualityQuery,
-    REFERENCE_LOCATION,
     LST_EPOCH,
 )
 
@@ -631,7 +630,7 @@ class LST1PredictionTool(Tool):
                 u.Quantity(tel_azimuth, unit=u.rad),
                 u.Quantity(tel_altitude, unit=u.rad),
                 frame="altaz",
-                location=REFERENCE_LOCATION,
+                location=self.subarray.reference_location,
                 obstime=time,
             )
             reco_direction = pointing.spherical_offsets_by(
