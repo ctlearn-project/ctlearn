@@ -77,11 +77,11 @@ class CTLearnModel(Component):
     ).tag(config=True)
 
     head = Dict(
-        default_value={'type': [512, 256, 2], 'energy': [512, 256, 1], 'direction': [512, 256, 3]},
+        default_value={'type': [512, 256, 2], 'energy': [512, 256, 1], 'cameradirection': [512, 256, 3], 'skydirection': [512, 256, 3]},
         allow_none=False,
         help=(
             "Dictionary containing the number of neurons in the fully connected head for each "
-            "task ('type', 'energy', 'direction'). Note: The number of neurons in the last layer "
+            "task ('type', 'energy', 'cameradirection', 'skydirection'). Note: The number of neurons in the last layer "
             "must match the number of classes or the number of reconstructed values."
         ),
     ).tag(config=True)
