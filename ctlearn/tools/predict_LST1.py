@@ -653,8 +653,8 @@ class LST1PredictionTool(Tool):
             )
             # Set the camera coordinate offset
             cam_coord_offset = SkyCoord(
-                x=cam_coord_offset_x,
-                y=cam_coord_offset_y,
+                x=u.Quantity(cam_coord_offset_x, unit=u.m),
+                y=u.Quantity(cam_coord_offset_y, unit=u.m),
                 frame=camera_frame
             )
             # Transform the true Alt/Az coordinates to camera coordinates
