@@ -173,9 +173,9 @@ class DLDataLoader(Sequence):
         if "skydirection" in self.tasks:
             labels["skydirection"] = np.stack(
                 (
-                    batch["sky_offset_lon"].data,
-                    batch["sky_offset_lat"].data,
-                    batch["sky_angular_separation"].data,
+                    batch["fov_lon"].data,
+                    batch["fov_lat"].data,
+                    batch["angular_separation"].data,
                 ),
                 axis=1,
             )
@@ -224,7 +224,7 @@ class DLDataLoader(Sequence):
         features, mono_feature_vectors, stereo_feature_vectors = [], [], []
         true_shower_primary_class = []
         log_true_energy = []
-        sky_offset_lon, sky_offset_lat, sky_angular_separation = [], [], []
+        fov_lon, fov_lat, angular_separation = [], [], []
         cam_coord_offset_x, cam_coord_offset_y, cam_coord_distance = [], [], []
         for group_element in batch_grouped.groups:
             if "features" in batch.colnames:
@@ -263,11 +263,11 @@ class DLDataLoader(Sequence):
             if "energy" in self.tasks:
                 log_true_energy.append(group_element["log_true_energy"].data[0])
             if "skydirection" in self.tasks:
-                sky_offset_lon.append(group_element["sky_offset_lon"].data[0])
-                sky_offset_lat.append(
-                    group_element["sky_offset_lat"].data[0]
+                fov_lon.append(group_element["fov_lon"].data[0])
+                fov_lat.append(
+                    group_element["fov_lat"].data[0]
                 )
-                sky_angular_separation.append(group_element["sky_angular_separation"].data[0])
+                sky_angular_separation.append(group_element["angular_separation"].data[0])
             if "cameradirection" in self.tasks:
                 cam_coord_offset_x.append(group_element["cam_coord_offset_x"].data)
                 cam_coord_offset_y.append(
@@ -292,9 +292,9 @@ class DLDataLoader(Sequence):
         if "skydirection" in self.tasks:
             labels["skydirection"] = np.stack(
                 (
-                    np.array(sky_offset_lon),
-                    np.array(sky_offset_lat),
-                    np.array(sky_angular_separation),
+                    np.array(fov_lon),
+                    np.array(fov_lat),
+                    np.array(angular_separation),
                 ),
                 axis=1,
             )
