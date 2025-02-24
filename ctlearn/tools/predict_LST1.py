@@ -8,7 +8,7 @@ import tables
 import keras
 from astropy import units as u
 from astropy.coordinates.earth import EarthLocation
-from astropy.coordinates import Angle, SkyCoord
+from astropy.coordinates import AltAz, Angle, SkyCoord
 from astropy.table import Table, join, setdiff, vstack
 from astropy.time import Time
 
@@ -93,7 +93,7 @@ class LST1PredictionTool(Tool):
         --LST1PredictionTool.image_mapper_type=BilinearMapper \\
         --type_model="/path/to/your/type/ctlearn_model.cpk" \\
         --energy_model="/path/to/your/energy/ctlearn_model.cpk" \\
-        --direction_model="/path/to/your/direction/ctlearn_model.cpk" \\
+        --cameradirection_model="/path/to/your/direction/ctlearn_model.cpk" \\
         --output output.dl2.h5 \\
         --overwrite \\
     """
@@ -136,11 +136,12 @@ class LST1PredictionTool(Tool):
         file_ok=True,
     ).tag(config=True)
 
-    load_direction_model_from = Path(
+    load_cameradirection_model_from = Path(
         default_value=None,
         help=(
             "Path to a Keras model file (Keras3) or directory (Keras2) "
-            "for the regression of the primary particle arrival direction."
+            "for the regression of the primary particle arrival direction "
+            "based on the camera coordinates."
         ),
         allow_none=True,
         exists=True,
@@ -212,7 +213,7 @@ class LST1PredictionTool(Tool):
         ("i", "input_url"): "LST1PredictionTool.input_url",
         ("t", "type_model"): "LST1PredictionTool.load_type_model_from",
         ("e", "energy_model"): "LST1PredictionTool.load_energy_model_from",
-        ("d", "direction_model"): "LST1PredictionTool.load_direction_model_from",
+        ("d", "cameradirection_model"): "LST1PredictionTool.load_cameradirection_model_from",
         ("o", "output"): "LST1PredictionTool.output_path",
     }
 
@@ -250,12 +251,12 @@ class LST1PredictionTool(Tool):
             )
             input_shape = model_energy.input_shape[1:]
             self.backbone_energy, self.head_energy = self._split_model(model_energy)
-        if self.load_direction_model_from is not None:
+        if self.load_cameradirection_model_from is not None:
             self.log.info(
-                "Loading the direction model from %s.", self.load_direction_model_from
+                "Loading the cameradirection model from %s.", self.load_cameradirection_model_from
             )
             model_direction = keras.saving.load_model(
-                self.load_direction_model_from
+                self.load_cameradirection_model_from
             )
             input_shape = model_direction.input_shape[1:]
             self.backbone_direction, self.head_direction = self._split_model(model_direction)
@@ -438,7 +439,7 @@ class LST1PredictionTool(Tool):
 
         self.log.info("Starting the prediction...")
         event_id, tel_azimuth, tel_altitude, trigger_time = [], [], [], []
-        prediction, energy, az, alt = [], [], [], []
+        prediction, energy, cam_coord_offset_x, cam_coord_offset_y = [], [], [], []
         classification_fvs, energy_fvs, direction_fvs = [], [], []
         # Iterate over the data in chunks based on the batch size
         for start in range(0, self.table_length, self.batch_size):
@@ -493,12 +494,12 @@ class LST1PredictionTool(Tool):
                 energy_fvs.extend(energy_feature_vectors)
                 predict_data = self.head_energy.predict_on_batch(energy_feature_vectors)
                 energy.extend(predict_data.T[0])
-            if self.load_direction_model_from is not None:
+            if self.load_cameradirection_model_from is not None:
                 direction_feature_vectors = self.backbone_direction.predict_on_batch(input_data)
                 direction_fvs.extend(direction_feature_vectors)
                 predict_data = self.head_direction.predict_on_batch(direction_feature_vectors)
-                az.extend(predict_data.T[0])
-                alt.extend(predict_data.T[1])
+                cam_coord_offset_x.extend(predict_data.T[0])
+                cam_coord_offset_y.extend(predict_data.T[1])
 
         # Create the prediction tables
         example_identifiers = Table(
@@ -626,29 +627,44 @@ class LST1PredictionTool(Tool):
                         energy_fvs[0].shape[0],
                     )
                 )
-        if self.load_direction_model_from is not None:
+        if self.load_cameradirection_model_from is not None:
             direction_table = example_identifiers.copy()
-            # Convert reconstructed spherical offset (az, alt) to SkyCoord
-            reco_spherical_offset_az = u.Quantity(az, unit=u.deg)
-            reco_spherical_offset_alt = u.Quantity(alt, unit=u.deg)
-            # Set the telescope pointing of the SkyOffsetSeparation tranformation
+            # Set the telescope pointing of the SkyOffsetSeparation tranform to the fix pointing
+            tel_ground_frame = self.subarray.tel_coords[
+                self.subarray.tel_ids_to_indices(self.tel_id)
+            ]
+            # Set the telescope pointing with the trigger timestamp and the telescope position
             trigger_time = Time(trigger_time, format="mjd")
-            pointing = SkyCoord(
-                u.Quantity(tel_azimuth, unit=u.rad),
-                u.Quantity(tel_altitude, unit=u.rad),
-                frame="altaz",
-                location=self.subarray.reference_location,
+            altaz = AltAz(
+                location=tel_ground_frame.to_earth_location(),
                 obstime=trigger_time,
             )
-            reco_direction = pointing.spherical_offsets_by(
-                reco_spherical_offset_az, reco_spherical_offset_alt
-            ).to_table()
+            # Set the telescope pointing
+            tel_pointing = SkyCoord(
+                az=u.Quantity(tel_azimuth, unit=u.rad),
+                alt=u.Quantity(tel_altitude, unit=u.rad),
+                frame=altaz,
+            )
+            # Set the camera frame with the focal length and rotation of the camera
+            camera_frame = CameraFrame(
+                focal_length=self.subarray.tel[self.tel_id].optics.equivalent_focal_length,
+                rotation=self.subarray.tel[self.tel_id].camera.geometry.pix_rotation,
+                telescope_pointing=tel_pointing,
+            )
+            # Set the camera coordinate offset
+            cam_coord_offset = SkyCoord(
+                x=cam_coord_offset_x,
+                y=cam_coord_offset_y,
+                frame=camera_frame
+            )
+            # Transform the true Alt/Az coordinates to camera coordinates
+            reco_direction = cam_coord_offset.transform_to(altaz)
             # Add the reconstructed direction (az, alt) to the prediction table
             direction_table.add_column(
-                reco_direction["az"], name=f"{self.prefix}_tel_az"
+                reco_direction.az.to(u.deg), name=f"{self.prefix}_tel_az"
             )
             direction_table.add_column(
-                reco_direction["alt"], name=f"{self.prefix}_tel_alt"
+                reco_direction.alt.to(u.deg), name=f"{self.prefix}_tel_alt"
             )
             # Produce output table with NaNs for missing predictions
             if len(nonexample_identifiers) > 0:
