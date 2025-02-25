@@ -267,7 +267,7 @@ class DLDataLoader(Sequence):
                 fov_lat.append(
                     group_element["fov_lat"].data[0]
                 )
-                sky_angular_separation.append(group_element["angular_separation"].data[0])
+                angular_separation.append(group_element["angular_separation"].data[0])
             if "cameradirection" in self.tasks:
                 cam_coord_offset_x.append(group_element["cam_coord_offset_x"].data)
                 cam_coord_offset_y.append(
