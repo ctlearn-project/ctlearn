@@ -27,7 +27,7 @@ classifiers = [
 
 requires-python = ">=3.10"
 dependencies = [
-    "dl1_data_handler>=0.13.0, <0.14",
+    "dl1_data_handler>=0.14.0, <0.15",
     "astropy",
     "matplotlib",
     "numpy",
