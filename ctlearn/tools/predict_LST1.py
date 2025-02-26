@@ -192,15 +192,6 @@ class LST1PredictionTool(Tool):
         ),
     ).tag(config=True)
 
-    transform_to_CameraFrame = Bool(
-        default_value=True,
-        allow_none=False,
-        help=(
-            "Transform the camera geometry to the CameraFrame. "
-            "Needed if training was done in this frame."
-        ),
-    ).tag(config=True)
-
     output_path = Path(
         default_value="./output.dl2.h5",
         allow_none=False,
@@ -629,7 +620,7 @@ class LST1PredictionTool(Tool):
                 )
         if self.load_cameradirection_model_from is not None:
             direction_table = example_identifiers.copy()
-            # Set the telescope pointing of the SkyOffsetSeparation tranform to the fix pointing
+            # Set the telescope position
             tel_ground_frame = self.subarray.tel_coords[
                 self.subarray.tel_ids_to_indices(self.tel_id)
             ]
@@ -784,16 +775,10 @@ class LST1PredictionTool(Tool):
                 pix_area=u.Quantity(cam_geom_table.cols.pix_area[:], u.cm**2),
                 pix_rotation=Angle(100.893, u.deg),
                 cam_rotation=Angle(0, u.deg),
-                frame = EngineeringCameraFrame(focal_length=ctapipe_io_lst.OPTICS.effective_focal_length),
+                frame = CameraFrame(focal_length=ctapipe_io_lst.OPTICS.effective_focal_length),
             )
-        # Needs to be renamed  because the ImageMapper smooths the pixel positions
+        # Needs to be renamed because the ImageMapper smooths the pixel positions
         camera_geom.name = "RealLSTCam"
-        if self.transform_to_CameraFrame:
-            camera_geom = camera_geom.transform_to(
-                CameraFrame(
-                    focal_length=ctapipe_io_lst.OPTICS.effective_focal_length
-                )
-            )
         # get info on the camera readout:
         (
             daq_time_per_sample,
