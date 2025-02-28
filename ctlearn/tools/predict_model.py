@@ -605,36 +605,52 @@ class PredictCTLearnModel(Tool):
         predict_data, feature_vectors = self._predict_with_model(
             self.load_direction_model_from
         )
-        # For the direction task, the prediction is the spherical offset (alt, az)
-        # from the telescope pointing. Convert reconstructed spherical offset (alt, az) to SkyCoord
-        reco_spherical_offset_az = u.Quantity(
-            predict_data["direction"].T[0], unit=u.deg
+        # For the direction task, the prediction is the camera coordinate offset in x and y
+        # from the telescope pointing. The telescope pointing is used to transform the camera
+        # coordinate offset to the reconstructed direction in Alt/Az coordinates.
+        cam_coord_offset_x = u.Quantity(
+            predict_data["cameradirection"].T[0], unit=u.m
         )
-        reco_spherical_offset_alt = u.Quantity(
-            predict_data["direction"].T[1], unit=u.deg
+        cam_coord_offset_y = u.Quantity(
+            predict_data["cameradirection"].T[1], unit=u.m
         )
-        # Create the prediction table
-        direction_table = example_identifiers.copy()
-        # Set the telescope pointing of the SkyOffsetSeparation tranformation
-        pointing_SkyCoord = SkyCoord(
-            direction_table["pointing_azimuth"],
-            direction_table["pointing_altitude"],
-            frame="altaz",
-            location=REFERENCE_LOCATION,
-            obstime=LST_EPOCH,
+        # Set the telescope position
+        tel_ground_frame = self.subarray.tel_coords[
+            self.subarray.tel_ids_to_indices(self.tel_id)
+        ]
+        # Set the telescope pointing with the trigger timestamp and the telescope position
+        trigger_time = Time(trigger_time, format="mjd")
+        altaz = AltAz(
+            location=tel_ground_frame.to_earth_location(),
+            obstime=trigger_time,
         )
-        # Keep only the necessary columns for the prediction table and remove the
-        # telescope pointings and trigger timestamps
-        direction_table.remove_columns(
-            ["pointing_azimuth", "pointing_altitude", "time"]
+        # Set the telescope pointing
+        tel_pointing = SkyCoord(
+            az=u.Quantity(tel_azimuth, unit=u.rad),
+            alt=u.Quantity(tel_altitude, unit=u.rad),
+            frame=altaz,
         )
-        # Calculate the reconstructed direction (alt, az) based on the telescope pointing
-        reco_direction = pointing_SkyCoord.spherical_offsets_by(
-            reco_spherical_offset_az, reco_spherical_offset_alt
-        ).to_table()
-        # Add the reconstructed direction (alt, az) to the prediction table
-        direction_table.add_column(reco_direction["alt"], name=f"{self.prefix}_tel_alt")
-        direction_table.add_column(reco_direction["az"], name=f"{self.prefix}_tel_az")
+        # Set the camera frame with the focal length and rotation of the camera
+        camera_frame = CameraFrame(
+            focal_length=self.subarray.tel[self.tel_id].optics.equivalent_focal_length,
+            rotation=self.subarray.tel[self.tel_id].camera.geometry.pix_rotation,
+            telescope_pointing=tel_pointing,
+        )
+        # Set the camera coordinate offset
+        cam_coord_offset = SkyCoord(
+            x=cam_coord_offset_x,
+            y=cam_coord_offset_y,
+            frame=camera_frame
+        )
+        # Transform the true Alt/Az coordinates to camera coordinates
+        reco_direction = cam_coord_offset.transform_to(altaz)
+        # Add the reconstructed direction (az, alt) to the prediction table
+        direction_table.add_column(
+            reco_direction.az.to(u.deg), name=f"{self.prefix}_tel_az"
+        )
+        direction_table.add_column(
+            reco_direction.alt.to(u.deg), name=f"{self.prefix}_tel_alt"
+        )
         return direction_table, feature_vectors
 
     def _create_nan_table(self, nonexample_identifiers, columns, shapes):
