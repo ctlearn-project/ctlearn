@@ -22,8 +22,8 @@ __all__ = [
     "LoadedModel",
 ]
 
-  
-def build_fully_connect_head(inputs, layers, tasks):
+
+def build_fully_connect_head(inputs, layers, activation_function, tasks):
     """
     Build the fully connected head for the CTLearn model.
 
@@ -35,6 +35,8 @@ def build_fully_connect_head(inputs, layers, tasks):
         Keras layer of the model.
     layers : dict
         Dictionary containing the number of neurons (as value) in the fully connected head for each task (as key).
+    activation_function : dict
+        Dictionary containing the activation function (as value) for the fully connected head for each task (as key).
     tasks : list
         List of tasks to build the head for.
 
@@ -48,16 +50,19 @@ def build_fully_connect_head(inputs, layers, tasks):
         x = inputs
         for i, units in enumerate(layers[task]):
             if i != len(layers) - 1:
-                x = keras.layers.Dense(units=units, activation="relu", name=f"fc_{task}_{i+1}")(x)
+                x = keras.layers.Dense(
+                    units=units,
+                    activation=activation_function[task],
+                    name=f"fc_{task}_{i+1}",
+                )(x)
             else:
-                x = keras.layers.Dense(units=units, name=task)(x)        
+                x = keras.layers.Dense(units=units, name=task)(x)
         logits[task] = keras.layers.Softmax()(x) if task == "type" else x
     # Temp fix till keras support class weights for multiple outputs or I wrote custom loss
     # https://github.com/keras-team/keras/issues/11735
     if len(tasks) == 1 and tasks[0] == "type":
         logits = logits[tasks[0]]
     return logits
-
 
 
 class CTLearnModel(Component):
@@ -76,13 +81,34 @@ class CTLearnModel(Component):
         help="Initial padding to apply to the input data.",
     ).tag(config=True)
 
-    head = Dict(
-        default_value={'type': [512, 256, 2], 'energy': [512, 256, 1], 'cameradirection': [512, 256, 3], 'skydirection': [512, 256, 3]},
+    head_layers = Dict(
+        default_value={
+            "type": [512, 256, 2],
+            "energy": [512, 256, 1],
+            "cameradirection": [512, 256, 2],
+            "skydirection": [512, 256, 2],
+        },
         allow_none=False,
         help=(
             "Dictionary containing the number of neurons in the fully connected head for each "
             "task ('type', 'energy', 'cameradirection', 'skydirection'). Note: The number of neurons in the last layer "
             "must match the number of classes or the number of reconstructed values."
+        ),
+    ).tag(config=True)
+
+    head_activation_function = Dict(
+        default_value={
+            "type": "relu",
+            "energy": "relu",
+            "cameradirection": "tanh",
+            "skydirection": "tanh",
+        },
+        allow_none=False,
+        help=(
+            "Dictionary containing the activation function for the fully connected head for each "
+            "task ('type', 'energy', 'cameradirection', 'skydirection'). Note: The default activation functions "
+            "are 'relu' for 'type' and 'energy' tasks, and 'tanh' for 'cameradirection' and 'skydirection' tasks. "
+            "The 'type' task uses 'softmax' as the final activation function."
         ),
     ).tag(config=True)
 
@@ -122,7 +148,11 @@ class CTLearnModel(Component):
         # Define the squeeze and excitation attention mechanism
         self.attention = None
         if self.attention_mechanism is not None:
-            self.attention = {"mechanism": self.attention_mechanism, "reduction_ratio": self.attention_reduction_ratio}
+            self.attention = {
+                "mechanism": self.attention_mechanism,
+                "reduction_ratio": self.attention_reduction_ratio,
+            }
+
 
 @abstractmethod
 def _build_backbone(self, input_shape):
@@ -145,6 +175,7 @@ def _build_backbone(self, input_shape):
     """
     pass
 
+
 class SingleCNN(CTLearnModel):
     """
     ``SingleCNN`` is a simple convolutional neural network model.
@@ -160,7 +191,12 @@ class SingleCNN(CTLearnModel):
 
     architecture = List(
         trait=Dict(),
-        default_value=[{'filters': 32, 'kernel_size': 3, 'number': 1}, {'filters': 32, 'kernel_size': 3, 'number': 1}, {'filters': 64, 'kernel_size': 3, 'number': 1}, {'filters': 128, 'kernel_size': 3, 'number': 1}],
+        default_value=[
+            {"filters": 32, "kernel_size": 3, "number": 1},
+            {"filters": 32, "kernel_size": 3, "number": 1},
+            {"filters": 64, "kernel_size": 3, "number": 1},
+            {"filters": 128, "kernel_size": 3, "number": 1},
+        ],
         allow_none=False,
         help=(
             "List of dicts containing the number of filters, kernel sizes and number of repetition. "
@@ -176,7 +212,7 @@ class SingleCNN(CTLearnModel):
     ).tag(config=True)
 
     pooling_parameters = Dict(
-        default_value={'size': 2, 'strides': 2},
+        default_value={"size": 2, "strides": 2},
         allow_none=True,
         help=(
             "Parameters for the max or average pooling layers. "
@@ -223,9 +259,12 @@ class SingleCNN(CTLearnModel):
         self.backbone_model, self.input_layer = self._build_backbone(input_shape)
         backbone_output = self.backbone_model(self.input_layer)
         # Validate the head trait with the provided tasks
-        validate_trait_dict(self.head, tasks)
+        validate_trait_dict(self.head_layers, tasks)
+        validate_trait_dict(self.head_activation_function, tasks)
         # Build the fully connected head depending on the tasks
-        self.logits = build_fully_connect_head(backbone_output, self.head, tasks)
+        self.logits = build_fully_connect_head(
+            backbone_output, self.head_layers, self.head_activation_function, tasks
+        )
 
         self.model = keras.Model(self.input_layer, self.logits, name="CTLearn_model")
 
@@ -239,7 +278,7 @@ class SingleCNN(CTLearnModel):
         ----------
         input_shape : tuple
             Shape of the input data (batch_size, height, width, channels).
-        
+
         Returns
         -------
         backbone_model : keras.Model
@@ -251,15 +290,9 @@ class SingleCNN(CTLearnModel):
         # Define the input layer from the input shape
         network_input = keras.Input(shape=input_shape, name="input")
         # Get model arcihtecture parameters for the backbone
-        filters_list = [
-            layer["filters"] for layer in self.architecture
-        ]
-        kernel_sizes = [
-            layer["kernel_size"] for layer in self.architecture
-        ]
-        numbers_list = [
-            layer["number"] for layer in self.architecture
-        ]
+        filters_list = [layer["filters"] for layer in self.architecture]
+        kernel_sizes = [layer["kernel_size"] for layer in self.architecture]
+        numbers_list = [layer["number"] for layer in self.architecture]
 
         x = network_input
         if self.batchnorm:
@@ -365,10 +398,15 @@ class ResNet(CTLearnModel):
         allow_none=False,
         help="Type of residual block to use.",
     ).tag(config=True)
-    
+
     architecture = List(
         trait=Dict(),
-        default_value=[{'filters': 48, 'blocks': 2}, {'filters': 96, 'blocks': 3}, {'filters': 128, 'blocks': 3}, {'filters': 256, 'blocks': 3}],
+        default_value=[
+            {"filters": 48, "blocks": 2},
+            {"filters": 96, "blocks": 3},
+            {"filters": 128, "blocks": 3},
+            {"filters": 256, "blocks": 3},
+        ],
         allow_none=False,
         help=(
             "List of dicts containing the number of filters and residual blocks. "
@@ -405,13 +443,15 @@ class ResNet(CTLearnModel):
         # Build the ResNet model backbone
         self.backbone_model, self.input_layer = self._build_backbone(input_shape)
         backbone_output = self.backbone_model(self.input_layer)
-        # Validate the head trait with the provided tasks
-        validate_trait_dict(self.head, tasks)
+        # Validate the head traits with the provided tasks
+        validate_trait_dict(self.head_layers, tasks)
+        validate_trait_dict(self.head_activation_function, tasks)
         # Build the fully connected head depending on the tasks
-        self.logits = build_fully_connect_head(backbone_output, self.head, tasks)
+        self.logits = build_fully_connect_head(
+            backbone_output, self.head_layers, self.head_activation_function, tasks
+        )
 
         self.model = keras.Model(self.input_layer, self.logits, name="CTLearn_model")
-      
 
     def _build_backbone(self, input_shape):
         """
@@ -422,8 +462,8 @@ class ResNet(CTLearnModel):
         Parameters
         ----------
         input_shape : tuple
-            Shape of the input data (batch_size, height, width, channels).  
-        
+            Shape of the input data (batch_size, height, width, channels).
+
         Returns
         -------
         backbone_model : keras.Model
@@ -462,7 +502,7 @@ class ResNet(CTLearnModel):
             architecture=self.architecture,
             residual_block_type=self.residual_block_type,
             attention=self.attention,
-            name=self.backbone_name
+            name=self.backbone_name,
         )
         # Apply global average pooling as the final layer of the backbone
         network_output = keras.layers.GlobalAveragePooling2D(
@@ -474,8 +514,9 @@ class ResNet(CTLearnModel):
         )
         return backbone_model, network_input
 
-        
-    def _stacked_res_blocks(self, inputs, architecture, residual_block_type, attention, name=None):
+    def _stacked_res_blocks(
+        self, inputs, architecture, residual_block_type, attention, name=None
+    ):
         """
         Build a stack of residual blocks for the CTLearn model.
 
@@ -504,14 +545,8 @@ class ResNet(CTLearnModel):
         """
 
         # Get hyperparameters for the model architecture
-        filters_list = [
-            layer["filters"]
-            for layer in architecture
-        ]
-        blocks_list = [
-            layer["blocks"]
-            for layer in architecture
-        ]
+        filters_list = [layer["filters"] for layer in architecture]
+        blocks_list = [layer["blocks"] for layer in architecture]
         # Build the ResNet model
         x = self._stack_fn(
             inputs,
@@ -532,7 +567,6 @@ class ResNet(CTLearnModel):
                 name=name + "_conv" + str(i + 3),
             )
         return x
-
 
     def _stack_fn(
         self,
@@ -596,7 +630,6 @@ class ResNet(CTLearnModel):
 
         return x
 
-
     def _basic_residual_block(
         self,
         inputs,
@@ -643,7 +676,7 @@ class ResNet(CTLearnModel):
             )(inputs)
         else:
             shortcut = inputs
-        
+
         x = keras.layers.Conv2D(
             filters=filters,
             kernel_size=kernel_size,
@@ -677,7 +710,6 @@ class ResNet(CTLearnModel):
         x = keras.layers.ReLU(name=name + "_out")(x)
 
         return x
-
 
     def _bottleneck_residual_block(
         self,
@@ -744,9 +776,9 @@ class ResNet(CTLearnModel):
             activation="relu",
             name=name + "_2_conv",
         )(x)
-        x = keras.layers.Conv2D(filters=4 * filters, kernel_size=1, name=name + "_3_conv")(
-            x
-        )
+        x = keras.layers.Conv2D(
+            filters=4 * filters, kernel_size=1, name=name + "_3_conv"
+        )(x)
 
         # Attention mechanism
         if attention is not None:
@@ -819,10 +851,14 @@ class LoadedModel(CTLearnModel):
         if self.overwrite_head:
             backbone_output = self.backbone_model(self.input_layer)
             # Validate the head trait with the provided tasks
-            validate_trait_dict(self.head, tasks)
+            validate_trait_dict(self.head_layers, tasks)
             # Build the fully connected head depending on the tasks
-            self.logits = build_fully_connect_head(backbone_output, self.head, tasks)
-            self.model = keras.Model(self.input_layer, self.logits, name="CTLearn_model")
+            self.logits = build_fully_connect_head(
+                backbone_output, self.head_layers, self.head_activation_function, tasks
+            )
+            self.model = keras.Model(
+                self.input_layer, self.logits, name="CTLearn_model"
+            )
 
     def _build_backbone(self, input_shape):
         """
@@ -834,7 +870,7 @@ class LoadedModel(CTLearnModel):
         ----------
         input_shape : tuple
             Shape of the input data (batch_size, height, width, channels).
-        
+
         Returns
         -------
         backbone_model : keras.Model
