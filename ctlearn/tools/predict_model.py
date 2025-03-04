@@ -615,8 +615,8 @@ class PredictCTLearnModel(Tool):
             predict_data["cameradirection"].T[1], unit=u.m
         )
         # Set the telescope position
-        tel_ground_frame = self.subarray.tel_coords[
-            self.subarray.tel_ids_to_indices(self.tel_id)
+        tel_ground_frame = self.dl1dh_reader.subarray.tel_coords[
+            self.dl1dh_reader.subarray.tel_ids_to_indices(self.tel_id)
         ]
         # Set the telescope pointing with the trigger timestamp and the telescope position
         trigger_time = Time(trigger_time, format="mjd")
@@ -632,8 +632,8 @@ class PredictCTLearnModel(Tool):
         )
         # Set the camera frame with the focal length and rotation of the camera
         camera_frame = CameraFrame(
-            focal_length=self.subarray.tel[self.tel_id].optics.equivalent_focal_length,
-            rotation=self.subarray.tel[self.tel_id].camera.geometry.pix_rotation,
+            focal_length=self.dl1dh_reader.subarray.tel[self.tel_id].optics.equivalent_focal_length,
+            rotation=self.dl1dh_reader.subarray.tel[self.tel_id].camera.geometry.pix_rotation,
             telescope_pointing=tel_pointing,
         )
         # Set the camera coordinate offset
