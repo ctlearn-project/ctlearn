@@ -703,9 +703,9 @@ class PredictCTLearnModel(Tool):
             self.dl1dh_reader.subarray.tel_ids_to_indices(tel_id)
         ]
         # Set the trigger timestamp based on the process type
-        if self.dl1dh_reader.process_type == ProcessType.SIMULATION:
+        if self.dl1dh_reader.process_type == ProcessType.Simulation:
             trigger_time = LST_EPOCH
-        elif self.dl1dh_reader.process_type == ProcessType.OBSVERVATION:
+        elif self.dl1dh_reader.process_type == ProcessType.Observation:
             trigger_time = table["time"]
         # Set the telescope pointing with the trigger timestamp and the telescope position
         altaz = AltAz(
@@ -772,9 +772,9 @@ class PredictCTLearnModel(Tool):
         """
 
         # Set the trigger timestamp based on the process type
-        if self.dl1dh_reader.process_type == ProcessType.SIMULATION:
+        if self.dl1dh_reader.process_type == ProcessType.Simulation:
             trigger_time = LST_EPOCH
-        elif self.dl1dh_reader.process_type == ProcessType.OBSVERVATION:
+        elif self.dl1dh_reader.process_type == ProcessType.Observation:
             trigger_time = table["time"]
         # Set the AltAz frame with the reference location and time
         altaz = AltAz(
