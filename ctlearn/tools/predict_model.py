@@ -46,7 +46,6 @@ from ctapipe.reco.utils import add_defaults_and_meta
 from dl1_data_handler.reader import (
     DLDataReader,
     ProcessType,
-    REFERENCE_LOCATION,
     LST_EPOCH,
 )
 from ctlearn.core.loader import DLDataLoader
@@ -107,8 +106,12 @@ class PredictCTLearnModel(Tool):
         Path to a Keras model file (Keras3) or directory (Keras2) for the classification of the primary particle type.
     load_energy_model_from : pathlib.Path
         Path to a Keras model file (Keras3) or directory (Keras2) for the regression of the primary particle energy.
-    load_direction_model_from : pathlib.Path
-        Path to a Keras model file (Keras3) or directory (Keras2) for the regression of the primary particle arrival direction.
+    load_cameradirection_model_from : pathlib.Path
+        Path to a Keras model file (Keras3) or directory (Keras2) for the regression
+        of the primary particle arrival direction based on camera coordinate offsets.
+    load_cameradirection_model_from : pathlib.Path
+        Path to a Keras model file (Keras3) or directory (Keras2) for the regression
+        of the primary particle arrival direction based on spherical coordinate offsets.
     output_path : pathlib.Path
         Output path to save the dl2 prediction results.
     overwrite_tables : bool
@@ -138,8 +141,12 @@ class PredictCTLearnModel(Tool):
         Predict the classification of the primary particle type.
     _predict_energy(example_identifiers)
         Predict the energy of the primary particle.
-    _predict_direction(example_identifiers)
-        Predict the arrival direction of the primary particle.
+    _predict_cameradirection(example_identifiers)
+        Predict the arrival direction of the primary particle based on camera coordinate offsets.
+    _predict_skydirection(example_identifiers)
+        Predict the arrival direction of the primary particle based on spherical coordinate offsets.
+    _transform_cam_coord_offsets_to_sky(table)
+        Transform to camera coordinate offsets w.r.t. the telescope pointing to Alt/Az coordinates.
     _create_nan_table(nonexample_identifiers, columns, shapes)
         Create a table with NaNs for missing predictions.
     _store_pointing(all_identifiers)
@@ -215,8 +222,8 @@ class PredictCTLearnModel(Tool):
     load_type_model_from = Path(
         default_value=None,
         help=(
-            "Path to a Keras model file (Keras3) or directory (Keras2) "
-            "for the classification of the primary particle type."
+            "Path to a Keras model file (Keras3) or directory (Keras2) for the classification "
+            "of the primary particle type."
         ),
         allow_none=True,
         exists=True,
@@ -227,8 +234,8 @@ class PredictCTLearnModel(Tool):
     load_energy_model_from = Path(
         default_value=None,
         help=(
-            "Path to a Keras model file (Keras3) or directory (Keras2) "
-            "for the regression of the primary particle energy."
+            "Path to a Keras model file (Keras3) or directory (Keras2) for the regression "
+            "of the primary particle energy."
         ),
         allow_none=True,
         exists=True,
@@ -236,11 +243,23 @@ class PredictCTLearnModel(Tool):
         file_ok=True,
     ).tag(config=True)
 
-    load_direction_model_from = Path(
+    load_cameradirection_model_from = Path(
         default_value=None,
         help=(
-            "Path to a Keras model file (Keras3) or directory (Keras2) "
-            "for the regression of the primary particle arrival direction."
+            "Path to a Keras model file (Keras3) or directory (Keras2) for the regression "
+            "of the primary particle arrival direction based on camera coordinate offsets."
+        ),
+        allow_none=True,
+        exists=True,
+        directory_ok=True,
+        file_ok=True,
+    ).tag(config=True)
+
+    load_skydirection_model_from = Path(
+        default_value=None,
+        help=(
+            "Path to a Keras model file (Keras3) or directory (Keras2) for the regression "
+            "of the primary particle arrival direction based on spherical coordinate offsets."
         ),
         allow_none=True,
         exists=True,
@@ -281,7 +300,11 @@ class PredictCTLearnModel(Tool):
         ("i", "input_url"): "PredictCTLearnModel.input_url",
         ("t", "type_model"): "PredictCTLearnModel.load_type_model_from",
         ("e", "energy_model"): "PredictCTLearnModel.load_energy_model_from",
-        ("d", "direction_model"): "PredictCTLearnModel.load_direction_model_from",
+        (
+            "d",
+            "cameradirection_model",
+        ): "PredictCTLearnModel.load_cameradirection_model_from",
+        ("s", "skydirection_model"): "PredictCTLearnModel.load_skydirection_model_from",
         ("o", "output"): "PredictCTLearnModel.output_path",
     }
 
@@ -576,9 +599,9 @@ class PredictCTLearnModel(Tool):
         energy_table.add_column(reco_energy, name=f"{self.prefix}_tel_energy")
         return energy_table, feature_vectors
 
-    def _predict_direction(self, example_identifiers):
+    def _predict_cameradirection(self, example_identifiers):
         """
-        Predict the arrival direction of the primary particle.
+        Predict the arrival direction of the primary particle based on camera coordinate offsets.
 
         This method uses a pre-trained direction model to predict the arrival direction of the primary particle
         for a given set of example identifiers. The predicted direction is then converted from spherical offset
@@ -591,67 +614,204 @@ class PredictCTLearnModel(Tool):
 
         Returns:
         --------
-        direction_table : astropy.table.Table
+        cameradirection_table : astropy.table.Table
             Table containing the example identifiers with an additional column for the
-            reconstructed direction in SkyCoord (alt, az). The telescope pointing information
-            is removed from the table.
+            reconstructed camera coordinate offsets in x and y.
         feature_vectors : np.ndarray
             Feature vectors extracted from the backbone model.
         """
         self.log.info(
-            "Predicting for the regression of the primary particle arrival direction..."
+            "Predicting for the regression of the primary particle arrival direction based on camera coordinate offsets..."
         )
         # Predict the data using the loaded direction_model
         predict_data, feature_vectors = self._predict_with_model(
-            self.load_direction_model_from
+            self.load_cameradirection_model_from
         )
         # For the direction task, the prediction is the camera coordinate offset in x and y
-        # from the telescope pointing. The telescope pointing is used to transform the camera
-        # coordinate offset to the reconstructed direction in Alt/Az coordinates.
-        cam_coord_offset_x = u.Quantity(
-            predict_data["cameradirection"].T[0], unit=u.m
+        # from the telescope pointing.
+        cam_coord_offset_x = u.Quantity(predict_data["cameradirection"].T[0], unit=u.m)
+        cam_coord_offset_y = u.Quantity(predict_data["cameradirection"].T[1], unit=u.m)
+        # Create prediction table and add the reconstructed energy in TeV
+        cameradirection_table = example_identifiers.copy()
+        cameradirection_table.add_column(cam_coord_offset_x, name="cam_coord_offset_x")
+        cameradirection_table.add_column(cam_coord_offset_y, name="cam_coord_offset_y")
+        return cameradirection_table, feature_vectors
+
+    def _predict_skydirection(self, example_identifiers):
+        """
+        Predict the arrival direction of the primary particle based on spherical coordinate offsets.
+
+        This method uses a pre-trained direction model to predict the arrival direction of the primary particle
+        for a given set of example identifiers. The predicted direction is then converted from spherical offset
+        to SkyCoord (alt, az) and added to the example identifiers table.
+
+        Parameters:
+        -----------
+        example_identifiers : astropy.table.Table
+            Table containing the example identifiers with the telescope pointing information.
+
+        Returns:
+        --------
+        skydirection_table : astropy.table.Table
+            Table containing the example identifiers with an additional column for the
+            reconstructed spherical coordinate offsets in fov_lon and fov_lat.
+        feature_vectors : np.ndarray
+            Feature vectors extracted from the backbone model.
+        """
+        self.log.info(
+            "Predicting for the regression of the primary particle arrival direction based on spherical coordinate offsets..."
         )
-        cam_coord_offset_y = u.Quantity(
-            predict_data["cameradirection"].T[1], unit=u.m
+        # Predict the data using the loaded direction_model
+        predict_data, feature_vectors = self._predict_with_model(
+            self.load_skydirection_model_from
         )
+        # For the direction task, the prediction is the spherical offset in fov_lon and fov_lat
+        # from the telescope pointing.
+        fov_lon = u.Quantity(predict_data["skydirection"].T[0], unit=u.deg)
+        fov_lat = u.Quantity(predict_data["skydirection"].T[1], unit=u.deg)
+        # Create prediction table and add the reconstructed energy in TeV
+        skydirection_table = example_identifiers.copy()
+        skydirection_table.add_column(fov_lon, name="fov_lon")
+        skydirection_table.add_column(fov_lat, name="fov_lat")
+        return skydirection_table, feature_vectors
+
+    def _transform_cam_coord_offsets_to_sky(self, table) -> Table:
+        """
+        Transform to camera coordinate offsets w.r.t. the telescope pointing to Alt/Az coordinates.
+
+        This method converts the Alt/Az coordinates in the provided table to spherical offsets
+        w.r.t. the telescope pointing. It also calculates the angular separation between the
+        true and telescope pointing directions.
+
+        Parameters:
+        -----------
+        table : astropy.table.Table
+            A Table containing the true Alt/Az coordinates and telescope pointing.
+
+        Returns:
+        --------
+        table : astropy.table.Table
+            A Table with the spherical offsets and the angular separation added as new columns.
+        """
+        # Get the telescope ID from the table
+        tel_id = table["tel_id"][0]
         # Set the telescope position
         tel_ground_frame = self.dl1dh_reader.subarray.tel_coords[
-            self.dl1dh_reader.subarray.tel_ids_to_indices(self.tel_id)
+            self.dl1dh_reader.subarray.tel_ids_to_indices(tel_id)
         ]
+        # Set the trigger timestamp based on the process type
+        if self.dl1dh_reader.process_type == ProcessType.SIMULATION:
+            trigger_time = LST_EPOCH
+        elif self.dl1dh_reader.process_type == ProcessType.OBSVERVATION:
+            trigger_time = table["time"]
         # Set the telescope pointing with the trigger timestamp and the telescope position
-        trigger_time = Time(trigger_time, format="mjd")
         altaz = AltAz(
             location=tel_ground_frame.to_earth_location(),
             obstime=trigger_time,
         )
         # Set the telescope pointing
         tel_pointing = SkyCoord(
-            az=u.Quantity(tel_azimuth, unit=u.rad),
-            alt=u.Quantity(tel_altitude, unit=u.rad),
+            az=table["pointing_azimuth"],
+            alt=table["pointing_altitude"],
             frame=altaz,
         )
         # Set the camera frame with the focal length and rotation of the camera
         camera_frame = CameraFrame(
-            focal_length=self.dl1dh_reader.subarray.tel[self.tel_id].optics.equivalent_focal_length,
-            rotation=self.dl1dh_reader.subarray.tel[self.tel_id].camera.geometry.pix_rotation,
+            focal_length=self.dl1dh_reader.subarray.tel[
+                tel_id
+            ].optics.equivalent_focal_length,
+            rotation=self.dl1dh_reader.subarray.tel[
+                tel_id
+            ].camera.geometry.pix_rotation,
             telescope_pointing=tel_pointing,
         )
         # Set the camera coordinate offset
         cam_coord_offset = SkyCoord(
-            x=cam_coord_offset_x,
-            y=cam_coord_offset_y,
-            frame=camera_frame
+            x=table["cam_coord_offset_x"],
+            y=table["cam_coord_offset_y"],
+            frame=camera_frame,
         )
+        # tel_identifiers = tel_identifiers[tel_identifiers["tel_id"] == tel_id]
         # Transform the true Alt/Az coordinates to camera coordinates
         reco_direction = cam_coord_offset.transform_to(altaz)
         # Add the reconstructed direction (az, alt) to the prediction table
-        direction_table.add_column(
-            reco_direction.az.to(u.deg), name=f"{self.prefix}_tel_az"
+        table.add_column(reco_direction.az.to(u.deg), name=f"{self.prefix}_tel_az")
+        table.add_column(reco_direction.alt.to(u.deg), name=f"{self.prefix}_tel_alt")
+        # Remove unnecessary columns from the table that do not the ctapipe DL2 data format
+        table.remove_columns(
+            [
+                "time",
+                "pointing_azimuth",
+                "pointing_altitude",
+                "cam_coord_offset_x",
+                "cam_coord_offset_y",
+            ]
         )
-        direction_table.add_column(
-            reco_direction.alt.to(u.deg), name=f"{self.prefix}_tel_alt"
+        return table
+
+    def _transform_spher_offsets_to_sky(self, table) -> Table:
+        """
+        Transform to spherical offsets w.r.t. the telescope pointing to Alt/Az coordinates.
+
+        This method converts the Alt/Az coordinates in the provided table to spherical offsets
+        w.r.t. the telescope pointing. It also calculates the angular separation between the
+        true and telescope pointing directions.
+
+        Parameters:
+        -----------
+        table : astropy.table.Table
+            A Table containing the true Alt/Az coordinates and telescope pointing.
+
+        Returns:
+        --------
+        table : astropy.table.Table
+            A Table with the spherical offsets and the angular separation added as new columns.
+        """
+
+        # Set the trigger timestamp based on the process type
+        if self.dl1dh_reader.process_type == ProcessType.SIMULATION:
+            trigger_time = LST_EPOCH
+        elif self.dl1dh_reader.process_type == ProcessType.OBSVERVATION:
+            trigger_time = table["time"]
+        # Set the AltAz frame with the reference location and time
+        altaz = AltAz(
+            location=self.dl1dh_reader.subarray.reference_location,
+            obstime=trigger_time,
         )
-        return direction_table, feature_vectors
+        # Set the array pointing
+        array_pointing = SkyCoord(
+            az=table["pointing_azimuth"],
+            alt=table["pointing_altitude"],
+            frame=altaz,
+        )
+        # Set the nominal frame with the array pointing
+        nom_frame = NominalFrame(
+            origin=array_pointing,
+            location=self.dl1dh_reader.subarray.reference_location,
+            obstime=trigger_time,
+        )
+        # Set the reco direction in (alt, az) coordinates
+        reco_direction = SkyCoord(
+            fov_lon=table["fov_lon"],
+            fov_lat=table["fov_lat"],
+            frame=nom_frame,
+        )
+        # Transform the reco direction from nominal frame to the AltAz frame
+        sky_coord = reco_direction.transform_to(altaz)
+        # Add the reconstructed direction (az, alt) to the prediction table
+        table.add_column(reco_direction.az.to(u.deg), name=f"{self.prefix}_tel_az")
+        table.add_column(reco_direction.alt.to(u.deg), name=f"{self.prefix}_tel_alt")
+        # Remove unnecessary columns from the table that do not the ctapipe DL2 data format
+        table.remove_columns(
+            [
+                "time",
+                "pointing_azimuth",
+                "pointing_altitude",
+                "fov_lon",
+                "fov_lat",
+            ]
+        )
+        return table
 
     def _create_nan_table(self, nonexample_identifiers, columns, shapes):
         """
@@ -918,7 +1078,7 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
         --DLImageReader.image_mapper_type=BilinearMapper \\
         --type_model="/path/to/your/mono/type/ctlearn_model.cpk" \\
         --energy_model="/path/to/your/mono/energy/ctlearn_model.cpk" \\
-        --direction_model="/path/to/your/mono/direction/ctlearn_model.cpk" \\
+        --cameradirection_model="/path/to/your/mono/cameradirection/ctlearn_model.cpk" \\
         --dl1-features \\
         --use-HDF5Merger \\
         --no-dl1-images \\
@@ -934,7 +1094,7 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
         --DLWaveformReader.image_mapper_type=BilinearMapper \\
         --type_model="/path/to/your/mono_waveform/type/ctlearn_model.cpk" \\
         --energy_model="/path/to/your/mono_waveform/energy/ctlearn_model.cpk" \\
-        --direction_model="/path/to/your/mono_waveform/direction/ctlearn_model.cpk" \\
+        --cameradirection_model="/path/to/your/mono_waveform/cameradirection/ctlearn_model.cpk" \\
         --use-HDF5Merger \\
         --no-r0-waveforms \\
         --no-r1-waveforms \\
@@ -1059,7 +1219,7 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                         self.output_path,
                         f"{DL2_TELESCOPE_GROUP}/energy/{self.prefix}/tel_{tel_id:03d}",
                     )
-        if self.load_direction_model_from is not None:
+        if self.load_cameradirection_model_from is not None:
             # Join the prediction table with the telescope pointing table
             example_identifiers = join(
                 left=example_identifiers,
@@ -1067,8 +1227,8 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                 keys=TELESCOPE_EVENT_KEYS,
             )
             # Predict the arrival direction of the primary particle
-            direction_table, direction_feature_vectors = super()._predict_direction(
-                example_identifiers
+            direction_table, direction_feature_vectors = (
+                super()._predict_cameradirection(example_identifiers)
             )
             if self.dl2_telescope:
                 # Produce output table with NaNs for missing predictions
@@ -1095,6 +1255,9 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                     # Retrieve the example identifiers for the selected telescope
                     telescope_mask = direction_table["tel_id"] == tel_id
                     direction_tel_table = direction_table[telescope_mask]
+                    direction_tel_table = super()._transform_cam_coord_offsets_to_sky(
+                        direction_tel_table
+                    )
                     direction_tel_table.sort(TELESCOPE_EVENT_KEYS)
                     # Add the default values and meta data to the table
                     add_defaults_and_meta(
@@ -1157,32 +1320,29 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
         all_identifiers : astropy.table.Table
             Table containing the telescope pointing information.
         """
-
-        # Pointing table for the mono mode
-        pointing_info = self.dl1dh_reader.get_tel_pointing(
-            self.input_url, self.dl1dh_reader.tel_ids
-        )
-        pointing_info.rename_column("telescope_pointing_azimuth", "pointing_azimuth")
-        pointing_info.rename_column("telescope_pointing_altitude", "pointing_altitude")
-        # Join the prediction table with the telescope pointing table
-        pointing_info = join(
-            left=pointing_info,
-            right=all_identifiers,
-            keys=["obs_id", "tel_id"],
-        )
-        # TODO: use keep_order for astropy v7.0.0
-        pointing_info.sort(TELESCOPE_EVENT_KEYS)
         # Create the pointing table for each telescope
+        pointing_info = []
         for tel_id in self.dl1dh_reader.selected_telescopes[self.dl1dh_reader.tel_type]:
+            # Pointing table for the mono mode
+            tel_pointing = self.dl1dh_reader.get_tel_pointing(self.input_url, tel_id)
+            tel_pointing.rename_column("telescope_pointing_azimuth", "pointing_azimuth")
+            tel_pointing.rename_column(
+                "telescope_pointing_altitude", "pointing_altitude"
+            )
+            # Join the prediction table with the telescope pointing table
+            tel_pointing = join(
+                left=tel_pointing,
+                right=all_identifiers,
+                keys=["obs_id", "tel_id"],
+            )
+            # TODO: use keep_order for astropy v7.0.0
+            tel_pointing.sort(TELESCOPE_EVENT_KEYS)
             # Retrieve the example identifiers for the selected telescope
-            telescope_mask = pointing_info["tel_id"] == tel_id
-            tel_pointing_info = pointing_info[telescope_mask]
-            tel_pointing_info.sort(TELESCOPE_EVENT_KEYS)
             tel_pointing_table = Table(
                 {
-                    "time": tel_pointing_info["time"],
-                    "azimuth": tel_pointing_info["pointing_azimuth"],
-                    "altitude": tel_pointing_info["pointing_altitude"],
+                    "time": tel_pointing["time"],
+                    "azimuth": tel_pointing["pointing_azimuth"],
+                    "altitude": tel_pointing["pointing_altitude"],
                 }
             )
             write_table(
@@ -1196,6 +1356,8 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                 self.output_path,
                 f"{POINTING_GROUP}/tel_{tel_id:03d}",
             )
+            pointing_info.append(tel_pointing)
+        pointing_info = vstack(pointing_info)
         return pointing_info
 
 
@@ -1241,7 +1403,7 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
         --PredictCTLearnModel.stack_telescope_images=True \\
         --type_model="/path/to/your/stereo/type/ctlearn_model.cpk" \\
         --energy_model="/path/to/your/stereo/energy/ctlearn_model.cpk" \\
-        --direction_model="/path/to/your/stereo/direction/ctlearn_model.cpk" \\
+        --skydirection_model="/path/to/your/stereo/skydirection/ctlearn_model.cpk" \\
         --output output.dl2.h5 \\
         --PredictCTLearnModel.overwrite_tables=True \\
     """
@@ -1376,7 +1538,7 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                     self.output_path,
                     f"{DL2_SUBARRAY_GROUP}/energy/{self.prefix}",
                 )
-        if self.load_direction_model_from is not None:
+        if self.load_skydirection_model_from is not None:
             # Join the prediction table with the telescope pointing table
             example_identifiers = join(
                 left=example_identifiers,
@@ -1384,10 +1546,14 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                 keys=SUBARRAY_EVENT_KEYS,
             )
             # Predict the arrival direction of the primary particle
-            direction_table, direction_feature_vectors = super()._predict_direction(
+            direction_table, direction_feature_vectors = super()._predict_skydirection(
                 example_identifiers
             )
             if self.dl2_subarray:
+                # Transform the spherical offsets to sky coordinates
+                direction_table = super()._transform_spher_offsets_to_sky(
+                    direction_table
+                )
                 # Produce output table with NaNs for missing predictions
                 if len(nonexample_identifiers) > 0:
                     nan_table = super()._create_nan_table(
