@@ -11,7 +11,7 @@ import keras
 
 from astropy import units as u
 from astropy.coordinates.earth import EarthLocation
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import AltAz, SkyCoord
 from astropy.table import (
     Table,
     hstack,
@@ -25,6 +25,7 @@ from ctapipe.containers import (
     ReconstructedGeometryContainer,
     ReconstructedEnergyContainer,
 )
+from ctapipe.coordinates import CameraFrame, NominalFrame
 from ctapipe.core import Tool
 from ctapipe.core.tool import ToolConfigurationError
 from ctapipe.core.traits import (
