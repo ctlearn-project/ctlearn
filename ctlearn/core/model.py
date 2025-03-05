@@ -49,7 +49,7 @@ def build_fully_connect_head(inputs, layers, activation_function, tasks):
     for task in tasks:
         x = inputs
         for i, units in enumerate(layers[task]):
-            if i != len(layers) - 1:
+            if i != len(layers[task]) - 1:
                 x = keras.layers.Dense(
                     units=units,
                     activation=activation_function[task],
