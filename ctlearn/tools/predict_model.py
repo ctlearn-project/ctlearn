@@ -147,6 +147,8 @@ class PredictCTLearnModel(Tool):
         Predict the arrival direction of the primary particle based on spherical coordinate offsets.
     _transform_cam_coord_offsets_to_sky(table)
         Transform to camera coordinate offsets w.r.t. the telescope pointing to Alt/Az coordinates.
+    _transform_spher_coord_offsets_to_sky(table)
+        Transform to spherical coordinate offsets w.r.t. the telescope pointing to Alt/Az coordinates.
     _create_nan_table(nonexample_identifiers, columns, shapes)
         Create a table with NaNs for missing predictions.
     _store_pointing(all_identifiers)
@@ -603,14 +605,14 @@ class PredictCTLearnModel(Tool):
         """
         Predict the arrival direction of the primary particle based on camera coordinate offsets.
 
-        This method uses a pre-trained direction model to predict the arrival direction of the primary particle
-        for a given set of example identifiers. The predicted direction is then converted from spherical offset
-        to SkyCoord (alt, az) and added to the example identifiers table.
+        This method uses a pre-trained direction model to predict the arrival direction of the
+        primary particle for a given set of example identifiers. The predicted camera coordinate offsets
+        is added to the example identifiers table.
 
         Parameters:
         -----------
         example_identifiers : astropy.table.Table
-            Table containing the example identifiers with the telescope pointing information.
+            Table containing the example identifiers.
 
         Returns:
         --------
@@ -641,14 +643,14 @@ class PredictCTLearnModel(Tool):
         """
         Predict the arrival direction of the primary particle based on spherical coordinate offsets.
 
-        This method uses a pre-trained direction model to predict the arrival direction of the primary particle
-        for a given set of example identifiers. The predicted direction is then converted from spherical offset
-        to SkyCoord (alt, az) and added to the example identifiers table.
+        This method uses a pre-trained direction model to predict the arrival direction of the primary
+        particle for a given set of example identifiers. The predicted spherical coordinate offsets is
+        added to the example identifiers table.
 
         Parameters:
         -----------
         example_identifiers : astropy.table.Table
-            Table containing the example identifiers with the telescope pointing information.
+            Table containing the example identifiers.
 
         Returns:
         --------
@@ -677,21 +679,21 @@ class PredictCTLearnModel(Tool):
 
     def _transform_cam_coord_offsets_to_sky(self, table) -> Table:
         """
-        Transform to camera coordinate offsets w.r.t. the telescope pointing to Alt/Az coordinates.
+        Transform the predicted camera coordinate offsets w.r.t. the telescope pointing to Alt/Az coordinates.
 
-        This method converts the Alt/Az coordinates in the provided table to spherical offsets
-        w.r.t. the telescope pointing. It also calculates the angular separation between the
-        true and telescope pointing directions.
+        This method converts the predicted camera coordinate offsets w.r.t. the telescope pointing
+        in the provided table to Alt/Az coordinates. It also removes the unnecessary columns
+        from the table that do not the ctapipe DL2 data format.
 
         Parameters:
         -----------
         table : astropy.table.Table
-            A Table containing the true Alt/Az coordinates and telescope pointing.
+            A Table containing the trigger time, telescope pointing, and predicted camera coordinate offsets.
 
         Returns:
         --------
         table : astropy.table.Table
-            A Table with the spherical offsets and the angular separation added as new columns.
+            A Table with the Alt/Az coordinates following the ctapipe DL2 data format.
         """
         # Get the telescope ID from the table
         tel_id = table["tel_id"][0]
@@ -749,23 +751,23 @@ class PredictCTLearnModel(Tool):
         )
         return table
 
-    def _transform_spher_offsets_to_sky(self, table) -> Table:
+    def _transform_spher_coord_offsets_to_sky(self, table) -> Table:
         """
-        Transform to spherical offsets w.r.t. the telescope pointing to Alt/Az coordinates.
+        Transform the predicted spherical offsets w.r.t. the telescope pointing to Alt/Az coordinates.
 
-        This method converts the Alt/Az coordinates in the provided table to spherical offsets
-        w.r.t. the telescope pointing. It also calculates the angular separation between the
-        true and telescope pointing directions.
+        This method converts the predicted spherical offsets w.r.t. the telescope pointing
+        in the provided table to Alt/Az coordinates. It also removes the unnecessary columns
+        from the table that do not the ctapipe DL2 data format.
 
         Parameters:
         -----------
         table : astropy.table.Table
-            A Table containing the true Alt/Az coordinates and telescope pointing.
+            A Table containing the trigger time, telescope pointing, and predicted spherical offsets.
 
         Returns:
         --------
         table : astropy.table.Table
-            A Table with the spherical offsets and the angular separation added as new columns.
+            A Table with the Alt/Az coordinates following the ctapipe DL2 data format.
         """
 
         # Set the trigger timestamp based on the process type
@@ -799,8 +801,8 @@ class PredictCTLearnModel(Tool):
         # Transform the reco direction from nominal frame to the AltAz frame
         sky_coord = reco_direction.transform_to(altaz)
         # Add the reconstructed direction (az, alt) to the prediction table
-        table.add_column(reco_direction.az.to(u.deg), name=f"{self.prefix}_tel_az")
-        table.add_column(reco_direction.alt.to(u.deg), name=f"{self.prefix}_tel_alt")
+        table.add_column(reco_direction.az.to(u.deg), name=f"{self.prefix}_az")
+        table.add_column(reco_direction.alt.to(u.deg), name=f"{self.prefix}_alt")
         # Remove unnecessary columns from the table that do not the ctapipe DL2 data format
         table.remove_columns(
             [
@@ -1231,24 +1233,6 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                 super()._predict_cameradirection(example_identifiers)
             )
             if self.dl2_telescope:
-                # Produce output table with NaNs for missing predictions
-                if len(nonexample_identifiers) > 0:
-                    nan_table = super()._create_nan_table(
-                        nonexample_identifiers,
-                        columns=[f"{self.prefix}_tel_alt", f"{self.prefix}_tel_az"],
-                        shapes=[
-                            (len(nonexample_identifiers),),
-                            (len(nonexample_identifiers),),
-                        ],
-                    )
-                    direction_table = vstack([direction_table, nan_table])
-                # Add is_valid column to the direction table
-                direction_table.add_column(
-                    ~np.isnan(
-                        direction_table[f"{self.prefix}_tel_alt"].data, dtype=bool
-                    ),
-                    name=f"{self.prefix}_tel_is_valid",
-                )
                 for tel_id in self.dl1dh_reader.selected_telescopes[
                     self.dl1dh_reader.tel_type
                 ]:
@@ -1258,7 +1242,27 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                     direction_tel_table = super()._transform_cam_coord_offsets_to_sky(
                         direction_tel_table
                     )
+                    # Produce output table with NaNs for missing predictions
+                    nan_telescope_mask = nonexample_identifiers["tel_id"] == tel_id
+                    nonexample_identifiers_tel = nonexample_identifiers[nan_telescope_mask]
+                    if len(nonexample_identifiers_tel) > 0:
+                        nan_table = super()._create_nan_table(
+                            nonexample_identifiers_tel,
+                            columns=[f"{self.prefix}_tel_alt", f"{self.prefix}_tel_az"],
+                            shapes=[
+                                (len(nonexample_identifiers_tel),),
+                                (len(nonexample_identifiers_tel),),
+                            ],
+                        )
+                        direction_tel_table = vstack([direction_tel_table, nan_table])
                     direction_tel_table.sort(TELESCOPE_EVENT_KEYS)
+                    # Add is_valid column to the direction table
+                    direction_tel_table.add_column(
+                        ~np.isnan(
+                            direction_tel_table[f"{self.prefix}_tel_alt"].data, dtype=bool
+                        ),
+                        name=f"{self.prefix}_tel_is_valid",
+                    )
                     # Add the default values and meta data to the table
                     add_defaults_and_meta(
                         direction_tel_table,
@@ -1550,15 +1554,15 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                 example_identifiers
             )
             if self.dl2_subarray:
-                # Transform the spherical offsets to sky coordinates
-                direction_table = super()._transform_spher_offsets_to_sky(
+                # Transform the spherical coordinate offsets to sky coordinates
+                direction_table = super()._transform_spher_coord_offsets_to_sky(
                     direction_table
                 )
                 # Produce output table with NaNs for missing predictions
                 if len(nonexample_identifiers) > 0:
                     nan_table = super()._create_nan_table(
                         nonexample_identifiers,
-                        columns=[f"{self.prefix}_tel_alt", f"{self.prefix}_tel_az"],
+                        columns=[f"{self.prefix}_alt", f"{self.prefix}_az"],
                         shapes=[
                             (len(nonexample_identifiers),),
                             (len(nonexample_identifiers),),
@@ -1568,19 +1572,9 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                 # Add is_valid column to the direction table
                 direction_table.add_column(
                     ~np.isnan(
-                        direction_table[f"{self.prefix}_tel_alt"].data, dtype=bool
+                        direction_table[f"{self.prefix}_alt"].data, dtype=bool
                     ),
-                    name=f"{self.prefix}_tel_is_valid",
-                )
-                # Rename the columns for the stereo mode
-                direction_table.rename_column(
-                    f"{self.prefix}_tel_alt", f"{self.prefix}_alt"
-                )
-                direction_table.rename_column(
-                    f"{self.prefix}_tel_az", f"{self.prefix}_az"
-                )
-                direction_table.rename_column(
-                    f"{self.prefix}_tel_is_valid", f"{self.prefix}_is_valid"
+                    name=f"{self.prefix}_is_valid",
                 )
                 direction_table.sort(SUBARRAY_EVENT_KEYS)
                 # Add the default values and meta data to the table
