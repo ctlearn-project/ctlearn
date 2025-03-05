@@ -11,10 +11,9 @@ dependencies:
     - numpy
     - pip
     - pyyaml
-    - scikit-learn
     - pip:
         - ctaplot
-        - dl1_data_handler>=0.13.0,<0.14
+        - dl1_data_handler>=0.14.0,<0.15
         - matplotlib==3.6.2
         - iminuit==2.24.0
         - numba>=0.56.2,<0.57
@@ -26,5 +25,6 @@ dependencies:
         - pandas==1.5.2
         - pillow==9.3.0
         - scipy==1.11.1
+        - scikit-learn==1.5.1
         - tables==3.8.0
         - ctapipe
