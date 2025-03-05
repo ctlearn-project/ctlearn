@@ -863,14 +863,14 @@ class LoadedModel(CTLearnModel):
 
         
 class ChannelAttention(Layer):
-    def __init__(self, reduction=16, name=None):
+    def __init__(self, channel_attention_reduction=16, name=None):
         super(ChannelAttention, self).__init__(name=name)
-        self.reduction = reduction
+        self.channel_attention_reduction = channel_attention_reduction
 
     def build(self, input_shape):
         channels = input_shape[-1]
         self.global_avg_pool = keras.layers.GlobalAveragePooling2D()
-        self.fc1 = keras.layers.Dense(channels // self.reduction, activation='relu', use_bias=False)
+        self.fc1 = keras.layers.Dense(channels // self.channel_attention_reduction, activation='relu', use_bias=False)
         self.fc2 = keras.layers.Dense(channels, activation='sigmoid', use_bias=False)
         super(ChannelAttention, self).build(input_shape)
 
@@ -904,9 +904,9 @@ class SpatialAttention(Layer):
 
 
 class CBAM(Layer):
-    def __init__(self, reduction=16, se_kernel_size=7, name=None):
+    def __init__(self, channel_attention_reduction=16, se_kernel_size=7, name=None):
         super(CBAM, self).__init__(name=name)
-        self.channel_attention = ChannelAttention(reduction)
+        self.channel_attention = ChannelAttention(channel_attention_reduction)
         self.spatial_attention = SpatialAttention(se_kernel_size)
 
     def call(self, x):
