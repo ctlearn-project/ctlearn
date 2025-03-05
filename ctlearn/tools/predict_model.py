@@ -1127,6 +1127,7 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
             pointing_info = super()._store_pointing(all_identifiers)
 
         self.log.info("Starting the prediction...")
+        classification_feature_vectors = None
         if self.load_type_model_from is not None:
             # Predict the energy of the primary particle
             classification_table, classification_feature_vectors = (
@@ -1175,6 +1176,7 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                         self.output_path,
                         f"{DL2_TELESCOPE_GROUP}/classification/{self.prefix}/tel_{tel_id:03d}",
                     )
+        energy_feature_vectors = None
         if self.load_energy_model_from is not None:
             # Predict the energy of the primary particle
             energy_table, energy_feature_vectors = super()._predict_energy(
@@ -1222,6 +1224,7 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                         self.output_path,
                         f"{DL2_TELESCOPE_GROUP}/energy/{self.prefix}/tel_{tel_id:03d}",
                     )
+        direction_feature_vectors = None
         if self.load_cameradirection_model_from is not None:
             # Join the prediction table with the telescope pointing table
             example_identifiers = join(
@@ -1447,6 +1450,7 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
             pointing_info = super()._store_pointing(all_identifiers)
 
         self.log.info("Starting the prediction...")
+        classification_feature_vectors = None
         if self.load_type_model_from is not None:
             # Predict the energy of the primary particle
             classification_table, classification_feature_vectors = (
@@ -1495,7 +1499,7 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                     self.output_path,
                     f"{DL2_SUBARRAY_GROUP}/classification/{self.prefix}",
                 )
-
+        energy_feature_vectors = None
         if self.load_energy_model_from is not None:
             # Predict the energy of the primary particle
             energy_table, energy_feature_vectors = super()._predict_energy(
@@ -1543,6 +1547,7 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                     self.output_path,
                     f"{DL2_SUBARRAY_GROUP}/energy/{self.prefix}",
                 )
+        direction_feature_vectors = None
         if self.load_skydirection_model_from is not None:
             # Join the prediction table with the telescope pointing table
             example_identifiers = join(
