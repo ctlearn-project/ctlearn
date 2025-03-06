@@ -155,17 +155,17 @@ class DLDataLoader(Sequence):
         """
         # Retrieve the telescope images and store in the features dictionary
         labels = {}
-        features = {"input": batch["features"].data}
+        features = {"input": batch["waveform"].data}
         if "type" in self.tasks:
             labels["type"] = to_categorical(
-                batch["true_shower_primary_class"].data,
+                batch["patch_class"].data,
                 num_classes=2,
             )
             # Temp fix till keras support class weights for multiple outputs or I wrote custom loss
             # https://github.com/keras-team/keras/issues/11735
             if len(self.tasks) == 1:
                 labels = to_categorical(
-                    batch["true_shower_primary_class"].data,
+                    batch["patch_class"].data,
                     num_classes=2,
                 )
         if "energy" in self.tasks:
