@@ -141,7 +141,7 @@ class LST1PredictionTool(Tool):
         help=(
             "Path to a Keras model file (Keras3) or directory (Keras2) "
             "for the regression of the primary particle arrival direction "
-            "based on the camera coordinates."
+            "based on the camera coordinate offsets."
         ),
         allow_none=True,
         exists=True,
@@ -760,23 +760,8 @@ class LST1PredictionTool(Tool):
         if reference_location is None:
             reference_location = ctapipe_io_lst.constants.LST1_LOCATION
 
-        with tables.open_file(self.input_url) as input_file:
-            cam_geom_table = (
-                input_file.root.configuration.instrument.telescope.camera._f_get_child(
-                    "geometry_0"
-                )
-            )
-            camera_geom = CameraGeometry(
-                name="RealLSTCam",
-                pix_id=cam_geom_table.cols.pix_id[:],
-                pix_type="hexagon",
-                pix_x=u.Quantity(cam_geom_table.cols.pix_x[:], u.cm),
-                pix_y=u.Quantity(cam_geom_table.cols.pix_y[:], u.cm),
-                pix_area=u.Quantity(cam_geom_table.cols.pix_area[:], u.cm**2),
-                pix_rotation=Angle(100.893, u.deg),
-                cam_rotation=Angle(0, u.deg),
-                frame = CameraFrame(focal_length=ctapipe_io_lst.OPTICS.effective_focal_length),
-            )
+        # Load the camera geometry from 'ctapipe_io_lst'
+        camera_geom = ctapipe_io_lst.load_camera_geometry()
         # Needs to be renamed because the ImageMapper smooths the pixel positions
         camera_geom.name = "RealLSTCam"
         # get info on the camera readout:
