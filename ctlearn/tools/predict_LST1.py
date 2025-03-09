@@ -60,6 +60,7 @@ from dl1_data_handler.reader import (
 POINTING_GROUP = "/dl1/monitoring/telescope/pointing"
 DL1_TELESCOPE_GROUP = "/dl1/event/telescope"
 DL2_TELESCOPE_GROUP = "/dl2/event/telescope"
+DL2_SUBARRAY_GROUP = "/dl2/event/subarray"
 SUBARRAY_EVENT_KEYS = ["obs_id", "event_id"]
 TELESCOPE_EVENT_KEYS = ["obs_id", "event_id", "tel_id"]
 
@@ -259,6 +260,11 @@ class LST1PredictionTool(Tool):
         self.log.info("SubarrayDescription was stored in '%s'", self.output_path)
         # Initialize the Table data quality query
         self.quality_query = TableQualityQuery(parent=self)
+        # Copy the pixel rotation of the camera geometry of the subarray in a variable
+        # since the ImageMapper will be derotated the pixels. The pixel rotation
+        # is needed to create a rotated camera frame in order to transform the
+        # predicted camera coordinate offsets back to the correct Alt/Az coordinates.
+        self.pix_rotation = self.subarray.tel[self.tel_id].camera.geometry.pix_rotation
         # Create the ImageMapper
         self.image_mapper = ImageMapper.from_name(
             name=self.image_mapper_type,
@@ -522,11 +528,9 @@ class LST1PredictionTool(Tool):
                 )
                 classification_table = vstack([classification_table, nan_table])
             classification_table.sort(TELESCOPE_EVENT_KEYS)
+            classification_is_valid = ~np.isnan(classification_table[f"{self.prefix}_tel_prediction"].data, dtype=bool)
             classification_table.add_column(
-                ~np.isnan(
-                    classification_table[f"{self.prefix}_tel_prediction"].data,
-                    dtype=bool,
-                ),
+                classification_is_valid,
                 name=f"{self.prefix}_tel_is_valid",
             )
             # Add the default values and meta data to the table
@@ -547,6 +551,29 @@ class LST1PredictionTool(Tool):
                 "DL2 prediction data was stored in '%s' under '%s'",
                 self.output_path,
                 f"{DL2_TELESCOPE_GROUP}/classification/{self.prefix}/tel_{self.tel_id:03d}",
+            )
+            # Write the mono telescope prediction to the subarray prediction table
+            subarray_classification_table = classification_table.copy()
+            subarray_classification_table.remove_column("tel_id")
+            for colname in subarray_classification_table.colnames:
+                if "_tel_" in colname:
+                    subarray_classification_table.rename_column(
+                        colname, colname.replace("_tel", "")
+                    )
+            subarray_classification_table.add_column(
+                classification_is_valid[np.newaxis], name=f"{self.prefix}_telescopes"
+            )
+            # Save the prediction to the output file
+            write_table(
+                subarray_classification_table,
+                self.output_path,
+                f"{DL2_SUBARRAY_GROUP}/classification/{self.prefix}",
+                overwrite=self.overwrite_tables,
+            )
+            self.log.info(
+                "DL2 prediction data was stored in '%s' under '%s'",
+                self.output_path,
+                f"{DL2_SUBARRAY_GROUP}/classification/{self.prefix}",
             )
             # Adding the feature vectors for the classification
             is_valid_col = ~np.isnan(
@@ -579,8 +606,9 @@ class LST1PredictionTool(Tool):
                 )
                 energy_table = vstack([energy_table, nan_table])
             energy_table.sort(TELESCOPE_EVENT_KEYS)
+            energy_is_valid = ~np.isnan(energy_table[f"{self.prefix}_tel_energy"].data, dtype=bool)
             energy_table.add_column(
-                ~np.isnan(energy_table[f"{self.prefix}_tel_energy"].data, dtype=bool),
+                energy_is_valid,
                 name=f"{self.prefix}_tel_is_valid",
             )
             # Add the default values and meta data to the table
@@ -601,6 +629,29 @@ class LST1PredictionTool(Tool):
                 "DL2 prediction data was stored in '%s' under '%s'",
                 self.output_path,
                 f"{DL2_TELESCOPE_GROUP}/energy/{self.prefix}/tel_{self.tel_id:03d}",
+            )
+            # Write the mono telescope prediction to the subarray prediction table
+            subarray_energy_table = energy_table.copy()
+            subarray_energy_table.remove_column("tel_id")
+            for colname in subarray_energy_table.colnames:
+                if "_tel_" in colname:
+                    subarray_energy_table.rename_column(
+                        colname, colname.replace("_tel", "")
+                    )
+            subarray_energy_table.add_column(
+                energy_is_valid[np.newaxis], name=f"{self.prefix}_telescopes"
+            )
+            # Save the prediction to the output file
+            write_table(
+                subarray_energy_table,
+                self.output_path,
+                f"{DL2_SUBARRAY_GROUP}/energy/{self.prefix}",
+                overwrite=self.overwrite_tables,
+            )
+            self.log.info(
+                "DL2 prediction data was stored in '%s' under '%s'",
+                self.output_path,
+                f"{DL2_SUBARRAY_GROUP}/energy/{self.prefix}",
             )
             # Adding the feature vectors for the energy regression
             is_valid_col = ~np.isnan(
@@ -670,8 +721,9 @@ class LST1PredictionTool(Tool):
                 + [f"{self.prefix}_tel_az", f"{self.prefix}_tel_alt"]
             )
             direction_table.sort(TELESCOPE_EVENT_KEYS)
+            direction_is_valid = ~np.isnan(direction_table[f"{self.prefix}_tel_az"].data, dtype=bool)
             direction_table.add_column(
-                ~np.isnan(direction_table[f"{self.prefix}_tel_az"].data, dtype=bool),
+                direction_is_valid,
                 name=f"{self.prefix}_tel_is_valid",
             )
             # Add the default values and meta data to the table
@@ -692,6 +744,29 @@ class LST1PredictionTool(Tool):
                 "DL2 prediction data was stored in '%s' under '%s'",
                 self.output_path,
                 f"{DL2_TELESCOPE_GROUP}/geometry/{self.prefix}/tel_{self.tel_id:03d}",
+            )
+            # Write the mono telescope prediction to the subarray prediction table
+            subarray_direction_table = direction_table.copy()
+            subarray_direction_table.remove_column("tel_id")
+            for colname in subarray_direction_table.colnames:
+                if "_tel_" in colname:
+                    subarray_direction_table.rename_column(
+                        colname, colname.replace("_tel", "")
+                    )
+            subarray_direction_table.add_column(
+                direction_is_valid[np.newaxis], name=f"{self.prefix}_telescopes"
+            )
+            # Save the prediction to the output file
+            write_table(
+                subarray_direction_table,
+                self.output_path,
+                f"{DL2_SUBARRAY_GROUP}/geometry/{self.prefix}",
+                overwrite=self.overwrite_tables,
+            )
+            self.log.info(
+                "DL2 prediction data was stored in '%s' under '%s'",
+                self.output_path,
+                f"{DL2_SUBARRAY_GROUP}/geometry/{self.prefix}",
             )
             # Adding the feature vectors for the arrival direction regression
             is_valid_col = ~np.isnan(

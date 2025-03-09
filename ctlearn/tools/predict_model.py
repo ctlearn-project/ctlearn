@@ -43,6 +43,8 @@ from ctapipe.core.traits import (
 )
 from ctapipe.monitoring.interpolation import PointingInterpolator
 from ctapipe.io import read_table, write_table, HDF5Merger
+from ctapipe.reco.reconstructor import ReconstructionProperty
+from ctapipe.reco.stereo_combination import StereoCombiner
 from ctapipe.reco.utils import add_defaults_and_meta
 from dl1_data_handler.reader import (
     DLDataReader,
@@ -723,9 +725,7 @@ class PredictCTLearnModel(Tool):
             focal_length=self.dl1dh_reader.subarray.tel[
                 tel_id
             ].optics.equivalent_focal_length,
-            rotation=self.dl1dh_reader.subarray.tel[
-                tel_id
-            ].camera.geometry.pix_rotation,
+            rotation=self.dl1dh_reader.pix_rotation[tel_id],
             telescope_pointing=tel_pointing,
         )
         # Set the camera coordinate offset
@@ -1107,6 +1107,12 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
         --PredictCTLearnModel.overwrite_tables=True \\
     """
 
+    stereo_combiner_cls = ComponentName(
+        StereoCombiner,
+        default_value="StereoMeanCombiner",
+        help="Which stereo combination method to use after the monoscopic reconstruction.",
+    ).tag(config=True)
+
     def start(self):
         self.log.info("Processing the telescope pointings...")
         # Retrieve the IDs from the dl1dh for the prediction tables
@@ -1129,6 +1135,12 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
         self.log.info("Starting the prediction...")
         classification_feature_vectors = None
         if self.load_type_model_from is not None:
+            self.type_stereo_combiner = StereoCombiner.from_name(
+                self.stereo_combiner_cls,
+                prefix=self.prefix,
+                property=ReconstructionProperty.PARTICLE_TYPE,
+                parent=self,
+            )
             # Predict the energy of the primary particle
             classification_table, classification_feature_vectors = (
                 super()._predict_classification(example_identifiers)
@@ -1176,8 +1188,32 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                         self.output_path,
                         f"{DL2_TELESCOPE_GROUP}/classification/{self.prefix}/tel_{tel_id:03d}",
                     )
+            if self.dl2_subarray:
+                self.log.info("Processing and storing the subarray type prediction...")
+                # Combine the telescope predictions to the subarray prediction using the stereo combiner
+                stereo_classification_table = self.type_stereo_combiner.predict_table(
+                    classification_table
+                )
+                # Save the prediction to the output file
+                write_table(
+                    stereo_classification_table,
+                    self.output_path,
+                    f"{DL2_SUBARRAY_GROUP}/classification/{self.prefix}",
+                    overwrite=self.overwrite_tables,
+                )
+                self.log.info(
+                    "DL2 prediction data was stored in '%s' under '%s'",
+                    self.output_path,
+                    f"{DL2_SUBARRAY_GROUP}/classification/{self.prefix}",
+                )
         energy_feature_vectors = None
         if self.load_energy_model_from is not None:
+            self.energy_stereo_combiner = StereoCombiner.from_name(
+                self.stereo_combiner_cls,
+                prefix=self.prefix,
+                property=ReconstructionProperty.ENERGY,
+                parent=self,
+            )
             # Predict the energy of the primary particle
             energy_table, energy_feature_vectors = super()._predict_energy(
                 example_identifiers
@@ -1224,8 +1260,34 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                         self.output_path,
                         f"{DL2_TELESCOPE_GROUP}/energy/{self.prefix}/tel_{tel_id:03d}",
                     )
+            if self.dl2_subarray:
+                self.log.info(
+                    "Processing and storing the subarray energy prediction..."
+                )
+                # Combine the telescope predictions to the subarray prediction using the stereo combiner
+                stereo_energy_table = self.energy_stereo_combiner.predict_table(
+                    energy_table
+                )
+                # Save the prediction to the output file
+                write_table(
+                    stereo_energy_table,
+                    self.output_path,
+                    f"{DL2_SUBARRAY_GROUP}/energy/{self.prefix}",
+                    overwrite=self.overwrite_tables,
+                )
+                self.log.info(
+                    "DL2 prediction data was stored in '%s' under '%s'",
+                    self.output_path,
+                    f"{DL2_SUBARRAY_GROUP}/energy/{self.prefix}",
+                )
         direction_feature_vectors = None
         if self.load_cameradirection_model_from is not None:
+            self.geometry_stereo_combiner = StereoCombiner.from_name(
+                self.stereo_combiner_cls,
+                prefix=self.prefix,
+                property=ReconstructionProperty.GEOMETRY,
+                parent=self,
+            )
             # Join the prediction table with the telescope pointing table
             example_identifiers = join(
                 left=example_identifiers,
@@ -1248,7 +1310,9 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                     )
                     # Produce output table with NaNs for missing predictions
                     nan_telescope_mask = nonexample_identifiers["tel_id"] == tel_id
-                    nonexample_identifiers_tel = nonexample_identifiers[nan_telescope_mask]
+                    nonexample_identifiers_tel = nonexample_identifiers[
+                        nan_telescope_mask
+                    ]
                     if len(nonexample_identifiers_tel) > 0:
                         nan_table = super()._create_nan_table(
                             nonexample_identifiers_tel,
@@ -1263,7 +1327,8 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                     # Add is_valid column to the direction table
                     direction_tel_table.add_column(
                         ~np.isnan(
-                            direction_tel_table[f"{self.prefix}_tel_alt"].data, dtype=bool
+                            direction_tel_table[f"{self.prefix}_tel_alt"].data,
+                            dtype=bool,
                         ),
                         name=f"{self.prefix}_tel_is_valid",
                     )
@@ -1286,6 +1351,26 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                         self.output_path,
                         f"{DL2_TELESCOPE_GROUP}/geometry/{self.prefix}/tel_{tel_id:03d}",
                     )
+            if self.dl2_subarray:
+                self.log.info(
+                    "Processing and storing the subarray geometry prediction..."
+                )
+                # Combine the telescope predictions to the subarray prediction using the stereo combiner
+                stereo_direction_table = self.geometry_stereo_combiner.predict_table(
+                    direction_table
+                )
+                # Save the prediction to the output file
+                write_table(
+                    stereo_direction_table,
+                    self.output_path,
+                    f"{DL2_SUBARRAY_GROUP}/geometry/{self.prefix}",
+                    overwrite=self.overwrite_tables,
+                )
+                self.log.info(
+                    "DL2 prediction data was stored in '%s' under '%s'",
+                    self.output_path,
+                    f"{DL2_SUBARRAY_GROUP}/geometry/{self.prefix}",
+                )
         # Create the feature vector table if the DL1 features are enabled
         if self.dl1_features:
             self.log.info("Processing and storing dl1 feature vectors...")
@@ -1577,9 +1662,7 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                     direction_table = vstack([direction_table, nan_table])
                 # Add is_valid column to the direction table
                 direction_table.add_column(
-                    ~np.isnan(
-                        direction_table[f"{self.prefix}_alt"].data, dtype=bool
-                    ),
+                    ~np.isnan(direction_table[f"{self.prefix}_alt"].data, dtype=bool),
                     name=f"{self.prefix}_is_valid",
                 )
                 direction_table.sort(SUBARRAY_EVENT_KEYS)
