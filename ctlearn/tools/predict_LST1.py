@@ -568,7 +568,7 @@ class LST1PredictionTool(Tool):
                 subarray_classification_table,
                 self.output_path,
                 f"{DL2_SUBARRAY_GROUP}/classification/{self.prefix}",
-                overwrite=self.overwrite_tables,
+                overwrite=self.overwrite,
             )
             self.log.info(
                 "DL2 prediction data was stored in '%s' under '%s'",
@@ -646,7 +646,7 @@ class LST1PredictionTool(Tool):
                 subarray_energy_table,
                 self.output_path,
                 f"{DL2_SUBARRAY_GROUP}/energy/{self.prefix}",
-                overwrite=self.overwrite_tables,
+                overwrite=self.overwrite,
             )
             self.log.info(
                 "DL2 prediction data was stored in '%s' under '%s'",
@@ -761,7 +761,7 @@ class LST1PredictionTool(Tool):
                 subarray_direction_table,
                 self.output_path,
                 f"{DL2_SUBARRAY_GROUP}/geometry/{self.prefix}",
-                overwrite=self.overwrite_tables,
+                overwrite=self.overwrite,
             )
             self.log.info(
                 "DL2 prediction data was stored in '%s' under '%s'",
