@@ -14,7 +14,7 @@ dependencies:
     - scikit-learn
     - pip:
         - ctaplot
-        - dl1_data_handler==0.13.0
+        - dl1_data_handler==0.14.1
         - matplotlib==3.6.2
         - iminuit==2.24.0
         - numba>=0.56.2,<0.57
