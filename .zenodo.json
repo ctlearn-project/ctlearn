@@ -7,9 +7,16 @@
     ],
     "contributors": [
         {
+            "affiliation": "Instituto de F\u00edsica de Part\u00edculas y del Cosmos, Departamento de EMFTEL, Universidad Complutense de Madrid, Madrid, Spain ",
+            "name": "Cervino Cortinez, Alexander",
+            "type": "Researcher"
+            "orcid": "0009-0007-1566-9507"
+        }
+        {
             "affiliation": "Facultad de Ingenier\u00eda Inform\u00e1tica, Universidad Complutense de Madrid, Madrid, Spain",
             "name": "Sevilla, Jaime",
             "type": "Researcher"
+	    "orcid": "0000-0002-4454-1146"
         }
     ],
     "creators": [
@@ -51,7 +58,7 @@
     ],
     "language": "eng",
     "license": "BSD-3-Clause",
-    "publication_date": "2023-05-08",
+    "publication_date": "2025-03-11",
     "related_identifiers": [
         {
             "identifier": "https://github.com/ctlearn-project/ctlearn",
@@ -62,5 +69,5 @@
     ],
     "title": "CTLearn: Deep learning for imaging atmospheric Cherenkov telescopes event reconstruction",
     "upload_type": "software",
-    "version": "0.9.0"
+    "version": "0.10.0"
 }
