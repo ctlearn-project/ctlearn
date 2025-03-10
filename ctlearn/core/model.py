@@ -4,7 +4,7 @@ This module defines the ``CTLearnModel`` classes, which holds the basic function
 
 from abc import abstractmethod
 import keras
-
+import tensorflow as tf
 from ctapipe.core import Component
 from ctapipe.core.traits import Bool, Int, CaselessStrEnum, List, Dict, Unicode, Path
 from ctlearn.core.attention import (
@@ -52,6 +52,7 @@ def build_fully_connect_head(inputs, layers, tasks):
             else:
                 x = keras.layers.Dense(units=units, name=task)(x)        
         logits[task] = keras.layers.Softmax()(x) if task == "type" else x
+         
     # Temp fix till keras support class weights for multiple outputs or I wrote custom loss
     # https://github.com/keras-team/keras/issues/11735
     if len(tasks) == 1 and tasks[0] == "type":
@@ -229,103 +230,139 @@ class SingleCNN(CTLearnModel):
 
         self.model = keras.Model(self.input_layer, self.logits, name="CTLearn_model")
 
-    def _build_backbone(self, input_shape):
-        """
-        Build the SingleCNN model backbone.
+    
 
-        Function to build the backbone of the SingleCNN model using the specified parameters.
 
-        Parameters
-        ----------
-        input_shape : tuple
-            Shape of the input data (batch_size, height, width, channels).
+
+    # def _build_backbone(self, input_shape):
+    #     """
+    #     Build the SingleCNN model backbone.
+
+    #     Function to build the backbone of the SingleCNN model using the specified parameters.
+
+    #     Parameters
+    #     ----------
+    #     input_shape : tuple
+    #         Shape of the input data (batch_size, height, width, channels).
         
-        Returns
-        -------
-        backbone_model : keras.Model
-            Keras model object representing the backbone of the SingleCNN model.
-        network_input : keras.Input
-            Keras input layer object for the backbone model.
-        """
+    #     Returns
+    #     -------
+    #     backbone_model : keras.Model
+    #         Keras model object representing the backbone of the SingleCNN model.
+    #     network_input : keras.Input
+    #         Keras input layer object for the backbone model.
+    #     """
+        # # Define the input layer from the input shape
+        # network_input = keras.Input(input_shape, name="input")
+        # # Get model arcihtecture parameters for the backbone
+        # filters_list = [
+        #     layer["filters"] for layer in self.architecture
+        # ]
+        # kernel_sizes = [
+        #     layer["kernel_size"] for layer in self.architecture
+        # ]
+        # numbers_list = [
+        #     layer["number"] for layer in self.architecture
+        # ]
 
-        # Define the input layer from the input shape
-        network_input = keras.Input(shape=input_shape, name="input")
-        # Get model arcihtecture parameters for the backbone
-        filters_list = [
-            layer["filters"] for layer in self.architecture
-        ]
-        kernel_sizes = [
-            layer["kernel_size"] for layer in self.architecture
-        ]
-        numbers_list = [
-            layer["number"] for layer in self.architecture
-        ]
+        # x = network_input
+        # if self.batchnorm:
+        #     x = keras.layers.BatchNormalization(momentum=0.99)(x)
 
-        x = network_input
-        if self.batchnorm:
-            x = keras.layers.BatchNormalization(momentum=0.99)(x)
+        # for i, (filters, kernel_size, number) in enumerate(
+        #     zip(filters_list, kernel_sizes, numbers_list)
+        # ):
+        #     for nr in range(number):
+        #         x = keras.layers.Conv2D(
+        #             filters=filters,
+        #             kernel_size=kernel_size,
+        #             padding="same",
+        #             activation="relu",
+        #             name=f"{self.backbone_name}_conv_{i+1}_{nr+1}",
+        #         )(x)
+        #     if self.pooling_type is not None:
+        #         if self.pooling_type == "max":
+        #             x = keras.layers.MaxPool2D(
+        #                 pool_size=self.pooling_parameters["size"],
+        #                 strides=self.pooling_parameters["strides"],
+        #                 name=f"{self.backbone_name}_pool_{i+1}",
+        #             )(x)
+        #         elif self.pooling_type == "average":
+        #             x = keras.layers.AveragePooling2D(
+        #                 pool_size=self.pooling_parameters["size"],
+        #                 strides=self.pooling_parameters["strides"],
+        #                 name=f"{self.backbone_name}_pool_{i+1}",
+        #             )(x)
+        #     if self.batchnorm:
+        #         x = keras.layers.BatchNormalization(momentum=0.99)(x)
 
-        for i, (filters, kernel_size, number) in enumerate(
-            zip(filters_list, kernel_sizes, numbers_list)
-        ):
-            for nr in range(number):
-                x = keras.layers.Conv2D(
-                    filters=filters,
-                    kernel_size=kernel_size,
-                    padding="same",
-                    activation="relu",
-                    name=f"{self.backbone_name}_conv_{i+1}_{nr+1}",
-                )(x)
-            if self.pooling_type is not None:
-                if self.pooling_type == "max":
-                    x = keras.layers.MaxPool2D(
-                        pool_size=self.pooling_parameters["size"],
-                        strides=self.pooling_parameters["strides"],
-                        name=f"{self.backbone_name}_pool_{i+1}",
-                    )(x)
-                elif self.pooling_type == "average":
-                    x = keras.layers.AveragePooling2D(
-                        pool_size=self.pooling_parameters["size"],
-                        strides=self.pooling_parameters["strides"],
-                        name=f"{self.backbone_name}_pool_{i+1}",
-                    )(x)
-            if self.batchnorm:
-                x = keras.layers.BatchNormalization(momentum=0.99)(x)
+        # # bottleneck layer
+        # if self.bottleneck_filters is not None:
+        #     x = keras.layers.Conv2D(
+        #         filters=self.bottleneck_filters,
+        #         kernel_size=1,
+        #         padding="same",
+        #         activation="relu",
+        #         name=f"{self.backbone_name}_bottleneck",
+        #     )(x)
+        #     if self.batchnorm:
+        #         x = keras.layers.BatchNormalization(momentum=0.99)(x)
 
-        # bottleneck layer
-        if self.bottleneck_filters is not None:
-            x = keras.layers.Conv2D(
-                filters=self.bottleneck_filters,
-                kernel_size=1,
-                padding="same",
-                activation="relu",
-                name=f"{self.backbone_name}_bottleneck",
-            )(x)
-            if self.batchnorm:
-                x = keras.layers.BatchNormalization(momentum=0.99)(x)
+        # # Attention mechanism
+        # if self.attention is not None:
+        #     if self.attention["mechanism"] == "Dual-SE":
+        #         x = dual_squeeze_excite_block(
+        #             x, self.attention["reduction_ratio"], name=f"{self.backbone_name}_dse"
+        #         )
+        #     elif self.attention["mechanism"] == "Channel-SE":
+        #         x = channel_squeeze_excite_block(
+        #             x, self.attention["reduction_ratio"], name=f"{self.backbone_name}_cse"
+        #         )
+        #     elif self.attention["mechanism"] == "Spatial-SE":
+        #         x = spatial_squeeze_excite_block(x, name=f"{self.backbone_name}_sse")
 
-        # Attention mechanism
-        if self.attention is not None:
-            if self.attention["mechanism"] == "Dual-SE":
-                x = dual_squeeze_excite_block(
-                    x, self.attention["ratio"], name=f"{self.backbone_name}_dse"
-                )
-            elif self.attention["mechanism"] == "Channel-SE":
-                x = channel_squeeze_excite_block(
-                    x, self.attention["ratio"], name=f"{self.backbone_name}_cse"
-                )
-            elif self.attention["mechanism"] == "Spatial-SE":
-                x = spatial_squeeze_excite_block(x, name=f"{self.backbone_name}_sse")
+        # # Apply global average pooling as the final layer of the backbone
+        # network_output = keras.layers.GlobalAveragePooling2D(
+        #     name=self.backbone_name + "_global_avgpool"
+        # )(x)
+        # # Create the backbone model
+        # backbone_model = keras.Model(
+        #     network_input, network_output, name=self.backbone_name
+        # )
+        # return backbone_model, network_input
+        # Define a Simple 3D CNN + Transformer Model
+    def _build_backbone(self, input_shape):
+        num_frames = 10
+        img_size = 28
+        embed_dim = 128  # Define embedding dimension
+        num_layers = 2  # Transformer depth
+        num_heads = 4  # Multi-head attention heads
 
-        # Apply global average pooling as the final layer of the backbone
-        network_output = keras.layers.GlobalAveragePooling2D(
-            name=self.backbone_name + "_global_avgpool"
-        )(x)
-        # Create the backbone model
-        backbone_model = keras.Model(
-            network_input, network_output, name=self.backbone_name
-        )
-        return backbone_model, network_input
+        inputs = keras.Input(shape=(num_frames, img_size, img_size, 1), name="input")  # (T, H, W, C)
+
+        # 3D CNN for Spatiotemporal Feature Extraction
+        x = keras.layers.Conv3D(32, (3, 3, 3), activation="relu", padding="same")(inputs)
+        x = keras.layers.MaxPooling3D((2, 2, 2))(x)
+
+        x = keras.layers.Conv3D(64, (3, 3, 3), activation="relu", padding="same")(x)
+        x = keras.layers.MaxPooling3D((2, 2, 2))(x)
+
+        x = keras.layers.Conv3D(128, (3, 3, 3), activation="relu", padding="same")(x)
+        x = keras.layers.GlobalAveragePooling3D()(x)  # Reduce to feature vector
+
+        # Project to Transformer-compatible dimensions
+        x = keras.layers.Dense(embed_dim, activation="relu")(x)
+
+        # Transformer Encoder (Optional for Temporal Learning)
+        for _ in range(num_layers):
+            attn_output = keras.layers.MultiHeadAttention(num_heads, embed_dim, dropout=0.1)(x[:, None, :], x[:, None, :])
+            x = keras.layers.Add()([x, tf.squeeze(attn_output, axis=1)])
+            x = keras.layers.LayerNormalization()(x)
+
+        # Classification Head
+        x = keras.layers.Dense(1, activation="sigmoid")(x)  # Binary classification
+
+        return keras.Model(inputs, x), inputs
 
 
 class ResNet(CTLearnModel):
