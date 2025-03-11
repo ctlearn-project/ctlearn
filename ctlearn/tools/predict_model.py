@@ -1164,7 +1164,7 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                 )
                 # Add the default values and meta data to the table
                 add_defaults_and_meta(
-                    classification_tel_table,
+                    classification_table,
                     ParticleClassificationContainer,
                     prefix=self.prefix,
                     add_tel_prefix=True,
