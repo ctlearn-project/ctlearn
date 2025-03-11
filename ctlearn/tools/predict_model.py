@@ -1162,6 +1162,13 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                     ),
                     name=f"{self.prefix}_tel_is_valid",
                 )
+                # Add the default values and meta data to the table
+                add_defaults_and_meta(
+                    classification_tel_table,
+                    ParticleClassificationContainer,
+                    prefix=self.prefix,
+                    add_tel_prefix=True,
+                )
                 for tel_id in self.dl1dh_reader.selected_telescopes[
                     self.dl1dh_reader.tel_type
                 ]:
@@ -1169,13 +1176,6 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                     telescope_mask = classification_table["tel_id"] == tel_id
                     classification_tel_table = classification_table[telescope_mask]
                     classification_tel_table.sort(TELESCOPE_EVENT_KEYS)
-                    # Add the default values and meta data to the table
-                    add_defaults_and_meta(
-                        classification_tel_table,
-                        ParticleClassificationContainer,
-                        prefix=self.prefix,
-                        add_tel_prefix=True,
-                    )
                     # Save the prediction to the output file for the selected telescope
                     write_table(
                         classification_tel_table,
@@ -1234,6 +1234,13 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                     ),
                     name=f"{self.prefix}_tel_is_valid",
                 )
+                # Add the default values and meta data to the table
+                add_defaults_and_meta(
+                    energy_table,
+                    ReconstructedEnergyContainer,
+                    prefix=self.prefix,
+                    add_tel_prefix=True,
+                )
                 for tel_id in self.dl1dh_reader.selected_telescopes[
                     self.dl1dh_reader.tel_type
                 ]:
@@ -1241,13 +1248,6 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                     telescope_mask = energy_table["tel_id"] == tel_id
                     energy_tel_table = energy_table[telescope_mask]
                     energy_tel_table.sort(TELESCOPE_EVENT_KEYS)
-                    # Add the default values and meta data to the table
-                    add_defaults_and_meta(
-                        energy_tel_table,
-                        ReconstructedEnergyContainer,
-                        prefix=self.prefix,
-                        add_tel_prefix=True,
-                    )
                     # Save the prediction to the output file
                     write_table(
                         energy_tel_table,
