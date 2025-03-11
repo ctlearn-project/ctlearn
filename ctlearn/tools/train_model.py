@@ -385,14 +385,32 @@ class TrainCTLearnModel(Tool):
         with self.strategy.scope():
             # Construct the model
             self.log.info("Setting up the model.")
-            self.model = CTLearnModel.from_name(
+
+            if self.model_type == "ChannelAttention_ResNet":
+               self.model = CTLearnModel.from_name(
                 self.model_type,
                 input_shape=self.training_loader.input_shape,
                 tasks=self.reco_tasks,
                 parent=self,
-                se_kernel_size = self.se_kernel_size,
                 channel_attention_reduction = self.channel_attention_reduction
-            ).model
+                ).model
+            elif self.model_type == "SpatialAttention_ResNet":
+                self.model = CTLearnModel.from_name(
+                    self.model_type,
+                    input_shape=self.training_loader.input_shape,
+                    tasks=self.reco_tasks,
+                    parent=self,
+                    se_kernel_size = self.se_kernel_size,
+                    channel_attention_reduction = self.channel_attention_reduction
+                ).model
+            else:
+                self.model = CTLearnModel.from_name(
+                    self.model_type,
+                    input_shape=self.training_loader.input_shape,
+                    tasks=self.reco_tasks,
+                    parent=self
+                ).model
+                
             # Validate the optimizer parameters
             validate_trait_dict(self.optimizer, ["name", "base_learning_rate"])
             # Set the learning rate for the optimizer
