@@ -1191,12 +1191,12 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
             if self.dl2_subarray:
                 self.log.info("Processing and storing the subarray type prediction...")
                 # Combine the telescope predictions to the subarray prediction using the stereo combiner
-                stereo_classification_table = self.type_stereo_combiner.predict_table(
+                subarray_classification_table = self.type_stereo_combiner.predict_table(
                     classification_table
                 )
                 # Save the prediction to the output file
                 write_table(
-                    stereo_classification_table,
+                    subarray_classification_table,
                     self.output_path,
                     f"{DL2_SUBARRAY_GROUP}/classification/{self.prefix}",
                     overwrite=self.overwrite_tables,
@@ -1265,12 +1265,12 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                     "Processing and storing the subarray energy prediction..."
                 )
                 # Combine the telescope predictions to the subarray prediction using the stereo combiner
-                stereo_energy_table = self.energy_stereo_combiner.predict_table(
+                subarray_energy_table = self.energy_stereo_combiner.predict_table(
                     energy_table
                 )
                 # Save the prediction to the output file
                 write_table(
-                    stereo_energy_table,
+                    subarray_energy_table,
                     self.output_path,
                     f"{DL2_SUBARRAY_GROUP}/energy/{self.prefix}",
                     overwrite=self.overwrite_tables,
@@ -1298,6 +1298,7 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
             direction_table, direction_feature_vectors = (
                 super()._predict_cameradirection(example_identifiers)
             )
+            direction_tel_tables = []
             if self.dl2_telescope:
                 for tel_id in self.dl1dh_reader.selected_telescopes[
                     self.dl1dh_reader.tel_type
@@ -1339,6 +1340,7 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                         prefix=self.prefix,
                         add_tel_prefix=True,
                     )
+                    direction_tel_tables.append(direction_tel_table)
                     # Save the prediction to the output file
                     write_table(
                         direction_tel_table,
@@ -1355,28 +1357,15 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                 self.log.info(
                     "Processing and storing the subarray geometry prediction..."
                 )
-                # Add is_valid column to the direction table
-                direction_table.add_column(
-                    ~np.isnan(
-                        direction_table[f"{self.prefix}_tel_alt"].data,
-                        dtype=bool,
-                    ),
-                    name=f"{self.prefix}_tel_is_valid",
-                )
-                # Add the default values and meta data to the table
-                add_defaults_and_meta(
-                    direction_table,
-                    ReconstructedGeometryContainer,
-                    prefix=self.prefix,
-                    add_tel_prefix=True,
-                )
+                # Stack the telescope tables to the subarray table
+                subarray_direction_table = vstack(direction_tel_tables)
                 # Combine the telescope predictions to the subarray prediction using the stereo combiner
-                stereo_direction_table = self.geometry_stereo_combiner.predict_table(
-                    direction_table
+                subarray_direction_table = self.geometry_stereo_combiner.predict_table(
+                    subarray_direction_table
                 )
                 # Save the prediction to the output file
                 write_table(
-                    stereo_direction_table,
+                    subarray_direction_table,
                     self.output_path,
                     f"{DL2_SUBARRAY_GROUP}/geometry/{self.prefix}",
                     overwrite=self.overwrite_tables,
