@@ -690,7 +690,7 @@ class LST1PredictionTool(Tool):
             # Set the camera frame with the focal length and rotation of the camera
             camera_frame = CameraFrame(
                 focal_length=self.subarray.tel[self.tel_id].optics.equivalent_focal_length,
-                rotation=self.subarray.tel[self.tel_id].camera.geometry.pix_rotation,
+                rotation=self.pix_rotation,
                 telescope_pointing=tel_pointing,
             )
             # Set the camera coordinate offset
