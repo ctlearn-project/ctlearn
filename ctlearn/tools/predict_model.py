@@ -1355,6 +1355,21 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                 self.log.info(
                     "Processing and storing the subarray geometry prediction..."
                 )
+                # Add is_valid column to the direction table
+                direction_table.add_column(
+                    ~np.isnan(
+                        direction_table[f"{self.prefix}_tel_alt"].data,
+                        dtype=bool,
+                    ),
+                    name=f"{self.prefix}_tel_is_valid",
+                )
+                # Add the default values and meta data to the table
+                add_defaults_and_meta(
+                    direction_table,
+                    ReconstructedGeometryContainer,
+                    prefix=self.prefix,
+                    add_tel_prefix=True,
+                )
                 # Combine the telescope predictions to the subarray prediction using the stereo combiner
                 stereo_direction_table = self.geometry_stereo_combiner.predict_table(
                     direction_table
