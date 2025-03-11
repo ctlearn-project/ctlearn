@@ -54,17 +54,12 @@
     "author": [
         {
             "@type": "Person",
-            "@id": " https://orcid.org/ 0000-0002-6208-5244",
-            "givenName": "Ari",
-            "familyName": "Brill"
-        },
-        {
-            "@type": "Person",
-            "givenName": "Bryan",
-            "familyName": "Kim",
+            "@id": "https://orcid.org/0000-0003-1821-7964",
+            "givenName": "Tjark",
+            "familyName": "Miener",
             "affiliation": {
                 "@type": "Organization",
-                "name": "University of California Los Angeles, Division of Astronomy and Astrophysics, Los Angeles, CA, USA"
+                 "name": "Département de Physique Nucléaire et Corpusculaire, Univertité de Genève, Genève, Switzerland"
             }
         },
         {
@@ -80,12 +75,17 @@
         },
         {
             "@type": "Person",
-            "@id": "https://orcid.org/0000-0003-1821-7964",
-            "givenName": "Tjark",
-            "familyName": "Miener",
+            "@id": " https://orcid.org/ 0000-0002-6208-5244",
+            "givenName": "Ari",
+            "familyName": "Brill"
+        },
+        {
+            "@type": "Person",
+            "givenName": "Bryan",
+            "familyName": "Kim",
             "affiliation": {
                 "@type": "Organization",
-                "name": "Instituto de Física de Partículas y del Cosmos, Departamento de EMFTEL, Universidad Complutense de Madrid, Madrid, Spain "
+                "name": "University of California Los Angeles, Division of Astronomy and Astrophysics, Los Angeles, CA, USA"
             }
         },
         {

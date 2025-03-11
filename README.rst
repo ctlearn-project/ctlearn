@@ -6,8 +6,6 @@ CTLearn: Deep Learning for IACT Event Reconstruction
    :target: https://doi.org/10.5281/zenodo.11475531
    :alt: DOI
 
-
-
 .. image:: https://img.shields.io/pypi/v/ctlearn
     :target: https://pypi.org/project/ctlearn/
     :alt: Latest Release
@@ -37,7 +35,7 @@ necessary package channels, and install CTLearn specified version and its depend
 
 .. code-block:: bash
 
-   CTLEARN_VER=0.9.0
+   CTLEARN_VER=0.10.0
    wget https://raw.githubusercontent.com/ctlearn-project/ctlearn/v$CTLEARN_VER/environment.yml
    conda env create -n [ENVIRONMENT_NAME] -f environment.yml
    conda activate [ENVIRONMENT_NAME]
@@ -52,12 +50,7 @@ See the documentation for further information like `installation instructions fo
 Citing this software
 --------------------
 
-Please cite the corresponding version using the DOIs below if this software package is used to produce results for any publication:
-
-.. |zendoi080| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11475531.svg
-   :target: https://doi.org/10.5281/zenodo.11475531
-
-* 0.8.0 : |zendoi080|
+Please cite the corresponding version using the `DOIs issued by Zenodo <https://doi.org/10.5281/zenodo.3342952>`_ if this software package is used to produce results for any publication.
 
 Team
 ----

@@ -8,7 +8,7 @@
     "contributors": [
         {
             "affiliation": "Instituto de F\u00edsica de Part\u00edculas y del Cosmos, Departamento de EMFTEL, Universidad Complutense de Madrid, Madrid, Spain ",
-            "name": "Cervino Cortinez, Alexander",
+            "name": "Cervi\u00f1o Cort\u00ednez, Alexander",
             "type": "Researcher"
             "orcid": "0009-0007-1566-9507"
         }
@@ -21,12 +21,9 @@
     ],
     "creators": [
         {
-            "name": "Brill, Ari",
-            "orcid": " 0000-0002-6208-5244"
-        },
-        {
-            "affiliation": "University of California Los Angeles, Division of Astronomy and Astrophysics, Los Angeles, CA, USA",
-            "name": "Kim, Bryan"
+            "affiliation": "Instituto de F\u00edsica de Part\u00edculas y del Cosmos, Departamento de EMFTEL, Universidad Complutense de Madrid, Madrid, Spain ",
+            "name": "Miener, Tjark",
+            "orcid": "0000-0003-1821-7964"
         },
         {
             "affiliation": "Instituto de F\u00edsica de Part\u00edculas y del Cosmos, Departamento de EMFTEL, Universidad Complutense de Madrid, Madrid, Spain ",
@@ -34,9 +31,12 @@
             "orcid": "0000-0003-3343-0755"
         },
         {
-            "affiliation": "Instituto de F\u00edsica de Part\u00edculas y del Cosmos, Departamento de EMFTEL, Universidad Complutense de Madrid, Madrid, Spain ",
-            "name": "Miener, Tjark",
-            "orcid": "0000-0003-1821-7964"
+            "name": "Brill, Ari",
+            "orcid": " 0000-0002-6208-5244"
+        },
+        {
+            "affiliation": "University of California Los Angeles, Division of Astronomy and Astrophysics, Los Angeles, CA, USA",
+            "name": "Kim, Bryan"
         },
         {
             "affiliation": "Barnard College, Columbia University, New York, NY, USA",
