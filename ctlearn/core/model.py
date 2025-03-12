@@ -1021,7 +1021,7 @@ class Attention_ResNet(CTLearnModel):
         self.backbone_name = self.name + "_block"
 
         # Build the ResNet model backbone
-        self.backbone_model, self.input_layer = self._build_backbone(input_shape,se_kernel_size)
+        self.backbone_model, self.input_layer = self._build_backbone(input_shape)
         backbone_output = self.backbone_model(self.input_layer)
         # Validate the head trait with the provided tasks
         validate_trait_dict(self.head, tasks)
@@ -1031,7 +1031,7 @@ class Attention_ResNet(CTLearnModel):
         self.model = keras.Model(self.input_layer, self.logits, name="CTLearn_model")
         print(self.model.summary(expand_nested=True))
 
-    def _build_backbone(self, input_shape, se_kernel_size):
+    def _build_backbone(self, input_shape):
         """
         Build the ResNet model backbone.
 
@@ -1081,7 +1081,7 @@ class Attention_ResNet(CTLearnModel):
             network_input,
             architecture=self.architecture,
             residual_block_type=self.residual_block_type,
-            attention=self.attention
+            attention=self.attention,
             name=self.backbone_name
 
         )
@@ -1136,12 +1136,13 @@ class Attention_ResNet(CTLearnModel):
             for layer in architecture
         ]
 
-	if attention_type == "spatial":
-	    attention_layer = SpatialAttention(self.se_kernel_size,"SPATIAL")(inputs)
-	elif attention_type == "channel":
-	    attention_layer = ChannelAttention(self.channel_attention_reduction,"CHANNEL")(inputs)
-	else:
-	    attention_layer = CBAM(self.channel_attention_reduction,self.se_kernel_size,"CBAM")(inputs)
+
+        if self.attention_type == "spatial":
+            attention_layer = SpatialAttention(self.se_kernel_size,"SPATIAL")(inputs)
+        elif self.attention_type == "channel":
+            attention_layer = ChannelAttention(self.channel_attention_reduction,"CHANNEL")(inputs)
+        else:
+            attention_layer = CBAM(self.channel_attention_reduction,self.se_kernel_size,"CBAM")(inputs)
 
 
         
@@ -1155,6 +1156,17 @@ class Attention_ResNet(CTLearnModel):
             attention=attention,
             name=name + "_conv2",
         )
+
+        if self.attention_location != 'initial':
+       
+            if self.attention_type == "spatial":
+            	x = SpatialAttention(self.se_kernel_size,name + "_SPATIAL_conv2")(x)
+            elif self.attention_type == "channel":
+                x = ChannelAttention(self.channel_attention_reduction,name + "_CHANNEL_conv2")(x)
+            else:
+                x = CBAM(self.channel_attention_reduction,self.se_kernel_size,name + "_CBAM_conv2")(x)
+            
+            
         for i, (filters, blocks) in enumerate(zip(filters_list[1:], blocks_list[1:])):
             x = self._stack_fn(
                 x,
@@ -1164,6 +1176,15 @@ class Attention_ResNet(CTLearnModel):
                 attention=attention,
                 name=name + "_conv" + str(i + 3),
             )
+            
+            if self.attention_location == 'after_conv':
+                if self.attention_type == "spatial":
+                    x = SpatialAttention(self.se_kernel_size,name + "_SPATIAL_conv" + str(i + 3))(x)
+                elif self.attention_type == "channel":
+                    x = ChannelAttention(self.channel_attention_reduction,name + "_CHANNEL_conv" + str(i + 3))(x)
+                else:
+                    x = CBAM(self.channel_attention_reduction,self.se_kernel_size,name + "-CBAM_conv" + str(i + 3))(x)
+
         return x
 
 
