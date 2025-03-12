@@ -156,7 +156,6 @@ class TrainCTLearnModel(Tool):
         help="Number of epochs to train the neural network.",
     ).tag(config=True)
     
-
     batch_size = Int(
         default_value=64,
         allow_none=False,
@@ -377,9 +376,8 @@ class TrainCTLearnModel(Tool):
                 self.model_type,
                 input_shape=self.training_loader.input_shape,
                 tasks=self.reco_tasks,
-                parent=self
+                parent=self,
             ).model
-                
             # Validate the optimizer parameters
             validate_trait_dict(self.optimizer, ["name", "base_learning_rate"])
             # Set the learning rate for the optimizer
