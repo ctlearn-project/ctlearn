@@ -400,8 +400,7 @@ class TrainCTLearnModel(Tool):
                     input_shape=self.training_loader.input_shape,
                     tasks=self.reco_tasks,
                     parent=self,
-                    se_kernel_size = self.se_kernel_size,
-                    channel_attention_reduction = self.channel_attention_reduction
+                    se_kernel_size = self.se_kernel_size
                 ).model
             else:
                 self.model = CTLearnModel.from_name(
