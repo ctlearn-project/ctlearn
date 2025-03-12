@@ -155,7 +155,7 @@ class TrainCTLearnModel(Tool):
         allow_none=False,
         help="Number of epochs to train the neural network.",
     ).tag(config=True)
-    
+
     batch_size = Int(
         default_value=64,
         allow_none=False,
