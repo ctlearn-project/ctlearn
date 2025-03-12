@@ -156,18 +156,6 @@ class TrainCTLearnModel(Tool):
         help="Number of epochs to train the neural network.",
     ).tag(config=True)
     
-    se_kernel_size = Int(
-        default_value=1,
-        allow_none=False,
-        help="Kernel size of the Spatial Attention layer",
-    ).tag(config=True)
-
-    channel_attention_reduction = Int(
-        default_value=16,
-        allow_none=False,
-        help="Reduction size of the Channel Attention layer",
-    ).tag(config=True)
-
 
     batch_size = Int(
         default_value=64,
@@ -385,30 +373,12 @@ class TrainCTLearnModel(Tool):
         with self.strategy.scope():
             # Construct the model
             self.log.info("Setting up the model.")
-
-            if self.model_type == "ChannelAttention_ResNet":
-               self.model = CTLearnModel.from_name(
+            self.model = CTLearnModel.from_name(
                 self.model_type,
                 input_shape=self.training_loader.input_shape,
                 tasks=self.reco_tasks,
-                parent=self,
-                channel_attention_reduction = self.channel_attention_reduction
-                ).model
-            elif self.model_type == "SpatialAttention_ResNet":
-                self.model = CTLearnModel.from_name(
-                    self.model_type,
-                    input_shape=self.training_loader.input_shape,
-                    tasks=self.reco_tasks,
-                    parent=self,
-                    se_kernel_size = self.se_kernel_size
-                ).model
-            else:
-                self.model = CTLearnModel.from_name(
-                    self.model_type,
-                    input_shape=self.training_loader.input_shape,
-                    tasks=self.reco_tasks,
-                    parent=self
-                ).model
+                parent=self
+            ).model
                 
             # Validate the optimizer parameters
             validate_trait_dict(self.optimizer, ["name", "base_learning_rate"])
