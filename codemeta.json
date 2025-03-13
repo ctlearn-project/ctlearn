@@ -5,13 +5,13 @@
     "codeRepository": "https://github.com/ctlearn-project/ctlearn",
     "contIntegration": "https://github.com/ctlearn-project/ctlearn/actions",
     "datePublished": "2023-05-08",
-    "dateModified": "2023-05-08",
-    "downloadUrl": "https://zenodo.org/record/5947837/files/ctlearn-project/ctlearn-v0.7.0.zip",
+    "dateModified": "2025-03-13",
+    "downloadUrl": "https://zenodo.org/record/5947837/files/ctlearn-project/ctlearn-v0.10.0.zip",
     "issueTracker": "https://github.com/ctlearn-project/ctlearn/issues",
     "name": "CTLearn: Deep learning for imaging atmospheric Cherenkov telescopes event reconstruction",
     "readme": "https://ctlearn.readthedocs.io",
-    "version": "0.7.0",
-    "softwareVersion": "0.7.0",
+    "version": "0.10.0",
+    "softwareVersion": "0.10.0",
     "identifier": "10.5281/zenodo.3342952",
     "description": "CTLearn is a high-level Python package providing a backend for training deep learning models for the reconstruction of imaging atmospheric Cherenkov telescope events using TensorFlow.",
     "applicationCategory": "Astronomy",
@@ -39,17 +39,40 @@
     "softwareRequirements": [
         "Python 3",
         "TensorFlow 2",
-        "tf2onnx",
-        "ctapipe",
+        "astropy",
+	"scikit-learn",
+	"ctapipe",
         "ctaplot",
         "DL1DataHandler",
         "numba",
         "NumPy",
         "PyYAML",
-        "pyIRF",
+        "PyIRF",
+        "PyDot",
         "Pandas"
     ],
     "author": [
+        {
+            "@type": "Person",
+            "@id": "https://orcid.org/0000-0003-1821-7964",
+            "givenName": "Tjark",
+            "familyName": "Miener",
+            "affiliation": {
+                "@type": "Organization",
+                 "name": "Département de Physique Nucléaire et Corpusculaire, Univertité de Genève, Genève, Switzerland"
+            }
+        },
+        {
+            "@type": "Person",
+            "@id": "https://orcid.org/0000-0003-3343-0755",
+            "givenName": "Daniel",
+            "familyName": "Nieto",
+            "email": "d.nieto@ucm.es",
+            "affiliation": {
+                "@type": "Organization",
+                "name": "Instituto de Física de Partículas y del Cosmos, Departamento de EMFTEL, Universidad Complutense de Madrid, Madrid, Spain "
+            }
+        },
         {
             "@type": "Person",
             "@id": " https://orcid.org/ 0000-0002-6208-5244",
@@ -67,28 +90,7 @@
         },
         {
             "@type": "Person",
-            "@id": "https://orcid.org/0000-0003-3343-0755",
-            "givenName": "Daniel",
-            "familyName": "Nieto",
-            "email": "d.nieto@ucm.es",
-            "affiliation": {
-                "@type": "Organization",
-                "name": "Instituto de Física de Partículas y del Cosmos, Departamento de EMFTEL, Universidad Complutense de Madrid, Madrid, Spain "
-            }
-        },
-        {
-            "@type": "Person",
-            "@id": "https://orcid.org/0000-0003-1821-7964",
-            "givenName": "Tjark",
-            "familyName": "Miener",
-            "affiliation": {
-                "@type": "Organization",
-                "name": "Instituto de Física de Partículas y del Cosmos, Departamento de EMFTEL, Universidad Complutense de Madrid, Madrid, Spain "
-            }
-        },
-        {
-            "@type": "Person",
-            "@id": " https://orcid.org/ 0000-0001-6674-4238",
+            "@id": " https://orcid.org/0000-0001-6674-4238",
             "givenName": "Qi",
             "familyName": "Feng",
             "affiliation": {
@@ -100,6 +102,17 @@
     "contributor": [
         {
             "@type": "Person",
+	    "@id": " https://orcid.org/0009-0007-1566-9507",
+            "givenName": "Alexander",
+            "familyName": "Cerviño Cortínez",
+            "affiliation": {
+                "@type": "Organization",
+                "name": "Instituto de Física de Partículas y del Cosmos, Departamento de EMFTEL, Universidad Complutense de Madrid, Madrid, Spain"
+            }
+        },
+        {
+            "@type": "Person",
+	    "@id": " https://orcid.org/0000-0002-4454-1146",
             "givenName": "Jaime",
             "familyName": "Sevilla",
             "affiliation": {
@@ -127,7 +140,7 @@
              "familyName": "Miener",
              "affiliation": {
                  "@type": "Organization",
-                 "name": "Instituto de Física de Partículas y del Cosmos, Departamento de EMFTEL, Universidad Complutense de Madrid, Madrid, Spain "
+                 "name": "Département de Physique Nucléaire et Corpusculaire, Univertité de Genève, Genève, Switzerland"
              }
         }
     ]
