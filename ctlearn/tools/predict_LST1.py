@@ -8,7 +8,7 @@ import tables
 import keras
 from astropy import units as u
 from astropy.coordinates.earth import EarthLocation
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import AltAz, Angle, SkyCoord
 from astropy.table import Table, join, setdiff, vstack
 from astropy.time import Time
 
@@ -22,7 +22,7 @@ from ctapipe.containers import (
     ReconstructedGeometryContainer,
     ReconstructedEnergyContainer,
 )
-from ctapipe.coordinates import EngineeringCameraFrame
+from ctapipe.coordinates import CameraFrame, EngineeringCameraFrame
 from ctapipe.core import Tool
 from ctapipe.core.tool import ToolConfigurationError
 from ctapipe.core.traits import (
@@ -54,13 +54,13 @@ from dl1_data_handler.reader import (
     get_unmapped_image,
     get_unmapped_waveform,
     TableQualityQuery,
-    REFERENCE_LOCATION,
     LST_EPOCH,
 )
 
 POINTING_GROUP = "/dl1/monitoring/telescope/pointing"
 DL1_TELESCOPE_GROUP = "/dl1/event/telescope"
 DL2_TELESCOPE_GROUP = "/dl2/event/telescope"
+DL2_SUBARRAY_GROUP = "/dl2/event/subarray"
 SUBARRAY_EVENT_KEYS = ["obs_id", "event_id"]
 TELESCOPE_EVENT_KEYS = ["obs_id", "event_id", "tel_id"]
 
@@ -89,13 +89,12 @@ class LST1PredictionTool(Tool):
     > ctlearn-predict-model \\
         --input_url input.subrun.lstchain.dl1.h5 \\
         --LST1PredictionTool.batch_size=64 \\
-        --LST1PredictionTool.dl1dh_reader_type=DLImageReader \\
         --LST1PredictionTool.channels=cleaned_image \\
         --LST1PredictionTool.channels=cleaned_relative_peak_time \\
         --LST1PredictionTool.image_mapper_type=BilinearMapper \\
         --type_model="/path/to/your/type/ctlearn_model.cpk" \\
         --energy_model="/path/to/your/energy/ctlearn_model.cpk" \\
-        --direction_model="/path/to/your/direction/ctlearn_model.cpk" \\
+        --cameradirection_model="/path/to/your/direction/ctlearn_model.cpk" \\
         --output output.dl2.h5 \\
         --overwrite \\
     """
@@ -138,11 +137,12 @@ class LST1PredictionTool(Tool):
         file_ok=True,
     ).tag(config=True)
 
-    load_direction_model_from = Path(
+    load_cameradirection_model_from = Path(
         default_value=None,
         help=(
             "Path to a Keras model file (Keras3) or directory (Keras2) "
-            "for the regression of the primary particle arrival direction."
+            "for the regression of the primary particle arrival direction "
+            "based on the camera coordinate offsets."
         ),
         allow_none=True,
         exists=True,
@@ -193,15 +193,6 @@ class LST1PredictionTool(Tool):
         ),
     ).tag(config=True)
 
-    transform_to_EngineeringCameraFrame = Bool(
-        default_value=True,
-        allow_none=False,
-        help=(
-            "Transform the camera geometry to the EngineeringCameraFrame. "
-            "Needed if training was done in this frame."
-        ),
-    ).tag(config=True)
-
     output_path = Path(
         default_value="./output.dl2.h5",
         allow_none=False,
@@ -214,7 +205,7 @@ class LST1PredictionTool(Tool):
         ("i", "input_url"): "LST1PredictionTool.input_url",
         ("t", "type_model"): "LST1PredictionTool.load_type_model_from",
         ("e", "energy_model"): "LST1PredictionTool.load_energy_model_from",
-        ("d", "direction_model"): "LST1PredictionTool.load_direction_model_from",
+        ("d", "cameradirection_model"): "LST1PredictionTool.load_cameradirection_model_from",
         ("o", "output"): "LST1PredictionTool.output_path",
     }
 
@@ -252,12 +243,12 @@ class LST1PredictionTool(Tool):
             )
             input_shape = model_energy.input_shape[1:]
             self.backbone_energy, self.head_energy = self._split_model(model_energy)
-        if self.load_direction_model_from is not None:
+        if self.load_cameradirection_model_from is not None:
             self.log.info(
-                "Loading the direction model from %s.", self.load_direction_model_from
+                "Loading the cameradirection model from %s.", self.load_cameradirection_model_from
             )
             model_direction = keras.saving.load_model(
-                self.load_direction_model_from
+                self.load_cameradirection_model_from
             )
             input_shape = model_direction.input_shape[1:]
             self.backbone_direction, self.head_direction = self._split_model(model_direction)
@@ -269,6 +260,11 @@ class LST1PredictionTool(Tool):
         self.log.info("SubarrayDescription was stored in '%s'", self.output_path)
         # Initialize the Table data quality query
         self.quality_query = TableQualityQuery(parent=self)
+        # Copy the pixel rotation of the camera geometry of the subarray in a variable
+        # since the ImageMapper will be derotated the pixels. The pixel rotation
+        # is needed to create a rotated camera frame in order to transform the
+        # predicted camera coordinate offsets back to the correct Alt/Az coordinates.
+        self.pix_rotation = self.subarray.tel[self.tel_id].camera.geometry.pix_rotation
         # Create the ImageMapper
         self.image_mapper = ImageMapper.from_name(
             name=self.image_mapper_type,
@@ -439,8 +435,8 @@ class LST1PredictionTool(Tool):
         parameter_table = parameter_table[parameter_table["event_type"]==32]
 
         self.log.info("Starting the prediction...")
-        event_id, tel_azimuth, tel_altitude = [], [], []
-        prediction, energy, az, alt = [], [], [], []
+        event_id, tel_azimuth, tel_altitude, trigger_time = [], [], [], []
+        prediction, energy, cam_coord_offset_x, cam_coord_offset_y = [], [], [], []
         classification_fvs, energy_fvs, direction_fvs = [], [], []
         # Iterate over the data in chunks based on the batch size
         for start in range(0, self.table_length, self.batch_size):
@@ -454,6 +450,11 @@ class LST1PredictionTool(Tool):
             dl1_table = join(
                 left=dl1_table,
                 right=parameter_table,
+                keys=["event_id"],
+            )
+            dl1_table = join(
+                left=dl1_table,
+                right=trigger_table,
                 keys=["event_id"],
             )
             # Initialize a boolean mask to True for all events in the sliced dl1 table
@@ -479,6 +480,7 @@ class LST1PredictionTool(Tool):
             event_id.extend(dl1_table["event_id"].data)
             tel_azimuth.extend(dl1_table["tel_az"].data)
             tel_altitude.extend(dl1_table["tel_alt"].data)
+            trigger_time.extend(dl1_table["time"].mjd)
             if self.load_type_model_from is not None:
                 classification_feature_vectors = self.backbone_type.predict_on_batch(input_data)
                 classification_fvs.extend(classification_feature_vectors)
@@ -488,13 +490,13 @@ class LST1PredictionTool(Tool):
                 energy_feature_vectors = self.backbone_energy.predict_on_batch(input_data)
                 energy_fvs.extend(energy_feature_vectors)
                 predict_data = self.head_energy.predict_on_batch(energy_feature_vectors)
-                energy.extend(predict_data["energy"])
-            if self.load_direction_model_from is not None:
+                energy.extend(predict_data.T[0])
+            if self.load_cameradirection_model_from is not None:
                 direction_feature_vectors = self.backbone_direction.predict_on_batch(input_data)
                 direction_fvs.extend(direction_feature_vectors)
                 predict_data = self.head_direction.predict_on_batch(direction_feature_vectors)
-                az.extend(predict_data["direction"].T[0])
-                alt.extend(predict_data["direction"].T[1])
+                cam_coord_offset_x.extend(predict_data.T[0])
+                cam_coord_offset_y.extend(predict_data.T[1])
 
         # Create the prediction tables
         example_identifiers = Table(
@@ -526,11 +528,9 @@ class LST1PredictionTool(Tool):
                 )
                 classification_table = vstack([classification_table, nan_table])
             classification_table.sort(TELESCOPE_EVENT_KEYS)
+            classification_is_valid = ~np.isnan(classification_table[f"{self.prefix}_tel_prediction"].data, dtype=bool)
             classification_table.add_column(
-                ~np.isnan(
-                    classification_table[f"{self.prefix}_tel_prediction"].data,
-                    dtype=bool,
-                ),
+                classification_is_valid,
                 name=f"{self.prefix}_tel_is_valid",
             )
             # Add the default values and meta data to the table
@@ -552,6 +552,29 @@ class LST1PredictionTool(Tool):
                 self.output_path,
                 f"{DL2_TELESCOPE_GROUP}/classification/{self.prefix}/tel_{self.tel_id:03d}",
             )
+            # Write the mono telescope prediction to the subarray prediction table
+            subarray_classification_table = classification_table.copy()
+            subarray_classification_table.remove_column("tel_id")
+            for colname in subarray_classification_table.colnames:
+                if "_tel_" in colname:
+                    subarray_classification_table.rename_column(
+                        colname, colname.replace("_tel", "")
+                    )
+            subarray_classification_table.add_column(
+                classification_is_valid[np.newaxis], name=f"{self.prefix}_telescopes"
+            )
+            # Save the prediction to the output file
+            write_table(
+                subarray_classification_table,
+                self.output_path,
+                f"{DL2_SUBARRAY_GROUP}/classification/{self.prefix}",
+                overwrite=self.overwrite,
+            )
+            self.log.info(
+                "DL2 prediction data was stored in '%s' under '%s'",
+                self.output_path,
+                f"{DL2_SUBARRAY_GROUP}/classification/{self.prefix}",
+            )
             # Adding the feature vectors for the classification
             is_valid_col = ~np.isnan(
                 np.min(classification_fvs, axis=1), dtype=bool
@@ -565,7 +588,7 @@ class LST1PredictionTool(Tool):
                 fvs_shapes_list.append(
                     (
                         len(nonexample_identifiers),
-                        classification_fvs.shape[1],
+                        classification_fvs[0].shape[0],
                     )
                 )
         if self.load_energy_model_from is not None:
@@ -583,8 +606,9 @@ class LST1PredictionTool(Tool):
                 )
                 energy_table = vstack([energy_table, nan_table])
             energy_table.sort(TELESCOPE_EVENT_KEYS)
+            energy_is_valid = ~np.isnan(energy_table[f"{self.prefix}_tel_energy"].data, dtype=bool)
             energy_table.add_column(
-                ~np.isnan(energy_table[f"{self.prefix}_tel_energy"].data, dtype=bool),
+                energy_is_valid,
                 name=f"{self.prefix}_tel_is_valid",
             )
             # Add the default values and meta data to the table
@@ -606,6 +630,29 @@ class LST1PredictionTool(Tool):
                 self.output_path,
                 f"{DL2_TELESCOPE_GROUP}/energy/{self.prefix}/tel_{self.tel_id:03d}",
             )
+            # Write the mono telescope prediction to the subarray prediction table
+            subarray_energy_table = energy_table.copy()
+            subarray_energy_table.remove_column("tel_id")
+            for colname in subarray_energy_table.colnames:
+                if "_tel_" in colname:
+                    subarray_energy_table.rename_column(
+                        colname, colname.replace("_tel", "")
+                    )
+            subarray_energy_table.add_column(
+                energy_is_valid[np.newaxis], name=f"{self.prefix}_telescopes"
+            )
+            # Save the prediction to the output file
+            write_table(
+                subarray_energy_table,
+                self.output_path,
+                f"{DL2_SUBARRAY_GROUP}/energy/{self.prefix}",
+                overwrite=self.overwrite,
+            )
+            self.log.info(
+                "DL2 prediction data was stored in '%s' under '%s'",
+                self.output_path,
+                f"{DL2_SUBARRAY_GROUP}/energy/{self.prefix}",
+            )
             # Adding the feature vectors for the energy regression
             is_valid_col = ~np.isnan(
                 np.min(energy_fvs, axis=1), dtype=bool
@@ -619,31 +666,47 @@ class LST1PredictionTool(Tool):
                 fvs_shapes_list.append(
                     (
                         len(nonexample_identifiers),
-                        energy_fvs.shape[1],
+                        energy_fvs[0].shape[0],
                     )
                 )
-        if self.load_direction_model_from is not None:
+        if self.load_cameradirection_model_from is not None:
             direction_table = example_identifiers.copy()
-            # Convert reconstructed spherical offset (az, alt) to SkyCoord
-            reco_spherical_offset_az = u.Quantity(az, unit=u.deg)
-            reco_spherical_offset_alt = u.Quantity(alt, unit=u.deg)
-            # Set the telescope pointing of the SkyOffsetSeparation tranformation
-            pointing = SkyCoord(
-                u.Quantity(tel_azimuth, unit=u.rad),
-                u.Quantity(tel_altitude, unit=u.rad),
-                frame="altaz",
-                location=REFERENCE_LOCATION,
-                obstime=LST_EPOCH,
+            # Set the telescope position
+            tel_ground_frame = self.subarray.tel_coords[
+                self.subarray.tel_ids_to_indices(self.tel_id)
+            ]
+            # Set the telescope pointing with the trigger timestamp and the telescope position
+            trigger_time = Time(trigger_time, format="mjd")
+            altaz = AltAz(
+                location=tel_ground_frame.to_earth_location(),
+                obstime=trigger_time,
             )
-            reco_direction = pointing.spherical_offsets_by(
-                reco_spherical_offset_az, reco_spherical_offset_alt
-            ).to_table()
+            # Set the telescope pointing
+            tel_pointing = SkyCoord(
+                az=u.Quantity(tel_azimuth, unit=u.rad),
+                alt=u.Quantity(tel_altitude, unit=u.rad),
+                frame=altaz,
+            )
+            # Set the camera frame with the focal length and rotation of the camera
+            camera_frame = CameraFrame(
+                focal_length=self.subarray.tel[self.tel_id].optics.equivalent_focal_length,
+                rotation=self.pix_rotation,
+                telescope_pointing=tel_pointing,
+            )
+            # Set the camera coordinate offset
+            cam_coord_offset = SkyCoord(
+                x=u.Quantity(cam_coord_offset_x, unit=u.m),
+                y=u.Quantity(cam_coord_offset_y, unit=u.m),
+                frame=camera_frame
+            )
+            # Transform the true Alt/Az coordinates to camera coordinates
+            reco_direction = cam_coord_offset.transform_to(altaz)
             # Add the reconstructed direction (az, alt) to the prediction table
             direction_table.add_column(
-                reco_direction["az"], name=f"{self.prefix}_tel_az"
+                reco_direction.az.to(u.deg), name=f"{self.prefix}_tel_az"
             )
             direction_table.add_column(
-                reco_direction["alt"], name=f"{self.prefix}_tel_alt"
+                reco_direction.alt.to(u.deg), name=f"{self.prefix}_tel_alt"
             )
             # Produce output table with NaNs for missing predictions
             if len(nonexample_identifiers) > 0:
@@ -658,8 +721,9 @@ class LST1PredictionTool(Tool):
                 + [f"{self.prefix}_tel_az", f"{self.prefix}_tel_alt"]
             )
             direction_table.sort(TELESCOPE_EVENT_KEYS)
+            direction_is_valid = ~np.isnan(direction_table[f"{self.prefix}_tel_az"].data, dtype=bool)
             direction_table.add_column(
-                ~np.isnan(direction_table[f"{self.prefix}_tel_az"].data, dtype=bool),
+                direction_is_valid,
                 name=f"{self.prefix}_tel_is_valid",
             )
             # Add the default values and meta data to the table
@@ -681,6 +745,29 @@ class LST1PredictionTool(Tool):
                 self.output_path,
                 f"{DL2_TELESCOPE_GROUP}/geometry/{self.prefix}/tel_{self.tel_id:03d}",
             )
+            # Write the mono telescope prediction to the subarray prediction table
+            subarray_direction_table = direction_table.copy()
+            subarray_direction_table.remove_column("tel_id")
+            for colname in subarray_direction_table.colnames:
+                if "_tel_" in colname:
+                    subarray_direction_table.rename_column(
+                        colname, colname.replace("_tel", "")
+                    )
+            subarray_direction_table.add_column(
+                direction_is_valid[np.newaxis], name=f"{self.prefix}_telescopes"
+            )
+            # Save the prediction to the output file
+            write_table(
+                subarray_direction_table,
+                self.output_path,
+                f"{DL2_SUBARRAY_GROUP}/geometry/{self.prefix}",
+                overwrite=self.overwrite,
+            )
+            self.log.info(
+                "DL2 prediction data was stored in '%s' under '%s'",
+                self.output_path,
+                f"{DL2_SUBARRAY_GROUP}/geometry/{self.prefix}",
+            )
             # Adding the feature vectors for the arrival direction regression
             is_valid_col = ~np.isnan(
                 np.min(direction_fvs, axis=1), dtype=bool
@@ -694,7 +781,7 @@ class LST1PredictionTool(Tool):
                 fvs_shapes_list.append(
                     (
                         len(nonexample_identifiers),
-                        direction_fvs.shape[1],
+                        direction_fvs[0].shape[0],
                     )
                 )
         # Produce output table with NaNs for missing predictions
@@ -719,7 +806,7 @@ class LST1PredictionTool(Tool):
             feature_vector_table,
             self.output_path,
             f"{DL1_TELESCOPE_GROUP}/features/{self.prefix}/tel_{self.tel_id:03d}",
-            overwrite=self.overwrite_tables,
+            overwrite=self.overwrite,
         )
         self.log.info(
             "DL1 feature vectors was stored in '%s' under '%s'",
@@ -748,15 +835,10 @@ class LST1PredictionTool(Tool):
         if reference_location is None:
             reference_location = ctapipe_io_lst.constants.LST1_LOCATION
 
+        # Load the camera geometry from 'ctapipe_io_lst'
         camera_geom = ctapipe_io_lst.load_camera_geometry()
-        # Needs to be renamed  because the ImageMapper smooths the pixel positions
+        # Needs to be renamed because the ImageMapper smooths the pixel positions
         camera_geom.name = "RealLSTCam"
-        if self.transform_to_EngineeringCameraFrame:
-            camera_geom = camera_geom.transform_to(
-                EngineeringCameraFrame(
-                    focal_length=ctapipe_io_lst.OPTICS.effective_focal_length
-                )
-            )
         # get info on the camera readout:
         (
             daq_time_per_sample,
@@ -804,7 +886,7 @@ class LST1PredictionTool(Tool):
 
         return subarray
 
-    def _split_model(model):
+    def _split_model(self, model):
         """
         Split the model into backbone and head.
 

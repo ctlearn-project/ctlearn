@@ -40,7 +40,8 @@ class TrainCTLearnModel(Tool):
     ``~dl1_data_handler.loader.DLDataLoader``. The tool supports the following reconstruction tasks:
     - Classification of the primary particle type (gamma/proton)
     - Regression of the primary particle energy
-    - Regression of the primary particle arrival direction
+    - Regression of the primary particle arrival direction based on the offsets in camera coordinates
+    - Regression of the primary particle arrival direction based on the offsets in sky coordinates
     """
 
     name = "ctlearn-train-model"
@@ -65,14 +66,24 @@ class TrainCTLearnModel(Tool):
         --pattern-signal "gamma_*_run10.dl1.h5" \\
         --output /path/to/your/energy/ \\
         --reco energy \\
-    
-    To train a CTLearn model for the regression of the primary particle arrival direction:
+
+    To train a CTLearn model for the regression of the primary particle
+    arrival direction based on the offsets in camera coordinates:
     > ctlearn-train-model \\
         --signal /path/to/your/gammas_dl1_dir/ \\
         --pattern-signal "gamma_*_run1.dl1.h5" \\
         --pattern-signal "gamma_*_run10.dl1.h5" \\
         --output /path/to/your/direction/ \\
-        --reco direction \\
+        --reco cameradirection \\
+
+    To train a CTLearn model for the regression of the primary particle
+    arrival direction based on the offsets in sky coordinates:
+    > ctlearn-train-model \\
+        --signal /path/to/your/gammas_dl1_dir/ \\
+        --pattern-signal "gamma_*_run1.dl1.h5" \\
+        --pattern-signal "gamma_*_run10.dl1.h5" \\
+        --output /path/to/your/direction/ \\
+        --reco skydirection \\
     """
 
     input_dir_signal = Path(
@@ -140,13 +151,14 @@ class TrainCTLearnModel(Tool):
     ).tag(config=True)
 
     reco_tasks = List(
-        trait=CaselessStrEnum(["type", "energy", "direction"]),
+        trait=CaselessStrEnum(["type", "energy", "cameradirection", "skydirection"]),
         allow_none=False, 
         help=(
             "List of reconstruction tasks to perform. "
             "'type': classification of the primary particle type "
             "'energy': regression of the primary particle energy "
-            "'direction': regression of the primary particle arrival direction "
+            "'cameradirection': regression of the primary particle arrival direction in camera coordinates "
+            "'skydirection': regression of the primary particle arrival direction in sky coordinates"
         )
     ).tag(config=True)
 
@@ -501,11 +513,16 @@ class TrainCTLearnModel(Tool):
                 reduction="sum_over_batch_size"
             )
             metrics["energy"] = keras.metrics.MeanAbsoluteError(name="mae_energy")
-        if "direction" in self.reco_tasks:
-            losses["direction"] = keras.losses.MeanAbsoluteError(
+        if "cameradirection" in self.reco_tasks:
+            losses["cameradirection"] = keras.losses.MeanAbsoluteError(
                 reduction="sum_over_batch_size"
             )
-            metrics["direction"] = keras.metrics.MeanAbsoluteError(name="mae_direction")
+            metrics["cameradirection"] = keras.metrics.MeanAbsoluteError(name="mae_cameradirection")
+        if "skydirection" in self.reco_tasks:
+            losses["skydirection"] = keras.losses.MeanAbsoluteError(
+                reduction="sum_over_batch_size"
+            )
+            metrics["skydirection"] = keras.metrics.MeanAbsoluteError(name="mae_skydirection")
         return losses, metrics
 
 

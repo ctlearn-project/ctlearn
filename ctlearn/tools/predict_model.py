@@ -11,7 +11,7 @@ import keras
 
 from astropy import units as u
 from astropy.coordinates.earth import EarthLocation
-from astropy.coordinates import SkyCoord
+from astropy.coordinates import AltAz, SkyCoord
 from astropy.table import (
     Table,
     hstack,
@@ -25,6 +25,7 @@ from ctapipe.containers import (
     ReconstructedGeometryContainer,
     ReconstructedEnergyContainer,
 )
+from ctapipe.coordinates import CameraFrame, NominalFrame
 from ctapipe.core import Tool
 from ctapipe.core.tool import ToolConfigurationError
 from ctapipe.core.traits import (
@@ -42,11 +43,12 @@ from ctapipe.core.traits import (
 )
 from ctapipe.monitoring.interpolation import PointingInterpolator
 from ctapipe.io import read_table, write_table, HDF5Merger
+from ctapipe.reco.reconstructor import ReconstructionProperty
+from ctapipe.reco.stereo_combination import StereoCombiner
 from ctapipe.reco.utils import add_defaults_and_meta
 from dl1_data_handler.reader import (
     DLDataReader,
     ProcessType,
-    REFERENCE_LOCATION,
     LST_EPOCH,
 )
 from ctlearn.core.loader import DLDataLoader
@@ -107,8 +109,12 @@ class PredictCTLearnModel(Tool):
         Path to a Keras model file (Keras3) or directory (Keras2) for the classification of the primary particle type.
     load_energy_model_from : pathlib.Path
         Path to a Keras model file (Keras3) or directory (Keras2) for the regression of the primary particle energy.
-    load_direction_model_from : pathlib.Path
-        Path to a Keras model file (Keras3) or directory (Keras2) for the regression of the primary particle arrival direction.
+    load_cameradirection_model_from : pathlib.Path
+        Path to a Keras model file (Keras3) or directory (Keras2) for the regression
+        of the primary particle arrival direction based on camera coordinate offsets.
+    load_cameradirection_model_from : pathlib.Path
+        Path to a Keras model file (Keras3) or directory (Keras2) for the regression
+        of the primary particle arrival direction based on spherical coordinate offsets.
     output_path : pathlib.Path
         Output path to save the dl2 prediction results.
     overwrite_tables : bool
@@ -138,8 +144,14 @@ class PredictCTLearnModel(Tool):
         Predict the classification of the primary particle type.
     _predict_energy(example_identifiers)
         Predict the energy of the primary particle.
-    _predict_direction(example_identifiers)
-        Predict the arrival direction of the primary particle.
+    _predict_cameradirection(example_identifiers)
+        Predict the arrival direction of the primary particle based on camera coordinate offsets.
+    _predict_skydirection(example_identifiers)
+        Predict the arrival direction of the primary particle based on spherical coordinate offsets.
+    _transform_cam_coord_offsets_to_sky(table)
+        Transform to camera coordinate offsets w.r.t. the telescope pointing to Alt/Az coordinates.
+    _transform_spher_coord_offsets_to_sky(table)
+        Transform to spherical coordinate offsets w.r.t. the telescope pointing to Alt/Az coordinates.
     _create_nan_table(nonexample_identifiers, columns, shapes)
         Create a table with NaNs for missing predictions.
     _store_pointing(all_identifiers)
@@ -215,8 +227,8 @@ class PredictCTLearnModel(Tool):
     load_type_model_from = Path(
         default_value=None,
         help=(
-            "Path to a Keras model file (Keras3) or directory (Keras2) "
-            "for the classification of the primary particle type."
+            "Path to a Keras model file (Keras3) or directory (Keras2) for the classification "
+            "of the primary particle type."
         ),
         allow_none=True,
         exists=True,
@@ -227,8 +239,8 @@ class PredictCTLearnModel(Tool):
     load_energy_model_from = Path(
         default_value=None,
         help=(
-            "Path to a Keras model file (Keras3) or directory (Keras2) "
-            "for the regression of the primary particle energy."
+            "Path to a Keras model file (Keras3) or directory (Keras2) for the regression "
+            "of the primary particle energy."
         ),
         allow_none=True,
         exists=True,
@@ -236,11 +248,23 @@ class PredictCTLearnModel(Tool):
         file_ok=True,
     ).tag(config=True)
 
-    load_direction_model_from = Path(
+    load_cameradirection_model_from = Path(
         default_value=None,
         help=(
-            "Path to a Keras model file (Keras3) or directory (Keras2) "
-            "for the regression of the primary particle arrival direction."
+            "Path to a Keras model file (Keras3) or directory (Keras2) for the regression "
+            "of the primary particle arrival direction based on camera coordinate offsets."
+        ),
+        allow_none=True,
+        exists=True,
+        directory_ok=True,
+        file_ok=True,
+    ).tag(config=True)
+
+    load_skydirection_model_from = Path(
+        default_value=None,
+        help=(
+            "Path to a Keras model file (Keras3) or directory (Keras2) for the regression "
+            "of the primary particle arrival direction based on spherical coordinate offsets."
         ),
         allow_none=True,
         exists=True,
@@ -281,7 +305,11 @@ class PredictCTLearnModel(Tool):
         ("i", "input_url"): "PredictCTLearnModel.input_url",
         ("t", "type_model"): "PredictCTLearnModel.load_type_model_from",
         ("e", "energy_model"): "PredictCTLearnModel.load_energy_model_from",
-        ("d", "direction_model"): "PredictCTLearnModel.load_direction_model_from",
+        (
+            "d",
+            "cameradirection_model",
+        ): "PredictCTLearnModel.load_cameradirection_model_from",
+        ("s", "skydirection_model"): "PredictCTLearnModel.load_skydirection_model_from",
         ("o", "output"): "PredictCTLearnModel.output_path",
     }
 
@@ -576,66 +604,217 @@ class PredictCTLearnModel(Tool):
         energy_table.add_column(reco_energy, name=f"{self.prefix}_tel_energy")
         return energy_table, feature_vectors
 
-    def _predict_direction(self, example_identifiers):
+    def _predict_cameradirection(self, example_identifiers):
         """
-        Predict the arrival direction of the primary particle.
+        Predict the arrival direction of the primary particle based on camera coordinate offsets.
 
-        This method uses a pre-trained direction model to predict the arrival direction of the primary particle
-        for a given set of example identifiers. The predicted direction is then converted from spherical offset
-        to SkyCoord (alt, az) and added to the example identifiers table.
+        This method uses a pre-trained direction model to predict the arrival direction of the
+        primary particle for a given set of example identifiers. The predicted camera coordinate offsets
+        is added to the example identifiers table.
 
         Parameters:
         -----------
         example_identifiers : astropy.table.Table
-            Table containing the example identifiers with the telescope pointing information.
+            Table containing the example identifiers.
 
         Returns:
         --------
-        direction_table : astropy.table.Table
+        cameradirection_table : astropy.table.Table
             Table containing the example identifiers with an additional column for the
-            reconstructed direction in SkyCoord (alt, az). The telescope pointing information
-            is removed from the table.
+            reconstructed camera coordinate offsets in x and y.
         feature_vectors : np.ndarray
             Feature vectors extracted from the backbone model.
         """
         self.log.info(
-            "Predicting for the regression of the primary particle arrival direction..."
+            "Predicting for the regression of the primary particle arrival direction based on camera coordinate offsets..."
         )
         # Predict the data using the loaded direction_model
         predict_data, feature_vectors = self._predict_with_model(
-            self.load_direction_model_from
+            self.load_cameradirection_model_from
         )
-        # For the direction task, the prediction is the spherical offset (alt, az)
-        # from the telescope pointing. Convert reconstructed spherical offset (alt, az) to SkyCoord
-        reco_spherical_offset_az = u.Quantity(
-            predict_data["direction"].T[0], unit=u.deg
+        # For the direction task, the prediction is the camera coordinate offset in x and y
+        # from the telescope pointing.
+        cam_coord_offset_x = u.Quantity(predict_data["cameradirection"].T[0], unit=u.m)
+        cam_coord_offset_y = u.Quantity(predict_data["cameradirection"].T[1], unit=u.m)
+        # Create prediction table and add the reconstructed energy in TeV
+        cameradirection_table = example_identifiers.copy()
+        cameradirection_table.add_column(cam_coord_offset_x, name="cam_coord_offset_x")
+        cameradirection_table.add_column(cam_coord_offset_y, name="cam_coord_offset_y")
+        return cameradirection_table, feature_vectors
+
+    def _predict_skydirection(self, example_identifiers):
+        """
+        Predict the arrival direction of the primary particle based on spherical coordinate offsets.
+
+        This method uses a pre-trained direction model to predict the arrival direction of the primary
+        particle for a given set of example identifiers. The predicted spherical coordinate offsets is
+        added to the example identifiers table.
+
+        Parameters:
+        -----------
+        example_identifiers : astropy.table.Table
+            Table containing the example identifiers.
+
+        Returns:
+        --------
+        skydirection_table : astropy.table.Table
+            Table containing the example identifiers with an additional column for the
+            reconstructed spherical coordinate offsets in fov_lon and fov_lat.
+        feature_vectors : np.ndarray
+            Feature vectors extracted from the backbone model.
+        """
+        self.log.info(
+            "Predicting for the regression of the primary particle arrival direction based on spherical coordinate offsets..."
         )
-        reco_spherical_offset_alt = u.Quantity(
-            predict_data["direction"].T[1], unit=u.deg
+        # Predict the data using the loaded direction_model
+        predict_data, feature_vectors = self._predict_with_model(
+            self.load_skydirection_model_from
         )
-        # Create the prediction table
-        direction_table = example_identifiers.copy()
-        # Set the telescope pointing of the SkyOffsetSeparation tranformation
-        pointing_SkyCoord = SkyCoord(
-            direction_table["pointing_azimuth"],
-            direction_table["pointing_altitude"],
-            frame="altaz",
-            location=REFERENCE_LOCATION,
-            obstime=LST_EPOCH,
+        # For the direction task, the prediction is the spherical offset in fov_lon and fov_lat
+        # from the telescope pointing.
+        fov_lon = u.Quantity(predict_data["skydirection"].T[0], unit=u.deg)
+        fov_lat = u.Quantity(predict_data["skydirection"].T[1], unit=u.deg)
+        # Create prediction table and add the reconstructed energy in TeV
+        skydirection_table = example_identifiers.copy()
+        skydirection_table.add_column(fov_lon, name="fov_lon")
+        skydirection_table.add_column(fov_lat, name="fov_lat")
+        return skydirection_table, feature_vectors
+
+    def _transform_cam_coord_offsets_to_sky(self, table) -> Table:
+        """
+        Transform the predicted camera coordinate offsets w.r.t. the telescope pointing to Alt/Az coordinates.
+
+        This method converts the predicted camera coordinate offsets w.r.t. the telescope pointing
+        in the provided table to Alt/Az coordinates. It also removes the unnecessary columns
+        from the table that do not the ctapipe DL2 data format.
+
+        Parameters:
+        -----------
+        table : astropy.table.Table
+            A Table containing the trigger time, telescope pointing, and predicted camera coordinate offsets.
+
+        Returns:
+        --------
+        table : astropy.table.Table
+            A Table with the Alt/Az coordinates following the ctapipe DL2 data format.
+        """
+        # Get the telescope ID from the table
+        tel_id = table["tel_id"][0]
+        # Set the telescope position
+        tel_ground_frame = self.dl1dh_reader.subarray.tel_coords[
+            self.dl1dh_reader.subarray.tel_ids_to_indices(tel_id)
+        ]
+        # Set the trigger timestamp based on the process type
+        if self.dl1dh_reader.process_type == ProcessType.Simulation:
+            trigger_time = LST_EPOCH
+        elif self.dl1dh_reader.process_type == ProcessType.Observation:
+            trigger_time = table["time"]
+        # Set the telescope pointing with the trigger timestamp and the telescope position
+        altaz = AltAz(
+            location=tel_ground_frame.to_earth_location(),
+            obstime=trigger_time,
         )
-        # Keep only the necessary columns for the prediction table and remove the
-        # telescope pointings and trigger timestamps
-        direction_table.remove_columns(
-            ["pointing_azimuth", "pointing_altitude", "time"]
+        # Set the telescope pointing
+        tel_pointing = SkyCoord(
+            az=table["pointing_azimuth"],
+            alt=table["pointing_altitude"],
+            frame=altaz,
         )
-        # Calculate the reconstructed direction (alt, az) based on the telescope pointing
-        reco_direction = pointing_SkyCoord.spherical_offsets_by(
-            reco_spherical_offset_az, reco_spherical_offset_alt
-        ).to_table()
-        # Add the reconstructed direction (alt, az) to the prediction table
-        direction_table.add_column(reco_direction["alt"], name=f"{self.prefix}_tel_alt")
-        direction_table.add_column(reco_direction["az"], name=f"{self.prefix}_tel_az")
-        return direction_table, feature_vectors
+        # Set the camera frame with the focal length and rotation of the camera
+        camera_frame = CameraFrame(
+            focal_length=self.dl1dh_reader.subarray.tel[
+                tel_id
+            ].optics.equivalent_focal_length,
+            rotation=self.dl1dh_reader.pix_rotation[tel_id],
+            telescope_pointing=tel_pointing,
+        )
+        # Set the camera coordinate offset
+        cam_coord_offset = SkyCoord(
+            x=table["cam_coord_offset_x"],
+            y=table["cam_coord_offset_y"],
+            frame=camera_frame,
+        )
+        # tel_identifiers = tel_identifiers[tel_identifiers["tel_id"] == tel_id]
+        # Transform the true Alt/Az coordinates to camera coordinates
+        reco_direction = cam_coord_offset.transform_to(altaz)
+        # Add the reconstructed direction (az, alt) to the prediction table
+        table.add_column(reco_direction.az.to(u.deg), name=f"{self.prefix}_tel_az")
+        table.add_column(reco_direction.alt.to(u.deg), name=f"{self.prefix}_tel_alt")
+        # Remove unnecessary columns from the table that do not the ctapipe DL2 data format
+        table.remove_columns(
+            [
+                "time",
+                "pointing_azimuth",
+                "pointing_altitude",
+                "cam_coord_offset_x",
+                "cam_coord_offset_y",
+            ]
+        )
+        return table
+
+    def _transform_spher_coord_offsets_to_sky(self, table) -> Table:
+        """
+        Transform the predicted spherical offsets w.r.t. the telescope pointing to Alt/Az coordinates.
+
+        This method converts the predicted spherical offsets w.r.t. the telescope pointing
+        in the provided table to Alt/Az coordinates. It also removes the unnecessary columns
+        from the table that do not the ctapipe DL2 data format.
+
+        Parameters:
+        -----------
+        table : astropy.table.Table
+            A Table containing the trigger time, telescope pointing, and predicted spherical offsets.
+
+        Returns:
+        --------
+        table : astropy.table.Table
+            A Table with the Alt/Az coordinates following the ctapipe DL2 data format.
+        """
+
+        # Set the trigger timestamp based on the process type
+        if self.dl1dh_reader.process_type == ProcessType.Simulation:
+            trigger_time = LST_EPOCH
+        elif self.dl1dh_reader.process_type == ProcessType.Observation:
+            trigger_time = table["time"]
+        # Set the AltAz frame with the reference location and time
+        altaz = AltAz(
+            location=self.dl1dh_reader.subarray.reference_location,
+            obstime=trigger_time,
+        )
+        # Set the array pointing
+        array_pointing = SkyCoord(
+            az=table["pointing_azimuth"],
+            alt=table["pointing_altitude"],
+            frame=altaz,
+        )
+        # Set the nominal frame with the array pointing
+        nom_frame = NominalFrame(
+            origin=array_pointing,
+            location=self.dl1dh_reader.subarray.reference_location,
+            obstime=trigger_time,
+        )
+        # Set the reco direction in (alt, az) coordinates
+        reco_direction = SkyCoord(
+            fov_lon=table["fov_lon"],
+            fov_lat=table["fov_lat"],
+            frame=nom_frame,
+        )
+        # Transform the reco direction from nominal frame to the AltAz frame
+        sky_coord = reco_direction.transform_to(altaz)
+        # Add the reconstructed direction (az, alt) to the prediction table
+        table.add_column(reco_direction.az.to(u.deg), name=f"{self.prefix}_az")
+        table.add_column(reco_direction.alt.to(u.deg), name=f"{self.prefix}_alt")
+        # Remove unnecessary columns from the table that do not the ctapipe DL2 data format
+        table.remove_columns(
+            [
+                "time",
+                "pointing_azimuth",
+                "pointing_altitude",
+                "fov_lon",
+                "fov_lat",
+            ]
+        )
+        return table
 
     def _create_nan_table(self, nonexample_identifiers, columns, shapes):
         """
@@ -902,7 +1081,7 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
         --DLImageReader.image_mapper_type=BilinearMapper \\
         --type_model="/path/to/your/mono/type/ctlearn_model.cpk" \\
         --energy_model="/path/to/your/mono/energy/ctlearn_model.cpk" \\
-        --direction_model="/path/to/your/mono/direction/ctlearn_model.cpk" \\
+        --cameradirection_model="/path/to/your/mono/cameradirection/ctlearn_model.cpk" \\
         --dl1-features \\
         --use-HDF5Merger \\
         --no-dl1-images \\
@@ -918,7 +1097,7 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
         --DLWaveformReader.image_mapper_type=BilinearMapper \\
         --type_model="/path/to/your/mono_waveform/type/ctlearn_model.cpk" \\
         --energy_model="/path/to/your/mono_waveform/energy/ctlearn_model.cpk" \\
-        --direction_model="/path/to/your/mono_waveform/direction/ctlearn_model.cpk" \\
+        --cameradirection_model="/path/to/your/mono_waveform/cameradirection/ctlearn_model.cpk" \\
         --use-HDF5Merger \\
         --no-r0-waveforms \\
         --no-r1-waveforms \\
@@ -927,6 +1106,12 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
         --output output.dl2.h5 \\
         --PredictCTLearnModel.overwrite_tables=True \\
     """
+
+    stereo_combiner_cls = ComponentName(
+        StereoCombiner,
+        default_value="StereoMeanCombiner",
+        help="Which stereo combination method to use after the monoscopic reconstruction.",
+    ).tag(config=True)
 
     def start(self):
         self.log.info("Processing the telescope pointings...")
@@ -948,7 +1133,14 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
             pointing_info = super()._store_pointing(all_identifiers)
 
         self.log.info("Starting the prediction...")
+        classification_feature_vectors = None
         if self.load_type_model_from is not None:
+            self.type_stereo_combiner = StereoCombiner.from_name(
+                self.stereo_combiner_cls,
+                prefix=self.prefix,
+                property=ReconstructionProperty.PARTICLE_TYPE,
+                parent=self,
+            )
             # Predict the energy of the primary particle
             classification_table, classification_feature_vectors = (
                 super()._predict_classification(example_identifiers)
@@ -970,6 +1162,13 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                     ),
                     name=f"{self.prefix}_tel_is_valid",
                 )
+                # Add the default values and meta data to the table
+                add_defaults_and_meta(
+                    classification_table,
+                    ParticleClassificationContainer,
+                    prefix=self.prefix,
+                    add_tel_prefix=True,
+                )
                 for tel_id in self.dl1dh_reader.selected_telescopes[
                     self.dl1dh_reader.tel_type
                 ]:
@@ -977,13 +1176,6 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                     telescope_mask = classification_table["tel_id"] == tel_id
                     classification_tel_table = classification_table[telescope_mask]
                     classification_tel_table.sort(TELESCOPE_EVENT_KEYS)
-                    # Add the default values and meta data to the table
-                    add_defaults_and_meta(
-                        classification_tel_table,
-                        ParticleClassificationContainer,
-                        prefix=self.prefix,
-                        add_tel_prefix=True,
-                    )
                     # Save the prediction to the output file for the selected telescope
                     write_table(
                         classification_tel_table,
@@ -996,7 +1188,60 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                         self.output_path,
                         f"{DL2_TELESCOPE_GROUP}/classification/{self.prefix}/tel_{tel_id:03d}",
                     )
+            if self.dl2_subarray:
+                self.log.info("Processing and storing the subarray type prediction...")
+                # Combine the telescope predictions to the subarray prediction using the stereo combiner
+                subarray_classification_table = self.type_stereo_combiner.predict_table(
+                    classification_table
+                )
+                # TODO: Remove temporary fix once the stereo combiner returns correct table
+                # Check if the table has to be converted to a boolean mask
+                if (
+                    subarray_classification_table[f"{self.prefix}_telescopes"].dtype
+                    != np.bool_
+                ):
+                    # Create boolean mask for telescopes that participate in the stereo reconstruction combination
+                    reco_telescopes = np.zeros(
+                        (
+                            len(subarray_classification_table),
+                            len(self.dl1dh_reader.tel_ids),
+                        ),
+                        dtype=bool,
+                    )
+                    # Loop over the table and set the boolean mask for the telescopes
+                    for index, tel_id_mask in enumerate(
+                        subarray_classification_table[f"{self.prefix}_telescopes"]
+                    ):
+                        if not tel_id_mask:
+                            continue
+                        for tel_id in tel_id_mask:
+                            reco_telescopes[index][
+                                self.dl1dh_reader.subarray.tel_ids_to_indices(tel_id)
+                            ] = True
+                    # Overwrite the column with the boolean mask with fix length
+                    subarray_classification_table[f"{self.prefix}_telescopes"] = (
+                        reco_telescopes
+                    )
+                # Save the prediction to the output file
+                write_table(
+                    subarray_classification_table,
+                    self.output_path,
+                    f"{DL2_SUBARRAY_GROUP}/classification/{self.prefix}",
+                    overwrite=self.overwrite_tables,
+                )
+                self.log.info(
+                    "DL2 prediction data was stored in '%s' under '%s'",
+                    self.output_path,
+                    f"{DL2_SUBARRAY_GROUP}/classification/{self.prefix}",
+                )
+        energy_feature_vectors = None
         if self.load_energy_model_from is not None:
+            self.energy_stereo_combiner = StereoCombiner.from_name(
+                self.stereo_combiner_cls,
+                prefix=self.prefix,
+                property=ReconstructionProperty.ENERGY,
+                parent=self,
+            )
             # Predict the energy of the primary particle
             energy_table, energy_feature_vectors = super()._predict_energy(
                 example_identifiers
@@ -1017,6 +1262,13 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                     ),
                     name=f"{self.prefix}_tel_is_valid",
                 )
+                # Add the default values and meta data to the table
+                add_defaults_and_meta(
+                    energy_table,
+                    ReconstructedEnergyContainer,
+                    prefix=self.prefix,
+                    add_tel_prefix=True,
+                )
                 for tel_id in self.dl1dh_reader.selected_telescopes[
                     self.dl1dh_reader.tel_type
                 ]:
@@ -1024,13 +1276,6 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                     telescope_mask = energy_table["tel_id"] == tel_id
                     energy_tel_table = energy_table[telescope_mask]
                     energy_tel_table.sort(TELESCOPE_EVENT_KEYS)
-                    # Add the default values and meta data to the table
-                    add_defaults_and_meta(
-                        energy_tel_table,
-                        ReconstructedEnergyContainer,
-                        prefix=self.prefix,
-                        add_tel_prefix=True,
-                    )
                     # Save the prediction to the output file
                     write_table(
                         energy_tel_table,
@@ -1043,7 +1288,54 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                         self.output_path,
                         f"{DL2_TELESCOPE_GROUP}/energy/{self.prefix}/tel_{tel_id:03d}",
                     )
-        if self.load_direction_model_from is not None:
+            if self.dl2_subarray:
+                self.log.info(
+                    "Processing and storing the subarray energy prediction..."
+                )
+                # Combine the telescope predictions to the subarray prediction using the stereo combiner
+                subarray_energy_table = self.energy_stereo_combiner.predict_table(
+                    energy_table
+                )
+                # TODO: Remove temporary fix once the stereo combiner returns correct table
+                # Check if the table has to be converted to a boolean mask
+                if subarray_energy_table[f"{self.prefix}_telescopes"].dtype != np.bool_:
+                    # Create boolean mask for telescopes that participate in the stereo reconstruction combination
+                    reco_telescopes = np.zeros(
+                        (len(subarray_energy_table), len(self.dl1dh_reader.tel_ids)),
+                        dtype=bool,
+                    )
+                    # Loop over the table and set the boolean mask for the telescopes
+                    for index, tel_id_mask in enumerate(
+                        subarray_energy_table[f"{self.prefix}_telescopes"]
+                    ):
+                        if not tel_id_mask:
+                            continue
+                        for tel_id in tel_id_mask:
+                            reco_telescopes[index][
+                                self.dl1dh_reader.subarray.tel_ids_to_indices(tel_id)
+                            ] = True
+                    # Overwrite the column with the boolean mask with fix length
+                    subarray_energy_table[f"{self.prefix}_telescopes"] = reco_telescopes
+                # Save the prediction to the output file
+                write_table(
+                    subarray_energy_table,
+                    self.output_path,
+                    f"{DL2_SUBARRAY_GROUP}/energy/{self.prefix}",
+                    overwrite=self.overwrite_tables,
+                )
+                self.log.info(
+                    "DL2 prediction data was stored in '%s' under '%s'",
+                    self.output_path,
+                    f"{DL2_SUBARRAY_GROUP}/energy/{self.prefix}",
+                )
+        direction_feature_vectors = None
+        if self.load_cameradirection_model_from is not None:
+            self.geometry_stereo_combiner = StereoCombiner.from_name(
+                self.stereo_combiner_cls,
+                prefix=self.prefix,
+                property=ReconstructionProperty.GEOMETRY,
+                parent=self,
+            )
             # Join the prediction table with the telescope pointing table
             example_identifiers = join(
                 left=example_identifiers,
@@ -1051,35 +1343,44 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                 keys=TELESCOPE_EVENT_KEYS,
             )
             # Predict the arrival direction of the primary particle
-            direction_table, direction_feature_vectors = super()._predict_direction(
-                example_identifiers
+            direction_table, direction_feature_vectors = (
+                super()._predict_cameradirection(example_identifiers)
             )
+            direction_tel_tables = []
             if self.dl2_telescope:
-                # Produce output table with NaNs for missing predictions
-                if len(nonexample_identifiers) > 0:
-                    nan_table = super()._create_nan_table(
-                        nonexample_identifiers,
-                        columns=[f"{self.prefix}_tel_alt", f"{self.prefix}_tel_az"],
-                        shapes=[
-                            (len(nonexample_identifiers),),
-                            (len(nonexample_identifiers),),
-                        ],
-                    )
-                    direction_table = vstack([direction_table, nan_table])
-                # Add is_valid column to the direction table
-                direction_table.add_column(
-                    ~np.isnan(
-                        direction_table[f"{self.prefix}_tel_alt"].data, dtype=bool
-                    ),
-                    name=f"{self.prefix}_tel_is_valid",
-                )
                 for tel_id in self.dl1dh_reader.selected_telescopes[
                     self.dl1dh_reader.tel_type
                 ]:
                     # Retrieve the example identifiers for the selected telescope
                     telescope_mask = direction_table["tel_id"] == tel_id
                     direction_tel_table = direction_table[telescope_mask]
+                    direction_tel_table = super()._transform_cam_coord_offsets_to_sky(
+                        direction_tel_table
+                    )
+                    # Produce output table with NaNs for missing predictions
+                    nan_telescope_mask = nonexample_identifiers["tel_id"] == tel_id
+                    nonexample_identifiers_tel = nonexample_identifiers[
+                        nan_telescope_mask
+                    ]
+                    if len(nonexample_identifiers_tel) > 0:
+                        nan_table = super()._create_nan_table(
+                            nonexample_identifiers_tel,
+                            columns=[f"{self.prefix}_tel_alt", f"{self.prefix}_tel_az"],
+                            shapes=[
+                                (len(nonexample_identifiers_tel),),
+                                (len(nonexample_identifiers_tel),),
+                            ],
+                        )
+                        direction_tel_table = vstack([direction_tel_table, nan_table])
                     direction_tel_table.sort(TELESCOPE_EVENT_KEYS)
+                    # Add is_valid column to the direction table
+                    direction_tel_table.add_column(
+                        ~np.isnan(
+                            direction_tel_table[f"{self.prefix}_tel_alt"].data,
+                            dtype=bool,
+                        ),
+                        name=f"{self.prefix}_tel_is_valid",
+                    )
                     # Add the default values and meta data to the table
                     add_defaults_and_meta(
                         direction_tel_table,
@@ -1087,6 +1388,7 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                         prefix=self.prefix,
                         add_tel_prefix=True,
                     )
+                    direction_tel_tables.append(direction_tel_table)
                     # Save the prediction to the output file
                     write_table(
                         direction_tel_table,
@@ -1099,6 +1401,55 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                         self.output_path,
                         f"{DL2_TELESCOPE_GROUP}/geometry/{self.prefix}/tel_{tel_id:03d}",
                     )
+            if self.dl2_subarray:
+                self.log.info(
+                    "Processing and storing the subarray geometry prediction..."
+                )
+                # Stack the telescope tables to the subarray table
+                direction_tel_tables = vstack(direction_tel_tables)
+                # Sort the table by the telescope event keys
+                direction_tel_tables.sort(TELESCOPE_EVENT_KEYS)
+                # Combine the telescope predictions to the subarray prediction using the stereo combiner
+                subarray_direction_table = self.geometry_stereo_combiner.predict_table(
+                    direction_tel_tables
+                )
+                # TODO: Remove temporary fix once the stereo combiner returns correct table
+                # Check if the table has to be converted to a boolean mask
+                if (
+                    subarray_direction_table[f"{self.prefix}_telescopes"].dtype
+                    != np.bool_
+                ):
+                    # Create boolean mask for telescopes that participate in the stereo reconstruction combination
+                    reco_telescopes = np.zeros(
+                        (len(subarray_direction_table), len(self.dl1dh_reader.tel_ids)),
+                        dtype=bool,
+                    )
+                    # Loop over the table and set the boolean mask for the telescopes
+                    for index, tel_id_mask in enumerate(
+                        subarray_direction_table[f"{self.prefix}_telescopes"]
+                    ):
+                        if not tel_id_mask:
+                            continue
+                        for tel_id in tel_id_mask:
+                            reco_telescopes[index][
+                                self.dl1dh_reader.subarray.tel_ids_to_indices(tel_id)
+                            ] = True
+                    # Overwrite the column with the boolean mask with fix length
+                    subarray_direction_table[f"{self.prefix}_telescopes"] = (
+                        reco_telescopes
+                    )
+                # Save the prediction to the output file
+                write_table(
+                    subarray_direction_table,
+                    self.output_path,
+                    f"{DL2_SUBARRAY_GROUP}/geometry/{self.prefix}",
+                    overwrite=self.overwrite_tables,
+                )
+                self.log.info(
+                    "DL2 prediction data was stored in '%s' under '%s'",
+                    self.output_path,
+                    f"{DL2_SUBARRAY_GROUP}/geometry/{self.prefix}",
+                )
         # Create the feature vector table if the DL1 features are enabled
         if self.dl1_features:
             self.log.info("Processing and storing dl1 feature vectors...")
@@ -1141,32 +1492,29 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
         all_identifiers : astropy.table.Table
             Table containing the telescope pointing information.
         """
-
-        # Pointing table for the mono mode
-        pointing_info = self.dl1dh_reader.get_tel_pointing(
-            self.input_url, self.dl1dh_reader.tel_ids
-        )
-        pointing_info.rename_column("telescope_pointing_azimuth", "pointing_azimuth")
-        pointing_info.rename_column("telescope_pointing_altitude", "pointing_altitude")
-        # Join the prediction table with the telescope pointing table
-        pointing_info = join(
-            left=pointing_info,
-            right=all_identifiers,
-            keys=["obs_id", "tel_id"],
-        )
-        # TODO: use keep_order for astropy v7.0.0
-        pointing_info.sort(TELESCOPE_EVENT_KEYS)
         # Create the pointing table for each telescope
+        pointing_info = []
         for tel_id in self.dl1dh_reader.selected_telescopes[self.dl1dh_reader.tel_type]:
+            # Pointing table for the mono mode
+            tel_pointing = self.dl1dh_reader.get_tel_pointing(self.input_url, tel_id)
+            tel_pointing.rename_column("telescope_pointing_azimuth", "pointing_azimuth")
+            tel_pointing.rename_column(
+                "telescope_pointing_altitude", "pointing_altitude"
+            )
+            # Join the prediction table with the telescope pointing table
+            tel_pointing = join(
+                left=tel_pointing,
+                right=all_identifiers,
+                keys=["obs_id", "tel_id"],
+            )
+            # TODO: use keep_order for astropy v7.0.0
+            tel_pointing.sort(TELESCOPE_EVENT_KEYS)
             # Retrieve the example identifiers for the selected telescope
-            telescope_mask = pointing_info["tel_id"] == tel_id
-            tel_pointing_info = pointing_info[telescope_mask]
-            tel_pointing_info.sort(TELESCOPE_EVENT_KEYS)
             tel_pointing_table = Table(
                 {
-                    "time": tel_pointing_info["time"],
-                    "azimuth": tel_pointing_info["pointing_azimuth"],
-                    "altitude": tel_pointing_info["pointing_altitude"],
+                    "time": tel_pointing["time"],
+                    "azimuth": tel_pointing["pointing_azimuth"],
+                    "altitude": tel_pointing["pointing_altitude"],
                 }
             )
             write_table(
@@ -1180,6 +1528,8 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                 self.output_path,
                 f"{POINTING_GROUP}/tel_{tel_id:03d}",
             )
+            pointing_info.append(tel_pointing)
+        pointing_info = vstack(pointing_info)
         return pointing_info
 
 
@@ -1225,7 +1575,7 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
         --PredictCTLearnModel.stack_telescope_images=True \\
         --type_model="/path/to/your/stereo/type/ctlearn_model.cpk" \\
         --energy_model="/path/to/your/stereo/energy/ctlearn_model.cpk" \\
-        --direction_model="/path/to/your/stereo/direction/ctlearn_model.cpk" \\
+        --skydirection_model="/path/to/your/stereo/skydirection/ctlearn_model.cpk" \\
         --output output.dl2.h5 \\
         --PredictCTLearnModel.overwrite_tables=True \\
     """
@@ -1264,6 +1614,7 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
             pointing_info = super()._store_pointing(all_identifiers)
 
         self.log.info("Starting the prediction...")
+        classification_feature_vectors = None
         if self.load_type_model_from is not None:
             # Predict the energy of the primary particle
             classification_table, classification_feature_vectors = (
@@ -1312,7 +1663,7 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                     self.output_path,
                     f"{DL2_SUBARRAY_GROUP}/classification/{self.prefix}",
                 )
-
+        energy_feature_vectors = None
         if self.load_energy_model_from is not None:
             # Predict the energy of the primary particle
             energy_table, energy_feature_vectors = super()._predict_energy(
@@ -1360,7 +1711,8 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                     self.output_path,
                     f"{DL2_SUBARRAY_GROUP}/energy/{self.prefix}",
                 )
-        if self.load_direction_model_from is not None:
+        direction_feature_vectors = None
+        if self.load_skydirection_model_from is not None:
             # Join the prediction table with the telescope pointing table
             example_identifiers = join(
                 left=example_identifiers,
@@ -1368,15 +1720,19 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                 keys=SUBARRAY_EVENT_KEYS,
             )
             # Predict the arrival direction of the primary particle
-            direction_table, direction_feature_vectors = super()._predict_direction(
+            direction_table, direction_feature_vectors = super()._predict_skydirection(
                 example_identifiers
             )
             if self.dl2_subarray:
+                # Transform the spherical coordinate offsets to sky coordinates
+                direction_table = super()._transform_spher_coord_offsets_to_sky(
+                    direction_table
+                )
                 # Produce output table with NaNs for missing predictions
                 if len(nonexample_identifiers) > 0:
                     nan_table = super()._create_nan_table(
                         nonexample_identifiers,
-                        columns=[f"{self.prefix}_tel_alt", f"{self.prefix}_tel_az"],
+                        columns=[f"{self.prefix}_alt", f"{self.prefix}_az"],
                         shapes=[
                             (len(nonexample_identifiers),),
                             (len(nonexample_identifiers),),
@@ -1385,20 +1741,8 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                     direction_table = vstack([direction_table, nan_table])
                 # Add is_valid column to the direction table
                 direction_table.add_column(
-                    ~np.isnan(
-                        direction_table[f"{self.prefix}_tel_alt"].data, dtype=bool
-                    ),
-                    name=f"{self.prefix}_tel_is_valid",
-                )
-                # Rename the columns for the stereo mode
-                direction_table.rename_column(
-                    f"{self.prefix}_tel_alt", f"{self.prefix}_alt"
-                )
-                direction_table.rename_column(
-                    f"{self.prefix}_tel_az", f"{self.prefix}_az"
-                )
-                direction_table.rename_column(
-                    f"{self.prefix}_tel_is_valid", f"{self.prefix}_is_valid"
+                    ~np.isnan(direction_table[f"{self.prefix}_alt"].data, dtype=bool),
+                    name=f"{self.prefix}_is_valid",
                 )
                 direction_table.sort(SUBARRAY_EVENT_KEYS)
                 # Add the default values and meta data to the table

@@ -170,12 +170,19 @@ class DLDataLoader(Sequence):
                 )
         if "energy" in self.tasks:
             labels["energy"] = batch["log_true_energy"].data
-        if "direction" in self.tasks:
-            labels["direction"] = np.stack(
+        if "skydirection" in self.tasks:
+            labels["skydirection"] = np.stack(
                 (
-                    batch["spherical_offset_az"].data,
-                    batch["spherical_offset_alt"].data,
-                    batch["angular_separation"].data,
+                    batch["fov_lon"].data,
+                    batch["fov_lat"].data,
+                ),
+                axis=1,
+            )
+        if "cameradirection" in self.tasks:
+            labels["cameradirection"] = np.stack(
+                (
+                    batch["cam_coord_offset_x"].data,
+                    batch["cam_coord_offset_y"].data,
                 ),
                 axis=1,
             )
@@ -215,7 +222,8 @@ class DLDataLoader(Sequence):
         features, mono_feature_vectors, stereo_feature_vectors = [], [], []
         true_shower_primary_class = []
         log_true_energy = []
-        spherical_offset_az, spherical_offset_alt, angular_separation = [], [], []
+        fov_lon, fov_lat, angular_separation = [], [], []
+        cam_coord_offset_x, cam_coord_offset_y, cam_coord_distance = [], [], []
         for group_element in batch_grouped.groups:
             if "features" in batch.colnames:
                 if self.sort_by_intensity:
@@ -252,12 +260,16 @@ class DLDataLoader(Sequence):
                 )
             if "energy" in self.tasks:
                 log_true_energy.append(group_element["log_true_energy"].data[0])
-            if "direction" in self.tasks:
-                spherical_offset_az.append(group_element["spherical_offset_az"].data[0])
-                spherical_offset_alt.append(
-                    group_element["spherical_offset_alt"].data[0]
+            if "skydirection" in self.tasks:
+                fov_lon.append(group_element["fov_lon"].data[0])
+                fov_lat.append(
+                    group_element["fov_lat"].data[0]
                 )
-                angular_separation.append(group_element["angular_separation"].data[0])
+            if "cameradirection" in self.tasks:
+                cam_coord_offset_x.append(group_element["cam_coord_offset_x"].data)
+                cam_coord_offset_y.append(
+                    group_element["cam_coord_offset_y"].data
+                )
         # Store the labels in the labels dictionary
         if "type" in self.tasks:
             labels["type"] = to_categorical(
@@ -273,12 +285,19 @@ class DLDataLoader(Sequence):
                 )
         if "energy" in self.tasks:
             labels["energy"] = np.array(log_true_energy)
-        if "direction" in self.tasks:
-            labels["direction"] = np.stack(
+        if "skydirection" in self.tasks:
+            labels["skydirection"] = np.stack(
                 (
-                    np.array(spherical_offset_az),
-                    np.array(spherical_offset_alt),
-                    np.array(angular_separation),
+                    np.array(fov_lon),
+                    np.array(fov_lat),
+                ),
+                axis=1,
+            )
+        if "cameradirection" in self.tasks:
+            labels["cameradirection"] = np.stack(
+                (
+                    np.array(cam_coord_offset_x),
+                    np.array(cam_coord_offset_y),
                 ),
                 axis=1,
             )
