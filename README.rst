@@ -47,7 +47,7 @@ necessary package channels, and install CTLearn specified version and its depend
 
 This should automatically install all dependencies (NOTE: this may take some time, as by default MKL is included as a dependency of NumPy and it is very large).
 
-For working on the IT-cluster, please do not forget to update your `LD_LIBRARY_PATH` to include the necessary paths. For example, you can add the following line to your :bash:`.bashrc` file:
+For working on the IT-cluster, please do not forget to update your `LD_LIBRARY_PATH` to include the necessary paths. For example, you can add the following line to your :bash:'.bashrc' file:
 :bash:`export LD_LIBRARY_PATH=/to/your/.conda/envs/ctlearn/lib:/fefs/aswg/workspace/tjark.miener/cudnn-linux-x86_64-8.9.2.26_cuda11-archive/lib:/fefs/aswg/workspace/tjark.miener/cudnn-linux-x86_64-8.9.7.29_cuda12-archive/lib:$LD_LIBRARY_PATH`
 Note: You would need to replace the `/to/your/.conda/envs/ctlearn/lib` with the path to your conda environment where ctlearn is installed. `cudnn-linux-x86_64-8.9.2.26_cuda11-archive` and `cudnn-linux-x86_64-8.9.7.29_cuda12-archive` are the paths to the cuDNN libraries for CUDA 11 and CUDA 12, respectively.
 
