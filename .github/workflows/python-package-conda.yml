@@ -9,63 +9,6 @@ on:
   pull_request:
 
 jobs:
-   pypi-publish:
-      name: Publish release to PyPI
-      environment:
-        name: pypi 
-        url: https://pypi.org/project/ctlearn/
-      permissions:
-        id-token: write
-      strategy:
-        matrix:
-          os: [ubuntu-22.04]
-          pyv: ['3.10']
-        max-parallel: 5
-      runs-on: ${{ matrix.os }}
-      steps:
-      - uses: actions/checkout@v4
-      - name: Set up Python ${{ matrix.pyv }}
-        run: |
-          conda install -y python=${{ matrix.pyv }}
-          
-      - name: Add conda to system path
-        run: |
-          #$CONDA is an environment variable pointing to the root of the miniconda directory
-          echo $CONDA/bin >> $GITHUB_PATH 
-          
-      - name: Install dependencies
-        run: |
-          conda env update --file environment.yml --name base 
-          
-      - name: Get version
-        run: |
-          output=$(python ctlearn/versionScript.py)
-          echo "version=$output" >> $GITHUB_OUTPUT
-        id: step1  
-        
-      - name: Write
-        uses: 1arp/create-a-file-action@0.4.5
-        with:
-          path: '.'
-          isAbsolutePath: true
-          file: '.github/versionBackup.txt'
-          content: |
-            ${{ steps.step1.outputs.version }}
-            
-      - name: Push changes    
-        run: |
-          git config --global user.email "rcervino@ucm.es"
-          git config --global user.name "rcervinoucm"
-          git status
-          git add .
-          git commit -m "version update" --allow-empty
-          git push -u origin master   
-          
-      - name: Build package
-        run: |
-          python setup.py sdist bdist_wheel  # Could also be python -m build
-      - name: Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
   build:
     strategy:
       matrix:
