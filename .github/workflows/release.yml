@@ -26,7 +26,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
-        fetch-tags: 'True'
+        fetch-tags: 'true'
     - name: Set up Python ${{ matrix.pyv }}
       run: |
         conda install -y python=${{ matrix.pyv }}
