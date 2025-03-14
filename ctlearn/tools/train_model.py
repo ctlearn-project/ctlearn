@@ -387,6 +387,7 @@ class TrainCTLearnModel(Tool):
             self.model = CTLearnModel.from_name(
                 self.model_type,
                 input_shape=self.training_loader.input_shape,
+                neighbor_dict=self.training_loader.neighbor_dict,
                 tasks=self.reco_tasks,
                 parent=self,
             ).model
