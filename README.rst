@@ -1,146 +1,62 @@
+DL1 Data Handler
+================
 
-CTLearn: Deep Learning for IACT Event Reconstruction
-====================================================
 
-.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11475531.svg
-   :target: https://doi.org/10.5281/zenodo.11475531
+.. image:: https://zenodo.org/badge/72042185.svg
+   :target: https://zenodo.org/badge/latestdoi/72042185
    :alt: DOI
 
 
+.. image:: https://anaconda.org/ctlearn-project/dl1_data_handler/badges/version.svg
+   :target: https://anaconda.org/ctlearn-project/dl1_data_handler/
+   :alt: Anaconda-Server Badge
 
-.. image:: https://img.shields.io/pypi/v/ctlearn
-    :target: https://pypi.org/project/ctlearn/
+
+.. image:: https://img.shields.io/pypi/v/dl1-data-handler
+    :target: https://pypi.org/project/dl1-data-handler/
     :alt: Latest Release
 
-.. image:: https://github.com/ctlearn-project/ctlearn/actions/workflows/python-package-conda.yml/badge.svg
-    :target: https://github.com/ctlearn-project/ctlearn/actions/workflows/python-package-conda.yml
+
+.. image:: https://github.com/cta-observatory/dl1-data-handler/actions/workflows/python-package-conda.yml/badge.svg
+    :target: https://github.com/cta-observatory/dl1-data-handler/actions/workflows/python-package-conda.yml
     :alt: Continuos Integration
-    
-.. image:: images/CTLearnTextCTinBox_WhiteBkgd.png
-   :target: images/CTLearnTextCTinBox_WhiteBkgd.png
-   :alt: CTLearn Logo
+
+A package of utilities for reading, and applying image processing to `Cherenkov Telescope Array Observatory (CTAO) <https://www.ctao.org/>`_ R1/DL0/DL1 data in a standardized format. Created primarily for testing machine learning image analysis techniques on IACT data.
+
+Currently supports ctapipe v6.0.0 data format. 
+
+Previously named image-extractor (v0.1.0 - v0.6.0). Currently under development, intended for internal use only.
 
 
-CTLearn is a package under active development to run deep learning models to analyze data from all major current and future arrays of imaging atmospheric Cherenkov telescopes (IACTs). CTLearn can load R1/DL0/DL1 data from `CTAO <https://www.cta-observatory.org/>`_ (Cherenkov Telescope Array Observatory), `FACT <https://www.isdc.unige.ch/fact/>`_\ , `H.E.S.S. <https://www.mpi-hd.mpg.de/hfm/HESS/>`_\ , `LST-1 <https://www.lst1.iac.es/>`_\ , `MAGIC <https://magic.mpp.mpg.de/>`_\ , and `VERITAS <https://veritas.sao.arizona.edu/>`_ telescopes reduced by `ctapipe <https://github.com/cta-observatory/ctapipe>`_ and processed by `DL1DataHandler <https://github.com/cta-observatory/dl1-data-handler>`_.
+Installation
+------------
 
-* Code, feature requests, bug reports, pull requests: https://github.com/ctlearn-project/ctlearn
-* Documentation: https://ctlearn.readthedocs.io
-* License: BSD-3
+The following installation method (for Linux) is recommended:
 
-Installation for users
-----------------------
+Installing as a conda package
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Download and install `Anaconda <https://www.anaconda.com/download/>`_\ , or, for a minimal installation, `Miniconda <https://conda.io/miniconda.html>`_.
+To install dl1-data-handler as a conda package, first install Anaconda by following the instructions here: https://www.anaconda.com/distribution/.
 
 The following command will set up a conda virtual environment, add the
-necessary package channels, and install CTLearn specified version and its dependencies:
+necessary package channels, and install dl1-data-handler specified version and its dependencies:
 
 .. code-block:: bash
 
-   CTLEARN_VER=0.10.0
-   wget https://raw.githubusercontent.com/ctlearn-project/ctlearn/v$CTLEARN_VER/environment.yml
+   DL1DH_VER=0.14.1
+   wget https://raw.githubusercontent.com/cta-observatory/dl1-data-handler/v$DL1DH_VER/environment.yml
    conda env create -n [ENVIRONMENT_NAME] -f environment.yml
    conda activate [ENVIRONMENT_NAME]
-   pip install ctlearn==$CTLEARN_VER
-   ctlearn -h
-
+   conda install -c ctlearn-project dl1_data_handler=$DL1DH_VER
 
 This should automatically install all dependencies (NOTE: this may take some time, as by default MKL is included as a dependency of NumPy and it is very large).
 
-For working on the IT-cluster, please do not forget to update your `LD_LIBRARY_PATH` to include the necessary paths.
-Note: You would need to replace the `/to/your/.conda/envs/ctlearn/lib` with the path to your conda environment where ctlearn is installed. `cudnn-linux-x86_64-8.9.2.26_cuda11-archive` and `cudnn-linux-x86_64-8.9.7.29_cuda12-archive` are the paths to the cuDNN libraries for CUDA 11 and CUDA 12, respectively.
 
-See the documentation for further information like `installation instructions for developers <https://ctlearn.readthedocs.io/en/latest/installation.html#installing-with-pip-setuptools-from-source-for-development>`_, `package usage <https://ctlearn.readthedocs.io/en/stable/usage.html>`_, and `dependencies <https://ctlearn.readthedocs.io/en/stable/installation.html#dependencies>`_ among other topics.
-
-Citing this software
---------------------
-
-Please cite the corresponding version using the DOIs below if this software package is used to produce results for any publication:
-
-.. |zendoi080| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11475531.svg
-   :target: https://doi.org/10.5281/zenodo.11475531
-
-* 0.8.0 : |zendoi080|
-
-Team
-----
-
-.. list-table::
-   :header-rows: 1
-
-   * - .. image:: https://github.com/aribrill.png?size=100
-        :target: https://github.com/aribrill
-        :alt: Ari Brill
-     
-     - .. image:: https://github.com/bryankim96.png?size=100
-        :target: https://github.com/bryankim96
-        :alt: Bryan Kim
-     
-     - .. image:: https://github.com/TjarkMiener.png?size=100
-        :target: https://github.com/TjarkMiener
-        :alt: Tjark Miener
-     
-     - .. image:: https://github.com/nietootein.png?size=100
-        :target: https://github.com/nietootein
-        :alt: Daniel Nieto
-     
-   * - `Ari Brill <https://github.com/aribrill>`_
-     - `Bryan Kim <https://github.com/bryankim96>`_
-     - `Tjark Miener <https://github.com/TjarkMiener>`_
-     - `Daniel Nieto <https://github.com/nietootein>`_
+Links
+-----
 
 
-Collaborators
--------------
+* `Cherenkov Telescope Array Observatory (CTAO) <https://www.ctao.org/>`_ - Homepage of the CTA Observatory
+* `CTLearn <https://github.com/ctlearn-project/ctlearn/>`_ and `GammaLearn <https://gitlab.lapp.in2p3.fr/GammaLearn/GammaLearn>`_ - Repository of code for studies on applying deep learning to IACT analysis tasks. Maintained by groups at Universidad Complutense de Madrid, University of Geneva (CTLearn) and LAPP (GammaLearn).
+* `ctapipe <https://cta-observatory.github.io/ctapipe/>`_ - Official documentation for the ctapipe analysis package (in development)
 
-.. list-table::
-   :header-rows: 1
-
-   * - .. image:: https://github.com/qi-feng.png?size=100
-        :target: https://github.com/qi-feng
-        :alt: Qi Feng
-
-     - .. image:: https://github.com/rlopezcoto.png?size=100
-        :target: https://github.com/rlopezcoto
-        :alt: Ruben Lopez-Coto
-
-   * - `Qi Feng <https://github.com/qi-feng>`_
-     - `Ruben Lopez-Coto <https://github.com/rlopezcoto>`_
-
-
-Alumni
-------
-
-.. list-table::
-   :header-rows: 1
-
-   * - .. image:: https://github.com/Jsevillamol.png?size=100
-        :target: https://github.com/Jsevillamol
-        :alt: Jaime Sevilla
-     
-     - .. image:: https://github.com/hrueda25.png?size=100
-        :target: https://github.com/hrueda25
-        :alt: Héctor Rueda
-     
-     - .. image:: https://github.com/jredondopizarro.png?size=100
-        :target: https://github.com/jredondopizarro
-        :alt: Juan Redondo Pizarro
-     
-     - .. image:: https://github.com/LucaRomanato.png?size=100
-        :target: https://github.com/LucaRomanato
-        :alt: LucaRomanato
-     
-     - .. image:: https://github.com/sahilyadav27.png?size=100
-        :target: https://github.com/sahilyadav27
-        :alt: Sahil Yadav
-     
-     - .. image:: https://github.com/sgh14.png?size=100
-        :target: https://github.com/sgh14
-        :alt: Sergio García Heredia
-     
-   * - `Jaime Sevilla <https://github.com/Jsevillamol>`_
-     - `Héctor Rueda <https://github.com/hrueda25>`_
-     - `Juan Redondo Pizarro <https://github.com/jredondopizarro>`_
-     - `Luca Romanato <https://github.com/LucaRomanato>`_
-     - `Sahil Yadav <https://github.com/sahilyadav27>`_
-     - `Sergio García Heredia <https://github.com/sgh14>`_
