@@ -363,97 +363,59 @@ class SingleCNN(CTLearnModel):
        
 
 class HexConvLayer(keras.layers.Layer):
-    """
-    Custom Hexagonal Convolution Layer.
+    """Custom Hexagonal Convolution Layer."""
 
-    This layer performs convolution on hexagonal grids using a neighbor dictionary.
-    """
-
-    def __init__(self, filters, activation="relu", neighbor_dict=None, **kwargs):
-        super(HexConvLayer, self).__init__(**kwargs)
+    def __init__(self, filters, neighbor_dict, activation="relu", **kwargs):
+        super().__init__(**kwargs)
         self.filters = filters
-        self.activation = keras.activations.get(activation)
         self.neighbor_dict = neighbor_dict  # Dictionary mapping each pixel to its neighbors
+        self.activation = keras.activations.get(activation)
 
     def build(self, input_shape):
-        num_pixels = input_shape[-2]  # Assuming shape (batch, pixels, features)
-        num_features = input_shape[-1]
-
-        # Learnable weights for each neighbor influence
         self.kernel = self.add_weight(
-            shape=(num_features, self.filters),  # (filters, input features)
+            shape=(input_shape[-1], self.filters),
             initializer="glorot_uniform",
             trainable=True,
         )
 
     def call(self, inputs):
-        batch_size, num_pixels, num_features = tf.shape(inputs)[0], tf.shape(inputs)[1], tf.shape(inputs)[2]
-        output = tf.zeros((batch_size, num_pixels, self.filters))
+        batch_size = tf.shape(inputs)[0]
+        num_pixels = tf.shape(inputs)[1]
 
-        # Apply convolution using the neighbor dictionary
+        output = tf.zeros([batch_size, num_pixels, self.filters])
+
         for i in range(num_pixels):
             neighbors = self.neighbor_dict.get(i, [])
-            neighbor_values = tf.gather(inputs, neighbors, axis=1)  # Gather neighbor features
-            aggregated = tf.reduce_mean(neighbor_values, axis=1)  # Average pooling over neighbors
-            output = tf.tensor_scatter_nd_add(output, [[0, i]], tf.expand_dims(aggregated @ self.kernel, axis=0))
+            if neighbors:
+                neighbor_features = tf.gather(inputs, neighbors, axis=1)
+                aggregated = tf.reduce_mean(neighbor_features, axis=1)
+                output = tf.tensor_scatter_nd_add(output, [[0, i]], tf.expand_dims(aggregated @ self.kernel, axis=1))
 
         return self.activation(output)
 
 
-class HexCNN(CTLearnModel):
-    """
-    HexCNN: A CNN using hexagonal convolutions.
+class HexCNN(keras.Model):
+    """Hexagonal CNN Model for (7987, 2) input data."""
 
-    This model replaces traditional Conv2D layers with HexConvLayer, which
-    applies hexagonal convolutions using a neighbor dictionary.
-    """
+    def __init__(self, neighbor_dict, num_classes=2, use_batchnorm=False):
+        super().__init__()
+        self.input_layer = Input(shape=(7987, 2))
+        self.conv1 = HexConvLayer(filters=32, neighbor_dict=neighbor_dict)
+        self.conv2 = HexConvLayer(filters=64, neighbor_dict=neighbor_dict)
+        self.global_pool = GlobalAveragePooling1D()
+        self.dense = Dense(num_classes, activation="softmax")
+        self.use_batchnorm = use_batchnorm
+        if self.use_batchnorm:
+            self.batch_norm = BatchNormalization()
 
-    name = Unicode("HexCNN", help="Name of the model backbone.").tag(config=True)
-
-    architecture = List(
-        trait=Dict(),
-        default_value=[{"filters": 32, "number": 1}, {"filters": 64, "number": 1}],
-        allow_none=False,
-        help="List of dicts containing number of filters and repetitions.",
-    ).tag(config=True)
-
-    batchnorm = Bool(default_value=False, help="Apply batch normalization.").tag(config=True)
-
-    def __init__(self, input_shape, tasks, config=None, parent=None, **kwargs):
-        super().__init__(config=config, parent=parent, **kwargs)
-        self.neighbor_dict = neighbor_dict  # Dictionary with pixel neighbors
-
-        # Validate architecture
-        for layer in self.architecture:
-            validate_trait_dict(layer, ["filters", "number"])
-
-        self.backbone_model, self.input_layer = self._build_backbone(input_shape)
-        backbone_output = self.backbone_model(self.input_layer)
-
-        validate_trait_dict(self.head_layers, tasks)
-        validate_trait_dict(self.head_activation_function, tasks)
-
-        self.logits = build_fully_connect_head(backbone_output, self.head_layers, self.head_activation_function, tasks)
-        self.model = keras.Model(self.input_layer, self.logits, name="HexCNN_model")
-
-    def _build_backbone(self, input_shape):
-        network_input = keras.Input(input_shape, name="input")
-        x = network_input
-
-        if self.batchnorm:
-            x = keras.layers.BatchNormalization(momentum=0.99)(x)
-
-        for i, layer in enumerate(self.architecture):
-            for _ in range(layer["number"]):
-                x = HexConvLayer(filters=layer["filters"], neighbor_dict=self.neighbor_dict)(x)
-            if self.batchnorm:
-                x = keras.layers.BatchNormalization(momentum=0.99)(x)
-
-        network_output = keras.layers.GlobalAveragePooling1D()(x)
-        backbone_model = keras.Model(network_input, network_output, name=self.name + "_backbone")
-
-        return backbone_model, network_input
-
+    def call(self, inputs):
+        x = self.conv1(inputs)
+        if self.use_batchnorm:
+            x = self.batch_norm(x)
+        x = self.conv2(x)
+        x = self.global_pool(x)
+        return self.dense(x)
+        
 class ResNet(CTLearnModel):
     """
     ``ResNet`` is a residual neural network model.
