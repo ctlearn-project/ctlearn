@@ -27,8 +27,6 @@ jobs:
     - uses: actions/checkout@v4
       with:
         ref: 'v0.10.0'
-        fetch-tags: 'true'
-        fetch-depth: 0
     - name: Set up Python ${{ matrix.pyv }}
       run: |
         conda install -y python=${{ matrix.pyv }}
