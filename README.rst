@@ -6,8 +6,6 @@ CTLearn: Deep Learning for IACT Event Reconstruction
    :target: https://doi.org/10.5281/zenodo.11475531
    :alt: DOI
 
-
-
 .. image:: https://img.shields.io/pypi/v/ctlearn
     :target: https://pypi.org/project/ctlearn/
     :alt: Latest Release
@@ -37,7 +35,7 @@ necessary package channels, and install CTLearn specified version and its depend
 
 .. code-block:: bash
 
-   CTLEARN_VER=0.10.0
+   CTLEARN_VER=0.10.1
    wget https://raw.githubusercontent.com/ctlearn-project/ctlearn/v$CTLEARN_VER/environment.yml
    conda env create -n [ENVIRONMENT_NAME] -f environment.yml
    conda activate [ENVIRONMENT_NAME]
@@ -47,10 +45,6 @@ necessary package channels, and install CTLearn specified version and its depend
 
 This should automatically install all dependencies (NOTE: this may take some time, as by default MKL is included as a dependency of NumPy and it is very large).
 
-For working on the IT-cluster, please do not forget to update your `LD_LIBRARY_PATH` to include the necessary paths. For example, you can add the following line to your `:bash:`.bashrc`` file:
-`:bash:`export LD_LIBRARY_PATH=/to/your/.conda/envs/ctlearn/lib:/fefs/aswg/workspace/tjark.miener/cudnn-linux-x86_64-8.9.2.26_cuda11-archive/lib:/fefs/aswg/workspace/tjark.miener/cudnn-linux-x86_64-8.9.7.29_cuda12-archive/lib:$LD_LIBRARY_PATH``
-Note: You would need to replace the `/to/your/.conda/envs/ctlearn/lib` with the path to your conda environment where ctlearn is installed. `cudnn-linux-x86_64-8.9.2.26_cuda11-archive` and `cudnn-linux-x86_64-8.9.7.29_cuda12-archive` are the paths to the cuDNN libraries for CUDA 11 and CUDA 12, respectively.
-
 See the documentation for further information like `installation instructions for developers <https://ctlearn.readthedocs.io/en/latest/installation.html#installing-with-pip-setuptools-from-source-for-development>`_, `package usage <https://ctlearn.readthedocs.io/en/stable/usage.html>`_, and `dependencies <https://ctlearn.readthedocs.io/en/stable/installation.html#dependencies>`_ among other topics.
 
 Citing this software
@@ -58,10 +52,10 @@ Citing this software
 
 Please cite the corresponding version using the DOIs below if this software package is used to produce results for any publication:
 
-.. |zendoi080| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11475531.svg
-   :target: https://doi.org/10.5281/zenodo.11475531
+.. |zendoi0100| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.15021424.svg
+   :target: https://doi.org/10.5281/zenodo.15021424
 
-* 0.8.0 : |zendoi080|
+* 0.10.0 : |zendoi0100|
 
 Team
 ----

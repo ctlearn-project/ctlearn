@@ -12,7 +12,7 @@ necessary package channels, and install CTLearn specified version and its depend
 
 .. code-block:: bash
 
-   CTLEARN_VER=0.6.2
+   CTLEARN_VER=0.10.1
    wget https://raw.githubusercontent.com/ctlearn-project/ctlearn/v$CTLEARN_VER/environment.yml
    conda env create -n [ENVIRONMENT_NAME] -f environment.yml
    conda activate [ENVIRONMENT_NAME]
@@ -22,6 +22,9 @@ necessary package channels, and install CTLearn specified version and its depend
 
 This should automatically install all dependencies (NOTE: this may take some time, as by default MKL is included as a dependency of NumPy and it is very large).
 
+For working on the IT-cluster, please do not forget to update your LD_LIBRARY_PATH to include the necessary paths. For example, you can add the following line to your .bashrc file:
+export LD_LIBRARY_PATH=/to/your/.conda/envs/ctlearn/lib:/fefs/aswg/workspace/tjark.miener/cudnn-linux-x86_64-8.9.2.26_cuda11-archive/lib:/fefs/aswg/workspace/tjark.miener/cudnn-linux-x86_64-8.9.7.29_cuda12-archive/lib:$LD_LIBRARY_PATH
+Note: You would need to replace the /to/your/.conda/envs/ctlearn/lib with the path to your conda environment where ctlearn is installed. cudnn-linux-x86_64-8.9.2.26_cuda11-archive and cudnn-linux-x86_64-8.9.7.29_cuda12-archive are the paths to the cuDNN libraries for CUDA 11 and CUDA 12, respectively.
 
 Installing with pip/setuptools from source for development
 ----------------------------------------------------------
@@ -44,7 +47,7 @@ Finally, install CTLearn into the new conda environment via pypi:
 .. code-block:: bash
 
    conda activate ctlearn
-   pip install ctlearn==0.6.2
+   pip install ctlearn==0.10.1
 
 or with pip from source:
 
@@ -60,16 +63,15 @@ NOTE for developers: If you wish to fork/clone the repository and edit the code,
 Dependencies
 ------------
 
-* Python>=3.9
-* TensorFlow>=2.9
-* tf2onnx>=1.12
-* ctapipe==0.16.0
+* Python>=3.10
+* TensorFlow>=2.14,<2.15
+* ctapipe>=0.22.0
 * ctaplot
-* DL1DataHandler==0.10.8
-* numba>=0.56.2
+* DL1DataHandler>=0.14.1
+* numba
 * NumPy
 * PyYAML
-* pyirf>=0.7
+* pyirf
 * Pandas
 * Libraries used only in plotting scripts (optional)
 

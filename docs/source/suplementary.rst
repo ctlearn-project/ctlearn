@@ -2,6 +2,7 @@
 Supplementary scripts
 =====================
 
+* **overwrite_table.py** Overwrite a table in a ctapipe hdf5 file with another table. 
 * **run_ctlearn_on_Wilkes3.sh** Launch CTLearn runs on Wilkes-3 via Slurm workload manager. 
 * **plot_classifier_values.py** Plot a histogram of gamma/hadron classification values from a CTLearn predictions file.
 * **plot_roc_curves.py** Plot gamma/hadron classification ROC curves from a list of CTLearn predictions files.
