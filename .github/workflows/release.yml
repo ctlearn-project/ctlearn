@@ -2,7 +2,7 @@ name: Release CD
 
 on:
   release:
-    types: [published]
+   types: [published]
 
 jobs:
   pypi-publish:
@@ -12,6 +12,11 @@ jobs:
       url: https://pypi.org/project/ctlearn/
     permissions:
       id-token: write
+      contents: write
+      deployments: write
+      statuses: write
+      actions: write
+      checks: read
     strategy:
       matrix:
         os: [ubuntu-22.04]
@@ -33,35 +38,14 @@ jobs:
       run: |
         conda env update --file environment.yml --name base 
         
-    - name: Get version
-      run: |
-        output=$(python ctlearn/versionScript.py)
-        echo "version=$output" >> $GITHUB_OUTPUT
-      id: step1  
-      
-    - name: Write
-      uses: 1arp/create-a-file-action@0.4.5
-      with:
-        path: '.'
-        isAbsolutePath: true
-        file: '.github/versionBackup.txt'
-        content: |
-          ${{ steps.step1.outputs.version }}
-          
-    - name: Push changes    
-      run: |
-        git config --global user.email "rcervino@ucm.es"
-        git config --global user.name "rcervinoucm"
-        git status
-        git add .
-        git commit -m "version update" --allow-empty
-        git push -u origin master   
-        
     - name: Build package
       run: |
-        python setup.py sdist bdist_wheel  # Could also be python -m build
+        python --version
+        pip install -U build
+        python -m build
     - name: Publish package distributions to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
+
 
   condapublish:
     strategy:
@@ -91,30 +75,6 @@ jobs:
       run: |
         conda env update --file environment.yml --name base
         sudo apt-get install python3-numpy
-        
-    - name: Get version
-      run: |
-        output=$(python ctlearn/versionScript.py)
-        echo "version=$output" >> $GITHUB_OUTPUT
-      id: step1  
-      
-    - name: Write
-      uses: 1arp/create-a-file-action@0.4.5
-      with:
-        path: '.'
-        isAbsolutePath: true
-        file: '.github/versionBackup.txt'
-        content: |
-          ${{ steps.step1.outputs.version }}
-          
-    - name: Push changes    
-      run: |
-        git config --global user.email "rcervino@ucm.es"
-        git config --global user.name "rcervinoucm"
-        git status
-        git add .
-        git commit -m "version update" --allow-empty
-        git push -u origin master
         
     - name: publish-to-conda
       uses: fcakyon/conda-publish-action@v1.3
