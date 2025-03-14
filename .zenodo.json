@@ -7,19 +7,23 @@
     ],
     "contributors": [
         {
+            "affiliation": "Instituto de F\u00edsica de Part\u00edculas y del Cosmos, Departamento de EMFTEL, Universidad Complutense de Madrid, Madrid, Spain ",
+            "name": "Cervi\u00f1o Cort\u00ednez, Alexander",
+            "type": "Researcher",
+            "orcid": "0009-0007-1566-9507"
+        },
+        {
             "affiliation": "Facultad de Ingenier\u00eda Inform\u00e1tica, Universidad Complutense de Madrid, Madrid, Spain",
             "name": "Sevilla, Jaime",
-            "type": "Researcher"
+            "type": "Researcher",
+	    "orcid": "0000-0002-4454-1146"
         }
     ],
     "creators": [
         {
-            "name": "Brill, Ari",
-            "orcid": " 0000-0002-6208-5244"
-        },
-        {
-            "affiliation": "University of California Los Angeles, Division of Astronomy and Astrophysics, Los Angeles, CA, USA",
-            "name": "Kim, Bryan"
+            "affiliation": "Instituto de F\u00edsica de Part\u00edculas y del Cosmos, Departamento de EMFTEL, Universidad Complutense de Madrid, Madrid, Spain ",
+            "name": "Miener, Tjark",
+            "orcid": "0000-0003-1821-7964"
         },
         {
             "affiliation": "Instituto de F\u00edsica de Part\u00edculas y del Cosmos, Departamento de EMFTEL, Universidad Complutense de Madrid, Madrid, Spain ",
@@ -27,9 +31,12 @@
             "orcid": "0000-0003-3343-0755"
         },
         {
-            "affiliation": "Instituto de F\u00edsica de Part\u00edculas y del Cosmos, Departamento de EMFTEL, Universidad Complutense de Madrid, Madrid, Spain ",
-            "name": "Miener, Tjark",
-            "orcid": "0000-0003-1821-7964"
+            "name": "Brill, Ari",
+            "orcid": " 0000-0002-6208-5244"
+        },
+        {
+            "affiliation": "University of California Los Angeles, Division of Astronomy and Astrophysics, Los Angeles, CA, USA",
+            "name": "Kim, Bryan"
         },
         {
             "affiliation": "Barnard College, Columbia University, New York, NY, USA",
@@ -51,7 +58,7 @@
     ],
     "language": "eng",
     "license": "BSD-3-Clause",
-    "publication_date": "2023-05-08",
+    "publication_date": "2025-03-13",
     "related_identifiers": [
         {
             "identifier": "https://github.com/ctlearn-project/ctlearn",
@@ -62,5 +69,5 @@
     ],
     "title": "CTLearn: Deep learning for imaging atmospheric Cherenkov telescopes event reconstruction",
     "upload_type": "software",
-    "version": "0.9.0"
+    "version": "0.10.0"
 }
