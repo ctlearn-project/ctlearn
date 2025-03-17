@@ -4,34 +4,50 @@ ctlearn package
 Submodules
 ----------
 
-ctlearn.data\_loader module
----------------------------
+ctlearn.tools.train\_model module
+---------------------------------
 
-.. automodule:: ctlearn.data_loader
+.. automodule:: ctlearn.tools.train_model
    :members:
    :undoc-members:
    :show-inheritance:
 
-ctlearn.output\_handler module
-------------------------------
+ctlearn.tools.predict\_model module
+-----------------------------------
 
-.. automodule:: ctlearn.output_handler
+.. automodule:: ctlearn.predict_model
    :members:
    :undoc-members:
    :show-inheritance:
 
-ctlearn.run\_model module
+ctlearn.predict\_LST1 module
+----------------------------
+
+.. automodule:: ctlearn.predict_LST1
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+ctlearn.core.model module
 -------------------------
 
-.. automodule:: ctlearn.run_model
+.. automodule:: ctlearn.core.model
    :members:
    :undoc-members:
    :show-inheritance:
 
-ctlearn.utils module
---------------------
+ctlearn.core.loader module
+--------------------------
 
-.. automodule:: ctlearn.utils
+.. automodule:: ctlearn.core.loader
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+ctlearn.core.attention module
+-----------------------------
+
+.. automodule:: ctlearn.core.attention
    :members:
    :undoc-members:
    :show-inheritance:
