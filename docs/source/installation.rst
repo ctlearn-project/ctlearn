@@ -73,6 +73,7 @@ Dependencies
 
   * Matplotlib
   * Scikit-learn
+  * ctaplot
 
 Uninstall CTLearn
 -----------------
