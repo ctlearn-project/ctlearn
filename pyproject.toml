@@ -35,12 +35,10 @@ dependencies = [
     "pip",
     "pyyaml",
     "scikit-learn",
-    "ctaplot",
     "numba",
     "tensorflow>=2.14,<2.15",
     "pydot",
     "setuptools",
-    "pyirf",
     "ctapipe>=0.22.0, <0.24",
 ]
 

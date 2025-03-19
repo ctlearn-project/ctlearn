@@ -42,12 +42,10 @@
         "astropy",
 	"scikit-learn",
 	"ctapipe",
-        "ctaplot",
         "DL1DataHandler",
         "numba",
         "NumPy",
         "PyYAML",
-        "PyIRF",
         "PyDot",
         "Pandas"
     ],
