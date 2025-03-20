@@ -8,7 +8,6 @@ import pandas as pd
 import numpy as np
 import shutil
 import tensorflow as tf
-import matplotlib.pyplot as plt
 
 from ctapipe.core import Tool
 from ctapipe.core.tool import ToolConfigurationError
@@ -452,25 +451,6 @@ class TrainCTLearnModel(Tool):
                 self.model, input_signature=self.model.input_layer.input._type_spec, output_path=output_path
             )
             self.log.info("ONNX model saved in %s", self.output_dir)
-
-        # Plotting training history
-        self.log.info("Plotting training history...")
-        training_log = pd.read_csv(f"{self.output_dir}/training_log.csv")
-        for metric in training_log.columns:
-            epochs = training_log["epoch"] + 1
-            if metric != "epoch" and not metric.startswith("val_"):
-                self.log.info("Plotting training history: {}".format(metric))
-                fig, ax = plt.subplots()
-                plt.plot(epochs, training_log[metric])
-                legend = ["train"]
-                if f"val_{metric}" in training_log:
-                    plt.plot(epochs, training_log[f"val_{metric}"])
-                    legend.append("val")
-                plt.title(f"CTLearn training history - {metric}")
-                plt.xlabel("epoch")
-                plt.ylabel(metric)
-                plt.legend(legend, loc="upper left")
-                plt.savefig(f"{self.output_dir}/{metric}.png")
 
         self.log.info("Tool is shutting down")
 

@@ -29,7 +29,6 @@ requires-python = ">=3.10"
 dependencies = [
     "dl1_data_handler>=0.14.1, <0.15",
     "astropy",
-    "matplotlib",
     "numpy",
     "pandas",
     "pip",
