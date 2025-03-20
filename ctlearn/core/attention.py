@@ -78,20 +78,34 @@ def channel_squeeze_excite_block(inputs, ratio=4, name=None):
         filters = inputs.shape[-1]
     else:
         filters = inputs.get_shape().as_list()[-1]
-    cse = keras.layers.GlobalAveragePooling2D(
-        keepdims=True, name=name + "_avgpool"
+
+    # Global Average Pooling over (height, width) and channels
+    cse = keras.layers.Lambda(
+        lambda x: keras.backend.mean(x, axis=[1, 2, 3], keepdims=True),
+        name=name + "_avgpool"
     )(inputs)
 
-    cse = keras.layers.Dense(
-        units=filters // ratio,
-        activation="relu",
-        name=name + "_1_dense",
-    )(cse)
-    cse = keras.layers.Dense(
-        units=filters, activation="sigmoid", name=name + "_2_dense"
-    )(cse)
+    # Dense layers for recalibration
+    cse = keras.layers.Dense(units=filters // ratio, activation="relu", name=name + "_1_dense")(cse)
+    cse = keras.layers.Dense(units=filters, activation="sigmoid", name=name + "_2_dense")(cse)
 
     return keras.layers.Multiply(name=name + "_mult")([inputs, cse])
+
+
+    # cse = keras.layers.GlobalAveragePooling3D(
+    #     keepdims=True, name=name + "_avgpool"
+    # )(inputs)
+
+    # cse = keras.layers.Dense(
+    #     units=filters // ratio,
+    #     activation="relu",
+    #     name=name + "_1_dense",
+    # )(cse)
+    # cse = keras.layers.Dense(
+    #     units=filters, activation="sigmoid", name=name + "_2_dense"
+    # )(cse)
+
+    # return keras.layers.Multiply(name=name + "_mult")([inputs, cse])
 
 
 def spatial_squeeze_excite_block(inputs, name=None):

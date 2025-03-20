@@ -78,7 +78,7 @@ class DLDataLoader(Sequence):
                         self.input_shape[2],
                         self.input_shape[0] * self.input_shape[3],
                     )
-        self.neighbor_dict = self.DLDataReader.neighbor_dict
+        self.neighbor_matrix = self.DLDataReader.neighbor_matrix
 
     def __len__(self):
         """
