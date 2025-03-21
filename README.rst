@@ -2,8 +2,8 @@
 CTLearn: Deep Learning for IACT Event Reconstruction
 ====================================================
 
-.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.11475531.svg
-   :target: https://doi.org/10.5281/zenodo.11475531
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.3342952.svg
+   :target: https://doi.org/10.5281/zenodo.3342952
    :alt: DOI
 
 .. image:: https://img.shields.io/pypi/v/ctlearn
@@ -50,12 +50,7 @@ See the documentation for further information like `installation instructions fo
 Citing this software
 --------------------
 
-Please cite the corresponding version using the DOIs below if this software package is used to produce results for any publication:
-
-.. |zendoi0100| image:: https://zenodo.org/badge/DOI/10.5281/zenodo.15021424.svg
-   :target: https://doi.org/10.5281/zenodo.15021424
-
-* 0.10.0 : |zendoi0100|
+Please cite the corresponding version using the `DOIs from Zenodo <https://zenodo.org/search?q=parent.id:3342952&sort=version&f=allversions:true>`_ if this software package is used to produce results for any publication.
 
 Team
 ----
