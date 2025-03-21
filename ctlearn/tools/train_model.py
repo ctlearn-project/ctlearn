@@ -199,7 +199,7 @@ class TrainCTLearnModel(Tool):
         allow_none=True,
 	help="""
 	    Learning rate reducing parameters for the Keras callback.
-	    E.g. ``{'factor': 0.5, 'patience': 5, 'min_delta': 0.01, 'min_lr': 0.000001}.
+	    E.g. {'factor': 0.5, 'patience': 5, 'min_delta': 0.01, 'min_lr': 0.000001}.
 	"""
     ).tag(config=True)
 
