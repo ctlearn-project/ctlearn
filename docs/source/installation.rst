@@ -65,11 +65,12 @@ Dependencies
 
 * Python>=3.10
 * TensorFlow>=2.14,<2.15
-* ctapipe>=0.22.0
+* ctapipe>=0.22.0,<0.24
 * ctaplot
-* DL1DataHandler>=0.14.1
+* DL1DataHandler>=0.14.1,<0.15
 * numba
 * NumPy
+* Pandas
 * PyYAML
 
 * Libraries used only in plotting scripts (optional)
