@@ -204,7 +204,7 @@ class TrainCTLearnModel(Tool):
     early_stopping = Dict(
         default_value={"monitor": 'val_loss', "patience": 4, "verbose": 1, "restore_best_weights": True},
         allow_none=True,
-        help="Set whether to have aerly stopping"the early stopping callback conditions,
+        help="Set the early stopping callback conditions",
     ).tag(config=True)
 
 
