@@ -5,7 +5,7 @@
     "codeRepository": "https://github.com/ctlearn-project/ctlearn",
     "contIntegration": "https://github.com/ctlearn-project/ctlearn/actions",
     "datePublished": "2023-05-08",
-    "dateModified": "2025-03-13",
+    "dateModified": "2025-03-21",
     "downloadUrl": "https://zenodo.org/record/5947837/files/ctlearn-project/ctlearn-v0.10.0.zip",
     "issueTracker": "https://github.com/ctlearn-project/ctlearn/issues",
     "name": "CTLearn: Deep learning for imaging atmospheric Cherenkov telescopes event reconstruction",
