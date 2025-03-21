@@ -9,7 +9,6 @@ dependencies:
     - python=3.10
     - astropy
     - setuptools
-    - matplotlib
     - numpy
     - pandas
     - pip
@@ -17,9 +16,7 @@ dependencies:
     - scikit-learn
     - ctapipe
     - pip:
-        - ctaplot
         - numba
         - tensorflow>=2.14,<2.15
         - dl1_data_handler>=0.14.1,<0.15
         - pydot
-        - pyirf

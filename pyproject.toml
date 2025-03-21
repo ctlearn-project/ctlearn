@@ -29,18 +29,15 @@ requires-python = ">=3.10"
 dependencies = [
     "dl1_data_handler>=0.14.1, <0.15",
     "astropy",
-    "matplotlib",
     "numpy",
     "pandas",
     "pip",
     "pyyaml",
     "scikit-learn",
-    "ctaplot",
     "numba",
     "tensorflow>=2.14,<2.15",
     "pydot",
     "setuptools",
-    "pyirf",
     "ctapipe>=0.22.0, <0.24",
 ]
 
