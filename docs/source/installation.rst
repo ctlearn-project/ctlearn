@@ -47,7 +47,7 @@ Finally, install CTLearn into the new conda environment via pypi:
 .. code-block:: bash
 
    conda activate ctlearn
-   pip install ctlearn==0.10.1
+   pip install ctlearn==0.10.2
 
 or with pip from source:
 
