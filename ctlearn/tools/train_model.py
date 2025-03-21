@@ -188,19 +188,19 @@ class TrainCTLearnModel(Tool):
 
     optimizer = Dict(
         default_value={"name": "Adam", "base_learning_rate": 0.0001, "adam_epsilon": 1.0e-8},
-	help="""
-	    Optimizer to use for training.
-	    E.g. {'name': 'Adam', 'base_learning_rate': 0.0001, 'adam_epsilon': 1.0e-8}.
-	"""
+	help=(
+	    "Optimizer to use for training."
+	    "E.g. {'name': 'Adam', 'base_learning_rate': 0.0001, 'adam_epsilon': 1.0e-8}."
+	)
     ).tag(config=True)
 
     lr_reducing = Dict(
         default_value={"factor": 0.5, "patience": 5, "min_delta": 0.01, "min_lr": 0.000001},
         allow_none=True,
-	help="""
-	    Learning rate reducing parameters for the Keras callback.
-	    E.g. {'factor': 0.5, 'patience': 5, 'min_delta': 0.01, 'min_lr': 0.000001}.
-	"""
+	help=(
+	    "Learning rate reducing parameters for the Keras callback."
+	    "E.g. {'factor': 0.5, 'patience': 5, 'min_delta': 0.01, 'min_lr': 0.000001}."
+	)
     ).tag(config=True)
 
     random_seed = Int(
@@ -221,10 +221,10 @@ class TrainCTLearnModel(Tool):
     early_stopping = Dict(
         default_value=None,
         allow_none=True,
-	help="""
-	    Set the early stopping callback conditions.
-	    E.g. {'monitor': 'val_loss', 'patience': 4, 'verbose': 1, 'restore_best_weights': True}.
-	"""   
+	help=(
+	    "Set the early stopping callback conditions."
+	    "E.g. {'monitor': 'val_loss', 'patience': 4, 'verbose': 1, 'restore_best_weights': True}."
+	)
     ).tag(config=True)
 
 
