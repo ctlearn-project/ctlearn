@@ -222,7 +222,7 @@ class TrainCTLearnModel(Tool):
         default_value=None,
         allow_none=True,
 	help=(
-	    "Set the early stopping callback conditions. "
+	    "Early stopping parameters for the Keras callback. "
 	    "E.g. {'monitor': 'val_loss', 'patience': 4, 'verbose': 1, 'restore_best_weights': True}. "
 	)
     ).tag(config=True)
