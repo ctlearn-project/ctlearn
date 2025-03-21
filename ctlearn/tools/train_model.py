@@ -201,29 +201,10 @@ class TrainCTLearnModel(Tool):
         help="Set whether to save model in an ONNX file.",
     ).tag(config=True)
     
-    early_stopping = Bool(
-        default_value=False,
+    early_stopping = Dict(
+        default_value={"monitor": 'val_loss', "patience": 4, "verbose": 1, "restore_best_weights": True},
         allow_none=True,
-        help="Set whether to have aerly stopping",
-    ).tag(config=True)
-    
-    early_stopping_patience = Int(
-        default_value=4,
-        allow_none=True,
-        help="EarlyStopping patience",
-    ).tag(config=True)
-    
-    early_stopping_metric = CaselessStrEnum(
-        ['loss', 'val_loss', 'accuracy', 'val_accuracy', 'precision', 'val_precision', 'recall', 'val_recall', 'auc', 'val_auc', 'mae', 'val_mae', 'mse', 'val_mse', 'rmse', 'val_rmse', 'cosine_proximity', 'val_cosine_proximity', 'logcosh', 'val_logcosh'],
-        default_value="val_loss",
-        allow_none=True,
-        help="EarlyStopping monitor metric",
-    ).tag(config=True)
-    
-    early_stopping_restore_best = Bool(
-        default_value=True,
-        allow_none=True,
-        help="Set whether to save the best on early stopping or not",
+        help="Set whether to have aerly stopping"the early stopping callback conditions,
     ).tag(config=True)
 
 
@@ -377,13 +358,14 @@ class TrainCTLearnModel(Tool):
         )
         self.callbacks = [model_checkpoint_callback, tensorboard_callback, csv_logger_callback]
 	
-        if self.early_stopping is True:
+        if self.early_stopping is not None:
             # EarlyStopping callback
+            validate_trait_dict(self.early_stopping, ["monitor", "patience", "verbose", "restore_best_weights"])
             early_stopping_callback = keras.callbacks.EarlyStopping(
-            	monitor=self.early_stopping_metric, 
-		patience=self.early_stopping_patience, 
-		verbose=1,
-		restore_best_weights=self.early_stopping_restore_best
+            	monitor=self.early_stopping["monitor"], 
+		patience=self.early_stopping["patience"], 
+		verbose=self.early_stopping["verbose"],
+		restore_best_weights=self.early_stopping["restore_best_weights"]
             )
             self.callbacks.append(early_stopping_callback)
 
