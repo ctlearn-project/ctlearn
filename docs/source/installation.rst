@@ -71,12 +71,12 @@ Dependencies
 * numba
 * NumPy
 * PyYAML
-* pyirf
-* Pandas
+
 * Libraries used only in plotting scripts (optional)
 
   * Matplotlib
   * Scikit-learn
+  * ctaplot
 
 Uninstall CTLearn
 -----------------
