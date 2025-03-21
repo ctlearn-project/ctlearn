@@ -188,13 +188,19 @@ class TrainCTLearnModel(Tool):
 
     optimizer = Dict(
         default_value={"name": "Adam", "base_learning_rate": 0.0001, "adam_epsilon": 1.0e-8},
-        help="Optimizer to use for training.",
+	help=(
+	    "Optimizer to use for training.",
+	    "E.g. ``{'name': 'Adam', 'base_learning_rate': 0.0001, 'adam_epsilon': 1.0e-8}``."
+	)
     ).tag(config=True)
 
     lr_reducing = Dict(
         default_value={"factor": 0.5, "patience": 5, "min_delta": 0.01, "min_lr": 0.000001},
         allow_none=True,
-        help="Learning rate reducing parameters for the Keras callback.",
+	help=(
+	    "Learning rate reducing parameters for the Keras callback.",
+	    "E.g. ``{'factor': 0.5, 'patience': 5, 'min_delta': 0.01, 'min_lr': 0.000001}``."
+	)  
     ).tag(config=True)
 
     random_seed = Int(
@@ -211,6 +217,16 @@ class TrainCTLearnModel(Tool):
         allow_none=False,
         help="Set whether to save model in an ONNX file.",
     ).tag(config=True)
+    
+    early_stopping = Dict(
+        default_value=None,
+        allow_none=True,
+	help=(
+	    "Set the early stopping callback conditions. ",
+	    "E.g. ``{'monitor': 'val_loss', 'patience': 4, 'verbose': 1, 'restore_best_weights': True}``."
+	)    
+    ).tag(config=True)
+
 
     overwrite = Bool(help="Overwrite output dir if it exists").tag(config=True)
 
@@ -361,6 +377,18 @@ class TrainCTLearnModel(Tool):
             filename=f"{self.output_dir}/training_log.csv", append=True
         )
         self.callbacks = [model_checkpoint_callback, tensorboard_callback, csv_logger_callback]
+	
+        if self.early_stopping is not None:
+            # EarlyStopping callback
+            validate_trait_dict(self.early_stopping, ["monitor", "patience", "verbose", "restore_best_weights"])
+            early_stopping_callback = keras.callbacks.EarlyStopping(
+            	monitor=self.early_stopping["monitor"], 
+		patience=self.early_stopping["patience"], 
+		verbose=self.early_stopping["verbose"],
+		restore_best_weights=self.early_stopping["restore_best_weights"]
+            )
+            self.callbacks.append(early_stopping_callback)
+
         # Learning rate reducing callback
         if self.lr_reducing is not None:
             # Validate the learning rate reducing parameters
@@ -377,6 +405,7 @@ class TrainCTLearnModel(Tool):
             self.callbacks.append(lr_reducing_callback)
 
 
+	
     def start(self):
         
         # Open a strategy scope.
@@ -514,18 +543,3 @@ def main():
 
 if __name__ == "main":
     main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
