@@ -1,5 +1,5 @@
 """
-Tool to train a ``CTLearnModel`` on R1/DL1a data using the ``DLDataReader`` and ``DLDataLoader``.
+Tools to train a ``CTLearnModel` (in Keras or PyTorch) on R1/DL1a data using the ``DLDataReader`` and ``DLDataLoader``.
 """
 
 import atexit
@@ -31,58 +31,61 @@ from ctlearn.utils import validate_trait_dict
 
 class TrainCTLearnModel(Tool):
     """
-    Tool to train a ``~ctlearn.core.model.CTLearnModel`` on R1/DL1a data.
+    Base class for training a ``CTLearnModel`` on R1/DL1a data using the ``DLDataReader`` and ``DLDataLoader``.
 
     The tool trains a CTLearn model on the input data (R1 calibrated waveforms or DL1a images) and
     saves the trained model in the output directory. The input data is loaded from the input directories
-    for signal and background events using the ``~dl1_data_handler.reader.DLDataReader`` and
-    ``~dl1_data_handler.loader.DLDataLoader``. The tool supports the following reconstruction tasks:
+    for signal and background events using the ``DLDataReader`` and ``DLDataLoader``. The ``start`` method
+    is implemented in the subclasses to train the model using the specified framework (Keras or PyTorch).
+    The tool supports the following reconstruction tasks:
     - Classification of the primary particle type (gamma/proton)
     - Regression of the primary particle energy
     - Regression of the primary particle arrival direction based on the offsets in camera coordinates
     - Regression of the primary particle arrival direction based on the offsets in sky coordinates
-    """
 
-    name = "ctlearn-train-model"
-    description = __doc__
-
-    examples = """
-    To train a CTLearn model for the classification of the primary particle type:
-    > ctlearn-train-model \\
-        --signal /path/to/your/gammas_dl1_dir/ \\
-        --pattern-signal "gamma_*_run1.dl1.h5" \\
-        --pattern-signal "gamma_*_run10.dl1.h5" \\
-        --background /path/to/your/protons_dl1_dir/ \\
-        --pattern-background "proton_*_run1.dl1.h5" \\
-        --pattern-background "proton_*_run10.dl1.h5" \\
-        --output /path/to/your/type/ \\
-        --reco type \\
-
-    To train a CTLearn model for the regression of the primary particle energy:
-    > ctlearn-train-model \\
-        --signal /path/to/your/gammas_dl1_dir/ \\
-        --pattern-signal "gamma_*_run1.dl1.h5" \\
-        --pattern-signal "gamma_*_run10.dl1.h5" \\
-        --output /path/to/your/energy/ \\
-        --reco energy \\
-
-    To train a CTLearn model for the regression of the primary particle
-    arrival direction based on the offsets in camera coordinates:
-    > ctlearn-train-model \\
-        --signal /path/to/your/gammas_dl1_dir/ \\
-        --pattern-signal "gamma_*_run1.dl1.h5" \\
-        --pattern-signal "gamma_*_run10.dl1.h5" \\
-        --output /path/to/your/direction/ \\
-        --reco cameradirection \\
-
-    To train a CTLearn model for the regression of the primary particle
-    arrival direction based on the offsets in sky coordinates:
-    > ctlearn-train-model \\
-        --signal /path/to/your/gammas_dl1_dir/ \\
-        --pattern-signal "gamma_*_run1.dl1.h5" \\
-        --pattern-signal "gamma_*_run10.dl1.h5" \\
-        --output /path/to/your/direction/ \\
-        --reco skydirection \\
+    Attributes
+    ----------
+    input_dir_signal : Path
+        Input directory for signal events.
+    file_pattern_signal : List[Unicode]
+        List of specific file pattern for matching files in ``input_dir_signal``.
+    input_dir_background : Path
+        Input directory for background events.
+    file_pattern_background : List[Unicode]
+        List of specific file pattern for matching files in ``input_dir_background``.
+    dl1dh_reader_type : ComponentName
+        Type of the DLDataReader to use for reading the input data.
+    dl1dh_reader : DLDataReader
+        DLDataReader instance for reading the input data.
+    stack_telescope_images : Bool
+        Set whether to stack the telescope images in the data loader.
+    sort_by_intensity : Bool
+        Set whether to sort the telescope images by intensity in the data loader.
+    output_dir : Path
+        Output directory for the trained reconstructor.
+    reco_tasks : List[Unicode]
+        List of reconstruction tasks to perform.
+    n_epochs : Int
+        Number of epochs to train the neural network.
+    batch_size : Int
+        Size of the batch to train the neural network.
+    validation_split : Float
+        Fraction of the data to use for validation.
+    optimizer : Dict
+        Optimizer to use for training.
+    random_seed : Int
+        Random seed for shuffling the data before the training/validation split and after the end of an epoch.
+    save_onnx : Bool
+        Set whether to save model in an ONNX file.
+    overwrite : Bool
+        Overwrite output dir if it exists.
+    
+    Methods
+    -------
+    setup()
+        Set up the data reader and data loaders for training and validation.
+    finish()
+        Save the trained model in the output directory in ONNX if selected.
     """
 
     input_dir_signal = Path(
@@ -136,10 +139,6 @@ class TrainCTLearnModel(Tool):
         ),
     ).tag(config=True)
 
-    model_type = ComponentName(
-        CTLearnModel, default_value="ResNet"
-    ).tag(config=True)
-
     output_dir = Path(
         exits=False,
         default_value=None,
@@ -180,26 +179,11 @@ class TrainCTLearnModel(Tool):
         max=0.99,
     ).tag(config=True)
 
-    save_best_validation_only = Bool(
-        default_value=True,
-        allow_none=False,
-        help="Set whether to save the best validation checkpoint only.",
-    ).tag(config=True)
-
     optimizer = Dict(
         default_value={"name": "Adam", "base_learning_rate": 0.0001, "adam_epsilon": 1.0e-8},
 	help=(
 	    "Optimizer to use for training. "
 	    "E.g. {'name': 'Adam', 'base_learning_rate': 0.0001, 'adam_epsilon': 1.0e-8}. "
-	)
-    ).tag(config=True)
-
-    lr_reducing = Dict(
-        default_value={"factor": 0.5, "patience": 5, "min_delta": 0.01, "min_lr": 0.000001},
-        allow_none=True,
-	help=(
-	    "Learning rate reducing parameters for the Keras callback. "
-	    "E.g. {'factor': 0.5, 'patience': 5, 'min_delta': 0.01, 'min_lr': 0.000001}. "
 	)
     ).tag(config=True)
 
@@ -217,16 +201,6 @@ class TrainCTLearnModel(Tool):
         allow_none=False,
         help="Set whether to save model in an ONNX file.",
     ).tag(config=True)
-    
-    early_stopping = Dict(
-        default_value=None,
-        allow_none=True,
-	help=(
-	    "Early stopping parameters for the Keras callback. "
-	    "E.g. {'monitor': 'val_loss', 'patience': 4, 'verbose': 1, 'restore_best_weights': True}. "
-	)
-    ).tag(config=True)
-
 
     overwrite = Bool(help="Overwrite output dir if it exists").tag(config=True)
 
@@ -352,7 +326,105 @@ class TrainCTLearnModel(Tool):
             stack_telescope_images=self.stack_telescope_images,
         )
 
-        # Set up the callbacks
+    def finish(self):
+        # Saving model weights in onnx format
+        if self.save_onnx:
+            self.log.info("Converting Keras model into ONNX format...")
+            self.log.info("Make sure tf2onnx is installed in your enviroment!")
+            try:
+                import tf2onnx
+            except ImportError:
+                raise ImportError("tf2onnx is not installed in your environment!")
+
+            output_path = f"{self.output_dir}/ctlearn_model.onnx"
+            tf2onnx.convert.from_keras(
+                self.model, input_signature=self.model.input_layer.input._type_spec, output_path=output_path
+            )
+            self.log.info("ONNX model saved in %s", self.output_dir)
+
+        self.log.info("Tool is shutting down")
+
+class TrainKerasModel(TrainCTLearnModel):
+    """
+    Tool to train a ``~ctlearn.core.model.CTLearnModel`` on R1/DL1a data using keras.
+
+    The tool sets up the keras model using the specified optimizer and callbacks. The keras model is trained
+    on the input data (R1 calibrated waveforms or DL1a images) and saved in the output directory.
+    """
+
+    name = "ctlearn-train-keras-model"
+    description = __doc__
+
+    examples = """
+    To train a CTLearn model for the classification of the primary particle type:
+    > ctlearn-train-keras-model \\
+        --signal /path/to/your/gammas_dl1_dir/ \\
+        --pattern-signal "gamma_*_run1.dl1.h5" \\
+        --pattern-signal "gamma_*_run10.dl1.h5" \\
+        --background /path/to/your/protons_dl1_dir/ \\
+        --pattern-background "proton_*_run1.dl1.h5" \\
+        --pattern-background "proton_*_run10.dl1.h5" \\
+        --output /path/to/your/type/ \\
+        --reco type \\
+
+    To train a CTLearn model for the regression of the primary particle energy:
+    > ctlearn-train-keras-model \\
+        --signal /path/to/your/gammas_dl1_dir/ \\
+        --pattern-signal "gamma_*_run1.dl1.h5" \\
+        --pattern-signal "gamma_*_run10.dl1.h5" \\
+        --output /path/to/your/energy/ \\
+        --reco energy \\
+
+    To train a CTLearn model for the regression of the primary particle
+    arrival direction based on the offsets in camera coordinates:
+    > ctlearn-train-keras-model \\
+        --signal /path/to/your/gammas_dl1_dir/ \\
+        --pattern-signal "gamma_*_run1.dl1.h5" \\
+        --pattern-signal "gamma_*_run10.dl1.h5" \\
+        --output /path/to/your/direction/ \\
+        --reco cameradirection \\
+
+    To train a CTLearn model for the regression of the primary particle
+    arrival direction based on the offsets in sky coordinates:
+    > ctlearn-train-keras-model \\
+        --signal /path/to/your/gammas_dl1_dir/ \\
+        --pattern-signal "gamma_*_run1.dl1.h5" \\
+        --pattern-signal "gamma_*_run10.dl1.h5" \\
+        --output /path/to/your/direction/ \\
+        --reco skydirection \\
+    """
+
+    model_type = ComponentName(
+        CTLearnModel, default_value="ResNet"
+    ).tag(config=True)
+
+    save_best_validation_only = Bool(
+        default_value=True,
+        allow_none=False,
+        help="Set whether to save the best validation checkpoint only.",
+    ).tag(config=True)
+
+    lr_reducing = Dict(
+        default_value={"factor": 0.5, "patience": 5, "min_delta": 0.01, "min_lr": 0.000001},
+        allow_none=True,
+	help=(
+	    "Learning rate reducing parameters for the Keras callback. "
+	    "E.g. {'factor': 0.5, 'patience': 5, 'min_delta': 0.01, 'min_lr': 0.000001}. "
+	)
+    ).tag(config=True)
+
+    early_stopping = Dict(
+        default_value=None,
+        allow_none=True,
+	help=(
+	    "Early stopping parameters for the Keras callback. "
+	    "E.g. {'monitor': 'val_loss', 'patience': 4, 'verbose': 1, 'restore_best_weights': True}. "
+	)
+    ).tag(config=True)
+
+	
+    def start(self):
+        # Set up the keras callbacks
         monitor = "val_loss"
         monitor_mode = "min"
         # Model checkpoint callback
@@ -383,9 +455,9 @@ class TrainCTLearnModel(Tool):
             validate_trait_dict(self.early_stopping, ["monitor", "patience", "verbose", "restore_best_weights"])
             early_stopping_callback = keras.callbacks.EarlyStopping(
             	monitor=self.early_stopping["monitor"], 
-		patience=self.early_stopping["patience"], 
-		verbose=self.early_stopping["verbose"],
-		restore_best_weights=self.early_stopping["restore_best_weights"]
+		        patience=self.early_stopping["patience"], 
+		        verbose=self.early_stopping["verbose"],
+		        restore_best_weights=self.early_stopping["restore_best_weights"]
             )
             self.callbacks.append(early_stopping_callback)
 
@@ -403,11 +475,6 @@ class TrainCTLearnModel(Tool):
                 min_lr=self.lr_reducing["min_lr"],
             )
             self.callbacks.append(lr_reducing_callback)
-
-
-	
-    def start(self):
-        
         # Open a strategy scope.
         with self.strategy.scope():
             # Construct the model
@@ -463,26 +530,6 @@ class TrainCTLearnModel(Tool):
         )
         self.log.info("Training and evaluating finished succesfully!")
 
-
-    def finish(self):
-
-        # Saving model weights in onnx format
-        if self.save_onnx:
-            self.log.info("Converting Keras model into ONNX format...")
-            self.log.info("Make sure tf2onnx is installed in your enviroment!")
-            try:
-                import tf2onnx
-            except ImportError:
-                raise ImportError("tf2onnx is not installed in your environment!")
-
-            output_path = f"{self.output_dir}/ctlearn_model.onnx"
-            tf2onnx.convert.from_keras(
-                self.model, input_signature=self.model.input_layer.input._type_spec, output_path=output_path
-            )
-            self.log.info("ONNX model saved in %s", self.output_dir)
-
-        self.log.info("Tool is shutting down")
-
     def _get_losses_and_mertics(self, tasks):
         """
         Build the fully connected head for the CTLearn model.
@@ -534,12 +581,79 @@ class TrainCTLearnModel(Tool):
             metrics["skydirection"] = keras.metrics.MeanAbsoluteError(name="mae_skydirection")
         return losses, metrics
 
+class TrainPyTorchModel(TrainCTLearnModel):
+    """
+    Tool to train a ``~ctlearn.core.model.CTLearnModel`` on R1/DL1a data using PyTorch.
 
-def main():
+    The tool sets up the PyTorch model using ... The PyTorch model is trained
+    on the input data (R1 calibrated waveforms or DL1a images) and saved in the output directory.
+    """
+
+    name = "ctlearn-train-pytorch-model"
+    description = __doc__
+
+    examples = """
+    To train a CTLearn PyTorch model for the classification of the primary particle type:
+    > ctlearn-train-pytorch-model \\
+        --signal /path/to/your/gammas_dl1_dir/ \\
+        --pattern-signal "gamma_*_run1.dl1.h5" \\
+        --pattern-signal "gamma_*_run10.dl1.h5" \\
+        --background /path/to/your/protons_dl1_dir/ \\
+        --pattern-background "proton_*_run1.dl1.h5" \\
+        --pattern-background "proton_*_run10.dl1.h5" \\
+        --output /path/to/your/type/ \\
+        --reco type \\
+
+    To train a CTLearn PyTorch model for the regression of the primary particle energy:
+    > ctlearn-train-pytorch-model \\
+        --signal /path/to/your/gammas_dl1_dir/ \\
+        --pattern-signal "gamma_*_run1.dl1.h5" \\
+        --pattern-signal "gamma_*_run10.dl1.h5" \\
+        --output /path/to/your/energy/ \\
+        --reco energy \\
+
+    To train a CTLearn PyTorch model for the regression of the primary particle
+    arrival direction based on the offsets in camera coordinates:
+    > ctlearn-train-pytorch-model \\
+        --signal /path/to/your/gammas_dl1_dir/ \\
+        --pattern-signal "gamma_*_run1.dl1.h5" \\
+        --pattern-signal "gamma_*_run10.dl1.h5" \\
+        --output /path/to/your/direction/ \\
+        --reco cameradirection \\
+
+    To train a CTLearn PyTorch model for the regression of the primary particle
+    arrival direction based on the offsets in sky coordinates:
+    > ctlearn-train-pytorch-model \\
+        --signal /path/to/your/gammas_dl1_dir/ \\
+        --pattern-signal "gamma_*_run1.dl1.h5" \\
+        --pattern-signal "gamma_*_run10.dl1.h5" \\
+        --output /path/to/your/direction/ \\
+        --reco skydirection \\
+    """
+
+    pytorch_int = Int(
+        allow_none=False,
+        default_value=42
+    ).tag(config=True)
+
+    def start(self):
+        prinit(self.pytorch_int)
+        pass
+
+
+def keras_tool():
     # Run the tool
-    tool = TrainCTLearnModel()
-    tool.run()
+    keras_tool = TrainKerasModel()
+    keras_tool.run()
 
 
-if __name__ == "main":
-    main()
+def pytorch_tool():
+    # Run the tool
+    pytorch_tool = TrainPyTorchModel()
+    pytorch_tool.run()
+
+if __name__ == "keras_tool":
+    keras_tool()
+
+if __name__ == "pytorch_tool":
+    pytorch_tool()

@@ -12,11 +12,12 @@ This page provides a brief overview of how to use the CTLearn tools.
 Training tool
 -------------
 
-To train a model, use the `ctlearn-train-model` command. The following command will display all available options for training a CTLearn model:
+To train a model, use the `ctlearn-train-keras-model` or `ctlearn-train-pytorch-model` command. The following command will display all available options for training a CTLearn model:
 
 .. code-block:: bash
 
-    ctlearn-train-model --help-all
+    ctlearn-train-keras-model --help-all
+    ctlearn-train-pytorch-model --help-all
 
 View training progress in real time with TensorBoard: 
 
