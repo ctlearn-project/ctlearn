@@ -22,7 +22,7 @@ from ctapipe.containers import (
     ReconstructedGeometryContainer,
     ReconstructedEnergyContainer,
 )
-from ctapipe.coordinates import CameraFrame, EngineeringCameraFrame
+from ctapipe.coordinates import CameraFrame
 from ctapipe.core import Tool
 from ctapipe.core.tool import ToolConfigurationError
 from ctapipe.core.traits import (
@@ -37,19 +37,11 @@ from ctapipe.core.traits import (
     Unicode,
     classes_with_traits,
 )
-from ctapipe.instrument import (
-    SubarrayDescription,
-    CameraDescription,
-    CameraGeometry,
-    CameraReadout,
-    TelescopeDescription,
-)
-from ctapipe.instrument.optics import OpticsDescription, ReflectorShape, SizeType
 from ctapipe.io import read_table, write_table
 from ctapipe.reco.utils import add_defaults_and_meta
 
 from ctlearn.core.model import LoadedModel
-from ctlearn.utils import get_LST1_SubarrayDescription
+from ctlearn.utils import get_lst1_subarray_description
 from dl1_data_handler.image_mapper import ImageMapper
 from dl1_data_handler.reader import (
     get_unmapped_image,
@@ -255,7 +247,7 @@ class LST1PredictionTool(Tool):
             self.backbone_direction, self.head_direction = self._split_model(model_direction)
 
         # Get the SubarrayDescription of the LST-1 telescope
-        self.subarray = get_LST1_SubarrayDescription()
+        self.subarray = get_lst1_subarray_description()
         # Write the SubarrayDescription to the output file
         self.subarray.to_hdf(self.output_path, overwrite=self.overwrite)
         self.log.info("SubarrayDescription was stored in '%s'", self.output_path)
