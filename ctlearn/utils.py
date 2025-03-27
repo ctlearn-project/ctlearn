@@ -1,3 +1,6 @@
+from importlib.resources import files, as_file
+
+from ctapipe.core import Provenance
 from ctapipe.core.traits import TraitError
 from ctapipe.instrument import SubarrayDescription
 
