@@ -1,6 +1,13 @@
 from ctapipe.core.traits import TraitError
+from ctapipe.instrument import SubarrayDescription
 
-__all__ = ["validate_trait_dict"]
+__all__ = ["get_LST1_SubarrayDescription", "validate_trait_dict"]
+
+def get_LST1_SubarrayDescription():
+    """Load subarray description from bundled file"""
+    with as_file(files("ctlearn") / "resources/LST-1_SubarrayDescription.h5") as path:
+        Provenance().add_input_file(path, role="SubarrayDescription")
+        return SubarrayDescription.from_hdf(path)
 
 def validate_trait_dict(dict, required_keys):
     """
