@@ -22,7 +22,7 @@ from ctapipe.containers import (
     ReconstructedGeometryContainer,
     ReconstructedEnergyContainer,
 )
-from ctapipe.coordinates import CameraFrame, EngineeringCameraFrame
+from ctapipe.coordinates import CameraFrame
 from ctapipe.core import Tool
 from ctapipe.core.tool import ToolConfigurationError
 from ctapipe.core.traits import (
@@ -37,18 +37,11 @@ from ctapipe.core.traits import (
     Unicode,
     classes_with_traits,
 )
-from ctapipe.instrument import (
-    SubarrayDescription,
-    CameraDescription,
-    CameraGeometry,
-    CameraReadout,
-    TelescopeDescription,
-)
-from ctapipe.instrument.optics import OpticsDescription, ReflectorShape, SizeType
 from ctapipe.io import read_table, write_table
 from ctapipe.reco.utils import add_defaults_and_meta
 
 from ctlearn.core.model import LoadedModel
+from ctlearn.utils import get_lst1_subarray_description
 from dl1_data_handler.image_mapper import ImageMapper
 from dl1_data_handler.reader import (
     get_unmapped_image,
@@ -253,8 +246,8 @@ class LST1PredictionTool(Tool):
             input_shape = model_direction.input_shape[1:]
             self.backbone_direction, self.head_direction = self._split_model(model_direction)
 
-        # Create the SubarrayDescription of the LST-1 telescope
-        self.subarray = self._create_subarray()
+        # Get the SubarrayDescription of the LST-1 telescope
+        self.subarray = get_lst1_subarray_description()
         # Write the SubarrayDescription to the output file
         self.subarray.to_hdf(self.output_path, overwrite=self.overwrite)
         self.log.info("SubarrayDescription was stored in '%s'", self.output_path)
@@ -816,75 +809,6 @@ class LST1PredictionTool(Tool):
 
     def finish(self):
         self.log.info("Tool is shutting down")
-
-    def _create_subarray(self, tel_id=1, reference_location=None):
-        """
-        Obtain a single-lst subarray description (Code taken from ctapipe_io_lst)
-
-        Returns
-        -------
-        ctapipe.instrument.SubarrayDescription
-        """
-
-        self.log.info("Make sure 'ctapipe_io_lst' is installed in your enviroment!")
-        try:
-            import ctapipe_io_lst
-        except ImportError:
-            raise ImportError("'ctapipe_io_lst' is not installed in your environment!")
-
-        if reference_location is None:
-            reference_location = ctapipe_io_lst.constants.LST1_LOCATION
-
-        # Load the camera geometry from 'ctapipe_io_lst'
-        camera_geom = ctapipe_io_lst.load_camera_geometry()
-        # Needs to be renamed because the ImageMapper smooths the pixel positions
-        camera_geom.name = "RealLSTCam"
-        # get info on the camera readout:
-        (
-            daq_time_per_sample,
-            pulse_shape_time_step,
-            pulse_shapes,
-        ) = ctapipe_io_lst.read_pulse_shapes()
-
-        camera_readout = CameraReadout(
-            name="LSTCam",
-            n_pixels=ctapipe_io_lst.constants.N_PIXELS,
-            n_channels=ctapipe_io_lst.constants.N_GAINS,
-            n_samples=ctapipe_io_lst.constants.N_SAMPLES,
-            sampling_rate=(1 / daq_time_per_sample).to(u.GHz),
-            reference_pulse_shape=pulse_shapes,
-            reference_pulse_sample_width=pulse_shape_time_step,
-        )
-
-        camera = CameraDescription(
-            name="LSTCam", geometry=camera_geom, readout=camera_readout
-        )
-
-        lst_tel_descr = TelescopeDescription(
-            name="LST", optics=ctapipe_io_lst.OPTICS, camera=camera
-        )
-
-        tel_descriptions = {tel_id: lst_tel_descr}
-
-        try:
-            location = ctapipe_io_lst.constants.LST_LOCATIONS[tel_id]
-        except KeyError:
-            known = list(ctapipe_io_lst.constants.LST_LOCATIONS.keys())
-            msg = f"Location missing for tel_id={tel_id}. Known tel_ids: {known}. Is this LST data?"
-            raise KeyError(msg) from None
-
-        ground_frame = ctapipe_io_lst.ground_frame.ground_frame_from_earth_location(
-            location, reference_location
-        )
-        tel_positions = {tel_id: ground_frame.cartesian.xyz}
-        subarray = SubarrayDescription(
-            name=f"LST-{tel_id} subarray",
-            tel_descriptions=tel_descriptions,
-            tel_positions=tel_positions,
-            reference_location=reference_location,
-        )
-
-        return subarray
 
     def _split_model(self, model):
         """
