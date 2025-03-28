@@ -14,7 +14,7 @@ def get_lst1_subarray_description(focal_length_choice=FocalLengthKind.EFFECTIVE)
     
     Parameters
     ----------
-    focal_length_choice : str
+    focal_length_choice : FocalLengthKind
         Choice of focal length to use.  Options are ``FocalLengthKind.EQUIVALENT``
         and ``FocalLengthKind.EFFECTIVE``. Default is ``FocalLengthKind.EFFECTIVE``.
 
