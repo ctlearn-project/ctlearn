@@ -35,8 +35,10 @@ from ctapipe.core.traits import (
     CaselessStrEnum,
     ComponentName,
     Unicode,
+    UseEnum,
     classes_with_traits,
 )
+from ctapipe.instrument.optics import FocalLengthKind
 from ctapipe.io import read_table, write_table
 from ctapipe.reco.utils import add_defaults_and_meta
 
@@ -177,6 +179,21 @@ class LST1PredictionTool(Tool):
         config=True
     )
 
+    focal_length_choice = UseEnum(
+        FocalLengthKind,
+        default_value=FocalLengthKind.EFFECTIVE,
+        help=(
+            "If both nominal and effective focal lengths are available, "
+            " which one to use for the `~ctapipe.coordinates.CameraFrame` attached"
+            " to the `~ctapipe.instrument.CameraGeometry` instances in the"
+            " `~ctapipe.instrument.SubarrayDescription` which will be used in"
+            " CameraFrame to TelescopeFrame coordinate transforms."
+            " The 'nominal' focal length is the one used during "
+            " the simulation, the 'effective' focal length is computed using specialized "
+            " ray-tracing from a point light source"
+        ),
+    ).tag(config=True)
+
     override_obs_id = Int(
         default_value=None,
         allow_none=True,
@@ -247,7 +264,7 @@ class LST1PredictionTool(Tool):
             self.backbone_direction, self.head_direction = self._split_model(model_direction)
 
         # Get the SubarrayDescription of the LST-1 telescope
-        self.subarray = get_lst1_subarray_description()
+        self.subarray = get_lst1_subarray_description(focal_length_choice=self.focal_length_choice)
         # Write the SubarrayDescription to the output file
         self.subarray.to_hdf(self.output_path, overwrite=self.overwrite)
         self.log.info("SubarrayDescription was stored in '%s'", self.output_path)
@@ -680,9 +697,9 @@ class LST1PredictionTool(Tool):
                 alt=u.Quantity(tel_altitude, unit=u.rad),
                 frame=altaz,
             )
-            # Set the camera frame with the focal length and rotation of the camera
+            # Set a new camera frame with the pixel rotation of the camera
             camera_frame = CameraFrame(
-                focal_length=self.subarray.tel[self.tel_id].optics.equivalent_focal_length,
+                focal_length=self.subarray.tel[self.tel_id].camera.geometry.frame.focal_length,
                 rotation=self.pix_rotation,
                 telescope_pointing=tel_pointing,
             )
