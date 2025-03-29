@@ -569,7 +569,7 @@ class PredictCTLearnModel(Tool):
         # Create prediction table and add the predicted classification score ('gammaness')
         classification_table = example_identifiers.copy()
         classification_table.add_column(
-            predict_data["type"].T[0], name=f"{self.prefix}_tel_prediction"
+            predict_data["type"].T[1], name=f"{self.prefix}_tel_prediction"
         )
         return classification_table, feature_vectors
 
