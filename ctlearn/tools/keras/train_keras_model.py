@@ -109,6 +109,15 @@ class TrainKerasModel(TrainCTLearnModel):
         **TrainCTLearnModel.aliases,  
     }    
 	
+    def setup(self):
+        # Create a MirroredStrategy.
+        self.strategy = tf.distribute.MirroredStrategy()
+        atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore
+        self.log.info("Number of devices: %s", self.strategy.num_replicas_in_sync)
+
+        super().setup()
+
+               
     def start(self):
         # Set up the keras callbacks
         monitor = "val_loss"
