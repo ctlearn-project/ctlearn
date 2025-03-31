@@ -1,10 +1,7 @@
 
-import atexit
-import pandas as pd
+
 import numpy as np
 import shutil
-import tensorflow as tf
-import sys
 from ctapipe.core import Tool
 from ctapipe.core.tool import ToolConfigurationError
 from ctapipe.core.traits import (
@@ -22,7 +19,7 @@ from ctapipe.core.traits import (
 from dl1_data_handler.reader import DLDataReader
 from ctlearn.core.loader import DLDataLoader
 from ctlearn.core.model import CTLearnModel
-from ctlearn.utils import validate_trait_dict
+
 
 class TrainCTLearnModel(Tool):
     """
