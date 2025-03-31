@@ -3,6 +3,9 @@ import pandas as pd
 import numpy as np
 import shutil
 import tensorflow as tf
+from tqdm import tqdm
+from time import time
+from keras.callbacks import Callback
 
 from ctapipe.core.traits import (
     Bool,
@@ -26,6 +29,24 @@ try:
     import keras
 except ImportError:
     raise ImportError("keras is not installed in your environment!")
+
+class TqdmProgressBar(Callback):
+    def on_epoch_begin(self, epoch, logs=None):
+        self.epoch_start_time = time()
+        self.progress_bar = tqdm(total=self.params['steps'], desc=f'Epoc {epoch + 1}/{self.params["epochs"]}', unit='batch')
+
+    def on_epoch_end(self, epoch, logs=None):
+        epoch_duration = time() - self.epoch_start_time
+        print(f'\nDuración de la época {epoch + 1}: {epoch_duration:.2f} segundos')
+        self.progress_bar.close()
+
+    def on_batch_begin(self, batch, logs=None):
+        self.batch_start_time = time()
+
+    def on_batch_end(self, batch, logs=None):
+        # batch_duration = time() - self.batch_start_time
+        self.progress_bar.set_postfix(loss=logs.get('loss'), val_loss=logs.get('val_loss'))
+        self.progress_bar.update(1)
 
 class TrainKerasModel(TrainCTLearnModel):
     """
@@ -110,6 +131,7 @@ class TrainKerasModel(TrainCTLearnModel):
     }    
 	
     def setup(self):
+        print(tf.config.list_physical_devices('GPU'))
         # Create a MirroredStrategy.
         self.strategy = tf.distribute.MirroredStrategy()
         atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore
@@ -212,6 +234,9 @@ class TrainKerasModel(TrainCTLearnModel):
             # Compile the model
             self.log.info("Compiling CTLearn model.")
             self.model.compile(optimizer=optimizer_fn(**optimizer_args), loss=losses, metrics=metrics)
+
+        tqdm_callback = TqdmProgressBar()
+        self.callbacks.append(tqdm_callback)
 
         # Train and evaluate the model
         self.log.info("Training and evaluating...")
