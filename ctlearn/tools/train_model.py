@@ -1,22 +1,16 @@
 """
 Tools to train a ``CTLearnModel` (in Keras or PyTorch) on R1/DL1a data using the ``DLDataReader`` and ``DLDataLoader``.
 """
+
 import sys
 import argparse
 from ctapipe.core import Tool
-
+import warnings
 from ctapipe.core.traits import (
     CaselessStrEnum,
 )
 from ctlearn import is_package_available
 from ctlearn.tools.ctlearn_enum import FrameworkType
-
-if is_package_available("torch"):
-    from ctlearn.tools.pytorch.train_pytorch_model import TrainPyTorchModel
-
-if is_package_available("tensorflow"):
-    from ctlearn.tools.keras.train_keras_model import TrainKerasModel
-
 
 class DLFrameWork(Tool):
     name = "dlframework"
@@ -27,8 +21,6 @@ class DLFrameWork(Tool):
     ).tag(config=True)
 
     aliases = {
-        **TrainPyTorchModel.aliases,
-        **TrainKerasModel.aliases,
         "framework": "DLFrameWork.framework_type",
     }
 
@@ -58,21 +50,32 @@ class DLFrameWork(Tool):
     @classmethod
     def get_framework(self, framework_type: FrameworkType):
         if framework_type == FrameworkType.KERAS:
-            if not is_package_available("tensorflow"):
-                raise ImportError(
-                    "TensorFlow is not installed. Cannot run Keras framework."
-                )
-            else:
-
-                fw = TrainKerasModel()                              
+            # if not is_package_available("tensorflow"):
+            #     raise ImportError(
+            #         "TensorFlow is not installed. Cannot run Keras framework."
+            #     )
+            # else:
+            try:
+                from ctlearn.tools.keras.train_keras_model import TrainKerasModel
+            except ImportError:
+                raise ImportError(f"Not possible to import TrainKerasModel")
+            fw = TrainKerasModel()
 
         elif framework_type == FrameworkType.PYTORCH:
-            if not is_package_available("torch"):
-                raise ImportError(
-                    "PyTorch is not installed. Cannot run PyTorch framework."
+            # if not is_package_available("torch"):
+            #     raise ImportError(
+            #         "PyTorch (torch) is not installed. Cannot run PyTorch framework."
+            #     )
+            # else:
+            try:
+                from ctlearn.tools.pytorch.train_pytorch_model import (
+                    TrainPyTorchModel,
                 )
-            else:
-                fw = TrainPyTorchModel()                 
+            except ImportError:
+                raise ImportError(f"Not possible to import TrainPyTorchModel")
+
+            fw = TrainPyTorchModel()
+            
         else:
             raise ValueError(f"Unknown Framework: {framework_type.name}")
         # Update Aliases
@@ -84,18 +87,20 @@ class DLFrameWork(Tool):
 
 if __name__ == "__main__":
 
-    # # Parse the framework argument
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("--framework")
-    # args, _ = parser.parse_known_args()
+    # Parse the framework argument
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--framework")
+    args, _ = parser.parse_known_args()
 
-    # # Get Framework type
-    # if args.framework:
-    #     fw_type = DLFrameWork.string_to_type(args.framework)
-    # else:
-    #     raise ValueError(f"Framework not defined, use : --framework keras or --framework pytorch")
-    
-    # DLFrameWork.get_framework(fw_type)
+    # Get Framework type
+    if args.framework:
+        fw_type = DLFrameWork.string_to_type(args.framework)
+    else:
+        raise ValueError(
+            f"Framework not defined, use : --framework keras or --framework pytorch"
+        )
+
+    DLFrameWork.get_framework(fw_type)
 
     # Launch the Framework
     DLFrameWork().launch_instance()
