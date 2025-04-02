@@ -20,8 +20,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
+    
     - name: Set up Python ${{ matrix.pyv }}
       run: |
+        # Install Miniconda and set up Mamba
+        wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+        bash Miniconda3-latest-Linux-x86_64.sh -b -p $HOME/miniconda
+        echo "$HOME/miniconda/bin" >> $GITHUB_PATH
         mamba install -y python=${{ matrix.pyv }}
     - name: Add MKL_THREADING_LAYER variable
       run:  echo "MKL_THREADING_LAYER=GNU" >> $GITHUB_ENV
