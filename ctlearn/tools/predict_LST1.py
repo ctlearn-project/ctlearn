@@ -2,22 +2,15 @@
 Predict the gammaness, energy and arrival direction from lstchain DL1 data.
 """
 
-import pathlib
 import numpy as np
 import tables
 import keras
 from astropy import units as u
-from astropy.coordinates.earth import EarthLocation
-from astropy.coordinates import AltAz, Angle, SkyCoord
+from astropy.coordinates import AltAz, SkyCoord
 from astropy.table import Table, join, setdiff, vstack
 from astropy.time import Time
 
 from ctapipe.containers import (
-    TelEventIndexContainer,
-    EventIndexContainer,
-    TelescopePointingContainer,
-    TelescopeTriggerContainer,
-    TriggerContainer,
     ParticleClassificationContainer,
     ReconstructedGeometryContainer,
     ReconstructedEnergyContainer,
@@ -29,8 +22,6 @@ from ctapipe.core.traits import (
     Bool,
     Int,
     Path,
-    Set,
-    Dict,
     List,
     CaselessStrEnum,
     ComponentName,
@@ -47,9 +38,7 @@ from ctlearn.utils import get_lst1_subarray_description
 from dl1_data_handler.image_mapper import ImageMapper
 from dl1_data_handler.reader import (
     get_unmapped_image,
-    get_unmapped_waveform,
     TableQualityQuery,
-    LST_EPOCH,
 )
 
 POINTING_GROUP = "/dl1/monitoring/telescope/pointing"
@@ -461,11 +450,13 @@ class LST1PredictionTool(Tool):
                 left=dl1_table,
                 right=parameter_table,
                 keys=["event_id"],
+                keep_order=True,
             )
             dl1_table = join(
                 left=dl1_table,
                 right=trigger_table,
                 keys=["event_id"],
+                keep_order=True,
             )
             # Initialize a boolean mask to True for all events in the sliced dl1 table
             passes_quality_checks = np.ones(len(dl1_table), dtype=bool)

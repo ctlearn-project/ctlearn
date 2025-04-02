@@ -65,7 +65,8 @@ Dependencies
 
 * Python>=3.11
 * TensorFlow>=2.14,<2.15
-* ctapipe>=0.22.0,<0.24
+* astropy>=0.7,<0.8
+* ctapipe>=0.22.0,<0.25
 * ctaplot
 * DL1DataHandler>=0.14.1,<0.15
 * numba

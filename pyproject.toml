@@ -29,7 +29,7 @@ classifiers = [
 requires-python = ">=3.11"
 dependencies = [
     "dl1_data_handler>=0.14.1, <0.15",
-    "astropy",
+    "astropy>=7.0, <0.8",
     "numpy",
     "pandas",
     "pip",
@@ -39,7 +39,7 @@ dependencies = [
     "tensorflow>=2.14,<2.15",
     "pydot",
     "setuptools",
-    "ctapipe>=0.22.0, <0.24",
+    "ctapipe>=0.22.0, <0.25",
 ]
 
 dynamic = ["version"]

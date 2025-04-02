@@ -3,18 +3,15 @@ Tools to predict the gammaness, energy and arrival direction in monoscopic and s
 """
 
 import atexit
-import pathlib
 import numpy as np
 import os
 import tensorflow as tf
 import keras
 
 from astropy import units as u
-from astropy.coordinates.earth import EarthLocation
 from astropy.coordinates import AltAz, SkyCoord
 from astropy.table import (
     Table,
-    hstack,
     vstack,
     join,
     setdiff,
@@ -33,10 +30,6 @@ from ctapipe.core.traits import (
     Int,
     Path,
     flag,
-    Set,
-    Dict,
-    List,
-    CaselessStrEnum,
     ComponentName,
     Unicode,
     classes_with_traits,
@@ -911,9 +904,8 @@ class PredictCTLearnModel(Tool):
                 all_identifiers,
                 pointing_mean,
                 keys=SUBARRAY_EVENT_KEYS,
+                keep_order=True,
             )
-            # TODO: use keep_order for astropy v7.0.0
-            pointing_info.sort(SUBARRAY_EVENT_KEYS)
             # Create the pointing table
             pointing_table = Table(
                 {
@@ -1341,6 +1333,7 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                 left=example_identifiers,
                 right=pointing_info,
                 keys=TELESCOPE_EVENT_KEYS,
+                keep_order=True,
             )
             # Predict the arrival direction of the primary particle
             direction_table, direction_feature_vectors = (
@@ -1506,9 +1499,8 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                 left=tel_pointing,
                 right=all_identifiers,
                 keys=["obs_id", "tel_id"],
+                keep_order=True,
             )
-            # TODO: use keep_order for astropy v7.0.0
-            tel_pointing.sort(TELESCOPE_EVENT_KEYS)
             # Retrieve the example identifiers for the selected telescope
             tel_pointing_table = Table(
                 {
@@ -1718,6 +1710,7 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                 left=example_identifiers,
                 right=pointing_info,
                 keys=SUBARRAY_EVENT_KEYS,
+                keep_order=True,
             )
             # Predict the arrival direction of the primary particle
             direction_table, direction_feature_vectors = super()._predict_skydirection(
@@ -1830,6 +1823,7 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
             left=pointing_info,
             right=all_identifiers,
             keys=["obs_id"],
+            keep_order=True,
         )
         # TODO: use keep_order for astropy v7.0.0
         pointing_info.sort(SUBARRAY_EVENT_KEYS)
