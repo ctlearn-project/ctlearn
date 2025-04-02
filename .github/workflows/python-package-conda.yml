@@ -1,3 +1,4 @@
+
 name: CI
 
 on:
@@ -7,42 +8,46 @@ on:
     tags:
       - "**"
   pull_request:
+  workflow_dispatch:
 
 jobs:
   build:
     strategy:
       matrix:
         os: [ubuntu-22.04]
-        pyv: ['3.10', '3.11', '3.12']
+        pyv: [ '3.11', '3.12', '3.13']
       max-parallel: 5
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
     - name: Set up Python ${{ matrix.pyv }}
       run: |
-        conda install -y python=${{ matrix.pyv }}
-    - name: Add conda to system path
-      run: |
-        # $CONDA is an environment variable pointing to the root of the miniconda directory
-        echo $CONDA/bin >> $GITHUB_PATH
+        # Install Miniconda
+        wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+        bash miniconda.sh -b -p $HOME/miniconda
+        echo "$HOME/miniconda/bin" >> $GITHUB_PATH
+        source $HOME/miniconda/bin/activate
+        # Install Mamba via conda (since we don't have mamba yet)
+        $HOME/miniconda/bin/conda config --add channels conda-forge
+        $HOME/miniconda/bin/conda install -y mamba
+        mamba install -y python=${{ matrix.pyv }}
     - name: Add MKL_THREADING_LAYER variable
-      run:  echo "MKL_THREADING_LAYER=GNU" >> $GITHUB_ENV
-    - name: Install dependencies
+      run: echo "MKL_THREADING_LAYER=GNU" >> $GITHUB_ENV
+    - name: Install dependencies with Mamba
       run: |
-        conda env update --file environment.yml --name base
+        source $HOME/miniconda/bin/activate
+        mamba env update --file environment.yml --name base
     - name: Lint with flake8
       run: |
-        conda install flake8
-        # stop the build if there are Python syntax errors or undefined names
+        source $HOME/miniconda/bin/activate
+        mamba install flake8
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Install with pip
       run: |
         pip install -e .
     - name: Test with pytest
       run: |
-        conda install pytest
+        source $HOME/miniconda/bin/activate
+        mamba install pytest
         pytest
-
-
