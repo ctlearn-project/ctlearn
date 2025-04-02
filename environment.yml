@@ -7,6 +7,7 @@ channels:
     - ctlearn-project
 dependencies:
     - python=3.11
+    - astropy>=7.0.1,<0.8
     - setuptools
     - numpy
     - pandas
@@ -15,7 +16,6 @@ dependencies:
     - scikit-learn
     - ctapipe
     - pip:
-        - astropy>=7.0.1,<0.8
         - numba
         - tensorflow>=2.14,<2.15
         - dl1_data_handler>=0.14.1,<0.15
