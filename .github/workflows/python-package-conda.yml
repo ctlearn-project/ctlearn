@@ -28,6 +28,7 @@ jobs:
         echo "$HOME/miniconda/bin" >> $GITHUB_PATH
         source $HOME/miniconda/bin/activate
         # Install Mamba via conda (since we don't have mamba yet)
+        $HOME/miniconda/bin/conda config --add channels conda-forge
         $HOME/miniconda/bin/conda install -y mamba
         mamba install -y python=${{ matrix.pyv }}
     - name: Add MKL_THREADING_LAYER variable
