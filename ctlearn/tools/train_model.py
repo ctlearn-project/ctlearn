@@ -28,7 +28,7 @@ from dl1_data_handler.reader import DLDataReader
 from ctlearn.core.loader import DLDataLoader
 from ctlearn.core.model import CTLearnModel
 from ctlearn.utils import validate_trait_dict
-
+from dl1_data_handler.reader import ProcessType
 
 class TrainCTLearnModel(Tool):
     """
@@ -387,7 +387,8 @@ class TrainCTLearnModel(Tool):
             self.model = CTLearnModel.from_name(
                 self.model_type,
                 input_shape=self.training_loader.input_shape,
-                index_map= self.training_loader.neighbor_matrix,
+                # mask=self.training_loader.mask,
+                indices=self.dl1dh_reader.neighbor_array,
                 tasks=self.reco_tasks,
                 parent=self,
             ).model
