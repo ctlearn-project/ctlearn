@@ -78,7 +78,7 @@ class DLDataLoader(Sequence):
                         self.input_shape[2],
                         self.input_shape[0] * self.input_shape[3],
                     )
-        if self.DLDataReader.hexagonal_convolution == True:
+        if self.DLDataReader.__class__.__name__ != "DLRawTriggerReader" and self.DLDataReader.hexagonal_convolution == True:
             self.neighbor_array = self.DLDataReader.neighbor_array
             # self.mask, self.indices_for_gather = self.prepare_mask(neighbor_array)
 
