@@ -12,7 +12,6 @@ from ctlearn.core.attention import (
     channel_squeeze_excite_block,
     spatial_squeeze_excite_block,
 )
-from ctlearn.core.indexed import IndexedMaxPool2D, IndexedAveragePool2D, IndexedConv2D, IndexedConv3D
 from tensorflow.keras.layers import Conv1D, BatchNormalization, ReLU, GlobalAveragePooling1D, Conv3D
 from ctlearn.utils import validate_trait_dict
 from traitlets.config import Config
