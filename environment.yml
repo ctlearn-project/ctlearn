@@ -6,7 +6,7 @@ channels:
     - cta-observatory
     - ctlearn-project
 dependencies:
-    - python=3.11
+    - python=3.10
     - astropy
     - setuptools
     - numpy
