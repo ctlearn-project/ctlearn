@@ -58,7 +58,6 @@
     ],
     "language": "eng",
     "license": "BSD-3-Clause",
-    "publication_date": "2025-03-21",
     "related_identifiers": [
         {
             "identifier": "https://github.com/ctlearn-project/ctlearn",
@@ -68,6 +67,5 @@
         }
     ],
     "title": "CTLearn: Deep learning for imaging atmospheric Cherenkov telescopes event reconstruction",
-    "upload_type": "software",
-    "version": "0.10.2"
+    "upload_type": "software"
 }
