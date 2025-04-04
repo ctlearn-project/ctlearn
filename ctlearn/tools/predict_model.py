@@ -793,7 +793,7 @@ class PredictCTLearnModel(Tool):
             location=self.dl1dh_reader.subarray.reference_location,
             obstime=trigger_time,
         )
-        # Set the reco direction in (alt, az) coordinates
+        # Set the reco direction in (fov_lon, fov_lat) coordinates
         reco_direction = SkyCoord(
             fov_lon=table["fov_lon"],
             fov_lat=table["fov_lat"],
@@ -802,8 +802,8 @@ class PredictCTLearnModel(Tool):
         # Transform the reco direction from nominal frame to the AltAz frame
         sky_coord = reco_direction.transform_to(altaz)
         # Add the reconstructed direction (az, alt) to the prediction table
-        table.add_column(reco_direction.az.to(u.deg), name=f"{self.prefix}_az")
-        table.add_column(reco_direction.alt.to(u.deg), name=f"{self.prefix}_alt")
+        table.add_column(sky_coord.az.to(u.deg), name=f"{self.prefix}_az")
+        table.add_column(sky_coord.alt.to(u.deg), name=f"{self.prefix}_alt")
         # Remove unnecessary columns from the table that do not the ctapipe DL2 data format
         table.remove_columns(
             [
