@@ -793,7 +793,7 @@ class PredictCTLearnModel(Tool):
             location=self.dl1dh_reader.subarray.reference_location,
             obstime=trigger_time,
         )
-        # Set the reco direction in (alt, az) coordinates
+        # Set the reco direction in (fov_lon, fov_lat) coordinates
         reco_direction = SkyCoord(
             fov_lon=table["fov_lon"],
             fov_lat=table["fov_lat"],
