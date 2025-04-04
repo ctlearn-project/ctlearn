@@ -239,7 +239,7 @@ class TrainCTLearnModel(Tool):
                 self.log.info("Removing existing output directory %s", self.output_dir)
                 shutil.rmtree(self.output_dir)
 
-        # Must be moved to KERAS
+        # Must be moved to KERAS (It is moved already )
         # Create a MirroredStrategy.
         # self.strategy = tf.distribute.MirroredStrategy()
         # atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore
@@ -249,14 +249,14 @@ class TrainCTLearnModel(Tool):
         self.input_url_signal = []
         for signal_pattern in self.file_pattern_signal:
             self.input_url_signal.extend(self.input_dir_signal.glob(signal_pattern))
-        # print(f"self.input_url_signal: {self.input_url_signal}")
+        
         # Get bkg input files
         self.input_url_background = []
         if self.input_dir_background is not None:
             for background_pattern in self.file_pattern_background:
                 self.input_url_background.extend(self.input_dir_background.glob(background_pattern))
 
-        # print(f"self.input_url_background: {self.input_url_background}")
+       
         print("DEBUG 1")
         # Set up the data reader
         self.log.info("Loading data:")
@@ -314,6 +314,12 @@ class TrainCTLearnModel(Tool):
         n_validation_examples = int(self.validation_split * self.dl1dh_reader._get_n_events())
         training_indices = indices[n_validation_examples:]
         validation_indices = indices[:n_validation_examples]
+
+        # Set self.strategy.num_replicas_in_sync to 1 in case that does not exist (Pytorch)
+        if not hasattr(self, "strategy"):
+            self.strategy = type("FakeStrategy", (), {"num_replicas_in_sync": 1})()
+            print("num_replicas_in_sync:",self.strategy.num_replicas_in_sync)
+
         self.training_loader = DLDataLoader(
             self.dl1dh_reader,
             training_indices,
