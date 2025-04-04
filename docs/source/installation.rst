@@ -12,7 +12,7 @@ necessary package channels, and install CTLearn specified version and its depend
 
 .. code-block:: bash
 
-   CTLEARN_VER=0.10.2
+   CTLEARN_VER=0.10.3
    wget https://raw.githubusercontent.com/ctlearn-project/ctlearn/v$CTLEARN_VER/environment.yml
    conda env create -n [ENVIRONMENT_NAME] -f environment.yml
    conda activate [ENVIRONMENT_NAME]
@@ -47,7 +47,7 @@ Finally, install CTLearn into the new conda environment via pypi:
 .. code-block:: bash
 
    conda activate ctlearn
-   pip install ctlearn==0.10.2
+   pip install ctlearn==0.10.3
 
 or with pip from source:
 
@@ -65,9 +65,9 @@ Dependencies
 
 * Python>=3.10
 * TensorFlow>=2.14,<2.15
-* ctapipe>=0.22.0,<0.24
+* ctapipe>=0.22.0,<0.25
 * ctaplot
-* DL1DataHandler>=0.14.1,<0.15
+* DL1DataHandler>=0.14.2,<0.15
 * numba
 * NumPy
 * Pandas
