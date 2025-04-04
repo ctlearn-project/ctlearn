@@ -3,8 +3,6 @@ name: ctlearn
 channels:
     - anaconda
     - conda-forge
-    - cta-observatory
-    - ctlearn-project
 dependencies:
     - python=3.10
     - astropy
