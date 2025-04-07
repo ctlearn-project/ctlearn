@@ -35,7 +35,7 @@ necessary package channels, and install CTLearn specified version and its depend
 
 .. code-block:: bash
 
-   CTLEARN_VER=0.10.2
+   CTLEARN_VER=0.10.3
    wget https://raw.githubusercontent.com/ctlearn-project/ctlearn/v$CTLEARN_VER/environment.yml
    conda env create -n [ENVIRONMENT_NAME] -f environment.yml
    conda activate [ENVIRONMENT_NAME]
