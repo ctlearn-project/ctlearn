@@ -10,10 +10,11 @@ from ctapipe.core.traits import (
     CaselessStrEnum,
 )
 from ctlearn import is_package_available
-from ctlearn.tools.ctlearn_enum import FrameworkType
+from ctlearn.core.ctlearn_enum import FrameworkType
 
 class DLFrameWork(Tool):
     name = "dlframework"
+
     framework_type = CaselessStrEnum(
         ["pytorch", "keras"],
         default_value="keras",
@@ -57,19 +58,18 @@ class DLFrameWork(Tool):
     def get_framework(self, framework_type: FrameworkType):
         if framework_type == FrameworkType.KERAS:
             try:
-                from ctlearn.tools.keras.train_keras_model import TrainKerasModel
-            except ImportError:
-                raise ImportError(f"Not possible to import TrainKerasModel")
+                from ctlearn.tools.train.keras.train_keras_model import TrainKerasModel
+            except ImportError as e:
+                raise ImportError(f"Not possible to import TrainKerasModel: {e}") from e
             fw = TrainKerasModel()
 
         elif framework_type == FrameworkType.PYTORCH:
             try:
-                from ctlearn.tools.pytorch.train_pytorch_model import (
+                from ctlearn.tools.train.pytorch.train_pytorch_model import (
                     TrainPyTorchModel,
                 )
-            except ImportError:
-                raise ImportError(f"Not possible to import TrainPyTorchModel")
-
+            except ImportError as e:
+                raise ImportError(f"Not possible to import TrainPyTorchModel: {e}") from e
             fw = TrainPyTorchModel()
             
         else:
@@ -100,3 +100,6 @@ if __name__ == "__main__":
 
     # Launch the Framework
     DLFrameWork().launch_instance()
+
+# Example: 
+# python -m ctlearn.tools.train_model --output ./output_dir2 --signal ./mc_tjark/ --pattern-signal gamma_*.dl1.h5 --reco energy --overwrite

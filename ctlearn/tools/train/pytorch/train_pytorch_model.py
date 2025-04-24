@@ -21,7 +21,7 @@ try:
 except ImportError:
     raise ImportError("pytorch_lightning is not installed in your environment!")
 
-from ctlearn.tools.base_train_model import TrainCTLearnModel
+from ctlearn.tools.train.base_train_model import TrainCTLearnModel
 # from ctlearn.tools.train_model import 
 class TrainPyTorchModel(TrainCTLearnModel):
     """
