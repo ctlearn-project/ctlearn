@@ -22,6 +22,8 @@ except ImportError:
     raise ImportError("pytorch_lightning is not installed in your environment!")
 
 from ctlearn.tools.train.base_train_model import TrainCTLearnModel
+from ctlearn.core.ctlearn_enum import Task
+
 # from ctlearn.tools.train_model import 
 class TrainPyTorchModel(TrainCTLearnModel):
     """
@@ -85,19 +87,33 @@ class TrainPyTorchModel(TrainCTLearnModel):
     }    
 
     def __init__(self, **kwargs):
+        print("Pytorch init")      
         super().__init__(**kwargs)
         print("CONFIG VALUES PYTORCH:", self.config)    
 
+
     def setup(self):
+        print("Pytorch setup")    
         super().setup()
         print("Pytorch setup :)")
         print(f"DEBUG - framework_type raw: {self.reco_tasks} ({type(self.reco_tasks)})")
-        
+        task_str = self.reco_tasks
+        print(self.reco_tasks)
+        print(type(self.reco_tasks))
+        self.task = None
+        try:
+            print
+            self.task = Task[task_str[0]]
+        except KeyError:
+            print(f"'{task_str}' is not a valid enum type.")
 
     def start(self):
+        print("Pytorch start")      
         super().start()
         print("Pytorch start")       
-        
+
+
+
     def finish(self):
         super().finish()
         print("Pytorch finish")      
