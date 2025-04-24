@@ -23,3 +23,4 @@ class DLDataLoader:
         else:
             raise ValueError(f"Unsupported framework: {framework}")
         
+        return dataloader

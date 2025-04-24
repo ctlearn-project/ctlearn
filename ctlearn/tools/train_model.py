@@ -1,24 +1,21 @@
-"""
-Tools to train a ``CTLearnModel` (in Keras or PyTorch) on R1/DL1a data using the ``DLDataReader`` and ``DLDataLoader``.
-"""
-
 import sys
-import argparse
 from ctapipe.core import Tool
-import warnings
-from ctapipe.core.traits import (
-    CaselessStrEnum,
-)
-from ctlearn import is_package_available
+from ctapipe.core.traits import CaselessStrEnum
 from ctlearn.core.ctlearn_enum import FrameworkType
 
+
 class DLFrameWork(Tool):
+    """
+    Tool to select and run a specific deep learning training framework (Keras or PyTorch)
+    for CTLearn model training. It dynamically loads the appropriate subclass based on
+    the user-defined --framework argument.
+    """
     name = "dlframework"
 
     framework_type = CaselessStrEnum(
         ["pytorch", "keras"],
         default_value="keras",
-        help="Framework to use pytorch or keras",
+        help="Framework to use: pytorch or keras",
     ).tag(config=True)
 
     aliases = {
@@ -28,78 +25,85 @@ class DLFrameWork(Tool):
     }
 
     def __init__(self, **kwargs):
+        """
+        Initialize the DLFrameWork tool and prepare for framework injection.
+        """
         super().__init__(**kwargs)
-        print("CONFIG VALUES:", self.config)        
-
-    # def setup(self):
-    #     pass  # Do Nothing
 
     def start(self):
-
         print(f"Selected Framework: {self.framework_type}")
 
-        framework= self.string_to_type(self.framework_type)
+        framework = self.string_to_type(self.framework_type)
         fw_obj = self.get_framework(framework)
-        fw_obj.parse_command_line(argv=sys.argv[1:])  # parse reco correctly now
+        fw_obj.update_config(self.config)
+        fw_obj.parse_command_line(argv=sys.argv[1:])
         fw_obj.run()
 
     @classmethod
-    def string_to_type(self, str_type: str) -> FrameworkType:
+    def string_to_type(cls, str_type: str) -> FrameworkType:
+        """
+        Convert a string to a FrameworkType enum (case-insensitive).
 
-        type_ = None
-        str_type = str.upper(str_type)
+        Parameters:
+            str_type (str): The name of the framework (e.g., 'keras', 'pytorch').
+
+        Returns:
+            FrameworkType: Corresponding enum value.
+
+        Raises:
+            ValueError: If the provided string is not a valid framework type.
+        """
         try:
-            type_ = FrameworkType[str_type]
+            return FrameworkType[str_type.upper()]
         except KeyError:
-            print(f"'{str_type}' is not a valid enum type.")
-        return type_
+            raise ValueError(f"'{str_type}' is not a valid framework type.")
 
     @classmethod
-    def get_framework(self, framework_type: FrameworkType):
+    def get_framework(cls, framework_type: FrameworkType):
+        """
+        Dynamically import and return the corresponding training class 
+        based on the framework type.
+
+        Parameters:
+            framework_type (FrameworkType): Enum indicating which framework to use.
+
+        Returns:
+            Tool: An instance of the selected training framework (subclass of Tool).
+
+        Raises:
+            ImportError: If the training module could not be imported.
+            ValueError: If the framework type is unknown.
+        """
         if framework_type == FrameworkType.KERAS:
             try:
                 from ctlearn.tools.train.keras.train_keras_model import TrainKerasModel
+                fw = TrainKerasModel()
             except ImportError as e:
                 raise ImportError(f"Not possible to import TrainKerasModel: {e}") from e
-            fw = TrainKerasModel()
 
         elif framework_type == FrameworkType.PYTORCH:
             try:
-                from ctlearn.tools.train.pytorch.train_pytorch_model import (
-                    TrainPyTorchModel,
-                )
+                from ctlearn.tools.train.pytorch.train_pytorch_model import TrainPyTorchModel
+                fw = TrainPyTorchModel()
+                print("Pytorch")
             except ImportError as e:
                 raise ImportError(f"Not possible to import TrainPyTorchModel: {e}") from e
-            fw = TrainPyTorchModel()
-            
+
         else:
             raise ValueError(f"Unknown Framework: {framework_type.name}")
-        # Update Aliases
-        self.aliases.update(fw.aliases)
-        DLFrameWork.aliases.update(fw.aliases)
 
         return fw
 
 
 if __name__ == "__main__":
+    # Parse only --framework to determine which subclass to load
+    minimal_args = [arg for arg in sys.argv[1:] if "--framework" in arg or arg in ["-h", "--help"]]
+    tool = DLFrameWork()
+    tool.initialize(argv=minimal_args)
 
-    # Parse the framework argument
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--framework", default="keras")
-    args, _ = parser.parse_known_args()
+    # Setup and inject the correct framework instance
+    tool.setup()
 
-    # Get Framework type
-    if args.framework:
-        fw_type = DLFrameWork.string_to_type(args.framework)
-    else:
-        raise ValueError(
-            f"Framework not defined, use : --framework keras or --framework pytorch"
-        )
-
-    DLFrameWork.get_framework(fw_type)
-
-    # Launch the Framework
-    DLFrameWork().launch_instance()
-
-# Example: 
-# python -m ctlearn.tools.train_model --output ./output_dir2 --signal ./mc_tjark/ --pattern-signal gamma_*.dl1.h5 --reco energy --overwrite
+    # Parse all CLI args with the selected framework subclass
+    tool.framework_instance.initialize(argv=sys.argv[1:])
+    tool.run()

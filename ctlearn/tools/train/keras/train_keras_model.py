@@ -141,6 +141,7 @@ class TrainKerasModel(TrainCTLearnModel):
 
                
     def start(self):
+        print("Start KERAS")
         # Set up the keras callbacks
         monitor = "val_loss"
         monitor_mode = "min"

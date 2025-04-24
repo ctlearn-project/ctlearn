@@ -19,7 +19,7 @@ from ctapipe.core.traits import (
 from dl1_data_handler.reader import DLDataReader
 from ctlearn.core.data_loader.loader import DLDataLoader
 from ctlearn.core.model import CTLearnModel
-
+from ctlearn.tools.train_model import DLFrameWork
 
 class TrainCTLearnModel(Tool):
     """
@@ -205,6 +205,7 @@ class TrainCTLearnModel(Tool):
     overwrite = Bool(help="Overwrite output dir if it exists").tag(config=True)
 
     aliases = {
+        #  **DLFrameWork.aliases, 
         # "framework": "DLFrameWork.framework_type",
         "framework": "TrainCTLearnModel.framework_type",
         "signal": "TrainCTLearnModel.input_dir_signal",
@@ -329,8 +330,8 @@ class TrainCTLearnModel(Tool):
             self.strategy = type("FakeStrategy", (), {"num_replicas_in_sync": 1})()
             print("num_replicas_in_sync:",self.strategy.num_replicas_in_sync)
 
-        print(self.framework_type)
-
+        print("BASE TRAIN FRAMEWORK", self.framework_type)
+        print("DEBUG 4")
         self.training_loader = DLDataLoader.create(
             framework=self.framework_type,
             DLDataReader=self.dl1dh_reader,
@@ -341,7 +342,7 @@ class TrainCTLearnModel(Tool):
             sort_by_intensity=self.sort_by_intensity,
             stack_telescope_images=self.stack_telescope_images,
         )
-
+        print("DEBUG 5")
         self.validation_loader = DLDataLoader.create(
             framework=self.framework_type,
             DLDataReader=self.dl1dh_reader,
@@ -352,6 +353,9 @@ class TrainCTLearnModel(Tool):
             sort_by_intensity=self.sort_by_intensity,
             stack_telescope_images=self.stack_telescope_images,
         )
+
+    def start(self):
+        pass
 
     def finish(self):
         print("finish")
