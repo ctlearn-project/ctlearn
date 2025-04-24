@@ -1,12 +1,25 @@
-from .keras_loader import KerasDLDataLoader
-from .pytorch_loader import PyTorchDLDataLoader
+# from .keras_loader import KerasDLDataLoader
+# from .pytorch_loader import PyTorchDLDataLoader
 
 class DLDataLoader:
     @staticmethod
     def create(framework, **kwargs):
+
+        dataloader = None 
         if framework == "keras":
-            return KerasDLDataLoader(**kwargs)
+            try:
+                from .keras_loader import KerasDLDataLoader
+                dataloader = KerasDLDataLoader(**kwargs)
+            except ImportError as e:
+                raise ImportError(f"Not possible to import KerasDLDataLoader: {e}") from e
+             
         elif framework == "pytorch":
-            return PyTorchDLDataLoader(**kwargs)
+            try:
+                from .pytorch_loader import PyTorchDLDataLoader
+                dataloader = PyTorchDLDataLoader(**kwargs)
+            except ImportError as e:
+                raise ImportError(f"Not possible to import PyTorchDLDataLoader: {e}") from e
+ 
         else:
             raise ValueError(f"Unsupported framework: {framework}")
+        
