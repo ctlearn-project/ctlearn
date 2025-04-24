@@ -19,9 +19,9 @@ from ctapipe.core.traits import (
     ComponentName,
     Unicode,
 )
-from ctlearn.tools.base_train_model import TrainCTLearnModel
-from dl1_data_handler.reader import DLDataReader
-from ctlearn.core.loader import DLDataLoader
+from ctlearn.tools.train.base_train_model import TrainCTLearnModel
+# from dl1_data_handler.reader import DLDataReader
+# from ctlearn.core.loader import DLDataLoader
 from ctlearn.core.model import CTLearnModel
 from ctlearn.utils import validate_trait_dict
 
@@ -136,7 +136,7 @@ class TrainKerasModel(TrainCTLearnModel):
         self.strategy = tf.distribute.MirroredStrategy()
         atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore
         self.log.info("Number of devices: %s", self.strategy.num_replicas_in_sync)
-
+        # print(self.framework_type)
         super().setup()
 
                

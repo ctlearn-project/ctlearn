@@ -17,7 +17,7 @@ from ctapipe.core.traits import (
     Unicode,
 )
 from dl1_data_handler.reader import DLDataReader
-from ctlearn.core.loader import DLDataLoader
+from ctlearn.core.data_loader.loader import DLDataLoader
 from ctlearn.core.model import CTLearnModel
 
 
@@ -80,6 +80,12 @@ class TrainCTLearnModel(Tool):
         Save the trained model in the output directory in ONNX if selected.
     """
     name = "ctlearn-train-model-base"
+
+    framework_type = CaselessStrEnum(
+        ["pytorch", "keras"],
+        default_value="keras",
+        help="Framework to use pytorch or keras"
+    ).tag(config=True)
 
     input_dir_signal = Path(
         help="Input directory for signal events",
@@ -144,6 +150,7 @@ class TrainCTLearnModel(Tool):
     reco_tasks = List(
         trait=CaselessStrEnum(["type", "energy", "cameradirection", "skydirection"]),
         allow_none=False, 
+        default_value=None,
         help=(
             "List of reconstruction tasks to perform. "
             "'type': classification of the primary particle type "
@@ -198,7 +205,8 @@ class TrainCTLearnModel(Tool):
     overwrite = Bool(help="Overwrite output dir if it exists").tag(config=True)
 
     aliases = {
-        "framework": "DLFrameWork.framework_type",
+        # "framework": "DLFrameWork.framework_type",
+        "framework": "TrainCTLearnModel.framework_type",
         "signal": "TrainCTLearnModel.input_dir_signal",
         "background": "TrainCTLearnModel.input_dir_background",
         "pattern-signal": "TrainCTLearnModel.file_pattern_signal",
@@ -213,7 +221,7 @@ class TrainCTLearnModel(Tool):
             "Overwrite existing files",
         ),
     }
-
+    
     classes = (
         [
             CTLearnModel,
@@ -244,7 +252,8 @@ class TrainCTLearnModel(Tool):
         # self.strategy = tf.distribute.MirroredStrategy()
         # atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore
         # self.log.info("Number of devices: %s", self.strategy.num_replicas_in_sync)
-
+        
+        # print(self.DLFrameWork.framework_type)
         # Get signal input files
         self.input_url_signal = []
         for signal_pattern in self.file_pattern_signal:
@@ -320,20 +329,25 @@ class TrainCTLearnModel(Tool):
             self.strategy = type("FakeStrategy", (), {"num_replicas_in_sync": 1})()
             print("num_replicas_in_sync:",self.strategy.num_replicas_in_sync)
 
-        self.training_loader = DLDataLoader(
-            self.dl1dh_reader,
-            training_indices,
+        print(self.framework_type)
+
+        self.training_loader = DLDataLoader.create(
+            framework=self.framework_type,
+            DLDataReader=self.dl1dh_reader,
+            indices=training_indices,
             tasks=self.reco_tasks,
-            batch_size=self.batch_size*self.strategy.num_replicas_in_sync,
+            batch_size=self.batch_size * self.strategy.num_replicas_in_sync,
             random_seed=self.random_seed,
             sort_by_intensity=self.sort_by_intensity,
             stack_telescope_images=self.stack_telescope_images,
         )
-        self.validation_loader = DLDataLoader(
-            self.dl1dh_reader,
-            validation_indices,
+
+        self.validation_loader = DLDataLoader.create(
+            framework=self.framework_type,
+            DLDataReader=self.dl1dh_reader,
+            indices=training_indices,
             tasks=self.reco_tasks,
-            batch_size=self.batch_size*self.strategy.num_replicas_in_sync,
+            batch_size=self.batch_size * self.strategy.num_replicas_in_sync,
             random_seed=self.random_seed,
             sort_by_intensity=self.sort_by_intensity,
             stack_telescope_images=self.stack_telescope_images,

@@ -51,7 +51,7 @@ from dl1_data_handler.reader import (
     ProcessType,
     LST_EPOCH,
 )
-from ctlearn.core.loader import DLDataLoader
+from ctlearn.core.data_loader.loader import DLDataLoader
 
 SIMULATION_CONFIG_TABLE = "/configuration/simulation/run"
 FIXED_POINTING_GROUP = "/configuration/telescope/pointing"
@@ -445,14 +445,16 @@ class PredictCTLearnModel(Tool):
         """
         # Create a new DLDataLoader for each task
         # It turned out to be more robust to initialize the DLDataLoader separately.
-        data_loader = DLDataLoader(
-            self.dl1dh_reader,
-            self.indices,
+        data_loader = DLDataLoader.create(
+            framework="keras",
+            DLDataReader=self.dl1dh_reader,
+            indices=self.indices,
             tasks=[],
             batch_size=self.batch_size * self.strategy.num_replicas_in_sync,
             sort_by_intensity=self.sort_by_intensity,
             stack_telescope_images=self.stack_telescope_images,
         )
+        
         # Keras is only considering the last complete batch.
         # In prediction mode we don't want to loose the last
         # uncomplete batch, so we are creating an additional
@@ -460,14 +462,17 @@ class PredictCTLearnModel(Tool):
         data_loader_last_batch = None
         if self.last_batch_size > 0:
             last_batch_indices = self.indices[-self.last_batch_size :]
-            data_loader_last_batch = DLDataLoader(
-                self.dl1dh_reader,
-                last_batch_indices,
+            data_loader_last_batch = DLDataLoader.create(
+                framework="keras",
+                DLDataReader=self.dl1dh_reader,
+                indices=last_batch_indices,
                 tasks=[],
                 batch_size=self.last_batch_size,
                 sort_by_intensity=self.sort_by_intensity,
                 stack_telescope_images=self.stack_telescope_images,
             )
+
+                    
         # Load the model from the specified path
         model = keras.saving.load_model(model_path)
         prediction_colname = (
