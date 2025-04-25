@@ -20,3 +20,5 @@ dependencies:
         - tensorflow>=2.14,<2.15
         - dl1_data_handler>=0.14.1,<0.15
         - pydot
+        - tensorflow-model-optimization
+        - ai-edge-litert

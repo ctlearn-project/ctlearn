@@ -217,6 +217,12 @@ class TrainCTLearnModel(Tool):
         allow_none=False,
         help="Set whether to save model in an ONNX file.",
     ).tag(config=True)
+
+    weight_quantization = Bool(
+        default_value=False,
+        allow_none=False,
+        help="Set whether to quantize model weights.",
+    ).tag(config=True)
     
     early_stopping = Dict(
         default_value=None,
@@ -465,6 +471,24 @@ class TrainCTLearnModel(Tool):
 
 
     def finish(self):
+        if self.weight_quantization:
+            self.log.info("Quantizing Keras model weights...")
+            #model_weights = 
+            converter = tf.lite.TFLiteConverter.from_keras_model(self.model)
+            converter.optimizations = [tf.lite.Optimize.DEFAULT]
+            quant_model = converter.convert()
+            if "type" in self.reco_tasks:
+                model_path = f"{self.output_dir}/ctlearn_quantized_model/quant_type_model.tflite"
+            if "energy" in self.reco_tasks:
+                model_path = f"{self.output_dir}/ctlearn_quantized_model/quant_energy_model.tflite"
+            if "cameradirection" in self.reco_tasks:
+                model_path = f"{self.output_dir}/ctlearn_quantized_model/quant_cameradirection_model.tflite"
+            if "skydirection" in self.reco_tasks:
+                model_path = f"{self.output_dir}/ctlearn_quantized_model/quant_skydirection_model.tflite"
+            Path(model_path).write_bytes(quant_model)
+            
+        
+
 
         # Saving model weights in onnx format
         if self.save_onnx:

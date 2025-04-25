@@ -8,6 +8,8 @@ import numpy as np
 import os
 import tensorflow as tf
 import keras
+from ai_edge_litert.interpreter import Interpreter
+
 
 from astropy import units as u
 from astropy.coordinates.earth import EarthLocation
@@ -138,8 +140,8 @@ class PredictCTLearnModel(Tool):
         Set up the tool.
     finish()
         Finish the tool.
-    _predict_with_model(model_path)
-        Load and predict with a CTLearn model.
+    _predict_with_Keras_model(model_path)
+        Load and predict with a CTLearn model in Keras format.
     _predict_classification(example_identifiers)
         Predict the classification of the primary particle type.
     _predict_energy(example_identifiers)
@@ -425,9 +427,91 @@ class PredictCTLearnModel(Tool):
         self.log.info("Tool is shutting down")
 
     def _predict_with_model(self, model_path):
-        """
-        Load and predict with a CTLearn model.
+        
+        temp_path = pathlib.Path(model_path)
+        print("Checking model type...")
+        if temp_path.is_file() and temp_path.suffix == ".tflite":
+            print("tflite")
+            self._predict_with_tflite_model(self, model_path)
+        elif temp_path.is_file() and (temp_path.suffix == ".cpk" or temp_path.suffix == ".keras" or temp_path.suffix == ".pb"):
+            print("I am a Keras file")
+            self._predict_with_Keras_model(self, model_path)
+        else:
+            for file in temp_path.iterdir():
+                if file.is_file() and file.suffix == ".tflite":
+                    print("I am tflite folder")
+                    self._predict_with_tflite_model(self, model_path)
+                    break
+                elif file.is_file() and (file.suffix == ".cpk" or file.suffix == ".keras" or file.suffix == ".pb"):
+                    print("I am a Keras folder file")
+                    self._predict_with_Keras_model(model_path)
+                    break
+        
 
+    def _predict_with_tflite_model(self, model_path):
+        """
+        Load and predict with a CTLearn model in .tflite format.
+        No batch inference.
+
+        Parameters
+        ----------
+        model_path : str
+            Path to a Tensorflow Lite model file (.tflite).
+
+            Returns
+        -------
+        predict_data : astropy.table.Table
+            Table containing the prediction results.
+        feature_vectors : np.ndarray
+            Empty for now, added for compatibility ???.
+        """
+        data_loader = DLDataLoader(
+            self.dl1dh_reader,
+            self.indices,
+            batch_size = 1,
+            tasks=[],
+            sort_by_intensity=self.sort_by_intensity,
+            stack_telescope_images=self.stack_telescope_images,
+        )
+
+        interpreter = tf.lite.Interpreter(model_path)
+        interpreter.allocate_tensors()
+
+        input_details = interpreter.get_input_details()[0]
+        output_details = interpreter.get_output_details()[0]
+        input_index = input_details["index"]
+        output_index = output_details["index"]
+
+        print(input_details["shape"], flush = True)
+        for input_index in data_loader.__len__:
+            input_data = data_loader.__getitem__(input_index)[0]
+            test_image = np.expand_dims(input_data, axis=0).astype(input_details["dtype"])
+
+            interpreter.set_tensor(input_index, test_image)
+
+
+
+        temp_path = Path(model_path)
+
+        if temp_path.is_file() and temp_path.suffix == ".tflite" and "type" in temp_path.name:
+                prediction_colname = "type"
+        else:
+            for file in temp_path.iterdir():
+                if file.is_file() and file.suffix == ".tflite" and "type" in file.name:
+                    prediction_colname = "type"
+                    break
+
+        
+        if prediction_colname == "type":
+                predict_data = Table({prediction_colname: predict_data})
+        else:
+            predict_data = Table(predict_data)
+
+    
+
+    def _predict_with_Keras_model(self, model_path):
+        """
+        CHANGE THESE COMMENTS
         Load a model from the specified path and predict the data using the loaded model.
         If a last batch loader is provided, predict the last batch and stack the results.
 
@@ -471,7 +555,7 @@ class PredictCTLearnModel(Tool):
         # Load the model from the specified path
         model = keras.saving.load_model(model_path)
         prediction_colname = (
-            model.layers[-1].name if model.layers[-1].name != "softmax" else "type"
+                model.layers[-1].name if model.layers[-1].name != "softmax" else "type"
         )
         backbone_model, feature_vectors = None, None
         if self.dl1_features:
@@ -523,7 +607,7 @@ class PredictCTLearnModel(Tool):
             # Create a astropy table with the prediction results
             # The classification task has a softmax layer as the last layer
             # which returns the probabilities for each class in an array, while
-            # the regression tasks have output neurons which returns the
+            # the regression tasks have output neurons which return the
             # predicted value for the task in a dictionary.
             if prediction_colname == "type":
                 predict_data = Table({prediction_colname: predict_data})
