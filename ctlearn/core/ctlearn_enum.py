@@ -16,3 +16,11 @@ class EventType(Enum):
     proton=1
     electron=2
     
+class Mode(Enum):
+    
+    train = 0
+    results = 1
+    validate = 2
+    observation = 3
+    tunning = 4
+    

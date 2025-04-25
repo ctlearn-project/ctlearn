@@ -107,3 +107,6 @@ if __name__ == "__main__":
     # Parse all CLI args with the selected framework subclass
     tool.framework_instance.initialize(argv=sys.argv[1:])
     tool.run()
+
+# Example:
+# python -m ctlearn.tools.train_model --framework=pytorch --output ./output_dir2 --signal ./mc_tjark/ --pattern-signal gamma_*.dl1.h5 --reco energy --overwrite
