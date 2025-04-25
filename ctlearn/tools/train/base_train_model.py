@@ -19,8 +19,7 @@ from ctapipe.core.traits import (
 from dl1_data_handler.reader import DLDataReader
 from ctlearn.core.data_loader.loader import DLDataLoader
 from ctlearn.core.model import CTLearnModel
-from ctlearn.tools.train_model import DLFrameWork
-
+ 
 class TrainCTLearnModel(Tool):
     """
     Base class for training a ``CTLearnModel`` on R1/DL1a data using the ``DLDataReader`` and ``DLDataLoader``.
@@ -205,8 +204,6 @@ class TrainCTLearnModel(Tool):
     overwrite = Bool(help="Overwrite output dir if it exists").tag(config=True)
 
     aliases = {
-        #  **DLFrameWork.aliases, 
-        # "framework": "DLFrameWork.framework_type",
         "framework": "TrainCTLearnModel.framework_type",
         "signal": "TrainCTLearnModel.input_dir_signal",
         "background": "TrainCTLearnModel.input_dir_background",
