@@ -18,7 +18,7 @@ def test_data_loader(dl1_tmp_path, dl1_gamma_file):
     # Create an image reader
     dl1_reader = DLImageReader(input_url_signal=[dl1_gamma_file], config=config)
     # Create a data loader
-    dl1_loader = DLDataLoader(
+    dl1_loader = DLDataLoader.create(
         framework = "keras",
         DLDataReader=dl1_reader,
         indices=[0],
