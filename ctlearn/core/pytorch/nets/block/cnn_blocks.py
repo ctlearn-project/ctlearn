@@ -41,7 +41,6 @@ class NormalInvGamma(nn.Module):
             var = torch.sqrt(beta / (v * (alpha - 1)))
 
             return mu, var 
-
     
 class ResBlock(nn.Module):
     def __init__(self, n_chans_in, n_chans_out, kernel_size=3, conv_drop_pro=0.2):

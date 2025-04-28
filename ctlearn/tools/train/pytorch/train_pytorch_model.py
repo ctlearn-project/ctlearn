@@ -23,11 +23,18 @@ except ImportError:
 
 from ctlearn.tools.train.base_train_model import TrainCTLearnModel
 from ctlearn.core.ctlearn_enum import Task, Mode
-from .utils import str_list_to_enum_list, sanity_check, read_configuration, create_experiment_folder, expected_structure
+from .utils import (
+    str_list_to_enum_list,
+    sanity_check,
+    read_configuration,
+    create_experiment_folder,
+    expected_structure,
+)
 
 from ctlearn.core.pytorch.net_utils import create_model, ModelHelper
 
-# from ctlearn.tools.train_model import 
+
+# from ctlearn.tools.train_model import
 class TrainPyTorchModel(TrainCTLearnModel):
     """
     Tool to train a ``~ctlearn.core.model.CTLearnModel`` on R1/DL1a data using PyTorch.
@@ -87,27 +94,24 @@ class TrainPyTorchModel(TrainCTLearnModel):
         help="Configuration file.",
     ).tag(config=True)
 
- 
-
     aliases = {
-        **TrainCTLearnModel.aliases,  
-        "config_file":  "TrainPyTorchModel.config_file",
-    }    
+        **TrainCTLearnModel.aliases,
+        "config_file": "TrainPyTorchModel.config_file",
+    }
 
     def __init__(self, **kwargs):
-        print("Pytorch init")      
+        print("Pytorch init")
         super().__init__(**kwargs)
-        print("CONFIG VALUES PYTORCH:", self.config)    
-
+        print("CONFIG VALUES PYTORCH:", self.config)
 
     def setup(self):
-        print("Pytorch setup")    
+        print("Pytorch setup")
         super().setup()
 
-        # Create tasks Enum List 
+        # Create tasks Enum List
         self.tasks = str_list_to_enum_list(self.reco_tasks)
-         
-        for task_ in self.tasks: 
+
+        for task_ in self.tasks:
             print("Task:", task_.name)
 
         print(self.config_file)
@@ -121,32 +125,34 @@ class TrainPyTorchModel(TrainCTLearnModel):
 
         self.batch_size = self.parameters["hyp"]["batches"]
         self.pin_memory = self.parameters["dataset"]["pin_memory"]
- 
+
         self.num_workers = self.parameters["dataset"]["num_workers"]
         self.persistent_workers = self.parameters["dataset"]["persistent_workers"]
 
     def start(self):
-        print("Pytorch start")      
+        print("Pytorch start")
         super().start()
-        print("Pytorch start")       
+        print("Pytorch start")
 
         for task in self.tasks:
 
             # Create the experiment folder
-            save_folder = create_experiment_folder(f"run_{task.name}_training_", next_number=self.experiment_number)
+            save_folder = create_experiment_folder(
+                f"run_{task.name}_training_", next_number=self.experiment_number
+            )
 
             # ------------------------------------------------------------------------------
             # Select the model and precision
             # ------------------------------------------------------------------------------
-            if task == Task.direction:  
+            if task == Task.direction:
                 precision = self.parameters["arch"]["precision_direction"]
                 model_net = create_model(self.parameters["model"]["model_direction"])
 
-            elif task == Task.type:  
+            elif task == Task.type:
                 precision = self.parameters["arch"]["precision_type"]
                 model_net = create_model(self.parameters["model"]["model_type"])
 
-            elif task == Task.energy:  
+            elif task == Task.energy:
                 precision = self.parameters["arch"]["precision_energy"]
                 model_net = create_model(self.parameters["model"]["model_energy"])
 
@@ -154,28 +160,27 @@ class TrainPyTorchModel(TrainCTLearnModel):
                 raise ValueError(
                     f"task:{task.name} is not supported. Task must be type, direction or energy"
                 )
-            
+
             # ------------------------------------------------------------------------------
             # Load Checkpoints
             # ------------------------------------------------------------------------------
-            if task == Task.type:   
+            if task == Task.type:
                 check_point_path = self.parameters["data"]["type_checkpoint"]
 
-            if task == Task.energy:   
+            if task == Task.energy:
                 check_point_path = self.parameters["data"]["energy_checkpoint"]
 
-            if task == Task.direction:   
+            if task == Task.direction:
                 check_point_path = self.parameters["data"]["direction_checkpoint"]
-
 
             # Load the checkpoint
             model_net = ModelHelper.loadModel(
                 model_net, "", check_point_path, Mode.train, device_str=self.device_str
             )
-            
+
     def finish(self):
         super().finish()
-        print("Pytorch finish")      
+        print("Pytorch finish")
 
     def show_version(self):
         print("Pytorch 2.3")

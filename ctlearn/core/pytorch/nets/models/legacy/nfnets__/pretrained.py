@@ -87,8 +87,8 @@ if __name__=='__main__':
     if not args.pretrained.exists():
         raise FileNotFoundError(f"Could not find file {args.pretrained.absolute()}")
 
-    model = from_pretrained_haiku(args.pretrained)
-    
+    # model = from_pretrained_haiku(args.pretrained)
+    model = pretrained_nfnet(args.pretrained)
     torch.save({
         'model': model.state_dict()
     }, str(args.pretrained.with_suffix('.pth')))
