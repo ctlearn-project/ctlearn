@@ -8,6 +8,7 @@ from ctapipe.core.traits import (
     Path,
     Unicode,
     Bool,
+    List,
 )
 from ctapipe.instrument import SubarrayDescription
 from ctapipe.reco.reconstructor import ReconstructionProperty
@@ -61,7 +62,7 @@ class AppendSubarrayTable(Tool):
         help="Name of the reconstruction algorithm used to generate the dl2 data.",
     ).tag(config=True)
 
-    reco_tasks = list(
+    reco_tasks = List(
         default_value=["classification", "energy", "geometry"],
         allow_none=False,
         help="List of reconstruction tasks to be used for the stereo combination.",
