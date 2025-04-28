@@ -10,6 +10,7 @@ class DLFrameWork(Tool):
     for CTLearn model training. It dynamically loads the appropriate subclass based on
     the user-defined --framework argument.
     """
+
     name = "dlframework"
 
     framework_type = CaselessStrEnum(
@@ -29,6 +30,23 @@ class DLFrameWork(Tool):
         Initialize the DLFrameWork tool and prepare for framework injection.
         """
         super().__init__(**kwargs)
+        self.framework_instance = None
+        print("init")
+
+    def setup(self):
+        """
+        Setup method called after basic trait parsing. 
+        This dynamically loads and prepares the correct framework subclass 
+        (TrainKerasModel or TrainPyTorchModel).
+        """
+        print("setup")
+        framework_enum = self.string_to_type(self.framework_type)
+        self.framework_instance = self.get_framework(framework_enum)
+
+        # Inject aliases and shared config before full CLI parsing
+        self.framework_instance.update_config(self.config)
+        self.aliases.update(self.framework_instance.aliases)
+        DLFrameWork.aliases.update(self.framework_instance.aliases)
 
     def start(self):
         print(f"Selected Framework: {self.framework_type}")
@@ -61,7 +79,7 @@ class DLFrameWork(Tool):
     @classmethod
     def get_framework(cls, framework_type: FrameworkType):
         """
-        Dynamically import and return the corresponding training class 
+        Dynamically import and return the corresponding training class
         based on the framework type.
 
         Parameters:
@@ -77,17 +95,23 @@ class DLFrameWork(Tool):
         if framework_type == FrameworkType.KERAS:
             try:
                 from ctlearn.tools.train.keras.train_keras_model import TrainKerasModel
+
                 fw = TrainKerasModel()
             except ImportError as e:
                 raise ImportError(f"Not possible to import TrainKerasModel: {e}") from e
 
         elif framework_type == FrameworkType.PYTORCH:
             try:
-                from ctlearn.tools.train.pytorch.train_pytorch_model import TrainPyTorchModel
+                from ctlearn.tools.train.pytorch.train_pytorch_model import (
+                    TrainPyTorchModel,
+                )
+
                 fw = TrainPyTorchModel()
                 print("Pytorch")
             except ImportError as e:
-                raise ImportError(f"Not possible to import TrainPyTorchModel: {e}") from e
+                raise ImportError(
+                    f"Not possible to import TrainPyTorchModel: {e}"
+                ) from e
 
         else:
             raise ValueError(f"Unknown Framework: {framework_type.name}")
@@ -97,7 +121,9 @@ class DLFrameWork(Tool):
 
 if __name__ == "__main__":
     # Parse only --framework to determine which subclass to load
-    minimal_args = [arg for arg in sys.argv[1:] if "--framework" in arg or arg in ["-h", "--help"]]
+    minimal_args = [
+        arg for arg in sys.argv[1:] if "--framework" in arg or arg in ["-h", "--help"]
+    ]
     tool = DLFrameWork()
     tool.initialize(argv=minimal_args)
 

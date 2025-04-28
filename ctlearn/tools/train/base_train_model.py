@@ -1,5 +1,3 @@
-
-
 import numpy as np
 import shutil
 from ctapipe.core import Tool
@@ -19,7 +17,8 @@ from ctapipe.core.traits import (
 from dl1_data_handler.reader import DLDataReader
 from ctlearn.core.data_loader.loader import DLDataLoader
 from ctlearn.core.model import CTLearnModel
- 
+
+
 class TrainCTLearnModel(Tool):
     """
     Base class for training a ``CTLearnModel`` on R1/DL1a data using the ``DLDataReader`` and ``DLDataLoader``.
@@ -70,7 +69,7 @@ class TrainCTLearnModel(Tool):
         Set whether to save model in an ONNX file.
     overwrite : Bool
         Overwrite output dir if it exists.
-    
+
     Methods
     -------
     setup()
@@ -78,12 +77,13 @@ class TrainCTLearnModel(Tool):
     finish()
         Save the trained model in the output directory in ONNX if selected.
     """
+
     name = "ctlearn-train-model-base"
 
     framework_type = CaselessStrEnum(
         ["pytorch", "keras"],
         default_value="keras",
-        help="Framework to use pytorch or keras"
+        help="Framework to use pytorch or keras",
     ).tag(config=True)
 
     input_dir_signal = Path(
@@ -115,9 +115,9 @@ class TrainCTLearnModel(Tool):
         help="List of specific file pattern for matching files in ``input_dir_background``",
     ).tag(config=True)
 
-    dl1dh_reader_type = ComponentName(
-        DLDataReader, default_value="DLImageReader"
-    ).tag(config=True)
+    dl1dh_reader_type = ComponentName(DLDataReader, default_value="DLImageReader").tag(
+        config=True
+    )
 
     stack_telescope_images = Bool(
         default_value=False,
@@ -148,7 +148,7 @@ class TrainCTLearnModel(Tool):
 
     reco_tasks = List(
         trait=CaselessStrEnum(["type", "energy", "cameradirection", "skydirection"]),
-        allow_none=False, 
+        allow_none=False,
         default_value=None,
         help=(
             "List of reconstruction tasks to perform. "
@@ -156,7 +156,7 @@ class TrainCTLearnModel(Tool):
             "'energy': regression of the primary particle energy "
             "'cameradirection': regression of the primary particle arrival direction in camera coordinates "
             "'skydirection': regression of the primary particle arrival direction in sky coordinates"
-        )
+        ),
     ).tag(config=True)
 
     n_epochs = Int(
@@ -179,11 +179,15 @@ class TrainCTLearnModel(Tool):
     ).tag(config=True)
 
     optimizer = Dict(
-        default_value={"name": "Adam", "base_learning_rate": 0.0001, "adam_epsilon": 1.0e-8},
-	help=(
-	    "Optimizer to use for training. "
-	    "E.g. {'name': 'Adam', 'base_learning_rate': 0.0001, 'adam_epsilon': 1.0e-8}. "
-	)
+        default_value={
+            "name": "Adam",
+            "base_learning_rate": 0.0001,
+            "adam_epsilon": 1.0e-8,
+        },
+        help=(
+            "Optimizer to use for training. "
+            "E.g. {'name': 'Adam', 'base_learning_rate': 0.0001, 'adam_epsilon': 1.0e-8}. "
+        ),
     ).tag(config=True)
 
     random_seed = Int(
@@ -192,7 +196,7 @@ class TrainCTLearnModel(Tool):
             "Random seed for shuffling the data "
             "before the training/validation split "
             "and after the end of an epoch."
-        )
+        ),
     ).tag(config=True)
 
     save_onnx = Bool(
@@ -219,7 +223,7 @@ class TrainCTLearnModel(Tool):
             "Overwrite existing files",
         ),
     }
-    
+
     classes = (
         [
             CTLearnModel,
@@ -228,6 +232,7 @@ class TrainCTLearnModel(Tool):
         + classes_with_traits(CTLearnModel)
         + classes_with_traits(DLDataReader)
     )
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         print("Common Init")
@@ -250,20 +255,21 @@ class TrainCTLearnModel(Tool):
         # self.strategy = tf.distribute.MirroredStrategy()
         # atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore
         # self.log.info("Number of devices: %s", self.strategy.num_replicas_in_sync)
-        
+
         # print(self.DLFrameWork.framework_type)
         # Get signal input files
         self.input_url_signal = []
         for signal_pattern in self.file_pattern_signal:
             self.input_url_signal.extend(self.input_dir_signal.glob(signal_pattern))
-        
+
         # Get bkg input files
         self.input_url_background = []
         if self.input_dir_background is not None:
             for background_pattern in self.file_pattern_background:
-                self.input_url_background.extend(self.input_dir_background.glob(background_pattern))
+                self.input_url_background.extend(
+                    self.input_dir_background.glob(background_pattern)
+                )
 
-       
         print("DEBUG 1")
         # Set up the data reader
         self.log.info("Loading data:")
@@ -284,8 +290,12 @@ class TrainCTLearnModel(Tool):
         print("DEBUG 3")
         self.log.info("Number of events loaded: %s", self.dl1dh_reader._get_n_events())
         if "type" in self.reco_tasks:
-            self.log.info("Number of signal events: %d", self.dl1dh_reader.n_signal_events)
-            self.log.info("Number of background events: %d", self.dl1dh_reader.n_bkg_events)
+            self.log.info(
+                "Number of signal events: %d", self.dl1dh_reader.n_signal_events
+            )
+            self.log.info(
+                "Number of background events: %d", self.dl1dh_reader.n_bkg_events
+            )
         # Check if the number of events is enough to form a batch
         if self.dl1dh_reader._get_n_events() < self.batch_size:
             raise ValueError(
@@ -303,7 +313,10 @@ class TrainCTLearnModel(Tool):
                 f"Cannot stack telescope images in mono mode. Use stereo mode for stacking."
             )
         # Ckeck if only one telescope type is selected for stacking telescope images
-        if self.stack_telescope_images and len(list(self.dl1dh_reader.selected_telescopes)) > 1:
+        if (
+            self.stack_telescope_images
+            and len(list(self.dl1dh_reader.selected_telescopes)) > 1
+        ):
             raise ToolConfigurationError(
                 f"Cannot stack telescope images from multiple telescope types. Use only one telescope type."
             )
@@ -318,14 +331,16 @@ class TrainCTLearnModel(Tool):
         # Shuffle the indices before the training/validation split
         np.random.seed(self.random_seed)
         np.random.shuffle(indices)
-        n_validation_examples = int(self.validation_split * self.dl1dh_reader._get_n_events())
+        n_validation_examples = int(
+            self.validation_split * self.dl1dh_reader._get_n_events()
+        )
         training_indices = indices[n_validation_examples:]
         validation_indices = indices[:n_validation_examples]
 
         # Set self.strategy.num_replicas_in_sync to 1 in case that does not exist (Pytorch)
         if not hasattr(self, "strategy"):
             self.strategy = type("FakeStrategy", (), {"num_replicas_in_sync": 1})()
-            print("num_replicas_in_sync:",self.strategy.num_replicas_in_sync)
+            print("num_replicas_in_sync:", self.strategy.num_replicas_in_sync)
 
         print("BASE TRAIN FRAMEWORK", self.framework_type)
         print("DEBUG 4")
