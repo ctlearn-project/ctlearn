@@ -80,11 +80,11 @@ class AppendSubarrayTable(Tool):
     ).tag(config=True)
 
     aliases = {
-        ("i", "input_url"): "PredictCTLearnModel.input_url",
-        ("p", "prefix"): "PredictCTLearnModel.prefix",
-        ("r", "reco_tasks"): "PredictCTLearnModel.reco_tasks",
-        ("o", "overwrite_tables"): "PredictCTLearnModel.overwrite_tables",
-        ("s", "stereo_combiner_cls"): "PredictCTLearnModel.stereo_combiner_cls",
+        ("i", "input_url"): "AppendSubarrayTable.input_url",
+        ("p", "prefix"): "AppendSubarrayTable.prefix",
+        ("r", "reco_tasks"): "AppendSubarrayTable.reco_tasks",
+        ("o", "overwrite_tables"): "AppendSubarrayTable.overwrite_tables",
+        ("s", "stereo_combiner_cls"): "AppendSubarrayTable.stereo_combiner_cls",
     }
 
     def setup(self):
