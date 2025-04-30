@@ -432,15 +432,15 @@ class PredictCTLearnModel(Tool):
         print("Checking model type...")
         if temp_path.is_file() and temp_path.suffix == ".tflite":
             print("tflite")
-            self._predict_with_tflite_model(self, model_path)
+            self._predict_with_tflite_model(model_path)
         elif temp_path.is_file() and (temp_path.suffix == ".cpk" or temp_path.suffix == ".keras" or temp_path.suffix == ".pb"):
             print("I am a Keras file")
-            self._predict_with_Keras_model(self, model_path)
+            self._predict_with_Keras_model(model_path)
         else:
             for file in temp_path.iterdir():
                 if file.is_file() and file.suffix == ".tflite":
                     print("I am tflite folder")
-                    self._predict_with_tflite_model(self, model_path)
+                    self._predict_with_tflite_model(model_path)
                     break
                 elif file.is_file() and (file.suffix == ".cpk" or file.suffix == ".keras" or file.suffix == ".pb"):
                     print("I am a Keras folder file")
@@ -554,6 +554,28 @@ class PredictCTLearnModel(Tool):
             )
         # Load the model from the specified path
         model = keras.saving.load_model(model_path)
+        """
+        print("layer names", [layer.name for layer in model.inputs])
+        print("model input shape %s", model.input_shape)
+        self.log.info("layer names %s", [layer.name for layer in model.inputs])  # list of input layer names
+        self.log.info("model input shape %s", model.input_shape)
+        print("layer name ", model.input_names)
+        
+        # Explicitly re-create input with same shape, dtype, and new name
+        new_input = tf.keras.Input(
+            shape=model.input_shape[1:], 
+            name="input"
+        )
+
+        # Connect the new input to the model
+        new_output = model(new_input)
+        # Rebuild model
+        new_model = tf.keras.Model(inputs=new_input, outputs=new_output)
+        # Save in new Keras format (recommended for TF 2.11+)
+        new_model.save("/data3/users/dafne/model_compression/model_for_testing/keras_model/trialmodel.keras")
+        model = new_model 
+        
+        """
         prediction_colname = (
                 model.layers[-1].name if model.layers[-1].name != "softmax" else "type"
         )
@@ -625,6 +647,8 @@ class PredictCTLearnModel(Tool):
                 else:
                     predict_data_last_batch = Table(predict_data_last_batch)
                 predict_data = vstack([predict_data, predict_data_last_batch])
+        print("Shape and type of predict_data is: ", np.shape(predict_data), np.dtype(predict_data))
+        self.log.info("Shape and type of predict_data is: %s", np.shape(predict_data))
         return predict_data, feature_vectors
 
     def _predict_classification(self, example_identifiers):

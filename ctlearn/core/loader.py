@@ -129,8 +129,9 @@ class DLDataLoader(Sequence):
         ]
         features, labels = None, None
         if self.DLDataReader.mode == "mono":
-            batch = self.DLDataReader.generate_mono_batch(batch_indices)
-            features, labels = self._get_mono_item(batch)
+            if batch_indices < 100:
+                batch = self.DLDataReader.generate_mono_batch(batch_indices)
+                features, labels = self._get_mono_item(batch)
         elif self.DLDataReader.mode == "stereo":
             batch = self.DLDataReader.generate_stereo_batch(batch_indices)
             features, labels = self._get_stereo_item(batch)
