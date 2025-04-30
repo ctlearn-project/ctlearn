@@ -553,14 +553,15 @@ class PredictCTLearnModel(Tool):
                 stack_telescope_images=self.stack_telescope_images,
             )
         # Load the model from the specified path
-        model = keras.saving.load_model(model_path)
+        #model = keras.saving.load_model(model_path) #Original
+        model = keras.models.load_model(model_path)
         """
         print("layer names", [layer.name for layer in model.inputs])
         print("model input shape %s", model.input_shape)
         self.log.info("layer names %s", [layer.name for layer in model.inputs])  # list of input layer names
         self.log.info("model input shape %s", model.input_shape)
         print("layer name ", model.input_names)
-        
+
         # Explicitly re-create input with same shape, dtype, and new name
         new_input = tf.keras.Input(
             shape=model.input_shape[1:], 
@@ -568,13 +569,13 @@ class PredictCTLearnModel(Tool):
         )
 
         # Connect the new input to the model
-        new_output = model(new_input)
+        new_output = model(new_input)        
         # Rebuild model
-        new_model = tf.keras.Model(inputs=new_input, outputs=new_output)
-        # Save in new Keras format (recommended for TF 2.11+)
-        new_model.save("/data3/users/dafne/model_compression/model_for_testing/keras_model/trialmodel.keras")
-        model = new_model 
+        model = tf.keras.Model(inputs=new_input, outputs=new_output)
         
+        # Save in new Keras format (recommended for TF 2.11+)
+        model.save("/data3/users/dafne/model_compression/model_for_testing/keras_model/trialmodel.keras")
+        #model = new_model 
         """
         prediction_colname = (
                 model.layers[-1].name if model.layers[-1].name != "softmax" else "type"
