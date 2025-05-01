@@ -467,7 +467,7 @@ class PredictCTLearnModel(Tool):
         """
         data_loader = DLDataLoader(
             self.dl1dh_reader,
-            self.indices,
+            self.indices,#####[0:100],
             batch_size = 1,
             tasks=[],
             sort_by_intensity=self.sort_by_intensity,
