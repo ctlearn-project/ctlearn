@@ -2,8 +2,10 @@ import sys
 from ctapipe.core import Tool
 from ctapipe.core.traits import CaselessStrEnum
 from ctlearn.core.ctlearn_enum import FrameworkType
-
-
+from ctlearn.tools.train.keras.train_keras_model import TrainKerasModel
+from ctlearn.tools.train.pytorch.train_pytorch_model import (
+    TrainPyTorchModel,
+)
 class DLFrameWork(Tool):
     """
     Tool to select and run a specific deep learning training framework (Keras or PyTorch)
@@ -114,8 +116,8 @@ class DLFrameWork(Tool):
 
         return fw
 
-
-if __name__ == "__main__":
+def main():
+    # Run the tool
     # Parse only --framework to determine which subclass to load
     minimal_args = [
         arg for arg in sys.argv[1:] if "--framework" in arg or arg in ["-h", "--help"]
@@ -129,6 +131,11 @@ if __name__ == "__main__":
     # Parse all CLI args with the selected framework subclass
     tool.framework_instance.initialize(argv=sys.argv[1:])
     tool.run()
+
+
+if __name__ == "main":
+    main()
+   
 
 # Example:
 # python -m ctlearn.tools.train_model --framework=pytorch --output ./output_dir2 --signal ./mc_tjark/ --pattern-signal gamma_*.dl1.h5 --reco energy --overwrite
