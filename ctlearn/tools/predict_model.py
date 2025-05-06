@@ -724,7 +724,7 @@ class PredictCTLearnModel(Tool):
         camera_frame = CameraFrame(
             focal_length=self.dl1dh_reader.subarray.tel[
                 tel_id
-            ].optics.equivalent_focal_length,
+            ].camera.geometry.frame.focal_length,
             rotation=self.dl1dh_reader.pix_rotation[tel_id],
             telescope_pointing=tel_pointing,
         )
