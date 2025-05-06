@@ -16,8 +16,23 @@ dependencies:
     - pyyaml
     - scikit-learn
     - ctapipe
+    - pytest
     - pip:
         - numba
         - tensorflow>=2.14,<2.15
-        - dl1_data_handler>=0.14.5,<0.15
+        # - tensorflow[and-cuda]
+        - tf2onnx
+        - dl1_data_handler>=0.14.1,<0.15
         - pydot
+        # Pytorch
+        - torch==2.5.0
+        - torchvision==0.20.0
+        - torchmetrics>=1.4.0,<1.5.0        
+        - pytorch_lightning
+        - deepspeed
+        - onnx
+        - onnxsim
+        - scikit-image
+        - scikit-learn
+
+

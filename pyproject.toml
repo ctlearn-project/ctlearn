@@ -61,8 +61,7 @@ repository = "https://github.com/ctlearn-project/ctlearn"
 documentation = "https://ctlearn.readthedocs.io/en/latest/"
 
 [project.scripts]
-ctlearn-train-kera-model = "ctlearn.tools.train_model:keras_tool"
-ctlearn-train-pytorch-model = "ctlearn.tools.train_model:pytorch_tool"
+ctlearn-train-model = "ctlearn.tools.train_model:main"
 ctlearn-predict-mono-model = "ctlearn.tools.predict_model:mono_tool"
 ctlearn-predict-stereo-model = "ctlearn.tools.predict_model:stereo_tool"
 ctlearn-predict-LST1= "ctlearn.tools.predict_LST1:main"
