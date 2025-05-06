@@ -1,5 +1,8 @@
 version: 2
 
+sphinx:
+  configuration: docs/source/conf.py
+
 build:
   os: ubuntu-22.04
   tools:
@@ -7,7 +10,6 @@ build:
 
 python:
   install:
-    - method: pip
-      path: .
-      extra_requirements:
-        - docs
+      - requirements: docs/requirements.txt
+      - method: pip
+        path: .
