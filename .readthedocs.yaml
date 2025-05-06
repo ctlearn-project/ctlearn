@@ -13,6 +13,6 @@ python:
     - method: pip
       path: .
       packages:
-	- sphinx_rtd_theme
+        - sphinx_rtd_theme
       extra_requirements:
         - docs
