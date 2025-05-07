@@ -78,7 +78,7 @@ class DLDataLoader(Sequence):
                         self.input_shape[2],
                         self.input_shape[0] * self.input_shape[3],
                     )
-        if self.DLDataReader.__class__.__name__ == "DLRawTriggerReader" and self.DLDataReader.hexagonal_convolution == True:
+        if self.DLDataReader.hexagonal_convolution == True:
             self.neighbor_array = self.DLDataReader.neighbor_array
 
 
@@ -108,28 +108,6 @@ class DLDataLoader(Sequence):
             np.random.seed(self.random_seed)
             np.random.shuffle(self.indices)
 
-    def prepare_mask(self, neighbor_indices):
-        """
-        Prepares the mask from the neighbor array (shape: (L, K)).
-
-        Parameters:
-        neighbor_indices: array (numpy or similar) with shape (L, K), where L is the number of pixels 
-                            and K is the maximum number of neighbors. -1 is used to indicate the absence of a neighbor.
-
-        Returns:
-        mask_expanded: numpy array of shape (1, L, K, 1, 1) with 1.0 where the index is valid and 0.0 where it is -1.
-        indices_for_gather_expanded: numpy array of shape (1, L, K) with -1 replaced by 0.
-        """
-        indices = np.array(neighbor_indices, dtype=np.int32)
-        mask = (indices != -1).astype(np.float32)
-        indices_for_gather = np.where(indices == -1, 0, indices)
-        # Pre-expand dimensions: from (L, K) to (1, L, K) for indices
-        indices_for_gather_expanded = np.expand_dims(indices_for_gather, axis=0)
-        # Pre-expand dimensions: from (L, K) to (1, L, K, 1) for mask
-        mask_expanded = np.expand_dims(mask, axis=0)
-        mask_expanded = np.expand_dims(mask_expanded, axis=-1)
-        return mask_expanded, indices_for_gather_expanded
-        
     def __getitem__(self, index):
         """
         Generate one batch of data and retrieve the features and labels.
@@ -180,19 +158,32 @@ class DLDataLoader(Sequence):
         """
         # Retrieve the telescope images and store in the features dictionary
         labels = {}
-        features = {"input": batch["waveform"].data}
+        features = {"input": batch["features"].data}
         if "type" in self.tasks:
-            labels["type"] = to_categorical(
-                batch["patch_class"].data,
-                num_classes=2,
-            )
-            # Temp fix till keras support class weights for multiple outputs or I wrote custom loss
-            # https://github.com/keras-team/keras/issues/11735
-            if len(self.tasks) == 1:
-                labels = to_categorical(
+            if self.DLDataReader.__class__.__name__ == "DLRawTriggerReader":
+                labels["type"] = to_categorical(
                     batch["patch_class"].data,
                     num_classes=2,
                 )
+                # Temp fix till keras support class weights for multiple outputs or I wrote custom loss
+                # https://github.com/keras-team/keras/issues/11735
+                if len(self.tasks) == 1:
+                    labels = to_categorical(
+                        batch["patch_class"].data,
+                        num_classes=2,
+                    )
+            else:
+                labels["type"] = to_categorical(
+                    batch["true_shower_primary_class"].data,
+                    num_classes=2,
+                )
+                # Temp fix till keras support class weights for multiple outputs or I wrote custom loss
+                # https://github.com/keras-team/keras/issues/11735
+                if len(self.tasks) == 1:
+                    labels = to_categorical(
+                        batch["true_shower_primary_class"].data,
+                        num_classes=2,
+                    )
         if "energy" in self.tasks:
             labels["energy"] = batch["log_true_energy"].data
         if "skydirection" in self.tasks:
