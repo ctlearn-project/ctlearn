@@ -579,7 +579,7 @@ class PredictCTLearnModel(Tool):
         ##model = keras.saving.load_model(model_path) #Original, check again later
         model = keras.models.load_model(model_path)
         prediction_colname = (
-                model.layers[-1].name if model.layers[-1].name != "softmax" else "type"
+            model.layers[-1].name if model.layers[-1].name != "softmax" else "type"
         )
         backbone_model, feature_vectors = None, None
         if self.dl1_features:
