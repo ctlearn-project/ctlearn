@@ -455,7 +455,7 @@ class PredictCTLearnModel(Tool):
         elif temp_path.is_dir():
             for file in temp_path.iterdir():
                 if file.is_file() and file.suffix == ".tflite":
-                    print("TFLite model")
+                    self.log.info("TFLite model")
                     predict_data, feature_vectors = self._predict_with_tflite_model(model_path)
                     break
                 elif file.is_file() and (file.suffix == ".h5" or file.suffix == ".keras" or file.suffix == ".pb"):
@@ -504,7 +504,7 @@ class PredictCTLearnModel(Tool):
         input_index = input_details["index"]
         output_index = output_details["index"]
         predict_data = []
-        #self.indices = self.indices[0:100] ###
+       
         for data_index in self.indices:
             # Might be better to define input_data before looping and then loop over it? 
             # Avoid calling __getitem__ so many times...
@@ -513,14 +513,12 @@ class PredictCTLearnModel(Tool):
             interpreter.invoke()
             output_data = interpreter.get_tensor(output_index)[0]
             predict_data.append(output_data)
-        np.savetxt("/data3/users/dafne/model_compression/model_for_testing/prediction/tflite_pred.txt", predict_data, delimiter=' ')
-
+      
 
         if model_path.is_file() and model_path.suffix == ".tflite" and "type" in model_path.name:
             prediction_colname = "type"
         elif model_path.is_dir():
             for file in model_path.iterdir():
-                print("Directory")
                 if file.is_file() and file.suffix == ".tflite" and "type" in file.name:
                     prediction_colname = "type"
                     break
@@ -576,9 +574,9 @@ class PredictCTLearnModel(Tool):
                 sort_by_intensity=self.sort_by_intensity,
                 stack_telescope_images=self.stack_telescope_images,
             )
-        #self.indices = self.indices[0:100]
+        
         # Load the model from the specified path
-        ##model = keras.saving.load_model(model_path) #Original, didn't work for me? Try again
+        ##model = keras.saving.load_model(model_path) #Original, check again later
         model = keras.models.load_model(model_path)
         prediction_colname = (
                 model.layers[-1].name if model.layers[-1].name != "softmax" else "type"
@@ -630,9 +628,7 @@ class PredictCTLearnModel(Tool):
         else:
             # Predict the data using the loaded model
             predict_data = model.predict(data_loader, verbose=self.keras_verbose)
-            
-            np.savetxt("/data3/users/dafne/model_compression/model_for_testing/prediction/keras_pred.txt", predict_data, delimiter=' ')
-            # Create a astropy table with the prediction results
+             # Create a astropy table with the prediction results
             # The classification task has a softmax layer as the last layer
             # which returns the probabilities for each class in an array, while
             # the regression tasks have output neurons which return the
@@ -653,9 +649,7 @@ class PredictCTLearnModel(Tool):
                 else:
                     predict_data_last_batch = Table(predict_data_last_batch)
                 predict_data = vstack([predict_data, predict_data_last_batch])
-        #print("Shape and type of predict_data is: ", np.shape(predict_data), np.dtype(predict_data), predict_data[0])
-        #self.log.info("Shape and type of predict_data is: %s", np.shape(predict_data))
-        
+      
 
         return predict_data, feature_vectors
 
@@ -683,7 +677,6 @@ class PredictCTLearnModel(Tool):
             self.load_type_model_from
         )
         # Create prediction table and add the predicted classification score ('gammaness')
-        #classification_table = example_identifiers[0:100].copy() ###
         classification_table = example_identifiers.copy()
         classification_table.add_column(
             predict_data["type"].T[1], name=f"{self.prefix}_tel_prediction"
