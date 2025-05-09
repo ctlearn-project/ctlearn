@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import shutil
 import tensorflow as tf
+import pathlib 
 
 from ctapipe.core import Tool
 from ctapipe.core.tool import ToolConfigurationError
@@ -218,10 +219,10 @@ class TrainCTLearnModel(Tool):
         help="Set whether to save model in an ONNX file.",
     ).tag(config=True)
 
-    weight_quantization = Bool(
+    tflite_conversion = Bool(
         default_value=False,
         allow_none=False,
-        help="Set whether to quantize model weights.",
+        help="Set whether to convert Keras model to TFLite model.",
     ).tag(config=True)
     
     early_stopping = Dict(
@@ -363,10 +364,11 @@ class TrainCTLearnModel(Tool):
         monitor_mode = "min"
         # Model checkpoint callback
         # Temp fix for supporting keras2 & keras3
+        ## D: Changed path to distinguish between Keras model and tflite model
         if int(keras.__version__.split(".")[0]) >= 3:
-            model_path = f"{self.output_dir}/ctlearn_model.keras"
+            model_path = f"{self.output_dir}/keras_model/ctlearn_model.keras"
         else:
-            model_path = f"{self.output_dir}/ctlearn_model.cpk"
+            model_path = f"{self.output_dir}/keras_model/ctlearn_model.cpk"
         model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
             filepath=model_path,
             monitor=monitor,
@@ -379,8 +381,9 @@ class TrainCTLearnModel(Tool):
             log_dir=self.output_dir, histogram_freq=1
         )
         # CSV logger callback
+        ## D: Path changed here too
         csv_logger_callback = keras.callbacks.CSVLogger(
-            filename=f"{self.output_dir}/training_log.csv", append=True
+            filename=f"{self.output_dir}/keras_model/training_log.csv", append=True
         )
         self.callbacks = [model_checkpoint_callback, tensorboard_callback, csv_logger_callback]
 	
@@ -471,22 +474,31 @@ class TrainCTLearnModel(Tool):
 
 
     def finish(self):
-        if self.weight_quantization:
-            self.log.info("Quantizing Keras model weights...")
-            #model_weights = 
+
+        # Convert model to TFLite backend
+        ## D: TO DO add different post training quantization techniques 
+        if self.tflite_conversion:
+            self.log.info("Converting Keras model to TFLite...")
             converter = tf.lite.TFLiteConverter.from_keras_model(self.model)
             converter.optimizations = [tf.lite.Optimize.DEFAULT]
             quant_model = converter.convert()
+
+            model_path = pathlib.Path(f"{self.output_dir}/tflite_model")
+            model_path.mkdir(exist_ok=True, parents=True)
+
+            ## D: TFLite model name depending on task (needed for inference)
+            ## D: Next step: allow user to set preferred folder or filename (keeping task)
             if "type" in self.reco_tasks:
-                model_path = f"{self.output_dir}/ctlearn_quantized_model/quant_type_model.tflite"
+                quant_model_path = model_path/"type_model.tflite"
             if "energy" in self.reco_tasks:
-                model_path = f"{self.output_dir}/ctlearn_quantized_model/quant_energy_model.tflite"
+                model_path = model_path/"energy_model.tflite"
             if "cameradirection" in self.reco_tasks:
-                model_path = f"{self.output_dir}/ctlearn_quantized_model/quant_cameradirection_model.tflite"
+                model_path = model_path/"cameradirection_model.tflite"
             if "skydirection" in self.reco_tasks:
-                model_path = f"{self.output_dir}/ctlearn_quantized_model/quant_skydirection_model.tflite"
-            Path(model_path).write_bytes(quant_model)
+                model_path = model_path/"skydirection_model.tflite"
             
+            quant_model_path.write_bytes(quant_model)
+            self.log.info("Successfully converted Keras model to TFLite!")
         
 
 

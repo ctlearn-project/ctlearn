@@ -427,92 +427,116 @@ class PredictCTLearnModel(Tool):
         self.log.info("Tool is shutting down")
 
     def _predict_with_model(self, model_path):
+        """
+        Identify if model is Keras or TFLite. Calls predict function for each case.
         
+        Parameters
+        ----------
+        model_path : str
+            Path to model.
+
+        Returns
+        -------
+        predict_data : astropy.table.Table
+            Table containing the prediction results.
+        feature_vectors : np.ndarray
+            None for TFLite model. None or feature vectors extracted from the backbone
+            model for Keras.
+        """
         temp_path = pathlib.Path(model_path)
-        print("Checking model type...")
+        self.log.info("Checking model type...")
+
         if temp_path.is_file() and temp_path.suffix == ".tflite":
-            print("tflite")
-            self._predict_with_tflite_model(model_path)
-        elif temp_path.is_file() and (temp_path.suffix == ".cpk" or temp_path.suffix == ".keras" or temp_path.suffix == ".pb"):
-            print("I am a Keras file")
-            self._predict_with_Keras_model(model_path)
-        else:
+            self.log.info("TFLite model")
+            predict_data, feature_vectors = self._predict_with_tflite_model(model_path)
+        elif temp_path.is_file() and (temp_path.suffix == ".h5" or temp_path.suffix == ".keras" or temp_path.suffix == ".pb"):
+            self.log.info("Keras model")
+            predict_data, feature_vectors = self._predict_with_Keras_model(model_path)
+        elif temp_path.is_dir():
             for file in temp_path.iterdir():
                 if file.is_file() and file.suffix == ".tflite":
-                    print("I am tflite folder")
-                    self._predict_with_tflite_model(model_path)
+                    print("TFLite model")
+                    predict_data, feature_vectors = self._predict_with_tflite_model(model_path)
                     break
-                elif file.is_file() and (file.suffix == ".cpk" or file.suffix == ".keras" or file.suffix == ".pb"):
-                    print("I am a Keras folder file")
-                    self._predict_with_Keras_model(model_path)
+                elif file.is_file() and (file.suffix == ".h5" or file.suffix == ".keras" or file.suffix == ".pb"):
+                    self.log.info("Keras model")
+                    predict_data, feature_vectors = self._predict_with_Keras_model(model_path)
                     break
+        else:
+            self.log.warning("Cannot identify model type...")
+
+        return predict_data, feature_vectors
         
 
     def _predict_with_tflite_model(self, model_path):
         """
-        Load and predict with a CTLearn model in .tflite format.
-        No batch inference.
+        Load a TFLite model from the specified path and predict the data using the loaded model.
+        No batch inference is provided.
 
         Parameters
         ----------
         model_path : str
             Path to a Tensorflow Lite model file (.tflite).
 
-            Returns
+        Returns
         -------
         predict_data : astropy.table.Table
             Table containing the prediction results.
         feature_vectors : np.ndarray
-            Empty for now, added for compatibility ???.
+            None, kept for compatibility with Keras model.
         """
+        ## D: For now, batch_size is 1. Might be possible to simulate batch inference...
         data_loader = DLDataLoader(
             self.dl1dh_reader,
-            self.indices,#####[0:100],
+            self.indices,
             batch_size = 1,
             tasks=[],
             sort_by_intensity=self.sort_by_intensity,
             stack_telescope_images=self.stack_telescope_images,
         )
 
-        interpreter = tf.lite.Interpreter(model_path)
-        interpreter.allocate_tensors()
+        feature_vectors = None
 
+        interpreter = Interpreter(str(model_path))
+        interpreter.allocate_tensors()
         input_details = interpreter.get_input_details()[0]
         output_details = interpreter.get_output_details()[0]
         input_index = input_details["index"]
         output_index = output_details["index"]
+        predict_data = []
+        #self.indices = self.indices[0:100] ###
+        for data_index in self.indices:
+            # Might be better to define input_data before looping and then loop over it? 
+            # Avoid calling __getitem__ so many times...
+            input_data = data_loader.__getitem__(data_index)[0]["input"]
+            interpreter.set_tensor(input_index, input_data)
+            interpreter.invoke()
+            output_data = interpreter.get_tensor(output_index)[0]
+            predict_data.append(output_data)
+        np.savetxt("/data3/users/dafne/model_compression/model_for_testing/prediction/tflite_pred.txt", predict_data, delimiter=' ')
 
-        print(input_details["shape"], flush = True)
-        for input_index in data_loader.__len__:
-            input_data = data_loader.__getitem__(input_index)[0]
-            test_image = np.expand_dims(input_data, axis=0).astype(input_details["dtype"])
 
-            interpreter.set_tensor(input_index, test_image)
-
-
-
-        temp_path = Path(model_path)
-
-        if temp_path.is_file() and temp_path.suffix == ".tflite" and "type" in temp_path.name:
-                prediction_colname = "type"
-        else:
-            for file in temp_path.iterdir():
+        if model_path.is_file() and model_path.suffix == ".tflite" and "type" in model_path.name:
+            prediction_colname = "type"
+        elif model_path.is_dir():
+            for file in model_path.iterdir():
+                print("Directory")
                 if file.is_file() and file.suffix == ".tflite" and "type" in file.name:
                     prediction_colname = "type"
                     break
 
-        
         if prediction_colname == "type":
-                predict_data = Table({prediction_colname: predict_data})
+            predict_data = Table({prediction_colname: predict_data})
         else:
-            predict_data = Table(predict_data)
+            predict_data = Table(predict_data)        
+        
+        return predict_data, feature_vectors
 
     
 
     def _predict_with_Keras_model(self, model_path):
         """
-        CHANGE THESE COMMENTS
-        Load a model from the specified path and predict the data using the loaded model.
+        Load a Keras model from the specified path and predict the data using the loaded model.
         If a last batch loader is provided, predict the last batch and stack the results.
 
         Parameters
@@ -552,31 +576,10 @@ class PredictCTLearnModel(Tool):
                 sort_by_intensity=self.sort_by_intensity,
                 stack_telescope_images=self.stack_telescope_images,
             )
+        #self.indices = self.indices[0:100]
         # Load the model from the specified path
-        #model = keras.saving.load_model(model_path) #Original
+        ##model = keras.saving.load_model(model_path) #Original, didn't work for me? Try again
         model = keras.models.load_model(model_path)
-        """
-        print("layer names", [layer.name for layer in model.inputs])
-        print("model input shape %s", model.input_shape)
-        self.log.info("layer names %s", [layer.name for layer in model.inputs])  # list of input layer names
-        self.log.info("model input shape %s", model.input_shape)
-        print("layer name ", model.input_names)
-
-        # Explicitly re-create input with same shape, dtype, and new name
-        new_input = tf.keras.Input(
-            shape=model.input_shape[1:], 
-            name="input"
-        )
-
-        # Connect the new input to the model
-        new_output = model(new_input)        
-        # Rebuild model
-        model = tf.keras.Model(inputs=new_input, outputs=new_output)
-        
-        # Save in new Keras format (recommended for TF 2.11+)
-        model.save("/data3/users/dafne/model_compression/model_for_testing/keras_model/trialmodel.keras")
-        #model = new_model 
-        """
         prediction_colname = (
                 model.layers[-1].name if model.layers[-1].name != "softmax" else "type"
         )
@@ -627,6 +630,8 @@ class PredictCTLearnModel(Tool):
         else:
             # Predict the data using the loaded model
             predict_data = model.predict(data_loader, verbose=self.keras_verbose)
+            
+            np.savetxt("/data3/users/dafne/model_compression/model_for_testing/prediction/keras_pred.txt", predict_data, delimiter=' ')
             # Create a astropy table with the prediction results
             # The classification task has a softmax layer as the last layer
             # which returns the probabilities for each class in an array, while
@@ -648,8 +653,10 @@ class PredictCTLearnModel(Tool):
                 else:
                     predict_data_last_batch = Table(predict_data_last_batch)
                 predict_data = vstack([predict_data, predict_data_last_batch])
-        print("Shape and type of predict_data is: ", np.shape(predict_data), np.dtype(predict_data))
-        self.log.info("Shape and type of predict_data is: %s", np.shape(predict_data))
+        #print("Shape and type of predict_data is: ", np.shape(predict_data), np.dtype(predict_data), predict_data[0])
+        #self.log.info("Shape and type of predict_data is: %s", np.shape(predict_data))
+        
+
         return predict_data, feature_vectors
 
     def _predict_classification(self, example_identifiers):
@@ -676,6 +683,7 @@ class PredictCTLearnModel(Tool):
             self.load_type_model_from
         )
         # Create prediction table and add the predicted classification score ('gammaness')
+        #classification_table = example_identifiers[0:100].copy() ###
         classification_table = example_identifiers.copy()
         classification_table.add_column(
             predict_data["type"].T[1], name=f"{self.prefix}_tel_prediction"
