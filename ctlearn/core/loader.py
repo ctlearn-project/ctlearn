@@ -54,7 +54,7 @@ class DLDataLoader(Sequence):
         super().__init__(**kwargs)
         "Initialization"
         self.DLDataReader = DLDataReader
-        self.indices = indices#[0:100] ###
+        self.indices = indices
         self.tasks = tasks
         self.batch_size = batch_size
         self.random_seed = random_seed
@@ -124,13 +124,10 @@ class DLDataLoader(Sequence):
             A tuple containing the input data as features and the corresponding labels.
         """
         # Generate indices of the batch
-        #self.indices = self.indices[0:100] ### Reducing the dataset for prediction
-        ###print("batch_size: ", self.batch_size)
         batch_indices = self.indices[
             index * self.batch_size : (index + 1) * self.batch_size
         ]
-        ###print(batch_indices)
-        features, labels = None, None
+       features, labels = None, None
         if self.DLDataReader.mode == "mono":
                 batch = self.DLDataReader.generate_mono_batch(batch_indices)
                 features, labels = self._get_mono_item(batch)
