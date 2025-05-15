@@ -16,5 +16,5 @@ dependencies:
     - pip:
         - numba
         - tensorflow>=2.14,<2.15
-        - dl1_data_handler>=0.14.3,<0.15
+        - dl1_data_handler>=0.14.5,<0.15
         - pydot
