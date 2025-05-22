@@ -209,11 +209,21 @@ class TrainCTLearnModel(Tool):
 
     aliases = {
         "framework": "TrainCTLearnModel.framework_type",
+        "n_epochs": "TrainCTLearnModel.n_epochs",
         "signal": "TrainCTLearnModel.input_dir_signal",
         "background": "TrainCTLearnModel.input_dir_background",
         "pattern-signal": "TrainCTLearnModel.file_pattern_signal",
         "pattern-background": "TrainCTLearnModel.file_pattern_background",
         "reco": "TrainCTLearnModel.reco_tasks",
+        "save_onnx": "TrainCTLearnModel.save_onnx",
+        "random_seed": "TrainCTLearnModel.random_seed",
+        "optimizer": "TrainCTLearnModel.optimizer",
+        "overwrite": "TrainCTLearnModel.overwrite",
+        "validation_split": "TrainCTLearnModel.validation_split",
+        "batch_size": "TrainCTLearnModel.batch_size",
+        "sort_by_intensity": "TrainCTLearnModel.sort_by_intensity",
+        "stack_telescope_images": "TrainCTLearnModel.stack_telescope_images",
+        "dl1dh_reader_type": "TrainCTLearnModel.dl1dh_reader_type",
         ("o", "output"): "TrainCTLearnModel.output_dir",
     }
 
@@ -238,6 +248,7 @@ class TrainCTLearnModel(Tool):
         print("Common Init")
 
     def setup(self):
+        
         print("Enter setup")
         # Check if the output directory exists and if it should be overwritten
         if self.output_dir.exists():
@@ -270,7 +281,6 @@ class TrainCTLearnModel(Tool):
                     self.input_dir_background.glob(background_pattern)
                 )
 
-        print("DEBUG 1")
         # Set up the data reader
         self.log.info("Loading data:")
         self.log.info("For a large dataset, this may take a while...")
@@ -279,7 +289,7 @@ class TrainCTLearnModel(Tool):
                 "'DLFeatureVectorReader' is not supported in CTLearn yet. "
                 "Missing stereo CTLearnModel implementation."
             )
-        print("DEBUG 2")
+        
         print(f"self.dl1dh_reader_type: {self.dl1dh_reader_type}")
         self.dl1dh_reader = DLDataReader.from_name(
             self.dl1dh_reader_type,
@@ -287,7 +297,7 @@ class TrainCTLearnModel(Tool):
             input_url_background=sorted(self.input_url_background),
             parent=self,
         )
-        print("DEBUG 3")
+        
         self.log.info("Number of events loaded: %s", self.dl1dh_reader._get_n_events())
         if "type" in self.reco_tasks:
             self.log.info(
@@ -343,7 +353,7 @@ class TrainCTLearnModel(Tool):
             print("num_replicas_in_sync:", self.strategy.num_replicas_in_sync)
 
         print("BASE TRAIN FRAMEWORK", self.framework_type)
-        print("DEBUG 4")
+        
         self.training_loader = DLDataLoader.create(
             framework=self.framework_type,
             DLDataReader=self.dl1dh_reader,
@@ -354,11 +364,11 @@ class TrainCTLearnModel(Tool):
             sort_by_intensity=self.sort_by_intensity,
             stack_telescope_images=self.stack_telescope_images,
         )
-        print("DEBUG 5")
+        
         self.validation_loader = DLDataLoader.create(
             framework=self.framework_type,
             DLDataReader=self.dl1dh_reader,
-            indices=training_indices,
+            indices=validation_indices,
             tasks=self.reco_tasks,
             batch_size=self.batch_size * self.strategy.num_replicas_in_sync,
             random_seed=self.random_seed,

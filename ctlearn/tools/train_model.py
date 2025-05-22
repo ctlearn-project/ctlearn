@@ -133,7 +133,7 @@ def main():
     tool.run()
 
 
-if __name__ == "main":
+if __name__ == "__main__":
     main()
    
 
