@@ -35,7 +35,7 @@ from ctapipe.instrument.optics import FocalLengthKind
 from ctapipe.io import read_table, write_table
 from ctapipe.reco.utils import add_defaults_and_meta
 
-from ctlearn.core.model import LoadedModel
+from ctlearn.core.keras.model import LoadedModel
 from ctlearn.utils import get_lst1_subarray_description
 from dl1_data_handler.image_mapper import ImageMapper
 from dl1_data_handler.reader import (

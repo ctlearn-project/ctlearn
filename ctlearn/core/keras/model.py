@@ -7,7 +7,7 @@ import keras
 
 from ctapipe.core import Component
 from ctapipe.core.traits import Bool, Int, CaselessStrEnum, List, Dict, Unicode, Path
-from ctlearn.core.attention import (
+from ctlearn.core.keras.attention import (
     dual_squeeze_excite_block,
     channel_squeeze_excite_block,
     spatial_squeeze_excite_block,

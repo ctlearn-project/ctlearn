@@ -20,9 +20,7 @@ from ctapipe.core.traits import (
     Unicode,
 )
 from ctlearn.tools.train.base_train_model import TrainCTLearnModel
-# from dl1_data_handler.reader import DLDataReader
-# from ctlearn.core.loader import DLDataLoader
-from ctlearn.core.model import CTLearnModel
+from ctlearn.core.keras.model import CTLearnModel
 from ctlearn.utils import validate_trait_dict
 
 try:
@@ -37,7 +35,7 @@ class TqdmProgressBar(Callback):
 
     def on_epoch_end(self, epoch, logs=None):
         epoch_duration = time() - self.epoch_start_time
-        print(f'\nDuración de la época {epoch + 1}: {epoch_duration:.2f} segundos')
+        print(f'\nEpoch Time {epoch + 1}: {epoch_duration:.2f} seconds')
         self.progress_bar.close()
 
     def on_batch_begin(self, batch, logs=None):
