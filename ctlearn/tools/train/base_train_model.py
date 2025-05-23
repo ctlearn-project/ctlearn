@@ -16,8 +16,6 @@ from ctapipe.core.traits import (
 )
 from dl1_data_handler.reader import DLDataReader
 from ctlearn.core.data_loader.loader import DLDataLoader
-from ctlearn.core.model import CTLearnModel
-
 
 class TrainCTLearnModel(Tool):
     """
@@ -236,20 +234,17 @@ class TrainCTLearnModel(Tool):
 
     classes = (
         [
-            CTLearnModel,
             DLDataReader,
         ]
-        + classes_with_traits(CTLearnModel)
         + classes_with_traits(DLDataReader)
     )
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        print("Common Init")
 
     def setup(self):
         
-        print("Enter setup")
+ 
         # Check if the output directory exists and if it should be overwritten
         if self.output_dir.exists():
             if not self.overwrite:
