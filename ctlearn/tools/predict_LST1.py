@@ -47,9 +47,8 @@ from ctapipe.io.hdf5dataformat import (
 )
 from ctapipe.reco.utils import add_defaults_and_meta
 
-from ctlearn import __version__ as ctlearn_version
-from ctlearn.utils import get_lst1_subarray_description, validate_trait_dict
-
+from ctlearn.core.keras.model import LoadedModel
+from ctlearn.utils import get_lst1_subarray_description
 from dl1_data_handler.image_mapper import ImageMapper
 from dl1_data_handler.reader import (
     get_unmapped_image,
