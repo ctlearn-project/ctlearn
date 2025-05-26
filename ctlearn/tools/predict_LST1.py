@@ -16,6 +16,7 @@ from ctapipe.containers import (
     ReconstructedEnergyContainer,
 )
 from ctapipe.coordinates import CameraFrame
+from ctapipe.coordinates import CameraFrame
 from ctapipe.core import Tool
 from ctapipe.core.tool import ToolConfigurationError
 from ctapipe.core.traits import (
@@ -28,8 +29,10 @@ from ctapipe.core.traits import (
     ComponentName,
     Dict,
     UseEnum,
+    UseEnum,
     classes_with_traits,
 )
+from ctapipe.instrument.optics import FocalLengthKind
 from ctapipe.instrument.optics import FocalLengthKind
 from ctapipe.io import read_table, write_table
 from ctapipe.io.hdf5dataformat import (
@@ -47,7 +50,8 @@ from ctapipe.io.hdf5dataformat import (
 )
 from ctapipe.reco.utils import add_defaults_and_meta
 
-from ctlearn.core.keras.model import LoadedModel
+from ctlearn.core.model import LoadedModel
+from ctlearn.utils import get_lst1_subarray_description
 from ctlearn.utils import get_lst1_subarray_description
 from dl1_data_handler.image_mapper import ImageMapper
 from dl1_data_handler.reader import (

@@ -375,4 +375,4 @@ class TrainCTLearnModel(Tool):
         pass
 
     def finish(self):
-        print("finish")
+        pass
