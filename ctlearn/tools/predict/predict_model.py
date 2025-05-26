@@ -301,10 +301,11 @@ class PredictCTLearnModel(Tool):
         ),
     ).tag(config=True)
 
+
     framework_type = CaselessStrEnum(
         ["pytorch", "keras"],
         default_value="keras",
-        help="Framework to use: pytorch or keras",
+        help="Framework to use pytorch or keras",
     ).tag(config=True)
 
     aliases = {
@@ -317,7 +318,7 @@ class PredictCTLearnModel(Tool):
         ): "PredictCTLearnModel.load_cameradirection_model_from",
         ("s", "skydirection_model"): "PredictCTLearnModel.load_skydirection_model_from",
         ("o", "output"): "PredictCTLearnModel.output_path",
-        ("f", "framework"): "PredictCTLearnModel.framework_type",
+        ("f","framework"): "PredictCTLearnModel.framework_type",
     }
 
     flags = {
@@ -450,12 +451,10 @@ class PredictCTLearnModel(Tool):
         feature_vectors : np.ndarray
             Feature vectors extracted from the backbone model.
         """
-        if self.framework_type == "keras":
-             from ctlearn.tools.predict.keras.predic_model_keras import _predict_with_model
         # Create a new DLDataLoader for each task
         # It turned out to be more robust to initialize the DLDataLoader separately.
         data_loader = DLDataLoader.create(
-            framework="keras",
+            framework=self.framework_type,
             DLDataReader=self.dl1dh_reader,
             indices=self.indices,
             tasks=[],
@@ -472,7 +471,7 @@ class PredictCTLearnModel(Tool):
         if self.last_batch_size > 0:
             last_batch_indices = self.indices[-self.last_batch_size :]
             data_loader_last_batch = DLDataLoader.create(
-                framework="keras",
+                framework=self.framework_type,
                 DLDataReader=self.dl1dh_reader,
                 indices=last_batch_indices,
                 tasks=[],
