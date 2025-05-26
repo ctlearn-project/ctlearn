@@ -62,7 +62,7 @@ documentation = "https://ctlearn.readthedocs.io/en/latest/"
 
 [project.scripts]
 ctlearn-train-model = "ctlearn.tools.train_model:main"
-ctlearn-predict-mono-model = "ctlearn.tools.predict_model:mono_tool"
+ctlearn-predict-mono-model = "ctlearn.tools.predict.predict_model:mono_tool"
 ctlearn-predict-stereo-model = "ctlearn.tools.predict_model:stereo_tool"
 ctlearn-predict-LST1= "ctlearn.tools.predict_LST1:main"
 
