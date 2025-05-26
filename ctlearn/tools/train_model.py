@@ -491,11 +491,11 @@ class TrainCTLearnModel(Tool):
             if "type" in self.reco_tasks:
                 quant_model_path = model_path/"type_model.tflite"
             if "energy" in self.reco_tasks:
-                model_path = model_path/"energy_model.tflite"
+                quant_model_path = model_path/"energy_model.tflite"
             if "cameradirection" in self.reco_tasks:
-                model_path = model_path/"cameradirection_model.tflite"
+                quant_model_path = model_path/"cameradirection_model.tflite"
             if "skydirection" in self.reco_tasks:
-                model_path = model_path/"skydirection_model.tflite"
+                quant_model_path = model_path/"skydirection_model.tflite"
             
             quant_model_path.write_bytes(quant_model)
             self.log.info("Successfully converted Keras model to TFLite!")
