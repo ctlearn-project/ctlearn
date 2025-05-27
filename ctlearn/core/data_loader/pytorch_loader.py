@@ -13,6 +13,51 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         super().__init__(**kwargs)
         self.on_epoch_end()
 
+        self.hillas_names = [
+            "obs_id",
+            "event_id",
+            "tel_id",
+            "hillas_intensity",
+            "hillas_skewness",
+            "hillas_kurtosis",
+            "hillas_fov_lon",
+            "hillas_fov_lat",
+            "hillas_r",
+            "hillas_phi",
+            "hillas_length",
+            "hillas_length_uncertainty",
+            "hillas_width",
+            "hillas_width_uncertainty",
+            "hillas_psi",
+            "timing_intercept",
+            "timing_deviation",
+            "timing_slope",
+            "leakage_pixels_width_1",
+            "leakage_pixels_width_2",
+            "leakage_intensity_width_1",
+            "leakage_intensity_width_2",
+            "concentration_cog",
+            "concentration_core",
+            "concentration_pixel",
+            "morphology_n_pixels",
+            "morphology_n_islands",
+            "morphology_n_small_islands",
+            "morphology_n_medium_islands",
+            "morphology_n_large_islands",
+            "intensity_max",
+            "intensity_min",
+            "intensity_mean",
+            "intensity_std",
+            "intensity_skewness",
+            "intensity_kurtosis",
+            "peak_time_max",
+            "peak_time_min",
+            "peak_time_mean",
+            "peak_time_std",
+            "peak_time_skewness",
+            "peak_time_kurtosis",
+            "core_psi"
+        ]
     def __len__(self):
         """
         Returns the number of batches per epoch.
@@ -104,6 +149,7 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
                 (
                     batch["fov_lon"].data,
                     batch["fov_lat"].data,
+                    batch["angular_separation"].data,
                 ),
                 axis=1,
             )
@@ -115,10 +161,23 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
                 ),
                 axis=1,
             )
-        # Temp fix for supporting keras2 & keras3
-        # if int(keras.__version__.split(".")[0]) >= 3:
-        # features = features["input"]
-        return features, labels
+
+        if "hillas" in self.tasks:
+            # features["hillas"] = self.DLDataReader.get_parameters_dict(batch,self.hillas_names)
+            features["hillas"] = self.DLDataReader.get_parameters(batch,self.hillas_names)
+ 
+        image = features["input"][..., 0:1]
+        peak_time = features["input"][..., 1:2]
+
+        image = np.transpose(image, (0, 3, 1, 2))
+        peak_time = np.transpose(peak_time, (0, 3, 1, 2))
+
+        features_out={}
+        features_out["image"]=image
+        features_out["peak_time"]=peak_time
+        features_out["hillas"] = features["hillas"]
+        features_out["hillas_names"] = self.hillas_names
+        return features_out, labels
 
     def _get_stereo_item(self, batch):
         """
@@ -231,7 +290,15 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         if "stereo_feature_vectors" in batch.colnames:
             features = {"input": np.array(stereo_feature_vectors)}
  
-        # features = features["input"]
-        return features, labels
+        image = features[:,:,:,0]
+        peak_time = features[:,:,:,1]
+
+        image = np.transpose(image, (2, 0, 1))
+        peak_time = np.transpose(peak_time, (2, 0, 1))
+
+        features_out=None
+        features_out["image"]=image
+        features_out["peak_time"]=peak_time
+        return features_out, labels
 
     # Include _get_mono_item and _get_stereo_item as needed
