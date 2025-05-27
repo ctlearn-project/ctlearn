@@ -11,13 +11,16 @@ from ctapipe.core.traits import (
     Unicode,
 )
 
+from ctlearn.tools.train.pytorch.CTLearnPL import CTLearnTrainer, CTLearnPL
 try:
     import torch
+    
 except ImportError:
     raise ImportError("pytorch is not installed in your environment!")
 
 try:
     import pytorch_lightning
+    from pytorch_lightning.loggers import TensorBoardLogger
 except ImportError:
     raise ImportError("pytorch_lightning is not installed in your environment!")
 
@@ -33,6 +36,20 @@ from .utils import (
 
 from ctlearn.core.pytorch.net_utils import create_model, ModelHelper
 
+from pytorch_lightning.callbacks import Callback
+import os 
+
+class GPUStatsLogger(Callback):
+    def on_train_epoch_end(self, trainer, pl_module):
+        mem_allocated = torch.cuda.memory_allocated()
+        mem_reserved = torch.cuda.memory_reserved()
+        
+        trainer.logger.experiment.add_scalar(
+            "gpu_mem_allocated", mem_allocated, global_step=trainer.current_epoch
+        )
+        trainer.logger.experiment.add_scalar(
+            "gpu_mem_reserved", mem_reserved, global_step=trainer.current_epoch
+        )
 
 # from ctlearn.tools.train_model import
 class TrainPyTorchModel(TrainCTLearnModel):
@@ -100,6 +117,13 @@ class TrainPyTorchModel(TrainCTLearnModel):
     }
 
     def __init__(self, **kwargs):
+
+        os.environ["NCCL_P2P_DISABLE"] = "1"
+        os.environ["NCCL_IB_DISABLE"] = "1"
+        os.environ["NCCL_DEBUG"] = "WARN"
+        os.environ["TORCH_NCCL_ASYNC_ERROR_HANDLING"] = "1"
+        os.environ["NCCL_DEBUG"] = "INFO"
+                
         print("Pytorch init")
         super().__init__(**kwargs)
         print("CONFIG VALUES PYTORCH:", self.config)
@@ -128,6 +152,12 @@ class TrainPyTorchModel(TrainCTLearnModel):
 
         self.num_workers = self.parameters["dataset"]["num_workers"]
         self.persistent_workers = self.parameters["dataset"]["persistent_workers"]
+
+        self.devices =  self.parameters["arch"]["devices"]
+        self.save_k = self.parameters["hyp"]["save_k"]
+
+
+        print(f"Using Devices: {self.devices}")
 
     def start(self):
         print("Pytorch start")
@@ -177,6 +207,68 @@ class TrainPyTorchModel(TrainCTLearnModel):
             model_net = ModelHelper.loadModel(
                 model_net, "", check_point_path, Mode.train, device_str=self.device_str
             )
+           
+            log_dir = save_folder
+            # Setup the TensorBoard logger
+            tb_logger = TensorBoardLogger(
+                save_dir=log_dir,
+                name="exp_"
+                + str(self.experiment_number)
+                + "_"
+                + task.name
+                + "_train",
+                default_hp_metric=False,
+            )
+
+            in_channels = 2
+            lightning_model = CTLearnPL(
+                model=model_net,
+                save_folder=save_folder,
+                task=task,
+                mode = Mode.train,
+                parameters=self.parameters,
+                num_channels=in_channels,
+                k=self.save_k,
+            )
+                        
+            # Setup the Trainer
+            trainer_pl = CTLearnTrainer(
+                max_epochs=self.parameters["hyp"]["epochs"],
+                accelerator=self.parameters["arch"]["device"],
+                devices=self.devices,
+                strategy= self.parameters["arch"]["strategy"],
+                default_root_dir=log_dir,
+                log_every_n_steps=1,
+                logger=tb_logger,
+                num_sanity_val_steps=0,
+                precision=precision,
+                gradient_clip_val=self.parameters["hyp"]["gradient_clip_val"],
+                callbacks=[GPUStatsLogger()],
+                sync_batchnorm=True,
+            )
+
+            # training_data, validation_data, validation_test_data = self.load_data(
+            #     task, Mode.train, test_type, self.parameters
+            # )
+
+            # train_loader, validation_loader, test_validation_loader = self.create_data_loaders(
+            #     training_data,
+            #     validation_data,
+            #     validation_test_data,
+            #     task,
+            #     Mode.train,
+            #     self.parameters,
+            #     self.batch_size,
+            #     self.pin_memory,
+            #     num_workers=self.num_workers,
+            #     persistent_workers=self.persistent_workers
+            # )        
+
+            trainer_pl.fit(
+                model=lightning_model,
+                train_dataloaders=self.training_loader,
+                val_dataloaders=[self.validation_loader],
+            )    
 
     def finish(self):
         super().finish()
@@ -184,3 +276,85 @@ class TrainPyTorchModel(TrainCTLearnModel):
 
     def show_version(self):
         print("Pytorch 2.3")
+
+    # def load_data(self,task: Task, mode: Mode, test_type, parameters):
+
+    #     # Main script
+    #     print("Loading data...")
+    #     training_data = None
+    #     validation_data = None
+    #     validation_test_data = None
+    #     if mode == Mode.train or mode == Mode.tunning: 
+    #         if task == Task.type: 
+    #             training_data = load_pickle(parameters["data"]["train_gamma_proton"])
+    #         else:
+    #             training_data = load_pickle(parameters["data"]["train_gamma"])
+    #             validation_test_data = load_pickle(
+    #                 parameters["data"]["test_validation_gamma"]
+    #             )
+    #     # Gamma
+    #     if mode == Mode.results: 
+
+    #         if test_type == EventType.gamma:  
+    #             validation_data = load_pickle(parameters["data"]["test_gamma"])
+    #         elif test_type == EventType.proton:  
+    #             validation_data = load_pickle(parameters["data"]["test_proton"])
+    #         elif test_type == EventType.electron:  
+    #             validation_data = load_pickle(parameters["data"]["test_electron"])
+
+    #     elif mode == Mode.observation:  
+    #         validation_data = load_pickle(parameters["data"]["observation"])
+
+    #     if mode == Mode.train or mode == Mode.validate or mode == Mode.tunning:
+    #         # Gamma - Proton
+    #         if task == Task.type:  
+    #             validation_data = load_pickle(parameters["data"]["validation_gamma_proton"])
+    #             validation_test_data = load_pickle(parameters["data"]["test_validation_gamma_proton"])
+
+    #         else:
+    #             validation_data = load_pickle(parameters["data"]["validation_gamma"])
+    #             validation_test_data = load_pickle(parameters["data"]["test_validation_gamma"])
+
+    #     # --------------------------------------------------------
+    #     # Reduce the training and validation for testing purspose
+    #     # --------------------------------------------------------
+    #     training_reduce_factor = int(parameters["data"]["training_reduce_factor"])
+    #     validation_reduce_factor = int(parameters["data"]["validation_reduce_factor"])
+    #     validation_test_reduce_factor = int(
+    #         parameters["data"]["validation_test_reduce_factor"]
+    #     )
+
+    #     # --------------------------------------------------------
+    #     # training_data
+    #     # --------------------------------------------------------
+    #     if training_data and training_reduce_factor > 0:
+    #         data_len = len(training_data["data"])
+    #         factor = training_reduce_factor
+    #         training_data["data"] = training_data["data"][0 : int(data_len / factor)]
+    #         training_data["true_shower_primary_id"] = training_data[
+    #             "true_shower_primary_id"
+    #         ][0 : int(data_len / factor)]
+    #     # --------------------------------------------------------
+    #     #  validation_data
+    #     # --------------------------------------------------------
+    #     if validation_data and validation_reduce_factor > 0:
+    #         data_len = len(validation_data["data"])
+    #         factor = validation_reduce_factor
+    #         validation_data["data"] = validation_data["data"][0 : int(data_len / factor)]
+    #         validation_data["true_shower_primary_id"] = validation_data[
+    #             "true_shower_primary_id"
+    #         ][0 : int(data_len / factor)]
+    #     # --------------------------------------------------------
+    #     # validation_test_data
+    #     # --------------------------------------------------------
+    #     if validation_test_data and validation_reduce_factor > 0:
+    #         data_len = len(validation_test_data["data"])
+    #         factor = validation_test_reduce_factor
+    #         validation_test_data["data"] = validation_test_data["data"][
+    #             0 : int(data_len / factor)
+    #         ]
+    #         validation_test_data["true_shower_primary_id"] = validation_test_data[
+    #             "true_shower_primary_id"
+    #         ][0 : int(data_len / factor)]
+    #     # --------------------------------------------------------
+    #     return training_data, validation_data, validation_test_data
