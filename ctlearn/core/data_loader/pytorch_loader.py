@@ -1,4 +1,4 @@
-# import torch
+import torch
 import numpy as np
 from torch.utils.data import Dataset
 from .base_loader import BaseDLDataLoader
@@ -6,7 +6,7 @@ from dl1_data_handler.reader import ProcessType
 
 class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
     def __init__(
-        self,
+        self,        
         **kwargs,
     ):
 
@@ -113,6 +113,8 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         elif self.DLDataReader.mode == "stereo":
             batch = self.DLDataReader.generate_stereo_batch(batch_indices)
             features, labels = self._get_stereo_item(batch)
+
+            
         return features, labels
 
     def _get_mono_item(self, batch):
@@ -162,9 +164,9 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
                 axis=1,
             )
 
-        if "hillas" in self.tasks:
-            # features["hillas"] = self.DLDataReader.get_parameters_dict(batch,self.hillas_names)
-            features["hillas"] = self.DLDataReader.get_parameters(batch,self.hillas_names)
+        # if "hillas" in self.tasks:
+        features["hillas"] = self.DLDataReader.get_parameters_dict(batch,self.hillas_names)
+            # features["hillas"] = self.DLDataReader.get_parameters(batch,self.hillas_names)
  
         image = features["input"][..., 0:1]
         peak_time = features["input"][..., 1:2]
@@ -172,11 +174,35 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         image = np.transpose(image, (0, 3, 1, 2))
         peak_time = np.transpose(peak_time, (0, 3, 1, 2))
 
+        # ----------------------------------------------------
+        # Remove negative numbers and avoid inf or nans
+        # ----------------------------------------------------
+        image[image < 0] = 0
+        peak_time[peak_time < 0] = 0
+        image[np.isnan(image)] = 0
+        image[np.isinf(image)] = 0
+        peak_time[np.isnan(peak_time)] = 0
+        peak_time[np.isinf(peak_time)] = 0
+
+        # if self.task == Task.type:  # "type":
+        #     image = (image - self.type_mu) / self.type_sigma
+        #     peak_time = (peak_time - self.type_mu) / self.type_sigma
+        # if self.task == Task.energy:  # "energy":
+        #     image = (image - self.energy_mu) / self.energy_sigma
+        #     peak_time = (peak_time - self.energy_mu) / self.energy_sigma
+        # if self.task == Task.direction:  # "direction":
+        #     image = (image - self.dir_mu) / self.dir_sigma
+        #     peak_time = (peak_time - self.dir_mu) / self.dir_sigma
+ 
         features_out={}
-        features_out["image"]=image
-        features_out["peak_time"]=peak_time
-        features_out["hillas"] = features["hillas"]
-        features_out["hillas_names"] = self.hillas_names
+        features_out["image"]=torch.from_numpy(image).to('cuda')
+        features_out["peak_time"]=torch.from_numpy(peak_time).to('cuda')
+        # features_out["hillas"] = features["hillas"]
+        # features_out["hillas_names"] = self.hillas_names
+
+        for key in labels.keys():
+            labels[key] = torch.from_numpy(labels[key]).to('cuda')
+
         return features_out, labels
 
     def _get_stereo_item(self, batch):
