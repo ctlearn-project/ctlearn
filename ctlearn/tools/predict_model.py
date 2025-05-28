@@ -539,7 +539,6 @@ class PredictCTLearnModel(Tool):
             for file in model_path.iterdir():
                 if file.is_file() and file.suffix == ".tflite" and "cameradirection" in file.name:
                     prediction_colname = "cameradirection"
-        
                     break
 
         if prediction_colname == "type":
