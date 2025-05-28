@@ -1,5 +1,5 @@
 ctlearn/_version.py
-
+output_dir2/
 *.swp
 *.swo
 *.gemini
@@ -19,6 +19,6 @@ __pycache__/
 .DS_Store
 *.egg-info/
 dist
-
+*.log
 # Sphinx documentation
 docs/build/

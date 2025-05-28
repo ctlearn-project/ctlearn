@@ -8,6 +8,7 @@ import numpy as np
 import os
 import tensorflow as tf
 import keras
+import threading
 
 from astropy import units as u
 from astropy.coordinates.earth import EarthLocation
@@ -52,6 +53,7 @@ from dl1_data_handler.reader import (
     LST_EPOCH,
 )
 from ctlearn.core.data_loader.loader import DLDataLoader
+from ctlearn.utils import monitor_progress
 
 SIMULATION_CONFIG_TABLE = "/configuration/simulation/run"
 FIXED_POINTING_GROUP = "/configuration/telescope/pointing"
@@ -69,7 +71,6 @@ __all__ = [
     "MonoPredictCTLearnModel",
     "StereoPredictCTLearnModel",
 ]
-
 
 class PredictCTLearnModel(Tool):
     """
@@ -395,8 +396,17 @@ class PredictCTLearnModel(Tool):
                 )
             # Copy selected tables from the input file to the output file
             self.log.info("Copying to output destination.")
-            with HDF5Merger(self.output_path, parent=self) as merger:
-                merger(self.input_url)
+            stop_event = threading.Event()
+            monitor_thread = threading.Thread(target=monitor_progress, args=(self.input_url, self.output_path, stop_event, self.log))
+            monitor_thread.start()
+            
+            try:
+                with HDF5Merger(self.output_path, parent=self) as merger:
+                    merger(self.input_url)
+            finally:
+                stop_event.set()
+                monitor_thread.join()
+                
         else:
             self.log.info(
                 "No copy to output destination, since the usage of the HDF5Merger component is disabled."
@@ -452,7 +462,7 @@ class PredictCTLearnModel(Tool):
         """
         if self.framework_type == "keras":
              from ctlearn.tools.predict.keras.predic_model_keras import predict_with_model
-             predict_data, feature_vectors = predict_with_model(model_path)
+             predict_data, feature_vectors = predict_with_model(self,model_path)
 
              return predict_data, feature_vectors
         
@@ -1893,3 +1903,6 @@ if __name__ == "mono_tool":
 
 if __name__ == "stereo_tool":
     stereo_tool()
+
+if __name__ == "__main__":
+    mono_tool()
