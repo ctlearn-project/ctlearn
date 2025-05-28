@@ -195,14 +195,17 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         #     peak_time = (peak_time - self.dir_mu) / self.dir_sigma
  
         features_out={}
-        features_out["image"]=torch.from_numpy(image).to('cuda')
-        features_out["peak_time"]=torch.from_numpy(peak_time).to('cuda')
+        features_out["image"]=image #torch.from_numpy(image)
+        features_out["peak_time"]= peak_time #torch.from_numpy(peak_time)
+
+        features_out["image"]=torch.from_numpy(image).contiguous().float()
+        features_out["peak_time"]=torch.from_numpy(peak_time).contiguous().float()
         # features_out["hillas"] = features["hillas"]
         # features_out["hillas_names"] = self.hillas_names
 
         for key in labels.keys():
-            labels[key] = torch.from_numpy(labels[key]).to('cuda')
-
+            # labels[key] = labels[key]#torch.from_numpy(labels[key])
+            labels[key] = torch.from_numpy(labels[key]).contiguous().unsqueeze(-1)
         return features_out, labels
 
     def _get_stereo_item(self, batch):
