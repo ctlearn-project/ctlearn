@@ -39,7 +39,7 @@ import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 from ctlearn.core.pytorch.nets.loss_functions.loss_functions import evidential_regression_loss
-import pickle
+import json
 # from ctlearn.nets.loss_functions.loss_functions import evidential_classification
 
 
@@ -102,7 +102,6 @@ class CTLearnTrainer(pl.Trainer):
         return self.logger.log_dir
 
 class CTLearnPL(pl.LightningModule):
-    # lock = mp.Lock()
 
     def __init__(
         self,
@@ -116,37 +115,20 @@ class CTLearnPL(pl.LightningModule):
         test_val_loader=None,        
         num_channels=1,
         k=3,
-        # **kwargs,
+  
     ):
         super(CTLearnPL, self).__init__()
-        
-        # Save configuration file.
-        # self.save_hyperparameters(parameters)
-
- 
-
-        # self.save_hyperparameters({
-        #     'data': parameters['data'],
-        #     'hyp': parameters['hyp'],
-        #     'arch': parameters['arch'],
-        # })
-
-        self.model = model
 
         self.task = task
         self.mode = mode
 
         self.save_folder = save_folder
+        self.model = model
 
         # torch.autograd.set_detect_anomaly(True)
 
         self._device = torch.device(parameters["arch"]["device"])
         self.device_type = parameters["arch"]["device"]
-
-        self.energy_bins = np.linspace(0.0251, 140, num=40)
-        self.energy_bins_tensor = torch.tensor(
-            self.energy_bins, device=self._device, dtype=torch.float
-        )
 
         self.model.to(self.device)
 
@@ -782,8 +764,8 @@ class CTLearnPL(pl.LightningModule):
             if self.task == Task.type:
                 labels_class = labels["particletype"]
 
-            if self.task == Task.energy:
-                labels_energy_class = labels["energy_class"]
+            # if self.task == Task.energy:
+                # labels_energy_class = labels["energy_class"]
             labels_energy_value = labels["energy"]
             hillas_intensity = features["hillas"]["hillas_intensity"]
             # hillas = {key: tensor.to(self.device)
@@ -791,7 +773,7 @@ class CTLearnPL(pl.LightningModule):
             if self.task == Task.direction:
                 labels_direction = labels["direction"]
                 # labels_alt_az = labels['alt_az']
-                labels_direction_cartesian = labels["direction_cartesian"]
+                # labels_direction_cartesian = labels["direction_cartesian"]
 
             # ------------------------------------------------------------------
             # Predictions based on one backbone or two back bones
