@@ -8,6 +8,8 @@ import keras
 from astropy import units as u
 from astropy.coordinates import AltAz,SkyCoord
 from astropy.table import Table, setdiff, vstack
+from astropy.coordinates import AltAz,SkyCoord
+from astropy.table import Table, setdiff, vstack
 from astropy.time import Time
 
 from ctapipe.containers import (
