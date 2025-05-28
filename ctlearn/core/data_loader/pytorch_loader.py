@@ -3,14 +3,45 @@ import numpy as np
 from torch.utils.data import Dataset
 from .base_loader import BaseDLDataLoader
 from dl1_data_handler.reader import ProcessType
+from ctlearn.core.ctlearn_enum import Task
 
 class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
     def __init__(
-        self,        
+        self, 
+        tasks,
+        parameters,
+        use_augmentation,
         **kwargs,
     ):
+        self.parameter = parameters
+        self.use_augmentation = use_augmentation
+        self.use_clean = parameters["normalization"]["use_clean"]
+        self.use_clean_dvr = parameters["normalization"]["use_clean_dvr"]
 
-        super().__init__(**kwargs)
+        self.task= tasks
+        
+        # Augmentation probabilities
+        self.mask_augmentation = parameters["augmentation"]["aug_prob"]
+        self.aug_prob = parameters["augmentation"]["aug_prob"]
+        self.rot_prob = parameters["augmentation"]["rot_prob"]
+        self.trans_prob = parameters["augmentation"]["trans_prob"]
+        self.flip_hor_prob = parameters["augmentation"]["flip_hor_prob"]
+        self.flip_ver_prob = parameters["augmentation"]["flip_ver_prob"]
+        self.mask_prob = parameters["augmentation"]["mask_prob"]
+        self.mask_dvr_prob = parameters["augmentation"]["mask_dvr_prob"]
+        self.noise_prob = parameters["augmentation"]["noise_prob"]
+        self.max_aug_rot = parameters["augmentation"]["max_rot"]
+        self.max_aug_trans = parameters["augmentation"]["max_trans"]
+
+        # Normalization
+        self.type_mu = parameters["normalization"]["type_mu"]
+        self.type_sigma = parameters["normalization"]["type_sigma"]
+        self.dir_mu = parameters["normalization"]["dir_mu"]
+        self.dir_sigma = parameters["normalization"]["dir_sigma"]
+        self.energy_mu = parameters["normalization"]["energy_mu"]
+        self.energy_sigma = parameters["normalization"]["energy_sigma"]
+
+        super().__init__(**kwargs,tasks=tasks)
         self.on_epoch_end()
 
         self.hillas_names = [
@@ -184,15 +215,15 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         peak_time[np.isnan(peak_time)] = 0
         peak_time[np.isinf(peak_time)] = 0
 
-        # if self.task == Task.type:  # "type":
-        #     image = (image - self.type_mu) / self.type_sigma
-        #     peak_time = (peak_time - self.type_mu) / self.type_sigma
-        # if self.task == Task.energy:  # "energy":
-        #     image = (image - self.energy_mu) / self.energy_sigma
-        #     peak_time = (peak_time - self.energy_mu) / self.energy_sigma
-        # if self.task == Task.direction:  # "direction":
-        #     image = (image - self.dir_mu) / self.dir_sigma
-        #     peak_time = (peak_time - self.dir_mu) / self.dir_sigma
+        if self.task == Task.type:  # "type":
+            image = (image - self.type_mu) / self.type_sigma
+            peak_time = (peak_time - self.type_mu) / self.type_sigma
+        if self.task == Task.energy:  # "energy":
+            image = (image - self.energy_mu) / self.energy_sigma
+            peak_time = (peak_time - self.energy_mu) / self.energy_sigma
+        if self.task == Task.direction:  # "direction":
+            image = (image - self.dir_mu) / self.dir_sigma
+            peak_time = (peak_time - self.dir_mu) / self.dir_sigma
  
         features_out={}
         features_out["image"]=image #torch.from_numpy(image)
@@ -200,7 +231,7 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
 
         features_out["image"]=torch.from_numpy(image).contiguous().float()
         features_out["peak_time"]=torch.from_numpy(peak_time).contiguous().float()
-        # features_out["hillas"] = features["hillas"]
+        features_out["hillas"] = features["hillas"]
         # features_out["hillas_names"] = self.hillas_names
 
         for key in labels.keys():

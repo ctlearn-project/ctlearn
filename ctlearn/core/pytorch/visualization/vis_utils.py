@@ -61,24 +61,6 @@ def plot_direction_resolution_error(val_alt_pred_list,val_az_pred_list, val_alt_
     ax.set_ylim(bottom=0, top=1.5) 
     return fig    
 # ----------------------------------------------------------------------------------------------------------
-# def plot_confusion_matrix(cm, classes, accuracies, cm_file_name ,save_folder):
-#         plt.figure(figsize=(10, 7))
-#         sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
-#                     xticklabels=classes, yticklabels=classes)
-#         plt.xlabel('Predicted Labels')
-#         plt.ylabel('True Labels')
-
-#         accuracy_str = "Accuracy: \n"
-
-#         for id, (class_type) in enumerate(classes):
-#             accuracy_str += " " + class_type + ": " + \
-#                 str(round(accuracies[id], 2))+"%"
-
-#         plt.title('Confusion Matrix \n' + accuracy_str)
-
-#         # plt.show()
-#         plt.savefig(os.path.join(save_folder,cm_file_name+".png"))
-#         plt.close()
 def plot_confusion_matrix(cm, classes, cm_file_name, save_folder):
     """
     Plots and saves the confusion matrix.
