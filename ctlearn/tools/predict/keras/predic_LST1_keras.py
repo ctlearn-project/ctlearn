@@ -1,12 +1,8 @@
-from ctapipe.io import read_table, write_table
-from astropy.table import Table, join, setdiff, vstack
+from ctapipe.io import read_table
+from astropy.table import join
 import keras
-from dl1_data_handler.image_mapper import ImageMapper
 from dl1_data_handler.reader import (
-    get_unmapped_image,
-    get_unmapped_waveform,
-    TableQualityQuery,
-    LST_EPOCH,
+    get_unmapped_image
 )
 import numpy as np
 
