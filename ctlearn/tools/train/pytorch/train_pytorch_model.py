@@ -35,9 +35,11 @@ from .utils import (
 )
 
 from ctlearn.core.pytorch.net_utils import create_model, ModelHelper
-
+from ctlearn.core.data_loader.loader import DLDataLoader
 from pytorch_lightning.callbacks import Callback
 import os 
+import numpy as np 
+import json
 
 class GPUStatsLogger(Callback):
     def on_train_epoch_end(self, trainer, pl_module):
@@ -159,6 +161,48 @@ class TrainPyTorchModel(TrainCTLearnModel):
 
         print(f"Using Devices: {self.devices}")
 
+
+        # Set up the data loaders for training and validation
+        indices = list(range(self.dl1dh_reader._get_n_events()))
+        # Shuffle the indices before the training/validation split
+        np.random.seed(self.random_seed)
+        np.random.shuffle(indices)
+        n_validation_examples = int(
+            self.validation_split * self.dl1dh_reader._get_n_events()
+        )
+        training_indices = indices[n_validation_examples:]
+        validation_indices = indices[:n_validation_examples]
+
+
+        print("BASE TRAIN FRAMEWORK", self.framework_type)
+        
+        self.training_loader = DLDataLoader.create(
+            framework=self.framework_type,
+            DLDataReader=self.dl1dh_reader,
+            indices=training_indices,
+            tasks=self.reco_tasks,
+            batch_size=self.batch_size,
+            random_seed=self.random_seed,
+            sort_by_intensity=self.sort_by_intensity,
+            stack_telescope_images=self.stack_telescope_images,
+            parameters=self.parameters,
+            use_augmentation=True,
+        )
+        
+        self.validation_loader = DLDataLoader.create(
+            framework=self.framework_type,
+            DLDataReader=self.dl1dh_reader,
+            indices=validation_indices,
+            tasks=self.reco_tasks,
+            batch_size=self.batch_size,
+            random_seed=self.random_seed,
+            sort_by_intensity=self.sort_by_intensity,
+            stack_telescope_images=self.stack_telescope_images,
+            parameters=self.parameters,
+            use_augmentation=False,
+        )
+
+
     def start(self):
         print("Pytorch start")
         super().start()
@@ -222,16 +266,7 @@ class TrainPyTorchModel(TrainCTLearnModel):
                 default_hp_metric=False,
             )
 
-            in_channels = 2
-            lightning_model = CTLearnPL(
-                model=model_net,
-                save_folder=save_folder,
-                task=task,
-                mode = Mode.train,
-                parameters=self.parameters,
-                num_channels=in_channels,
-                k=self.save_k,
-            )
+
                         
             # Setup the Trainer
             trainer_pl = CTLearnTrainer(
@@ -249,28 +284,29 @@ class TrainPyTorchModel(TrainCTLearnModel):
                 sync_batchnorm=True,
             )
 
+            in_channels = 2
+            lightning_model = CTLearnPL(
+                model=model_net,
+                save_folder=trainer_pl.get_log_dir(),
+                task=task,
+                mode = Mode.train,
+                parameters=self.parameters,
+                num_channels=in_channels,
+                k=self.save_k,
+            )
+
+            # Save configuration file.
+            if not os.path.exists(trainer_pl.get_log_dir()):
+                os.mkdir(trainer_pl.get_log_dir())
+            
+            with open(os.path.join(trainer_pl.get_log_dir(),"parameters.json"), "w") as f:
+                json.dump(self.parameters, f, indent=4)
+    
             print(f"Run tensorboard server: tensorboard --load_fast=false --host=0.0.0.0 --logdir={trainer_pl.get_log_dir()}/")
 
             print(f"Accelerator: {trainer_pl.accelerator}")   
             print(f"Num. Devices: {trainer_pl.num_devices}")  
-            
-            # training_data, validation_data, validation_test_data = self.load_data(
-            #     task, Mode.train, test_type, self.parameters
-            # )
-
-            # train_loader, validation_loader, test_validation_loader = self.create_data_loaders(
-            #     training_data,
-            #     validation_data,
-            #     validation_test_data,
-            #     task,
-            #     Mode.train,
-            #     self.parameters,
-            #     self.batch_size,
-            #     self.pin_memory,
-            #     num_workers=self.num_workers,
-            #     persistent_workers=self.persistent_workers
-            # )        
-
+                 
             trainer_pl.fit(
                 model=lightning_model,
                 train_dataloaders=self.training_loader,
@@ -283,85 +319,3 @@ class TrainPyTorchModel(TrainCTLearnModel):
 
     def show_version(self):
         print("Pytorch 2.3")
-
-    # def load_data(self,task: Task, mode: Mode, test_type, parameters):
-
-    #     # Main script
-    #     print("Loading data...")
-    #     training_data = None
-    #     validation_data = None
-    #     validation_test_data = None
-    #     if mode == Mode.train or mode == Mode.tunning: 
-    #         if task == Task.type: 
-    #             training_data = load_pickle(parameters["data"]["train_gamma_proton"])
-    #         else:
-    #             training_data = load_pickle(parameters["data"]["train_gamma"])
-    #             validation_test_data = load_pickle(
-    #                 parameters["data"]["test_validation_gamma"]
-    #             )
-    #     # Gamma
-    #     if mode == Mode.results: 
-
-    #         if test_type == EventType.gamma:  
-    #             validation_data = load_pickle(parameters["data"]["test_gamma"])
-    #         elif test_type == EventType.proton:  
-    #             validation_data = load_pickle(parameters["data"]["test_proton"])
-    #         elif test_type == EventType.electron:  
-    #             validation_data = load_pickle(parameters["data"]["test_electron"])
-
-    #     elif mode == Mode.observation:  
-    #         validation_data = load_pickle(parameters["data"]["observation"])
-
-    #     if mode == Mode.train or mode == Mode.validate or mode == Mode.tunning:
-    #         # Gamma - Proton
-    #         if task == Task.type:  
-    #             validation_data = load_pickle(parameters["data"]["validation_gamma_proton"])
-    #             validation_test_data = load_pickle(parameters["data"]["test_validation_gamma_proton"])
-
-    #         else:
-    #             validation_data = load_pickle(parameters["data"]["validation_gamma"])
-    #             validation_test_data = load_pickle(parameters["data"]["test_validation_gamma"])
-
-    #     # --------------------------------------------------------
-    #     # Reduce the training and validation for testing purspose
-    #     # --------------------------------------------------------
-    #     training_reduce_factor = int(parameters["data"]["training_reduce_factor"])
-    #     validation_reduce_factor = int(parameters["data"]["validation_reduce_factor"])
-    #     validation_test_reduce_factor = int(
-    #         parameters["data"]["validation_test_reduce_factor"]
-    #     )
-
-    #     # --------------------------------------------------------
-    #     # training_data
-    #     # --------------------------------------------------------
-    #     if training_data and training_reduce_factor > 0:
-    #         data_len = len(training_data["data"])
-    #         factor = training_reduce_factor
-    #         training_data["data"] = training_data["data"][0 : int(data_len / factor)]
-    #         training_data["true_shower_primary_id"] = training_data[
-    #             "true_shower_primary_id"
-    #         ][0 : int(data_len / factor)]
-    #     # --------------------------------------------------------
-    #     #  validation_data
-    #     # --------------------------------------------------------
-    #     if validation_data and validation_reduce_factor > 0:
-    #         data_len = len(validation_data["data"])
-    #         factor = validation_reduce_factor
-    #         validation_data["data"] = validation_data["data"][0 : int(data_len / factor)]
-    #         validation_data["true_shower_primary_id"] = validation_data[
-    #             "true_shower_primary_id"
-    #         ][0 : int(data_len / factor)]
-    #     # --------------------------------------------------------
-    #     # validation_test_data
-    #     # --------------------------------------------------------
-    #     if validation_test_data and validation_reduce_factor > 0:
-    #         data_len = len(validation_test_data["data"])
-    #         factor = validation_test_reduce_factor
-    #         validation_test_data["data"] = validation_test_data["data"][
-    #             0 : int(data_len / factor)
-    #         ]
-    #         validation_test_data["true_shower_primary_id"] = validation_test_data[
-    #             "true_shower_primary_id"
-    #         ][0 : int(data_len / factor)]
-    #     # --------------------------------------------------------
-    #     return training_data, validation_data, validation_test_data
