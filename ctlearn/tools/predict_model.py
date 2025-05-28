@@ -521,6 +521,25 @@ class PredictCTLearnModel(Tool):
             for file in model_path.iterdir():
                 if file.is_file() and file.suffix == ".tflite" and "type" in file.name:
                     prediction_colname = "type"
+        elif model_path.is_file() and model_path.suffix == ".tflite" and "energy" in model_path.name:
+            prediction_colname = "energy"
+        elif model_path.is_dir():
+            for file in model_path.iterdir():
+                if file.is_file() and file.suffix == ".tflite" and "energy" in file.name:
+                    prediction_colname = "energy"
+        elif model_path.is_file() and model_path.suffix == ".tflite" and "skydirection" in model_path.name:
+            prediction_colname = "skydirection"
+        elif model_path.is_dir():
+            for file in model_path.iterdir():
+                if file.is_file() and file.suffix == ".tflite" and "skydirection" in file.name:
+                    prediction_colname = "skydirection"
+        elif model_path.is_file() and model_path.suffix == ".tflite" and "cameradirection" in model_path.name:
+            prediction_colname = "cameradirection"
+        elif model_path.is_dir():
+            for file in model_path.iterdir():
+                if file.is_file() and file.suffix == ".tflite" and "cameradirection" in file.name:
+                    prediction_colname = "cameradirection"
+        
                     break
 
         if prediction_colname == "type":
