@@ -178,6 +178,8 @@ class ModelHelper:
             # model.load_state_dict(torch.load(data_path + filename), strict=False)
             print("Model Loaded.")
         else:
+            model.to(torch.device(device_str))
+            
             print(f"CheckPoint file does not exist: {filename}")
             if mode != Mode.train:
                 exit()

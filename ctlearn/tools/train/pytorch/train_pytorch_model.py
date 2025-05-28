@@ -208,6 +208,8 @@ class TrainPyTorchModel(TrainCTLearnModel):
                 model_net, "", check_point_path, Mode.train, device_str=self.device_str
             )
            
+
+
             log_dir = save_folder
             # Setup the TensorBoard logger
             tb_logger = TensorBoardLogger(
@@ -247,6 +249,11 @@ class TrainPyTorchModel(TrainCTLearnModel):
                 sync_batchnorm=True,
             )
 
+            print(f"Run tensorboard server: tensorboard --load_fast=false --host=0.0.0.0 --logdir={trainer_pl.get_log_dir()}/")
+
+            print(f"Accelerator: {trainer_pl.accelerator}")   
+            print(f"Num. Devices: {trainer_pl.num_devices}")  
+            
             # training_data, validation_data, validation_test_data = self.load_data(
             #     task, Mode.train, test_type, self.parameters
             # )

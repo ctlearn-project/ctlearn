@@ -535,7 +535,7 @@ class CTLearnPL(pl.LightningModule):
 
             if self.task == Task.energy:
                 labels_energy_value = labels["energy"]
-                # labels_energy_value = labels_energy_value.to('cuda')
+                labels_energy_value = labels_energy_value.to('cuda')
                 # labels_energy_class = labels["energy_class"]
 
             if self.task == Task.direction:
@@ -544,14 +544,14 @@ class CTLearnPL(pl.LightningModule):
                 labels_direction_cartesian = labels["direction_cartesian"]
 
 
-            # imgs = imgs.to('cuda')
+            imgs = imgs.to('cuda')
 
             # ------------------------------------------------------------------
             # Predictions based on one backbone or two back bones
             # ------------------------------------------------------------------
             if self.num_channels == 2:
                 peak_time = features["peak_time"]
-                # peak_time = peak_time.to('cuda')
+                peak_time = peak_time.to('cuda')
                 classification_pred, energy_pred, direction_pred = self.model(
                     imgs, peak_time
                 )
