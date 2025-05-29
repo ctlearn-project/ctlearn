@@ -1,38 +1,3 @@
-# Data:
-
-#   mapping_settings:
-#     camera_types:
-#     - LSTCam
-#     # - LSTSiPMCam
-#     mapping_method:
-#       CHEC: oversampling
-#       DigiCam: bilinear_interpolation
-#       FlashCam: bilinear_interpolation
-#       LSTCam: bilinear_interpolation
-#       LSTSiPMCam: bilinear_interpolation
-#       MAGICCam: bilinear_interpolation
-#       NectarCam: bilinear_interpolation
-#       SCTCam: oversampling
-#     padding:
-#       CHEC: 0
-#       DigiCam: 2
-#       FlashCam: 2
-#       LSTCam: 2
-#       LSTSiPMCam: 2
-#       MAGICCam: 2
-#       NectarCam: 2
-#       SCTCam: 0
-#   mode: mono
-#   parameter_selection:
-#   - col_name: hillas_intensity
-#     min_value: 50.0
-#   selected_telescope_types:
-#   - LST_LST_LSTCam
-
-#   shuffle: False
-#   transforms: []
-
-
 data: 
 
   train_gamma_proton: ./data/gamma_proton_train_remix.dl1.pickle #gamma_proton_reduced_train.pickle #./data/gamma_proton_1910000_train.pickle 

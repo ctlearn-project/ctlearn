@@ -11,13 +11,16 @@ from ctapipe.core.traits import (
     Unicode,
 )
 
+from ctlearn.tools.train.pytorch.CTLearnPL import CTLearnTrainer, CTLearnPL
 try:
     import torch
+    
 except ImportError:
     raise ImportError("pytorch is not installed in your environment!")
 
 try:
     import pytorch_lightning
+    from pytorch_lightning.loggers import TensorBoardLogger
 except ImportError:
     raise ImportError("pytorch_lightning is not installed in your environment!")
 
@@ -32,7 +35,23 @@ from .utils import (
 )
 
 from ctlearn.core.pytorch.net_utils import create_model, ModelHelper
+from ctlearn.core.data_loader.loader import DLDataLoader
+from pytorch_lightning.callbacks import Callback
+import os 
+import numpy as np 
+import json
 
+class GPUStatsLogger(Callback):
+    def on_train_epoch_end(self, trainer, pl_module):
+        mem_allocated = torch.cuda.memory_allocated()
+        mem_reserved = torch.cuda.memory_reserved()
+        
+        trainer.logger.experiment.add_scalar(
+            "gpu_mem_allocated", mem_allocated, global_step=trainer.current_epoch
+        )
+        trainer.logger.experiment.add_scalar(
+            "gpu_mem_reserved", mem_reserved, global_step=trainer.current_epoch
+        )
 
 # from ctlearn.tools.train_model import
 class TrainPyTorchModel(TrainCTLearnModel):
@@ -100,6 +119,13 @@ class TrainPyTorchModel(TrainCTLearnModel):
     }
 
     def __init__(self, **kwargs):
+
+        os.environ["NCCL_P2P_DISABLE"] = "1"
+        os.environ["NCCL_IB_DISABLE"] = "1"
+        os.environ["NCCL_DEBUG"] = "WARN"
+        os.environ["TORCH_NCCL_ASYNC_ERROR_HANDLING"] = "1"
+        os.environ["NCCL_DEBUG"] = "INFO"
+                
         print("Pytorch init")
         super().__init__(**kwargs)
         print("CONFIG VALUES PYTORCH:", self.config)
@@ -128,6 +154,54 @@ class TrainPyTorchModel(TrainCTLearnModel):
 
         self.num_workers = self.parameters["dataset"]["num_workers"]
         self.persistent_workers = self.parameters["dataset"]["persistent_workers"]
+
+        self.devices =  self.parameters["arch"]["devices"]
+        self.save_k = self.parameters["hyp"]["save_k"]
+
+
+        print(f"Using Devices: {self.devices}")
+
+
+        # Set up the data loaders for training and validation
+        indices = list(range(self.dl1dh_reader._get_n_events()))
+        # Shuffle the indices before the training/validation split
+        np.random.seed(self.random_seed)
+        np.random.shuffle(indices)
+        n_validation_examples = int(
+            self.validation_split * self.dl1dh_reader._get_n_events()
+        )
+        training_indices = indices[n_validation_examples:]
+        validation_indices = indices[:n_validation_examples]
+
+
+        print("BASE TRAIN FRAMEWORK", self.framework_type)
+        
+        self.training_loader = DLDataLoader.create(
+            framework=self.framework_type,
+            DLDataReader=self.dl1dh_reader,
+            indices=training_indices,
+            tasks=self.reco_tasks,
+            batch_size=self.batch_size,
+            random_seed=self.random_seed,
+            sort_by_intensity=self.sort_by_intensity,
+            stack_telescope_images=self.stack_telescope_images,
+            parameters=self.parameters,
+            use_augmentation=True,
+        )
+        
+        self.validation_loader = DLDataLoader.create(
+            framework=self.framework_type,
+            DLDataReader=self.dl1dh_reader,
+            indices=validation_indices,
+            tasks=self.reco_tasks,
+            batch_size=self.batch_size,
+            random_seed=self.random_seed,
+            sort_by_intensity=self.sort_by_intensity,
+            stack_telescope_images=self.stack_telescope_images,
+            parameters=self.parameters,
+            use_augmentation=False,
+        )
+
 
     def start(self):
         print("Pytorch start")
@@ -177,6 +251,67 @@ class TrainPyTorchModel(TrainCTLearnModel):
             model_net = ModelHelper.loadModel(
                 model_net, "", check_point_path, Mode.train, device_str=self.device_str
             )
+           
+
+
+            log_dir = save_folder
+            # Setup the TensorBoard logger
+            tb_logger = TensorBoardLogger(
+                save_dir=log_dir,
+                name="exp_"
+                + str(self.experiment_number)
+                + "_"
+                + task.name
+                + "_train",
+                default_hp_metric=False,
+            )
+
+
+                        
+            # Setup the Trainer
+            trainer_pl = CTLearnTrainer(
+                max_epochs=self.parameters["hyp"]["epochs"],
+                accelerator=self.parameters["arch"]["device"],
+                devices=self.devices,
+                strategy= self.parameters["arch"]["strategy"],
+                default_root_dir=log_dir,
+                log_every_n_steps=1,
+                logger=tb_logger,
+                num_sanity_val_steps=0,
+                precision=precision,
+                gradient_clip_val=self.parameters["hyp"]["gradient_clip_val"],
+                callbacks=[GPUStatsLogger()],
+                sync_batchnorm=True,
+            )
+
+            in_channels = 2
+            lightning_model = CTLearnPL(
+                model=model_net,
+                save_folder=trainer_pl.get_log_dir(),
+                task=task,
+                mode = Mode.train,
+                parameters=self.parameters,
+                num_channels=in_channels,
+                k=self.save_k,
+            )
+
+            # Save configuration file.
+            if not os.path.exists(trainer_pl.get_log_dir()):
+                os.mkdir(trainer_pl.get_log_dir())
+            
+            with open(os.path.join(trainer_pl.get_log_dir(),"parameters.json"), "w") as f:
+                json.dump(self.parameters, f, indent=4)
+    
+            print(f"Run tensorboard server: tensorboard --load_fast=false --host=0.0.0.0 --logdir={trainer_pl.get_log_dir()}/")
+
+            print(f"Accelerator: {trainer_pl.accelerator}")   
+            print(f"Num. Devices: {trainer_pl.num_devices}")  
+                 
+            trainer_pl.fit(
+                model=lightning_model,
+                train_dataloaders=self.training_loader,
+                val_dataloaders=[self.validation_loader],
+            )    
 
     def finish(self):
         super().finish()

@@ -1,18 +1,94 @@
-# import torch
+import torch
 import numpy as np
 from torch.utils.data import Dataset
 from .base_loader import BaseDLDataLoader
 from dl1_data_handler.reader import ProcessType
+from ctlearn.core.ctlearn_enum import Task
 
 class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
     def __init__(
-        self,
+        self, 
+        tasks,
+        parameters,
+        use_augmentation,
         **kwargs,
     ):
+        self.parameter = parameters
+        self.use_augmentation = use_augmentation
+        self.use_clean = parameters["normalization"]["use_clean"]
+        self.use_clean_dvr = parameters["normalization"]["use_clean_dvr"]
 
-        super().__init__(**kwargs)
+        self.task= tasks
+        
+        # Augmentation probabilities
+        self.mask_augmentation = parameters["augmentation"]["aug_prob"]
+        self.aug_prob = parameters["augmentation"]["aug_prob"]
+        self.rot_prob = parameters["augmentation"]["rot_prob"]
+        self.trans_prob = parameters["augmentation"]["trans_prob"]
+        self.flip_hor_prob = parameters["augmentation"]["flip_hor_prob"]
+        self.flip_ver_prob = parameters["augmentation"]["flip_ver_prob"]
+        self.mask_prob = parameters["augmentation"]["mask_prob"]
+        self.mask_dvr_prob = parameters["augmentation"]["mask_dvr_prob"]
+        self.noise_prob = parameters["augmentation"]["noise_prob"]
+        self.max_aug_rot = parameters["augmentation"]["max_rot"]
+        self.max_aug_trans = parameters["augmentation"]["max_trans"]
+
+        # Normalization
+        self.type_mu = parameters["normalization"]["type_mu"]
+        self.type_sigma = parameters["normalization"]["type_sigma"]
+        self.dir_mu = parameters["normalization"]["dir_mu"]
+        self.dir_sigma = parameters["normalization"]["dir_sigma"]
+        self.energy_mu = parameters["normalization"]["energy_mu"]
+        self.energy_sigma = parameters["normalization"]["energy_sigma"]
+
+        super().__init__(**kwargs,tasks=tasks)
         self.on_epoch_end()
 
+        self.hillas_names = [
+            "obs_id",
+            "event_id",
+            "tel_id",
+            "hillas_intensity",
+            "hillas_skewness",
+            "hillas_kurtosis",
+            "hillas_fov_lon",
+            "hillas_fov_lat",
+            "hillas_r",
+            "hillas_phi",
+            "hillas_length",
+            "hillas_length_uncertainty",
+            "hillas_width",
+            "hillas_width_uncertainty",
+            "hillas_psi",
+            "timing_intercept",
+            "timing_deviation",
+            "timing_slope",
+            "leakage_pixels_width_1",
+            "leakage_pixels_width_2",
+            "leakage_intensity_width_1",
+            "leakage_intensity_width_2",
+            "concentration_cog",
+            "concentration_core",
+            "concentration_pixel",
+            "morphology_n_pixels",
+            "morphology_n_islands",
+            "morphology_n_small_islands",
+            "morphology_n_medium_islands",
+            "morphology_n_large_islands",
+            "intensity_max",
+            "intensity_min",
+            "intensity_mean",
+            "intensity_std",
+            "intensity_skewness",
+            "intensity_kurtosis",
+            "peak_time_max",
+            "peak_time_min",
+            "peak_time_mean",
+            "peak_time_std",
+            "peak_time_skewness",
+            "peak_time_kurtosis",
+            "core_psi"
+        ]
     def __len__(self):
         """
         Returns the number of batches per epoch.
@@ -68,6 +144,8 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         elif self.DLDataReader.mode == "stereo":
             batch = self.DLDataReader.generate_stereo_batch(batch_indices)
             features, labels = self._get_stereo_item(batch)
+
+            
         return features, labels
 
     def _get_mono_item(self, batch):
@@ -104,6 +182,7 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
                 (
                     batch["fov_lon"].data,
                     batch["fov_lat"].data,
+                    batch["angular_separation"].data,
                 ),
                 axis=1,
             )
@@ -115,10 +194,50 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
                 ),
                 axis=1,
             )
-        # Temp fix for supporting keras2 & keras3
-        # if int(keras.__version__.split(".")[0]) >= 3:
-        # features = features["input"]
-        return features, labels
+
+        # if "hillas" in self.tasks:
+        features["hillas"] = self.DLDataReader.get_parameters_dict(batch,self.hillas_names)
+            # features["hillas"] = self.DLDataReader.get_parameters(batch,self.hillas_names)
+ 
+        image = features["input"][..., 0:1]
+        peak_time = features["input"][..., 1:2]
+
+        image = np.transpose(image, (0, 3, 1, 2))
+        peak_time = np.transpose(peak_time, (0, 3, 1, 2))
+
+        # ----------------------------------------------------
+        # Remove negative numbers and avoid inf or nans
+        # ----------------------------------------------------
+        image[image < 0] = 0
+        peak_time[peak_time < 0] = 0
+        image[np.isnan(image)] = 0
+        image[np.isinf(image)] = 0
+        peak_time[np.isnan(peak_time)] = 0
+        peak_time[np.isinf(peak_time)] = 0
+
+        if self.task == Task.type:  # "type":
+            image = (image - self.type_mu) / self.type_sigma
+            peak_time = (peak_time - self.type_mu) / self.type_sigma
+        if self.task == Task.energy:  # "energy":
+            image = (image - self.energy_mu) / self.energy_sigma
+            peak_time = (peak_time - self.energy_mu) / self.energy_sigma
+        if self.task == Task.direction:  # "direction":
+            image = (image - self.dir_mu) / self.dir_sigma
+            peak_time = (peak_time - self.dir_mu) / self.dir_sigma
+ 
+        features_out={}
+        features_out["image"]=image #torch.from_numpy(image)
+        features_out["peak_time"]= peak_time #torch.from_numpy(peak_time)
+
+        features_out["image"]=torch.from_numpy(image).contiguous().float()
+        features_out["peak_time"]=torch.from_numpy(peak_time).contiguous().float()
+        features_out["hillas"] = features["hillas"]
+        # features_out["hillas_names"] = self.hillas_names
+
+        for key in labels.keys():
+            # labels[key] = labels[key]#torch.from_numpy(labels[key])
+            labels[key] = torch.from_numpy(labels[key]).contiguous().unsqueeze(-1)
+        return features_out, labels
 
     def _get_stereo_item(self, batch):
         """
@@ -231,7 +350,15 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         if "stereo_feature_vectors" in batch.colnames:
             features = {"input": np.array(stereo_feature_vectors)}
  
-        # features = features["input"]
-        return features, labels
+        image = features[:,:,:,0]
+        peak_time = features[:,:,:,1]
+
+        image = np.transpose(image, (2, 0, 1))
+        peak_time = np.transpose(peak_time, (2, 0, 1))
+
+        features_out=None
+        features_out["image"]=image
+        features_out["peak_time"]=peak_time
+        return features_out, labels
 
     # Include _get_mono_item and _get_stereo_item as needed
