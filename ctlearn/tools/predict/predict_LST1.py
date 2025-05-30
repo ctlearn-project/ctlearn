@@ -36,7 +36,7 @@ from ctapipe.reco.utils import add_defaults_and_meta
 from ctlearn.utils import get_lst1_subarray_description
 from dl1_data_handler.image_mapper import ImageMapper
 from dl1_data_handler.reader import TableQualityQuery
-
+from ctlearn.tools.predict.utils.load_model import load_model
 POINTING_GROUP = "/dl1/monitoring/telescope/pointing"
 DL1_TELESCOPE_GROUP = "/dl1/event/telescope"
 DL2_TELESCOPE_GROUP = "/dl2/event/telescope"
@@ -236,29 +236,7 @@ class LST1PredictionTool(Tool):
             self.table_length = len(input_file.get_node(self.image_table_path))
 
         # Load the models from the specified paths
-        if self.load_type_model_from is not None:
-            self.log.info("Loading the type model from %s.", self.load_type_model_from)
-            model_type = keras.saving.load_model(self.load_type_model_from)
-            input_shape = model_type.input_shape[1:]
-            self.backbone_type, self.head_type = self._split_model(model_type)
-        if self.load_energy_model_from is not None:
-            self.log.info(
-                "Loading the energy model from %s.", self.load_energy_model_from
-            )
-            model_energy = keras.saving.load_model(
-                self.load_energy_model_from
-            )
-            input_shape = model_energy.input_shape[1:]
-            self.backbone_energy, self.head_energy = self._split_model(model_energy)
-        if self.load_cameradirection_model_from is not None:
-            self.log.info(
-                "Loading the cameradirection model from %s.", self.load_cameradirection_model_from
-            )
-            model_direction = keras.saving.load_model(
-                self.load_cameradirection_model_from
-            )
-            input_shape = model_direction.input_shape[1:]
-            self.backbone_direction, self.head_direction = self._split_model(model_direction)
+        input_shape = load_model(self)
 
         # Get the SubarrayDescription of the LST-1 telescope
         self.subarray = get_lst1_subarray_description(focal_length_choice=self.focal_length_choice)
@@ -765,37 +743,6 @@ class LST1PredictionTool(Tool):
 
     def finish(self):
         self.log.info("Tool is shutting down")
-
-    def _split_model(self, model):
-        """
-        Split the model into backbone and head.
-
-        This method splits the model into backbone and head. The backbone is summarized
-        into a single layer which can be retrieved by the layer index 1. The model input
-        has layer index 0 and the head is the rest of the model with layer index 2 and above.
-
-        Parameters:
-        -----------
-        model : keras.Model
-            Keras model to split into backbone and head.
-
-        Returns:
-        --------
-        backbone : keras.Model
-            Backbone model of the original model.
-        head : keras.Model
-            Head model of the original model.
-        """
-        # Get the backbone model which is the second layer of the model
-        backbone = model.get_layer(index=1)
-        # Create a new head model with the same layers as the original model.
-        # The output of the backbone model is the input of the head model.
-        backbone_output_shape = keras.Input(model.layers[2].input_shape[1:])
-        x = backbone_output_shape
-        for layer in model.layers[2:]:
-            x = layer(x)
-        head = keras.Model(inputs=backbone_output_shape, outputs=x)
-        return backbone, head
 
     def _create_nan_table(self, nonexample_identifiers, columns, shapes):
         """

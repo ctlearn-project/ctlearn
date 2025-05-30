@@ -70,3 +70,63 @@ def predictions(self):
             cam_coord_offset_y.extend(predict_data.T[1])
             
     return event_id, tel_azimuth, tel_altitude, trigger_time, prediction, energy, cam_coord_offset_x, cam_coord_offset_y, classification_fvs, energy_fvs, direction_fvs
+
+def _split_model(model):
+        """
+        Split the model into backbone and head.
+
+        This method splits the model into backbone and head. The backbone is summarized
+        into a single layer which can be retrieved by the layer index 1. The model input
+        has layer index 0 and the head is the rest of the model with layer index 2 and above.
+
+        Parameters:
+        -----------
+        model : keras.Model
+            Keras model to split into backbone and head.
+
+        Returns:
+        --------
+        backbone : keras.Model
+            Backbone model of the original model.
+        head : keras.Model
+            Head model of the original model.
+        """
+        # Get the backbone model which is the second layer of the model
+        backbone = model.get_layer(index=1)
+        # Create a new head model with the same layers as the original model.
+        # The output of the backbone model is the input of the head model.
+        backbone_output_shape = keras.Input(model.layers[2].input_shape[1:])
+        x = backbone_output_shape
+        for layer in model.layers[2:]:
+            x = layer(x)
+        head = keras.Model(inputs=backbone_output_shape, outputs=x)
+        return backbone, head
+    
+def load_keras_model(self):
+    if self.load_type_model_from is not None:
+        self.log.info("Loading the type model from %s.", self.load_type_model_from)
+        model_type = keras.saving.load_model(self.load_type_model_from)
+        input_shape = model_type.input_shape[1:]
+        self.backbone_type, self.head_type = _split_model(model_type)
+        
+    if self.load_energy_model_from is not None:
+        self.log.info(
+            "Loading the energy model from %s.", self.load_energy_model_from
+        )
+        model_energy = keras.saving.load_model(
+            self.load_energy_model_from
+        )
+        input_shape = model_energy.input_shape[1:]
+        self.backbone_energy, self.head_energy = _split_model(model_energy)
+        
+    if self.load_cameradirection_model_from is not None:
+        self.log.info(
+            "Loading the cameradirection model from %s.", self.load_cameradirection_model_from
+        )
+        model_direction = keras.saving.load_model(
+            self.load_cameradirection_model_from
+        ) 
+        input_shape = model_direction.input_shape[1:]
+        self.backbone_direction, self.head_direction = _split_model(model_direction)
+        
+    return input_shape
