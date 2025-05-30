@@ -19,6 +19,7 @@ output_dir2/
 
 output_dir2/
 output_dir/
+.vscode/
 # Compiled Python files
 __pycache__/
 *.py[cod]
