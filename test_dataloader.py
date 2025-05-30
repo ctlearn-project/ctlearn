@@ -4,7 +4,6 @@ from dl1_data_handler.reader import DLDataReader
 import numpy as np
 import matplotlib.pyplot as plt
 from ctlearn.tools.train.pytorch.utils import read_configuration
-
 def on_key(event):
     # Check if the "Esc" key was pressed
     if event.key == 'escape':
