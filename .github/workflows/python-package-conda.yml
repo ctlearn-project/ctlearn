@@ -34,8 +34,6 @@ jobs:
         mamba install -y python=${{ matrix.pyv }}
     - name: Add MKL_THREADING_LAYER variable
       run: echo "MKL_THREADING_LAYER=GNU" >> $GITHUB_ENV
-    - name: Install system dependencies
-      run: sudo apt-get update && sudo apt-get install -y libblosc2
     - name: Install dependencies with Mamba
       run: |
         source $HOME/miniconda/bin/activate
