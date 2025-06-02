@@ -9,7 +9,6 @@ dependencies:
     - setuptools
     - numpy
     - pandas
-    - blosc2
     - pip
     - pytables
     - pyyaml
