@@ -20,6 +20,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
+    
     - name: Set up Python ${{ matrix.pyv }}
       run: |
         # Install Miniconda
@@ -33,10 +34,16 @@ jobs:
         mamba install -y python=${{ matrix.pyv }}
     - name: Add MKL_THREADING_LAYER variable
       run: echo "MKL_THREADING_LAYER=GNU" >> $GITHUB_ENV
+    - name: Install system dependencies
+      run: sudo apt-get update && sudo apt-get install -y libblosc2
     - name: Install dependencies with Mamba
       run: |
         source $HOME/miniconda/bin/activate
         mamba env update --file environment.yml --name base
+
+    - name: Fix missing libblosc2
+      run: |
+        $HOME/miniconda/bin/mamba install -y blosc2
     - name: Lint with flake8
       run: |
         source $HOME/miniconda/bin/activate
