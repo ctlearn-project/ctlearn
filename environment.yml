@@ -12,7 +12,7 @@ dependencies:
     - pip
     - pytables
     - pyyaml
-    - tables~=3.4
+    - tables=3.8.0
     - scikit-learn
     - ctapipe
     - pip:
