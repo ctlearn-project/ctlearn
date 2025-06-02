@@ -67,7 +67,7 @@ Dependencies
 * TensorFlow>=2.14,<2.15
 * ctapipe>=0.22.0,<0.26
 * ctaplot
-* DL1DataHandler>=0.14.3,<0.15
+* DL1DataHandler>=0.14.5,<0.15
 * numba
 * NumPy
 * Pandas
