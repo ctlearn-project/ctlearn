@@ -119,7 +119,8 @@ class TrainPyTorchModel(TrainCTLearnModel):
     }
 
     def __init__(self, **kwargs):
-
+        
+        # Setup GPU Debug
         os.environ["NCCL_P2P_DISABLE"] = "1"
         os.environ["NCCL_IB_DISABLE"] = "1"
         os.environ["NCCL_DEBUG"] = "WARN"
@@ -252,10 +253,9 @@ class TrainPyTorchModel(TrainCTLearnModel):
                 model_net, "", check_point_path, Mode.train, device_str=self.device_str
             )
            
-
-
-            log_dir = save_folder
             # Setup the TensorBoard logger
+            log_dir = save_folder
+            
             tb_logger = TensorBoardLogger(
                 save_dir=log_dir,
                 name="exp_"
@@ -266,8 +266,6 @@ class TrainPyTorchModel(TrainCTLearnModel):
                 default_hp_metric=False,
             )
 
-
-                        
             # Setup the Trainer
             trainer_pl = CTLearnTrainer(
                 max_epochs=self.parameters["hyp"]["epochs"],
@@ -283,7 +281,8 @@ class TrainPyTorchModel(TrainCTLearnModel):
                 callbacks=[GPUStatsLogger()],
                 sync_batchnorm=True,
             )
-
+            
+            # TODO: Fix in_channels. Add this parameter in the configuration file, in the model or both....
             in_channels = 2
             lightning_model = CTLearnPL(
                 model=model_net,
