@@ -139,3 +139,4 @@ if __name__ == "__main__":
 
 # Example:
 # python -m ctlearn.tools.train_model --framework=pytorch --output ./output_dir2 --signal ./mc_tjark/ --pattern-signal gamma_*.dl1.h5 --reco energy --overwrite
+# python -m ctlearn.tools.train_model --framework=pytorch --output ./output_dir3 --signal ./mc_tjark/ --pattern-signal gamma_*.dl1.h5 --reco energy --overwrite --config_file ./ctlearn/tools/train/pytorch/config/training_config_iaa_neutron_training.yml
