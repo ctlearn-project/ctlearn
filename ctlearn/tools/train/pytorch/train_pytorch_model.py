@@ -127,12 +127,12 @@ class TrainPyTorchModel(TrainCTLearnModel):
         os.environ["TORCH_NCCL_ASYNC_ERROR_HANDLING"] = "1"
         os.environ["NCCL_DEBUG"] = "INFO"
                 
-        print("Pytorch init")
+ 
         super().__init__(**kwargs)
         print("CONFIG VALUES PYTORCH:", self.config)
 
     def setup(self):
-        print("Pytorch setup")
+ 
         super().setup()
 
         # Create tasks Enum List
@@ -205,10 +205,7 @@ class TrainPyTorchModel(TrainCTLearnModel):
 
 
     def start(self):
-        print("Pytorch start")
         super().start()
-        print("Pytorch start")
-
         for task in self.tasks:
 
             # Create the experiment folder

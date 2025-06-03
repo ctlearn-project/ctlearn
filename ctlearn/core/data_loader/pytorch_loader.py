@@ -196,7 +196,7 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
             )
 
         # if "hillas" in self.tasks:
-        features["hillas"] = self.DLDataReader.get_parameters_dict(batch,self.hillas_names)
+        features["hillas"] = self.DLDataReader.get_parameters(batch,self.hillas_names)
             # features["hillas"] = self.DLDataReader.get_parameters(batch,self.hillas_names)
  
         image = features["input"][..., 0:1]
@@ -232,11 +232,13 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         features_out["image"]=torch.from_numpy(image).contiguous().float()
         features_out["peak_time"]=torch.from_numpy(peak_time).contiguous().float()
         features_out["hillas"] = features["hillas"]
-        # features_out["hillas_names"] = self.hillas_names
-
-        for key in labels.keys():
-            # labels[key] = labels[key]#torch.from_numpy(labels[key])
+      
+        for key in labels.keys():           
             labels[key] = torch.from_numpy(labels[key]).contiguous().unsqueeze(-1)
+
+        for key in features["hillas"].keys():
+            features["hillas"][key] = torch.from_numpy(np.array(features["hillas"][key])).contiguous().unsqueeze(-1)
+
         return features_out, labels
 
     def _get_stereo_item(self, batch):
