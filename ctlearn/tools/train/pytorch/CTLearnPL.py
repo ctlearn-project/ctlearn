@@ -204,20 +204,17 @@ class CTLearnPL(pl.LightningModule):
         self.class_train_accuracy = Accuracy(
             task="multiclass",
             num_classes=parameters["model"]["model_type"]["parameters"]["num_outputs"],
-            # compute_on_step=True,  # Compute for each step and epoch 
             dist_sync_on_step=True  # GPUs Sync
         )
 
         self.class_val_accuracy = Accuracy(
             task="multiclass",
             num_classes=parameters["model"]["model_type"]["parameters"]["num_outputs"],
-            # compute_on_step=True,  # Compute for each step and epoch 
             dist_sync_on_step=True  # GPUs Sync            
         )
         self.class_test_val_accuracy = Accuracy(
             task="multiclass",
             num_classes=parameters["model"]["model_type"]["parameters"]["num_outputs"],
-            # compute_on_step=True,  # Compute for each step and epoch 
             dist_sync_on_step=True  # GPUs Sync            
         )
         self.confusion_matrix = ConfusionMatrix(num_classes=2, task="multiclass",dist_sync_on_step=True)
@@ -359,21 +356,10 @@ class CTLearnPL(pl.LightningModule):
         target = labels_class.to(torch.int64)
         loss_class = self.criterion_class(classification_pred, target)
 
-
-        # loss_triplet = criterion(anchor_out, positive_out, negative_out)
-
         # Calculate accuracy
         predicted = torch.softmax(classification_pred, dim=1)
         predicted = predicted.argmax(dim=1)
         
-        # lamb = min(1, self.trainer.current_epoch / 10)
-        # class_weights= self.class_weights.to(self.device)
-        # class_weights = None
-        # loss_class = 0.2*evidential_classification(classification_pred, target, lamb=lamb) + 0.8 * loss_class
-        # loss_class = self.evidence_loss(classification_pred, target, class_weights, lamb=lamb) 
-        # Calculate accuracy
-        # predicted = torch.softmax(classification_pred, dim=1)
-        # predicted = classification_pred.argmax(dim=1)
 
         accuracy = 0
         precision = 0
@@ -422,11 +408,6 @@ class CTLearnPL(pl.LightningModule):
         label_separation = labels_direction[:, 2]
         loss_separation = self.criterion_direction(pred_separation, label_separation)
 
-        # loss_vector = self.criterion_vector(pred_dir_cartesian, labels_direction_cartesian)
-        # vect_magnitud = torch.sqrt(torch.sum(pred_dir_cartesian**2, dim=1))
-        # loss_magnitud = torch.abs(1.0-vect_magnitud).sum()
-
-        # alt_az = utils_torch.cartesian_to_alt_az(direction[:,0:3])
         if len(direction_pred)>1 and type(direction_pred)!=torch.Tensor:
             loss_alt_az = self.criterion_alt_az(direction_pred, labels_direction)
         else: 
@@ -490,17 +471,7 @@ class CTLearnPL(pl.LightningModule):
         else:
             energy_diff = None
 
-        # if training:
-        #     accuracy = self.class_train_energy_accuracy(predicted, labels_energy_class)
-        # else:
-        #     if test_val:
-        #         accuracy = self.class_test_energy_accuracy(predicted, labels_energy_class)
-        #     else:
-        #         accuracy = self.class_validation_energy_accuracy(predicted, labels_energy_class)
-
         return loss, energy_diff
-        #
-        # return loss, energy_diff
     # ----------------------------------------------------------------------------------------------------------
     def training_step(self, batch, batch_idx):
 
@@ -517,23 +488,19 @@ class CTLearnPL(pl.LightningModule):
 
             if self.task == Task.energy:
                 labels_energy_value = labels["energy"]
-                labels_energy_value = labels_energy_value.to('cuda')
-                # labels_energy_class = labels["energy_class"]
+                labels_energy_value = labels_energy_value.to(self.device)
 
             if self.task == Task.direction:
                 labels_direction = labels["direction"]
 
-                labels_direction_cartesian = labels["direction_cartesian"]
-
-
-            imgs = imgs.to('cuda')
-
+            imgs = imgs.to(self.device)
+            
             # ------------------------------------------------------------------
             # Predictions based on one backbone or two back bones
             # ------------------------------------------------------------------
             if self.num_channels == 2:
                 peak_time = features["peak_time"]
-                peak_time = peak_time.to('cuda')
+                peak_time = peak_time.to(self.device)
                 classification_pred, energy_pred, direction_pred = self.model(
                     imgs, peak_time
                 )
@@ -1069,15 +1036,15 @@ class CTLearnPL(pl.LightningModule):
                     },
                     self.current_epoch,
                 )
-                self.logger.experiment.add_scalars(
-                    "Metrics/Test",
-                    {
-                        "acc": epoch_accuracy_test,
-                        "f1": f1_score_test,
-                        "precision":precision_test,
-                    },
-                    self.current_epoch,
-                )
+                # self.logger.experiment.add_scalars(
+                #     "Metrics/Test",
+                #     {
+                #         "acc": epoch_accuracy_test,
+                #         "f1": f1_score_test,
+                #         "precision":precision_test,
+                #     },
+                #     self.current_epoch,
+                # )
                 print(
                     f"Epoch {self.current_epoch}: Global Validation Accuracy: {epoch_accuracy_val:.4f}"
                 )
@@ -1088,15 +1055,15 @@ class CTLearnPL(pl.LightningModule):
                     f"Epoch {self.current_epoch}: Global Validation Precision: {precision_val:.4f}"
                 )                      
 
-                print(
-                    f"Epoch {self.current_epoch}: Global Test Accuracy: {epoch_accuracy_test:.4f}"
-                )
-                print(
-                    f"Epoch {self.current_epoch}: Global Test F1 Score: {f1_score_test:.4f}"
-                )     
-                print(
-                    f"Epoch {self.current_epoch}: Global Test Precision: {precision_test:.4f}"
-                )                   
+                # print(
+                #     f"Epoch {self.current_epoch}: Global Test Accuracy: {epoch_accuracy_test:.4f}"
+                # )
+                # print(
+                #     f"Epoch {self.current_epoch}: Global Test F1 Score: {f1_score_test:.4f}"
+                # )     
+                # print(
+                #     f"Epoch {self.current_epoch}: Global Test Precision: {precision_test:.4f}"
+                # )                   
                 # ---------------------------------------
                 # Create Confusion Matrix
                 # ---------------------------------------        
@@ -1249,25 +1216,25 @@ class CTLearnPL(pl.LightningModule):
 
             plt.close(fig_energy_error)  # Close the figure to release memory
             plt.close("all")
-            fig_energy_error = plot_energy_resolution_error(
-                self.test_val_energy_pred_list,
-                self.test_val_energy_label_list,
-                self.test_val_hillas_intensity_list,
-            )
-            self.logger.experiment.add_figure(
-                "Energy Resolution Error/Test", fig_energy_error, self.current_epoch
-            )  # Log the plot
-            fig_energy_error.savefig(
-                os.path.join(
-                    self.logger.log_dir,
-                    "error_resulution_test_"
-                    + str(self.current_epoch)
-                    + "_"
-                    + str(global_loss_test)
-                    + ".png",
-                ),
-                format="png",
-            )
+            # fig_energy_error = plot_energy_resolution_error(
+            #     self.test_val_energy_pred_list,
+            #     self.test_val_energy_label_list,
+            #     self.test_val_hillas_intensity_list,
+            # )
+            # self.logger.experiment.add_figure(
+            #     "Energy Resolution Error/Test", fig_energy_error, self.current_epoch
+            # )  # Log the plot
+            # fig_energy_error.savefig(
+            #     os.path.join(
+            #         self.logger.log_dir,
+            #         "error_resulution_test_"
+            #         + str(self.current_epoch)
+            #         + "_"
+            #         + str(global_loss_test)
+            #         + ".png",
+            #     ),
+            #     format="png",
+            # )
 
             plt.close(fig_energy_error)  # Close the figure to release memory
             plt.close("all")

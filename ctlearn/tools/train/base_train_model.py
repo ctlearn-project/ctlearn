@@ -256,13 +256,6 @@ class TrainCTLearnModel(Tool):
                 self.log.info("Removing existing output directory %s", self.output_dir)
                 shutil.rmtree(self.output_dir)
 
-        # Must be moved to KERAS (It is moved already )
-        # Create a MirroredStrategy.
-        # self.strategy = tf.distribute.MirroredStrategy()
-        # atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore
-        # self.log.info("Number of devices: %s", self.strategy.num_replicas_in_sync)
-
-        # print(self.DLFrameWork.framework_type)
         # Get signal input files
         self.input_url_signal = []
         for signal_pattern in self.file_pattern_signal:
@@ -330,46 +323,6 @@ class TrainCTLearnModel(Tool):
             raise ToolConfigurationError(
                 f"Cannot stack telescope images when sorting by intensity. Disable sorting by intensity."
             )
-
-        # # Set up the data loaders for training and validation
-        # indices = list(range(self.dl1dh_reader._get_n_events()))
-        # # Shuffle the indices before the training/validation split
-        # np.random.seed(self.random_seed)
-        # np.random.shuffle(indices)
-        # n_validation_examples = int(
-        #     self.validation_split * self.dl1dh_reader._get_n_events()
-        # )
-        # training_indices = indices[n_validation_examples:]
-        # validation_indices = indices[:n_validation_examples]
-
-        # # Set self.strategy.num_replicas_in_sync to 1 in case that does not exist (Pytorch)
-        # if not hasattr(self, "strategy"):
-        #     self.strategy = type("FakeStrategy", (), {"num_replicas_in_sync": 1})()
-        #     print("num_replicas_in_sync:", self.strategy.num_replicas_in_sync)
-
-        # print("BASE TRAIN FRAMEWORK", self.framework_type)
-        
-        # self.training_loader = DLDataLoader.create(
-        #     framework=self.framework_type,
-        #     DLDataReader=self.dl1dh_reader,
-        #     indices=training_indices,
-        #     tasks=self.reco_tasks,
-        #     batch_size=self.batch_size * self.strategy.num_replicas_in_sync,
-        #     random_seed=self.random_seed,
-        #     sort_by_intensity=self.sort_by_intensity,
-        #     stack_telescope_images=self.stack_telescope_images,
-        # )
-        
-        # self.validation_loader = DLDataLoader.create(
-        #     framework=self.framework_type,
-        #     DLDataReader=self.dl1dh_reader,
-        #     indices=validation_indices,
-        #     tasks=self.reco_tasks,
-        #     batch_size=self.batch_size * self.strategy.num_replicas_in_sync,
-        #     random_seed=self.random_seed,
-        #     sort_by_intensity=self.sort_by_intensity,
-        #     stack_telescope_images=self.stack_telescope_images,
-        # )
 
     def start(self):
         pass
