@@ -33,7 +33,6 @@ class DLFrameWork(Tool):
         """
         super().__init__(**kwargs)
         self.framework_instance = None
-        print("init")
 
     def setup(self):
         """
@@ -41,7 +40,6 @@ class DLFrameWork(Tool):
         This dynamically loads and prepares the correct framework subclass 
         (TrainKerasModel or TrainPyTorchModel).
         """
-        print("setup")
         framework_enum = self.string_to_type(self.framework_type)
         self.framework_instance = self.get_framework(framework_enum)
 
@@ -51,13 +49,11 @@ class DLFrameWork(Tool):
         DLFrameWork.aliases.update(self.framework_instance.aliases)
 
     def start(self):
-        print(f"Selected Framework: {self.framework_type}")
-
-        framework = self.string_to_type(self.framework_type)
-        fw_obj = self.get_framework(framework)
-        fw_obj.update_config(self.config)
-        fw_obj.parse_command_line(argv=sys.argv[1:])
-        fw_obj.run()
+        """
+        Start method called after setup. Executes the selected framework instance.
+        """
+        print("start")
+        self.framework_instance.run()
 
     @classmethod
     def string_to_type(cls, str_type: str) -> FrameworkType:
@@ -109,7 +105,7 @@ class DLFrameWork(Tool):
                 )
 
                 fw = TrainPyTorchModel()
-                print("Pytorch")
+
             except ImportError as e:
                 raise ImportError(
                     f"Not possible to import TrainPyTorchModel: {e}"
