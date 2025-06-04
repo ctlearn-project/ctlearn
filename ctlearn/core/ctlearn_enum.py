@@ -9,7 +9,9 @@ class Task(Enum):
     type = 0
     energy = 1
     direction = 2
-    all = 3
+    cameradirection = 3
+    skydirection = 4
+    all = 5
 
 class EventType(Enum):
     gamma=0

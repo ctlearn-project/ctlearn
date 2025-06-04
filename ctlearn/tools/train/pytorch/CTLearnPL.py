@@ -39,9 +39,9 @@ import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 from ctlearn.core.pytorch.nets.loss_functions.loss_functions import evidential_regression_loss
-import json
+import inspect
 # from ctlearn.nets.loss_functions.loss_functions import evidential_classification
-
+ 
 
 class CTLearnTrainer(pl.Trainer):
     def __init__(self,**kwargs):
@@ -113,7 +113,7 @@ class CTLearnPL(pl.LightningModule):
         train_loader=None,
         val_loader=None,
         test_val_loader=None,        
-        num_channels=1,
+        num_inputs=1,
         k=3,
   
     ):
@@ -133,7 +133,10 @@ class CTLearnPL(pl.LightningModule):
         self.model.to(self.device)
 
         self.k = k  # Number of top results to save
-        self.num_channels = num_channels
+        # Get the number of inputs of the net
+        sig = inspect.signature(model.forward)
+        num_inputs = len(sig.parameters)
+        self.num_inputs = num_inputs
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.test_val_loader = test_val_loader
@@ -165,6 +168,7 @@ class CTLearnPL(pl.LightningModule):
         )  # torch.nn.L1Loss(reduction='sum')
         self.criterion_energy_value = torch.nn.L1Loss(reduction="sum")
         self.criterion_direction = torch.nn.SmoothL1Loss()  # nn.MSELoss()
+        self.criterion_magnitud = torch.nn.L1Loss(reduction="sum") 
         # self.criterion_energy = torch.nn.MSELoss()
 
         self.criterion_direction = torch.nn.L1Loss(reduction="sum")  # nn.MSELoss()
@@ -394,68 +398,90 @@ class CTLearnPL(pl.LightningModule):
     # ----------------------------------------------------------------------------------------------------------
     def compute_direction_loss(self, direction_pred, labels_direction, training=False):
         
-        if len(direction_pred)>1 and type(direction_pred)!=torch.Tensor:
+        # if len(direction_pred)>1 and type(direction_pred)!=torch.Tensor:
+        #     direction_pred = list(direction_pred)
+        #     pred_az_atl = direction_pred[0][:,0:2]
+        #     pred_separation = direction_pred[0][:,2]
+        #     # direction_pred[0]= direction_pred[0][:,0:2]
+        # else:
+
+        #     pred_az_atl = direction_pred[:, 0:2]
+        #     pred_separation = direction_pred[:, 2]
+        
+        # labels_az_alt = labels_direction[:, 0:2]
+        # label_separation = labels_direction[:, 2]
+        # loss_separation = self.criterion_direction(pred_separation, label_separation)
+
+        # if len(direction_pred)>1 and type(direction_pred)!=torch.Tensor:
+        #     loss_alt_az = self.criterion_alt_az(direction_pred, labels_direction)
+        # else: 
+        #     loss_alt_az = self.criterion_alt_az_l1(pred_az_atl, labels_az_alt)
+
+        # if len(direction_pred)>1 and type(direction_pred)!=torch.Tensor:
+        
+        #     loss_angular_error, _ = AngularDistance(
+        #         (direction_pred[0][:, 1]),
+        #         labels_az_alt[:, 1],
+        #         (direction_pred[0][:, 0]),
+        #         labels_az_alt[:, 0],
+        #         reduction="sum",
+        #     )
+
+        # else:
+
+        #     loss_angular_error, _ = AngularDistance(
+        #         (direction_pred[:, 1]),
+        #         labels_az_alt[:, 1],
+        #         (direction_pred[:, 0]),
+        #         labels_az_alt[:, 0],
+        #         reduction="sum",
+        #     )
+
+        # if training == False:
+        #     if len(direction_pred)>1 and type(direction_pred)!=torch.Tensor:
+        #         _, angular_diff = AngularDistance(
+        #             (direction_pred[0][:, 1]),
+        #             labels_az_alt[:, 0],
+        #             (direction_pred[0][:, 0]),
+        #             labels_az_alt[:, 1],
+        #             reduction=None,
+        #         )
+        #     else: 
+        #         _, angular_diff = AngularDistance(
+        #             (direction_pred[:, 1]),
+        #             labels_az_alt[:, 0],
+        #             (direction_pred[:, 0]),
+        #             labels_az_alt[:, 1],
+        #             reduction=None,
+        #         )
+        # else:
+        #     angular_diff = None
+
+        # loss = loss_alt_az + 0.001*(loss_separation + loss_angular_error)
+        # return loss, loss_separation, loss_alt_az, loss_angular_error, angular_diff
+
+
+        
+        labels_dx_dy = labels_direction[:, 0:2]
+        label_distance = labels_direction[:, 2]
+
+
+        if isinstance(direction_pred, tuple):
             direction_pred = list(direction_pred)
-            pred_az_atl = direction_pred[0][:,0:2]
-            pred_separation = direction_pred[0][:,2]
-            # direction_pred[0]= direction_pred[0][:,0:2]
+
+            pred_dx_dy = direction_pred[0][:,0:2].unsqueeze(-1)
+            pred_distance = direction_pred[0][:,2].unsqueeze(-1)
         else:
+            pred_dx_dy = direction_pred[:,0:2].unsqueeze(-1)
+            pred_distance = direction_pred[:,2].unsqueeze(-1)
 
-            pred_az_atl = direction_pred[:, 0:2]
-            pred_separation = direction_pred[:, 2]
-        
-        labels_az_alt = labels_direction[:, 0:2]
-        label_separation = labels_direction[:, 2]
-        loss_separation = self.criterion_direction(pred_separation, label_separation)
+        vector_cam_distance = torch.sqrt(pred_dx_dy[:,0]**2 + pred_dx_dy[:,1]**2)
+        loss_dx_dy = self.criterion_alt_az_l1(pred_dx_dy, labels_dx_dy)
+        loss_distance = self.criterion_magnitud(label_distance, pred_distance)
+        loss_distance_dx_dy = self.criterion_magnitud(label_distance, vector_cam_distance)
 
-        if len(direction_pred)>1 and type(direction_pred)!=torch.Tensor:
-            loss_alt_az = self.criterion_alt_az(direction_pred, labels_direction)
-        else: 
-            loss_alt_az = self.criterion_alt_az_l1(pred_az_atl, labels_az_alt)
-
-        if len(direction_pred)>1 and type(direction_pred)!=torch.Tensor:
-        
-            loss_angular_error, _ = AngularDistance(
-                (direction_pred[0][:, 1]),
-                labels_az_alt[:, 1],
-                (direction_pred[0][:, 0]),
-                labels_az_alt[:, 0],
-                reduction="sum",
-            )
-
-        else:
-
-            loss_angular_error, _ = AngularDistance(
-                (direction_pred[:, 1]),
-                labels_az_alt[:, 1],
-                (direction_pred[:, 0]),
-                labels_az_alt[:, 0],
-                reduction="sum",
-            )
-
-        if training == False:
-            if len(direction_pred)>1 and type(direction_pred)!=torch.Tensor:
-                _, angular_diff = AngularDistance(
-                    (direction_pred[0][:, 1]),
-                    labels_az_alt[:, 0],
-                    (direction_pred[0][:, 0]),
-                    labels_az_alt[:, 1],
-                    reduction=None,
-                )
-            else: 
-                _, angular_diff = AngularDistance(
-                    (direction_pred[:, 1]),
-                    labels_az_alt[:, 0],
-                    (direction_pred[:, 0]),
-                    labels_az_alt[:, 1],
-                    reduction=None,
-                )
-        else:
-            angular_diff = None
-
-        loss = loss_alt_az + 0.001*(loss_separation + loss_angular_error)
-
-        return loss, loss_separation, loss_alt_az, loss_angular_error, angular_diff
+        loss = loss_dx_dy + loss_distance + loss_distance_dx_dy 
+        return loss, loss_dx_dy, loss_distance, loss_distance_dx_dy
     # ----------------------------------------------------------------------------------------------------------
     def compute_energy_loss(
         self, energy_pred, labels_energy, test_val=False, training=False
@@ -490,7 +516,7 @@ class CTLearnPL(pl.LightningModule):
                 labels_energy_value = labels["energy"]
                 labels_energy_value = labels_energy_value.to(self.device)
 
-            if self.task == Task.direction:
+            if self.task == Task.cameradirection:
                 labels_direction = labels["direction"]
 
             imgs = imgs.to(self.device)
@@ -498,7 +524,7 @@ class CTLearnPL(pl.LightningModule):
             # ------------------------------------------------------------------
             # Predictions based on one backbone or two back bones
             # ------------------------------------------------------------------
-            if self.num_channels == 2:
+            if self.num_inputs == 2:
                 peak_time = features["peak_time"]
                 peak_time = peak_time.to(self.device)
                 classification_pred, energy_pred, direction_pred = self.model(
@@ -538,19 +564,24 @@ class CTLearnPL(pl.LightningModule):
             # ---------------------------------------
             # Direction
             # ---------------------------------------
-            if self.task == Task.direction:
+            if self.task == Task.cameradirection:
                 if len(direction_pred)==2:
                     direction_pred = direction_pred[0]
 
-                loss, loss_separation, loss_alt_az, loss_angular_error, _ = (
-                    self.compute_direction_loss(
-                        direction_pred, labels_direction, training=True
-                    )
-                )
+                # loss, loss_separation, loss_alt_az, loss_angular_error, _ = (
+                #     self.compute_direction_loss(
+                #         direction_pred, labels_direction, training=True
+                #     )
+                # )
+                loss, loss_dx_dy, loss_distance, loss_distance_dx_dy= self.compute_direction_loss( direction_pred, labels_direction, training=True)
 
-                self.loss_train_separation += loss_separation.item()
-                self.loss_train_alt_az += loss_alt_az.item()
-                self.loss_train_angular_error += loss_angular_error.item()
+                self.loss_train_separation += loss_dx_dy.item()
+                self.loss_train_alt_az += loss_distance.item()
+                self.loss_train_angular_error += loss_distance_dx_dy.item()
+
+                # self.loss_train_separation += loss_separation.item()
+                # self.loss_train_alt_az += loss_alt_az.item()
+                # self.loss_train_angular_error += loss_angular_error.item()
 
             self.loss_val_separation = 0.0
             self.loss_val_alt_az = 0.0
@@ -664,7 +695,7 @@ class CTLearnPL(pl.LightningModule):
         # ---------------------------------------
         # Direction
         # ---------------------------------------
-        if self.task == Task.direction:
+        if self.task == Task.cameradirection:
             if self.trainer.is_global_zero:
                 filename_prefix = (
                     f"Epoch_{self.current_epoch}_{self.task.name}_train_loss"
@@ -716,6 +747,72 @@ class CTLearnPL(pl.LightningModule):
         self.num_train_batches = 0
         self.training_step_outputs = []
     # ----------------------------------------------------------------------------------------------------------
+
+    
+
+    def _transform_to_altaz_from_cam_offsets(self, tel_ground_frame,tel_az,tel_alt,):
+        """
+        Transform camera coordinate offsets back to Alt/Az sky coordinates.
+
+        Given cam_coord_offset_x and cam_coord_offset_y, this method reconstructs the
+        true Alt/Az coordinates using the telescope pointing and the camera geometry.
+
+        Parameters:
+        -----------
+        table : astropy.table.Table
+            A Table containing cam_coord_offset_x, cam_coord_offset_y, telescope pointing, and tel_id.
+
+        Returns:
+        --------
+        table : astropy.table.Table
+            A Table with reconstructed true_alt and true_az columns added.
+        """
+        LST_EPOCH = Time("2018-10-01T00:00:00", scale="utc")
+        from astropy.coordinates import AltAz, SkyCoord
+        from ctapipe.coordinates import CameraFrame
+        # tel_id = table["tel_id"][0]
+
+        # # Get telescope ground frame position
+        # tel_ground_frame = self.subarray.tel_coords[
+        #     self.subarray.tel_ids_to_indices(tel_id)
+        # ]
+
+        # AltAz frame setup
+        altaz = AltAz(
+            location=tel_ground_frame.to_earth_location(),
+            obstime=LST_EPOCH,
+        )
+
+        # Telescope pointing SkyCoord
+        fix_tel_pointing = SkyCoord(
+            az = tel_az,
+            alt = tel_alt,
+            frame=altaz,
+        )
+
+        # Define the camera frame
+        camera_frame = CameraFrame(
+            focal_length=self.subarray.tel[tel_id].camera.geometry.frame.focal_length,
+            rotation=self.pix_rotation[tel_id],
+            telescope_pointing=fix_tel_pointing,
+        )
+
+        # Create SkyCoord in CameraFrame using cam offsets
+        cam_coords = SkyCoord(
+            x=table["cam_coord_offset_x"],
+            y=table["cam_coord_offset_y"],
+            frame=camera_frame
+        )
+
+        # Transform back to AltAz
+        sky_coords = cam_coords.transform_to(altaz)
+
+        # Add the reconstructed Alt/Az coordinates to the table
+        # table.add_column(sky_coords.az, name="reconstructed_true_az")
+        # table.add_column(sky_coords.alt, name="reconstructed_true_alt")
+
+        return sky_coords.alt,sky_coords.az
+
     @torch.no_grad()
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
         loss=0
@@ -737,7 +834,7 @@ class CTLearnPL(pl.LightningModule):
             hillas_intensity = features["hillas"]["hillas_intensity"]
             # hillas = {key: tensor.to(self.device)
             #             for key, tensor in hillas.items()}
-            if self.task == Task.direction:
+            if self.task == Task.cameradirection:
                 labels_direction = labels["direction"]
                 # labels_alt_az = labels['alt_az']
                 # labels_direction_cartesian = labels["direction_cartesian"]
@@ -745,7 +842,7 @@ class CTLearnPL(pl.LightningModule):
             # ------------------------------------------------------------------
             # Predictions based on one backbone or two back bones
             # ------------------------------------------------------------------
-            if self.num_channels == 2:
+            if self.num_inputs == 2:
                 peak_time = features["peak_time"]
                 classification_pred, energy_pred, direction_pred = self.model(
                     imgs, peak_time
@@ -810,81 +907,99 @@ class CTLearnPL(pl.LightningModule):
             # ---------------------------------------
             # Direction
             # ---------------------------------------
-            if self.task == Task.direction: 
+            if self.task == Task.cameradirection: 
 
                 if len(direction_pred)==2:
                     direction_pred = direction_pred[0]
                 # loss, angular_diff = self.compute_direction_loss(direction_pred, labels_direction, training=False)
-                loss, loss_separation, loss_alt_az, loss_angular_error, angular_diff = (
-                    self.compute_direction_loss(
-                        direction_pred, labels_direction, training=False
-                    )
-                )
+                # loss, loss_separation, loss_alt_az, loss_angular_error, angular_diff = (
+                #     self.compute_direction_loss(
+                #         direction_pred, labels_direction, training=False
+                #     )
+                # )
+
+                loss, loss_dx_dy, loss_distance, loss_distance_dx_dy= self.compute_direction_loss( direction_pred, labels_direction, training=True)
+
+                # self.loss_train_separation += loss_dx_dy.item()
+                # self.loss_train_alt_az += loss_distance.item()
+                # self.loss_train_angular_error += loss_distance_dx_dy.item()
+
                 # ------------------------------------------------------------------------
                 # Convert the offset to altitud and azimuth
                 # ------------------------------------------------------------------------
-                reco_az, reco_alt = [], []
-                if "tel_alt" in features:
-                    pointing_alt = features["tel_alt"].float().cpu().detach().numpy()
-                    pointing_az = features["tel_az"].float().cpu().detach().numpy()
-                elif "tel_alt" in labels:
-                    pointing_alt = labels["tel_alt"].float().cpu().detach().numpy()
-                    pointing_az = labels["tel_az"].float().cpu().detach().numpy()
-                else:
-                    raise ValueError(f"Telescope altitud and azimuth not found.")
+                # reco_az, reco_alt = [], []
+                # if "tel_alt" in features:
+                #     pointing_alt = features["tel_alt"].float().cpu().detach().numpy()
+                #     pointing_az = features["tel_az"].float().cpu().detach().numpy()
+                # elif "tel_alt" in labels:
+                #     pointing_alt = labels["tel_alt"].float().cpu().detach().numpy()
+                #     pointing_az = labels["tel_az"].float().cpu().detach().numpy()
+                # else:
+                #     raise ValueError(f"Telescope altitud and azimuth not found.")
 
-                pointing_alt = np.rad2deg(pointing_alt)
-                pointing_az = np.rad2deg(pointing_az)
+                # pointing_alt = np.rad2deg(pointing_alt)
+                # pointing_az = np.rad2deg(pointing_az)
 
-                fix_pointing = SkyCoord(
-                    pointing_az * u.deg,
-                    pointing_alt * u.deg,
-                    frame="altaz",
-                    unit="deg",
-                )
-                alt_off = direction_pred[:, 1].float().cpu().detach().numpy()
-                az_off = direction_pred[:, 0].float().cpu().detach().numpy()
+                # fix_pointing = SkyCoord(
+                #     pointing_az * u.deg,
+                #     pointing_alt * u.deg,
+                #     frame="altaz",
+                #     unit="deg",
+                # )
+                # alt_off = direction_pred[:, 1].float().cpu().detach().numpy()
+                # az_off = direction_pred[:, 0].float().cpu().detach().numpy()
 
-                reco_direction = utils.recover_alt_az(fix_pointing, alt_off, az_off)
+                # reco_direction = utils.recover_alt_az(fix_pointing, alt_off, az_off)
 
-                reco_alt = np.deg2rad(reco_direction.alt.to_value())[0, :]
-                reco_az = np.deg2rad(reco_direction.az.to_value())[0, :]
+                # reco_alt = np.deg2rad(reco_direction.alt.to_value())[0, :]
+                # reco_az = np.deg2rad(reco_direction.az.to_value())[0, :]
 
-                true_alt = labels["alt_az"][:, 0].float().cpu().detach().numpy()
-                true_az = labels["alt_az"][:, 1].float().cpu().detach().numpy()
+                # true_alt = labels["alt_az"][:, 0].float().cpu().detach().numpy()
+                # true_az = labels["alt_az"][:, 1].float().cpu().detach().numpy()
 
                 if dataloader_idx == 0:
                     # self.alt_off_list.extend(alt_off)
                     # self.az_off_list.extend(az_off)
 
-                    self.loss_val_separation += loss_separation.item()
-                    self.loss_val_alt_az += loss_alt_az.item()
-                    self.loss_val_angular_error += loss_angular_error.item()
+                    # self.loss_val_separation += loss_separation.item()
+                    # self.loss_val_alt_az += loss_alt_az.item()
+                    # self.loss_val_angular_error += loss_angular_error.item()
 
-                    self.val_angular_diff_list.extend(angular_diff)
+                    # self.val_angular_diff_list.extend(angular_diff)
+
+                    self.loss_val_separation += loss_dx_dy.item()
+                    self.loss_val_alt_az += loss_distance.item()
+                    self.loss_val_angular_error += loss_distance_dx_dy.item()
+                    # self.val_angular_diff_list.extend(angular_diff)
+                #                     
                     # -------------------------------------------------------
+                    pred_dx = direction_pred[:, 0].float().cpu().detach().numpy()
+                    pred_dy = direction_pred[:, 1].float().cpu().detach().numpy()
+                    
+                    true_dx = labels_direction[:, 0].float().cpu().detach().numpy()
+                    true_dy = labels_direction[:, 1].float().cpu().detach().numpy()
 
-                    self.val_alt_pred_list.extend(reco_alt)
-                    self.val_az_pred_list.extend(reco_az)
-                    self.val_alt_label_list.extend(true_alt)
-                    self.val_az_label_list.extend(true_az)
+                    # reco_direction = utils.recover_alt_az(fix_pointing, alt_off, az_off)
 
-                else:
+                    # reco_alt = np.deg2rad(reco_direction.alt.to_value())[0, :]
+                    # reco_az = np.deg2rad(reco_direction.az.to_value())[0, :]
+                    self.val_alt_pred_list.extend(pred_dx)
+                    self.val_az_pred_list.extend(pred_dy)
+                    self.val_alt_label_list.extend(true_dx)
+                    self.val_az_label_list.extend(true_dy)
 
-                    self.loss_test_val_separation += loss_separation.item()
-                    self.loss_test_val_alt_az += loss_alt_az.item()
-                    self.loss_test_val_angular_error += loss_angular_error.item()
+                # else:
 
-                    self.test_val_angular_diff_list.extend(angular_diff)
-                    # self.test_val_alt_pred_list.extend(direction_pred[:,1].float().cpu().detach().numpy())
-                    # self.test_val_az_pred_list.extend(direction_pred[:,0].float().cpu().detach().numpy())
-                    # self.test_val_alt_label_list.extend(labels_direction[:,1].float().cpu().detach().numpy())
-                    # self.test_val_az_label_list.extend(labels_direction[:,0].float().cpu().detach().numpy())
+                #     self.loss_test_val_separation += loss_separation.item()
+                #     self.loss_test_val_alt_az += loss_alt_az.item()
+                #     self.loss_test_val_angular_error += loss_angular_error.item()
 
-                    self.test_val_alt_pred_list.extend(reco_alt)
-                    self.test_val_az_pred_list.extend(reco_az)
-                    self.test_val_alt_label_list.extend(true_alt)
-                    self.test_val_az_label_list.extend(true_az)
+                #     self.test_val_angular_diff_list.extend(angular_diff)
+
+                #     self.test_val_alt_pred_list.extend(reco_alt)
+                #     self.test_val_az_pred_list.extend(reco_az)
+                #     self.test_val_alt_label_list.extend(true_alt)
+                #     self.test_val_az_label_list.extend(true_az)
             # ---------------------------------------
             # Energy
             # ---------------------------------------
@@ -911,8 +1026,6 @@ class CTLearnPL(pl.LightningModule):
                     self.test_val_energy_pred_list.extend(
                         energy_pred_tev[:, 0].float().cpu().detach().numpy()
                     )
-
-                # ---------------------------------------
             # ---------------------------------------
             # Collect the True Energy and Hillas Intensity
             # ---------------------------------------
@@ -936,6 +1049,7 @@ class CTLearnPL(pl.LightningModule):
 
             # ---------------------------------------
             # Log validation loss
+            # ---------------------------------------
 
             if dataloader_idx == 0:
                 self.loss_val_sum += loss.item()
@@ -1094,7 +1208,7 @@ class CTLearnPL(pl.LightningModule):
         # ---------------------------------------
         # Direction
         # ---------------------------------------
-        if self.task == Task.direction:
+        if self.task == Task.cameradirection:
 
             self.print_direction_error(self.val_angular_diff_list, "Validation")
             self.print_direction_error(self.test_val_angular_diff_list, "Test")
@@ -1480,7 +1594,7 @@ class CTLearnPL(pl.LightningModule):
                     src_x = features["src_x"].float().cpu().detach().numpy()
                     src_y = features["src_y"].float().cpu().detach().numpy()
 
-                if self.num_channels == 2:
+                if self.num_inputs == 2:
                     peak_time = features["peak_time"].to(self.device).contiguous()
                     classification_pred, energy_pred, direction_pred = self.model(
                         imgs, peak_time
@@ -1503,7 +1617,7 @@ class CTLearnPL(pl.LightningModule):
                     energy = energy_pred.cpu().detach().numpy()
                     # energy = energy[0]
                     
-                if task == Task.direction: 
+                if task == Task.cameradirection: 
                     if len(direction_pred)==2:
                          direction_pred_mu = direction_pred[0].cpu().detach().numpy()
                          direction_pred_sigma = direction_pred[1].cpu().detach().numpy()
@@ -1527,7 +1641,7 @@ class CTLearnPL(pl.LightningModule):
 
                 if task == Task.energy:  
                     energy_predictions.extend(energy[:, :])
-                if task == Task.direction:  
+                if task == Task.cameradirection:  
 
                     if len(direction_pred)==2:
                         direction_predictions_mu.extend(direction_pred_mu[:,0:2])
@@ -1734,7 +1848,7 @@ class CTLearnPL(pl.LightningModule):
     #                       for key, tensor in hillas_cpu.items()}
     #             filename_list = features["filename"].cpu().detach().numpy()
 
-    #             if self.num_channels == 2:
+    #             if self.num_inputs == 2:
     #                 peak_time = features['peak_time'].to(self.device)
     #                 outputs = self.model(images, peak_time)
     #             else:

@@ -144,8 +144,7 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         elif self.DLDataReader.mode == "stereo":
             batch = self.DLDataReader.generate_stereo_batch(batch_indices)
             features, labels = self._get_stereo_item(batch)
-
-            
+    
         return features, labels
 
     def _get_mono_item(self, batch):
@@ -175,8 +174,9 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
             if len(self.tasks) == 1:
                 labels = batch["true_shower_primary_class"].data
 
-        if "energy" in self.tasks:
-            labels["energy"] = batch["log_true_energy"].data
+        # if "energy" in self.tasks:
+        labels["energy"] = batch["log_true_energy"].data
+        
         if "skydirection" in self.tasks:
             labels["skydirection"] = np.stack(
                 (
@@ -191,9 +191,32 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
                 (
                     batch["cam_coord_offset_x"].data,
                     batch["cam_coord_offset_y"].data,
+                    batch["cam_coord_distance"].data,
                 ),
                 axis=1,
             )
+
+        tel_ids = batch["tel_id"].data
+
+        tel_ground_frame = self.DLDataReader.subarray.tel_coords[
+            self.DLDataReader.subarray.tel_ids_to_indices(tel_ids)
+        ]
+
+        focal_lengths = [
+            self.DLDataReader.subarray.tel[tel_id].camera.geometry.frame.focal_length
+            for tel_id in tel_ids
+        ]
+
+        labels["tel_ground_frame"] = tel_ground_frame
+        # self.DLDataReader.
+        labels["telescope_pointing_azimuth"]= batch["telescope_pointing_azimuth"].data
+        labels["telescope_pointing_altitude"]= batch["telescope_pointing_altitude"].data
+
+        if "skydirection" in labels.keys():
+            labels["direction"] = labels["skydirection"]
+
+        if "cameradirection" in labels.keys():
+            labels["direction"] = labels["cameradirection"]  
 
         # if "hillas" in self.tasks:
         features["hillas"] = self.DLDataReader.get_parameters(batch,self.hillas_names)
@@ -215,19 +238,21 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         peak_time[np.isnan(peak_time)] = 0
         peak_time[np.isinf(peak_time)] = 0
 
-        if self.task == Task.type:  # "type":
+        if self.task == Task.type: 
             image = (image - self.type_mu) / self.type_sigma
             peak_time = (peak_time - self.type_mu) / self.type_sigma
-        if self.task == Task.energy:  # "energy":
+
+        if self.task == Task.energy:  
             image = (image - self.energy_mu) / self.energy_sigma
             peak_time = (peak_time - self.energy_mu) / self.energy_sigma
-        if self.task == Task.direction:  # "direction":
+
+        if self.task == Task.cameradirection or self.task == Task.skydirection:  
             image = (image - self.dir_mu) / self.dir_sigma
             peak_time = (peak_time - self.dir_mu) / self.dir_sigma
  
         features_out={}
-        features_out["image"]=image #torch.from_numpy(image)
-        features_out["peak_time"]= peak_time #torch.from_numpy(peak_time)
+        features_out["image"]=image 
+        features_out["peak_time"]= peak_time
 
         features_out["image"]=torch.from_numpy(image).contiguous().float()
         features_out["peak_time"]=torch.from_numpy(peak_time).contiguous().float()
@@ -240,7 +265,8 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
             features["hillas"][key] = torch.from_numpy(np.array(features["hillas"][key])).contiguous().unsqueeze(-1)
 
         return features_out, labels
-
+    
+    # TODO: Not adapted to pytorch 
     def _get_stereo_item(self, batch):
         """
         Retrieve the features and labels for one batch of stereoscopic data.
