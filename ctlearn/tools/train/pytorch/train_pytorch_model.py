@@ -41,6 +41,7 @@ import os
 import numpy as np 
 import json
 
+
 class GPUStatsLogger(Callback):
     def on_train_epoch_end(self, trainer, pl_module):
         mem_allocated = torch.cuda.memory_allocated()
@@ -129,7 +130,7 @@ class TrainPyTorchModel(TrainCTLearnModel):
                 
  
         super().__init__(**kwargs)
-        print("CONFIG VALUES PYTORCH:", self.config)
+ 
 
     def setup(self):
  
@@ -174,6 +175,16 @@ class TrainPyTorchModel(TrainCTLearnModel):
         training_indices = indices[n_validation_examples:]
         validation_indices = indices[:n_validation_examples]
 
+        # --------------------------------------------------------------------
+        # Reduce for testing 
+        # --------------------------------------------------------------------
+        # Limit the number of examples (optional)
+        max_training_samples = 5000  # or whatever number you want
+        max_validation_samples = 1000  # or whatever number you want
+
+        training_indices = training_indices[:max_training_samples]
+        validation_indices = validation_indices[:max_validation_samples]
+
 
         print("BASE TRAIN FRAMEWORK", self.framework_type)
         
@@ -216,17 +227,18 @@ class TrainPyTorchModel(TrainCTLearnModel):
             # ------------------------------------------------------------------------------
             # Select the model and precision
             # ------------------------------------------------------------------------------
-            if task == Task.direction:
-                precision = self.parameters["arch"]["precision_direction"]
-                model_net = create_model(self.parameters["model"]["model_direction"])
 
-            elif task == Task.type:
+            if task == Task.type:
                 precision = self.parameters["arch"]["precision_type"]
                 model_net = create_model(self.parameters["model"]["model_type"])
 
             elif task == Task.energy:
                 precision = self.parameters["arch"]["precision_energy"]
                 model_net = create_model(self.parameters["model"]["model_energy"])
+            
+            elif task == Task.cameradirection or task == Task.skydirection:
+                precision = self.parameters["arch"]["precision_direction"]
+                model_net = create_model(self.parameters["model"]["model_direction"])
 
             else:
                 raise ValueError(
@@ -239,12 +251,16 @@ class TrainPyTorchModel(TrainCTLearnModel):
             if task == Task.type:
                 check_point_path = self.parameters["data"]["type_checkpoint"]
 
-            if task == Task.energy:
+            elif task == Task.energy:
                 check_point_path = self.parameters["data"]["energy_checkpoint"]
 
-            if task == Task.direction:
+            elif task == Task.cameradirection or task == Task.skydirection:
                 check_point_path = self.parameters["data"]["direction_checkpoint"]
 
+            else:
+                raise ValueError(
+                    f"task:{task.name} is not supported. Task must be type, direction or energy"
+                )
             # Load the checkpoint
             model_net = ModelHelper.loadModel(
                 model_net, "", check_point_path, Mode.train, device_str=self.device_str
@@ -278,22 +294,20 @@ class TrainPyTorchModel(TrainCTLearnModel):
                 callbacks=[GPUStatsLogger()],
                 sync_batchnorm=True,
             )
-            
-            # TODO: Fix in_channels. Add this parameter in the configuration file, in the model or both....
-            in_channels = 2
+ 
+            # Setup Lighting 
             lightning_model = CTLearnPL(
                 model=model_net,
                 save_folder=trainer_pl.get_log_dir(),
                 task=task,
                 mode = Mode.train,
                 parameters=self.parameters,
-                num_channels=in_channels,
                 k=self.save_k,
             )
 
             # Save configuration file.
             if not os.path.exists(trainer_pl.get_log_dir()):
-                os.mkdir(trainer_pl.get_log_dir())
+                os.makedirs(trainer_pl.get_log_dir())
             
             with open(os.path.join(trainer_pl.get_log_dir(),"parameters.json"), "w") as f:
                 json.dump(self.parameters, f, indent=4)
