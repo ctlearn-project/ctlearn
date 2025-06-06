@@ -757,14 +757,14 @@ class IndexedResNet(CTLearnModel):
         # Apply initial convolutional layer if specified
         if self.init_layer is not None:
             # Prepare input by gathering neighbor features.
-            x_neighbors = self._prepare_for_convolution(newtork_input)
+            x_neighbors = self._prepare_for_convolution(network_input)
             # Apply convolution over the gathered neighbors depending on the use_3d_conv flag.
-            newtork_input = self._indexed_convolution(x_neighbors, self.init_layer["filters"], self.backbone_name + "_conv1_conv")
+            network_input = self._indexed_convolution(x_neighbors, self.init_layer["filters"], self.backbone_name + "_conv1_conv")
 
         # Apply max pooling if specified
         if self.init_max_pool is not None:
-            x_neighbors = self._prepare_for_convolution(newtork_input)
-            newtork_input = self._indexed_pooling(x_neighbors, self.backbone_name + "_pool1_pool")              
+            x_neighbors = self._prepare_for_convolution(network_input)
+            network_input = self._indexed_pooling(x_neighbors, self.backbone_name + "_pool1_pool")              
         # Build the residual blocks
         engine_output = self._stacked_res_blocks(
             network_input,
