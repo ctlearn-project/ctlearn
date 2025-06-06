@@ -477,8 +477,6 @@ class CTLearnPL(pl.LightningModule):
         features, labels = batch
         loss = 0
 
-
-        # self.trainer.datamodule.train_dataloader().cam_to_alt_az(labels["tel_ids"], labels["focal_length"], labels["pix_rotation"],labels["tel_az"],labels["tel_alt"], cam_x, cam_y)
         if len(features) > 0:
             imgs = features["image"]
 
@@ -618,7 +616,7 @@ class CTLearnPL(pl.LightningModule):
         # ---------------------------------------
         # Particle Type
         # ---------------------------------------
-        if self.task == Task.type:
+        if self.task == Task.type and self.trainer.is_global_zero:
 
             f1_score = self.f1_score_train.compute().detach().cpu().numpy()*100.0
             self.f1_score_train.reset()
@@ -658,47 +656,46 @@ class CTLearnPL(pl.LightningModule):
         # ---------------------------------------
         # Direction
         # ---------------------------------------
-        if self.task == Task.cameradirection:
-            if self.trainer.is_global_zero:
-                filename_prefix = (
-                    f"Epoch_{self.current_epoch}_{self.task.name}_train_loss"
-                )
-                self.save_checkpoint(
-                    self.logger.log_dir,
-                    global_loss,
-                    filename_prefix=filename_prefix,
-                    is_loss=True,
-                )
-                # Log scalar values
-                self.logger.experiment.add_scalars(
-                    "loss/ Loss Training",
-                    {
-                        "loss": global_loss,
-                        "loss_distance": self.loss_train_distance
-                        / self.num_train_batches,
-                        "loss_alt_az": self.loss_train_dx_dy / self.num_train_batches,
-                        "loss_angular_error": self.loss_train_angular_error
-                        / self.num_train_batches,
-                    },
-                    self.current_epoch,
-                )
-                self.loss_train_distance = 0.0
-                self.loss_train_dx_dy = 0.0
-                self.loss_train_angular_error = 0.0
+        if self.task == Task.cameradirection and self.trainer.is_global_zero:
+
+            filename_prefix = (
+                f"Epoch_{self.current_epoch}_{self.task.name}_train_loss"
+            )
+            self.save_checkpoint(
+                self.logger.log_dir,
+                global_loss,
+                filename_prefix=filename_prefix,
+                is_loss=True,
+            )
+            # Log scalar values
+            self.logger.experiment.add_scalars(
+                "loss/ Loss Training",
+                {
+                    "loss": global_loss,
+                    "loss_distance": self.loss_train_distance
+                    / self.num_train_batches,
+                    "loss_alt_az": self.loss_train_dx_dy / self.num_train_batches,
+                    "loss_angular_error": self.loss_train_angular_error
+                    / self.num_train_batches,
+                },
+                self.current_epoch,
+            )
+            self.loss_train_distance = 0.0
+            self.loss_train_dx_dy = 0.0
+            self.loss_train_angular_error = 0.0
         # ---------------------------------------
         # Energy
         # ---------------------------------------
-        if self.task == Task.energy:
-            if self.trainer.is_global_zero:
-                filename_prefix = (
-                    f"Epoch_{self.current_epoch}_{self.task.name}_train_loss"
-                )
-                self.save_checkpoint(
-                    self.logger.log_dir,
-                    global_loss,
-                    filename_prefix=filename_prefix,
-                    is_loss=True,
-                )
+        if self.task == Task.energy and self.trainer.is_global_zero:
+            filename_prefix = (
+                f"Epoch_{self.current_epoch}_{self.task.name}_train_loss"
+            )
+            self.save_checkpoint(
+                self.logger.log_dir,
+                global_loss,
+                filename_prefix=filename_prefix,
+                is_loss=True,
+            )
         # ---------------------------------------
         # Delete all the lists and set to 0
         # the values used to estimate the losses
