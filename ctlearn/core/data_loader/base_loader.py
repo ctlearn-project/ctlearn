@@ -21,7 +21,7 @@ class BaseDLDataLoader(ABC):
         self.tasks = tasks
         self.batch_size = batch_size
         self.random_seed = random_seed
-        # self.on_epoch_end()
+    
         self.stack_telescope_images = stack_telescope_images
         self.sort_by_intensity = sort_by_intensity
 
