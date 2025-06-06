@@ -22,3 +22,6 @@ dist
 *.log
 # Sphinx documentation
 docs/build/
+
+# Default pytorch output
+run/

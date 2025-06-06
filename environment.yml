@@ -12,6 +12,9 @@ dependencies:
     - numpy
     - pandas
     - pip
+    - pytables
+    - tables
+    - c-blosc2=2.13    
     - pyyaml
     - scikit-learn
     - ctapipe

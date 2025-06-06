@@ -7,7 +7,7 @@ from ctlearn.core.pytorch.nets.loss_functions.loss_functions import (
     FocalLoss,
     VectorLoss,
     AngularDistance,
-    AngularError,
+    cosine_direction_loss,
 )
 from ctlearn.core.pytorch.nets.optimizer.optimizer import one_cycle
 from tqdm import tqdm
@@ -39,9 +39,9 @@ import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 from ctlearn.core.pytorch.nets.loss_functions.loss_functions import evidential_regression_loss
-import json
+import inspect
 # from ctlearn.nets.loss_functions.loss_functions import evidential_classification
-
+ 
 
 class CTLearnTrainer(pl.Trainer):
     def __init__(self,**kwargs):
@@ -113,12 +113,12 @@ class CTLearnPL(pl.LightningModule):
         train_loader=None,
         val_loader=None,
         test_val_loader=None,        
-        num_channels=1,
+        num_inputs=1,
         k=3,
   
     ):
         super(CTLearnPL, self).__init__()
-
+        
         self.task = task
         self.mode = mode
 
@@ -133,7 +133,10 @@ class CTLearnPL(pl.LightningModule):
         self.model.to(self.device)
 
         self.k = k  # Number of top results to save
-        self.num_channels = num_channels
+        # Get the number of inputs of the net
+        sig = inspect.signature(model.forward)
+        num_inputs = len(sig.parameters)
+        self.num_inputs = num_inputs
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.test_val_loader = test_val_loader
@@ -155,29 +158,31 @@ class CTLearnPL(pl.LightningModule):
             weight=class_weights, reduction="mean"
         )
 
-        self.alpha = torch.tensor([1.0, 1.2], dtype=torch.float32) # torch.tensor([1.0, 1.1], dtype=torch.float32).to(self.device)  # Aumentamos la clase 1
-        gamma = 2.0  # Aumenta la penalización en ejemplos mal clasificados  
+        self.alpha = torch.tensor([1.0, 1.2], dtype=torch.float32)  
+        gamma = 2.0  # Increase the penalty on misclassified examples.
+
         self.criterion_class = FocalLoss(alpha=self.alpha,gamma=gamma)
 
 
         self.criterion_energy_class = nn.CrossEntropyLoss(
             reduction="sum"
-        )  # torch.nn.L1Loss(reduction='sum')
-        self.criterion_energy_value = torch.nn.L1Loss(reduction="sum")
+        )   
+        self.criterion_energy_value = torch.nn.L1Loss(reduction="mean")
         self.criterion_direction = torch.nn.SmoothL1Loss()  # nn.MSELoss()
-        # self.criterion_energy = torch.nn.MSELoss()
+        self.criterion_magnitud = torch.nn.L1Loss(reduction="mean") 
+        
 
-        self.criterion_direction = torch.nn.L1Loss(reduction="sum")  # nn.MSELoss()
-        self.criterion_vector = VectorLoss(alpha=0.1, reduction="sum")
-        self.criterion_alt_az_l1 = torch.nn.L1Loss(reduction="sum")
-        self.criterion_alt_az = evidential_regression_loss(lamb=0.01, reduction="sum")
+        self.criterion_direction = torch.nn.L1Loss(reduction="mean")  # nn.MSELoss()
+        self.criterion_vector = VectorLoss(alpha=0.1, reduction="mean")
+        self.criterion_alt_az_l1 = torch.nn.L1Loss(reduction="mean")
+        self.criterion_alt_az = evidential_regression_loss(lamb=0.01, reduction="mean")
 
 
         self.best_loss = float("inf")
         self.best_accuracy = 0
         # Best Metrics Tracking
-        self.best_losses = [(float("inf"), None)] * k  # (loss, filename)
-        self.best_accuracies = [(0, None)] * k  # (accuracy, filename)
+        self.best_losses = [(float("inf"), None)] * k  
+        self.best_accuracies = [(0, None)] * k   
         self.best_validation_accuracy = 0
 
         self.correct_classification = 0
@@ -192,34 +197,21 @@ class CTLearnPL(pl.LightningModule):
             dist_sync_on_step=True,
         )
 
-        self.f1_score_test = MulticlassF1Score(
-            num_classes=2,
-            dist_sync_on_step=True,
-        )
-
         self.precision_val = MulticlassPrecision(num_classes=2,dist_sync_on_step=True,)
         self.precision_train = MulticlassPrecision(num_classes=2,dist_sync_on_step=True,)
-        self.precision_test = MulticlassPrecision(num_classes=2,dist_sync_on_step=True,)
-
+ 
         self.class_train_accuracy = Accuracy(
             task="multiclass",
             num_classes=parameters["model"]["model_type"]["parameters"]["num_outputs"],
-            # compute_on_step=True,  # Compute for each step and epoch 
             dist_sync_on_step=True  # GPUs Sync
         )
 
         self.class_val_accuracy = Accuracy(
             task="multiclass",
             num_classes=parameters["model"]["model_type"]["parameters"]["num_outputs"],
-            # compute_on_step=True,  # Compute for each step and epoch 
             dist_sync_on_step=True  # GPUs Sync            
         )
-        self.class_test_val_accuracy = Accuracy(
-            task="multiclass",
-            num_classes=parameters["model"]["model_type"]["parameters"]["num_outputs"],
-            # compute_on_step=True,  # Compute for each step and epoch 
-            dist_sync_on_step=True  # GPUs Sync            
-        )
+ 
         self.confusion_matrix = ConfusionMatrix(num_classes=2, task="multiclass",dist_sync_on_step=True)
 
         self.loss_train_sum = 0.0
@@ -246,42 +238,18 @@ class CTLearnPL(pl.LightningModule):
         self.val_alt_label_list = []
         self.val_az_label_list = []
 
-        self.loss_val_separation = 0.0
-        self.loss_val_alt_az = 0.0
+        self.loss_val_distance = 0.0
+        self.loss_val_dx_dy = 0.0
         self.loss_val_angular_error = 0.0
 
         self.val_energy_label_list = []
         self.val_hillas_intensity_list = []
-        # ----------------------------------------------------------------
-        # Test Validation
-        # ----------------------------------------------------------------
-        self.loss_test_val_sum = 0.0
-        self.num_test_val_batches = 0
-        self.all_test_val_preds = torch.tensor([])
-        self.all_test_val_labels = torch.tensor([])
-
-        self.test_val_angular_diff_list = []
-        self.test_val_energy_diff_list = []
-
-        self.test_val_energy_pred_list = []
-
-        self.test_val_alt_pred_list = []
-        self.test_val_az_pred_list = []
-        self.test_val_alt_label_list = []
-        self.test_val_az_label_list = []
-
-        self.loss_test_val_separation = 0.0
-        self.loss_test_val_alt_az = 0.0
-        self.loss_test_val_angular_error = 0.0
-
-        self.test_val_energy_label_list = []
-        self.test_val_hillas_intensity_list = []
 
         # ----------------------------------------------------------------
         # Training
         # ----------------------------------------------------------------
-        self.loss_train_separation = 0.0
-        self.loss_train_alt_az = 0.0
+        self.loss_train_distance = 0.0
+        self.loss_train_dx_dy = 0.0
         self.loss_train_angular_error = 0.0
 
         self.alt_off_list = []
@@ -359,21 +327,10 @@ class CTLearnPL(pl.LightningModule):
         target = labels_class.to(torch.int64)
         loss_class = self.criterion_class(classification_pred, target)
 
-
-        # loss_triplet = criterion(anchor_out, positive_out, negative_out)
-
         # Calculate accuracy
         predicted = torch.softmax(classification_pred, dim=1)
         predicted = predicted.argmax(dim=1)
         
-        # lamb = min(1, self.trainer.current_epoch / 10)
-        # class_weights= self.class_weights.to(self.device)
-        # class_weights = None
-        # loss_class = 0.2*evidential_classification(classification_pred, target, lamb=lamb) + 0.8 * loss_class
-        # loss_class = self.evidence_loss(classification_pred, target, class_weights, lamb=lamb) 
-        # Calculate accuracy
-        # predicted = torch.softmax(classification_pred, dim=1)
-        # predicted = classification_pred.argmax(dim=1)
 
         accuracy = 0
         precision = 0
@@ -387,94 +344,114 @@ class CTLearnPL(pl.LightningModule):
             self.precision_train.update(predicted, labels_class)
             precision = self.precision_train.compute().item()
         else:
-            # Test
-            if test_val:
 
-                self.class_test_val_accuracy.update(predicted, labels_class)
-                accuracy = self.class_test_val_accuracy.compute().item()
-                self.f1_score_test.update(predicted, labels_class)
-                self.precision_test.update(predicted, labels_class)
-                precision = self.precision_test.compute().item()
-            # Validation 
-            else:
-                self.class_val_accuracy.update(predicted, labels_class)
-                accuracy = self.class_val_accuracy.compute().item()
-                self.confusion_matrix.update(predicted, labels_class)
-                self.f1_score_val.update(predicted, labels_class)
-                self.precision_val.update(predicted, labels_class)
-                precision = self.precision_val.compute().item()
+            self.class_val_accuracy.update(predicted, labels_class)
+            accuracy = self.class_val_accuracy.compute().item()
+            self.confusion_matrix.update(predicted, labels_class)
+            self.f1_score_val.update(predicted, labels_class)
+            self.precision_val.update(predicted, labels_class)
+            precision = self.precision_val.compute().item()
                 
         return loss, accuracy, predicted, precision
     # ----------------------------------------------------------------------------------------------------------
     def compute_direction_loss(self, direction_pred, labels_direction, training=False):
         
-        if len(direction_pred)>1 and type(direction_pred)!=torch.Tensor:
+        # if len(direction_pred)>1 and type(direction_pred)!=torch.Tensor:
+        #     direction_pred = list(direction_pred)
+        #     pred_az_atl = direction_pred[0][:,0:2]
+        #     pred_separation = direction_pred[0][:,2]
+        #     # direction_pred[0]= direction_pred[0][:,0:2]
+        # else:
+
+        #     pred_az_atl = direction_pred[:, 0:2]
+        #     pred_separation = direction_pred[:, 2]
+        
+        # labels_az_alt = labels_direction[:, 0:2]
+        # label_separation = labels_direction[:, 2]
+        # loss_separation = self.criterion_direction(pred_separation, label_separation)
+
+        # if len(direction_pred)>1 and type(direction_pred)!=torch.Tensor:
+        #     loss_alt_az = self.criterion_alt_az(direction_pred, labels_direction)
+        # else: 
+        #     loss_alt_az = self.criterion_alt_az_l1(pred_az_atl, labels_az_alt)
+
+        # if len(direction_pred)>1 and type(direction_pred)!=torch.Tensor:
+        
+        #     loss_angular_error, _ = AngularDistance(
+        #         (direction_pred[0][:, 1]),
+        #         labels_az_alt[:, 1],
+        #         (direction_pred[0][:, 0]),
+        #         labels_az_alt[:, 0],
+        #         reduction="sum",
+        #     )
+
+        # else:
+
+        #     loss_angular_error, _ = AngularDistance(
+        #         (direction_pred[:, 1]),
+        #         labels_az_alt[:, 1],
+        #         (direction_pred[:, 0]),
+        #         labels_az_alt[:, 0],
+        #         reduction="sum",
+        #     )
+
+        # if training == False:
+        #     if len(direction_pred)>1 and type(direction_pred)!=torch.Tensor:
+        #         _, angular_diff = AngularDistance(
+        #             (direction_pred[0][:, 1]),
+        #             labels_az_alt[:, 0],
+        #             (direction_pred[0][:, 0]),
+        #             labels_az_alt[:, 1],
+        #             reduction=None,
+        #         )
+        #     else: 
+        #         _, angular_diff = AngularDistance(
+        #             (direction_pred[:, 1]),
+        #             labels_az_alt[:, 0],
+        #             (direction_pred[:, 0]),
+        #             labels_az_alt[:, 1],
+        #             reduction=None,
+        #         )
+        # else:
+        #     angular_diff = None
+
+        # loss = loss_alt_az + 0.001*(loss_separation + loss_angular_error)
+        # return loss, loss_separation, loss_alt_az, loss_angular_error, angular_diff
+
+
+        
+        labels_dx_dy = labels_direction[:, 0:2]
+        label_distance = labels_direction[:, 2]
+
+
+        if isinstance(direction_pred, tuple):
             direction_pred = list(direction_pred)
-            pred_az_atl = direction_pred[0][:,0:2]
-            pred_separation = direction_pred[0][:,2]
-            # direction_pred[0]= direction_pred[0][:,0:2]
+
+            pred_dx_dy = direction_pred[0][:,0:2].unsqueeze(-1)
+            pred_distance = direction_pred[0][:,2].unsqueeze(-1)
         else:
+            pred_dx_dy = direction_pred[:,0:2].unsqueeze(-1)
+            pred_distance = direction_pred[:,2].unsqueeze(-1)
 
-            pred_az_atl = direction_pred[:, 0:2]
-            pred_separation = direction_pred[:, 2]
-        
-        labels_az_alt = labels_direction[:, 0:2]
-        label_separation = labels_direction[:, 2]
-        loss_separation = self.criterion_direction(pred_separation, label_separation)
 
-        # loss_vector = self.criterion_vector(pred_dir_cartesian, labels_direction_cartesian)
-        # vect_magnitud = torch.sqrt(torch.sum(pred_dir_cartesian**2, dim=1))
-        # loss_magnitud = torch.abs(1.0-vect_magnitud).sum()
+        loss_angular_diff = cosine_direction_loss(pred_dx_dy[:,0],pred_dx_dy[:,1], labels_dx_dy[:, 0],labels_dx_dy[:, 1])
 
-        # alt_az = utils_torch.cartesian_to_alt_az(direction[:,0:3])
-        if len(direction_pred)>1 and type(direction_pred)!=torch.Tensor:
-            loss_alt_az = self.criterion_alt_az(direction_pred, labels_direction)
-        else: 
-            loss_alt_az = self.criterion_alt_az_l1(pred_az_atl, labels_az_alt)
 
-        if len(direction_pred)>1 and type(direction_pred)!=torch.Tensor:
-        
-            loss_angular_error, _ = AngularDistance(
-                (direction_pred[0][:, 1]),
-                labels_az_alt[:, 1],
-                (direction_pred[0][:, 0]),
-                labels_az_alt[:, 0],
-                reduction="sum",
-            )
+        _, angular_diff = AngularDistance(
+            pred_dx_dy[:,0],
+            labels_dx_dy[:, 0],
+            pred_dx_dy[:,1],
+            labels_dx_dy[:, 1],
+            reduction="None",
+        )
 
-        else:
+        vector_cam_distance = torch.sqrt(pred_dx_dy[:,0]**2 + pred_dx_dy[:,1]**2)
+        loss_dx_dy = self.criterion_alt_az_l1(pred_dx_dy, labels_dx_dy)
+        loss_distance = self.criterion_magnitud(label_distance, pred_distance)
+        loss_distance_dx_dy = self.criterion_magnitud(label_distance, vector_cam_distance)
 
-            loss_angular_error, _ = AngularDistance(
-                (direction_pred[:, 1]),
-                labels_az_alt[:, 1],
-                (direction_pred[:, 0]),
-                labels_az_alt[:, 0],
-                reduction="sum",
-            )
-
-        if training == False:
-            if len(direction_pred)>1 and type(direction_pred)!=torch.Tensor:
-                _, angular_diff = AngularDistance(
-                    (direction_pred[0][:, 1]),
-                    labels_az_alt[:, 0],
-                    (direction_pred[0][:, 0]),
-                    labels_az_alt[:, 1],
-                    reduction=None,
-                )
-            else: 
-                _, angular_diff = AngularDistance(
-                    (direction_pred[:, 1]),
-                    labels_az_alt[:, 0],
-                    (direction_pred[:, 0]),
-                    labels_az_alt[:, 1],
-                    reduction=None,
-                )
-        else:
-            angular_diff = None
-
-        loss = loss_alt_az + 0.001*(loss_separation + loss_angular_error)
-
-        return loss, loss_separation, loss_alt_az, loss_angular_error, angular_diff
+        loss = loss_dx_dy + loss_distance + loss_distance_dx_dy + loss_angular_diff
+        return loss, loss_dx_dy, loss_distance, loss_distance_dx_dy, loss_angular_diff, angular_diff
     # ----------------------------------------------------------------------------------------------------------
     def compute_energy_loss(
         self, energy_pred, labels_energy, test_val=False, training=False
@@ -490,17 +467,7 @@ class CTLearnPL(pl.LightningModule):
         else:
             energy_diff = None
 
-        # if training:
-        #     accuracy = self.class_train_energy_accuracy(predicted, labels_energy_class)
-        # else:
-        #     if test_val:
-        #         accuracy = self.class_test_energy_accuracy(predicted, labels_energy_class)
-        #     else:
-        #         accuracy = self.class_validation_energy_accuracy(predicted, labels_energy_class)
-
         return loss, energy_diff
-        #
-        # return loss, energy_diff
     # ----------------------------------------------------------------------------------------------------------
     def training_step(self, batch, batch_idx):
 
@@ -509,6 +476,9 @@ class CTLearnPL(pl.LightningModule):
         # ------------------------------------------------------------------
         features, labels = batch
         loss = 0
+
+
+        # self.trainer.datamodule.train_dataloader().cam_to_alt_az(labels["tel_ids"], labels["focal_length"], labels["pix_rotation"],labels["tel_az"],labels["tel_alt"], cam_x, cam_y)
         if len(features) > 0:
             imgs = features["image"]
 
@@ -517,23 +487,19 @@ class CTLearnPL(pl.LightningModule):
 
             if self.task == Task.energy:
                 labels_energy_value = labels["energy"]
-                labels_energy_value = labels_energy_value.to('cuda')
-                # labels_energy_class = labels["energy_class"]
+                labels_energy_value = labels_energy_value.to(self.device)
 
-            if self.task == Task.direction:
+            if self.task == Task.cameradirection:
                 labels_direction = labels["direction"]
 
-                labels_direction_cartesian = labels["direction_cartesian"]
-
-
-            imgs = imgs.to('cuda')
-
+            imgs = imgs.to(self.device)
+            
             # ------------------------------------------------------------------
             # Predictions based on one backbone or two back bones
             # ------------------------------------------------------------------
-            if self.num_channels == 2:
+            if self.num_inputs == 2:
                 peak_time = features["peak_time"]
-                peak_time = peak_time.to('cuda')
+                peak_time = peak_time.to(self.device)
                 classification_pred, energy_pred, direction_pred = self.model(
                     imgs, peak_time
                 )
@@ -571,22 +537,18 @@ class CTLearnPL(pl.LightningModule):
             # ---------------------------------------
             # Direction
             # ---------------------------------------
-            if self.task == Task.direction:
+            if self.task == Task.cameradirection:
                 if len(direction_pred)==2:
                     direction_pred = direction_pred[0]
 
-                loss, loss_separation, loss_alt_az, loss_angular_error, _ = (
-                    self.compute_direction_loss(
-                        direction_pred, labels_direction, training=True
-                    )
-                )
+                loss, loss_dx_dy, loss_distance, loss_distance_dx_dy, loss_angular_diff, angular_diff = self.compute_direction_loss( direction_pred, labels_direction, training=True)
 
-                self.loss_train_separation += loss_separation.item()
-                self.loss_train_alt_az += loss_alt_az.item()
-                self.loss_train_angular_error += loss_angular_error.item()
+                self.loss_train_distance += loss_distance.item() 
+                self.loss_train_dx_dy += loss_dx_dy.item()
+                self.loss_train_angular_error += loss_angular_diff.item()
 
             self.loss_val_separation = 0.0
-            self.loss_val_alt_az = 0.0
+            self.loss_val_dx_dy = 0.0
             self.loss_val_angular_error = 0.0
 
             # ---------------------------------------
@@ -628,10 +590,9 @@ class CTLearnPL(pl.LightningModule):
             total_loss_train= self.all_gather(self.loss_train_sum).sum().item()
             total_batches_val = self.all_gather(torch.tensor(self.num_train_batches, device=self.device)).sum().item()
 
-        else:
-            # TODO: No Tested 
-            total_loss_train = self.loss_train_sum.item()
-            total_batches_val = self.num_train_batches.item()
+        else:            
+            total_loss_train = self.loss_train_sum
+            total_batches_val = self.num_train_batches
  
         if self.trainer.is_global_zero:
             global_loss = total_loss_train / total_batches_val
@@ -697,7 +658,7 @@ class CTLearnPL(pl.LightningModule):
         # ---------------------------------------
         # Direction
         # ---------------------------------------
-        if self.task == Task.direction:
+        if self.task == Task.cameradirection:
             if self.trainer.is_global_zero:
                 filename_prefix = (
                     f"Epoch_{self.current_epoch}_{self.task.name}_train_loss"
@@ -713,16 +674,16 @@ class CTLearnPL(pl.LightningModule):
                     "loss/ Loss Training",
                     {
                         "loss": global_loss,
-                        "loss_separation": self.loss_train_separation
+                        "loss_distance": self.loss_train_distance
                         / self.num_train_batches,
-                        "loss_alt_az": self.loss_train_alt_az / self.num_train_batches,
+                        "loss_alt_az": self.loss_train_dx_dy / self.num_train_batches,
                         "loss_angular_error": self.loss_train_angular_error
                         / self.num_train_batches,
                     },
                     self.current_epoch,
                 )
-                self.loss_train_separation = 0.0
-                self.loss_train_alt_az = 0.0
+                self.loss_train_distance = 0.0
+                self.loss_train_dx_dy = 0.0
                 self.loss_train_angular_error = 0.0
         # ---------------------------------------
         # Energy
@@ -764,21 +725,17 @@ class CTLearnPL(pl.LightningModule):
             if self.task == Task.type:
                 labels_class = labels["particletype"]
 
-            # if self.task == Task.energy:
-                # labels_energy_class = labels["energy_class"]
             labels_energy_value = labels["energy"]
             hillas_intensity = features["hillas"]["hillas_intensity"]
-            # hillas = {key: tensor.to(self.device)
-            #             for key, tensor in hillas.items()}
-            if self.task == Task.direction:
+
+            if self.task == Task.cameradirection:
                 labels_direction = labels["direction"]
-                # labels_alt_az = labels['alt_az']
-                # labels_direction_cartesian = labels["direction_cartesian"]
+
 
             # ------------------------------------------------------------------
             # Predictions based on one backbone or two back bones
             # ------------------------------------------------------------------
-            if self.num_channels == 2:
+            if self.num_inputs == 2:
                 peak_time = features["peak_time"]
                 classification_pred, energy_pred, direction_pred = self.model(
                     imgs, peak_time
@@ -786,7 +743,6 @@ class CTLearnPL(pl.LightningModule):
             else:
                 classification_pred, energy_pred, direction_pred = self.model(imgs)
 
-            
             # ------------------------------------------------------------------
             # Compute Loss functions based on different tasks
             # ------------------------------------------------------------------
@@ -819,105 +775,42 @@ class CTLearnPL(pl.LightningModule):
                         prog_bar=True,
                         logger=False,
                     )                    
-                else:
-                    loss, accuracy, predicted, precision = self.compute_type_loss(
-                        classification_pred_, labels_class, test_val=True, training=False
-                    )
-                    self.log(
-                        "test_val_acc",
-                        accuracy * 100,
-                        on_step=True,
-                        on_epoch=False,
-                        prog_bar=True,
-                        logger=False,
-                    )
-
-                    self.log(
-                        "test_prec",
-                        precision*100, 
-                        on_step=True,
-                        on_epoch=False,
-                        prog_bar=True,
-                        logger=False,
-                    )   
             # ---------------------------------------
             # Direction
             # ---------------------------------------
-            if self.task == Task.direction: 
+            if self.task == Task.cameradirection: 
 
                 if len(direction_pred)==2:
                     direction_pred = direction_pred[0]
-                # loss, angular_diff = self.compute_direction_loss(direction_pred, labels_direction, training=False)
-                loss, loss_separation, loss_alt_az, loss_angular_error, angular_diff = (
-                    self.compute_direction_loss(
-                        direction_pred, labels_direction, training=False
-                    )
-                )
+
+                loss, loss_dx_dy, loss_distance, loss_distance_dx_dy, loss_angular_diff, angular_error= self.compute_direction_loss( direction_pred, labels_direction, training=False)
+
                 # ------------------------------------------------------------------------
                 # Convert the offset to altitud and azimuth
                 # ------------------------------------------------------------------------
-                reco_az, reco_alt = [], []
-                if "tel_alt" in features:
-                    pointing_alt = features["tel_alt"].float().cpu().detach().numpy()
-                    pointing_az = features["tel_az"].float().cpu().detach().numpy()
-                elif "tel_alt" in labels:
-                    pointing_alt = labels["tel_alt"].float().cpu().detach().numpy()
-                    pointing_az = labels["tel_az"].float().cpu().detach().numpy()
-                else:
-                    raise ValueError(f"Telescope altitud and azimuth not found.")
-
-                pointing_alt = np.rad2deg(pointing_alt)
-                pointing_az = np.rad2deg(pointing_az)
-
-                fix_pointing = SkyCoord(
-                    pointing_az * u.deg,
-                    pointing_alt * u.deg,
-                    frame="altaz",
-                    unit="deg",
-                )
-                alt_off = direction_pred[:, 1].float().cpu().detach().numpy()
-                az_off = direction_pred[:, 0].float().cpu().detach().numpy()
-
-                reco_direction = utils.recover_alt_az(fix_pointing, alt_off, az_off)
-
-                reco_alt = np.deg2rad(reco_direction.alt.to_value())[0, :]
-                reco_az = np.deg2rad(reco_direction.az.to_value())[0, :]
-
-                true_alt = labels["alt_az"][:, 0].float().cpu().detach().numpy()
-                true_az = labels["alt_az"][:, 1].float().cpu().detach().numpy()
-
                 if dataloader_idx == 0:
-                    # self.alt_off_list.extend(alt_off)
-                    # self.az_off_list.extend(az_off)
 
-                    self.loss_val_separation += loss_separation.item()
-                    self.loss_val_alt_az += loss_alt_az.item()
-                    self.loss_val_angular_error += loss_angular_error.item()
-
-                    self.val_angular_diff_list.extend(angular_diff)
+                    self.loss_val_distance += loss_distance.item()
+                    self.loss_val_dx_dy +=  loss_dx_dy.item()
+                    self.loss_val_angular_error += loss_angular_diff.item()
+                    self.val_angular_diff_list.extend(angular_error)
+                       
                     # -------------------------------------------------------
+                    pred_dx = direction_pred[:, 0].float().cpu().detach().numpy()
+                    pred_dy = direction_pred[:, 1].float().cpu().detach().numpy()
+                
+                    cam_x = pred_dx
+                    cam_y = pred_dy
 
-                    self.val_alt_pred_list.extend(reco_alt)
-                    self.val_az_pred_list.extend(reco_az)
-                    self.val_alt_label_list.extend(true_alt)
-                    self.val_az_label_list.extend(true_az)
+                    pred_alt, pred_az = self.val_loader.cam_to_alt_az(labels["tel_ids"], labels["focal_length"], labels["pix_rotation"],labels["tel_az"],labels["tel_alt"], cam_x, cam_y)
 
-                else:
+                    true_alt = labels["true_alt"]
+                    true_az = labels["true_az"]
+                    self.val_alt_pred_list.extend(np.radians(pred_alt))
+                    self.val_az_pred_list.extend(np.radians(pred_az))
+                    self.val_alt_label_list.extend(np.radians(true_alt))
+                    self.val_az_label_list.extend(np.radians(true_az))
 
-                    self.loss_test_val_separation += loss_separation.item()
-                    self.loss_test_val_alt_az += loss_alt_az.item()
-                    self.loss_test_val_angular_error += loss_angular_error.item()
-
-                    self.test_val_angular_diff_list.extend(angular_diff)
-                    # self.test_val_alt_pred_list.extend(direction_pred[:,1].float().cpu().detach().numpy())
-                    # self.test_val_az_pred_list.extend(direction_pred[:,0].float().cpu().detach().numpy())
-                    # self.test_val_alt_label_list.extend(labels_direction[:,1].float().cpu().detach().numpy())
-                    # self.test_val_az_label_list.extend(labels_direction[:,0].float().cpu().detach().numpy())
-
-                    self.test_val_alt_pred_list.extend(reco_alt)
-                    self.test_val_az_pred_list.extend(reco_az)
-                    self.test_val_alt_label_list.extend(true_alt)
-                    self.test_val_az_label_list.extend(true_az)
             # ---------------------------------------
             # Energy
             # ---------------------------------------
@@ -935,17 +828,7 @@ class CTLearnPL(pl.LightningModule):
                     self.val_energy_pred_list.extend(
                         energy_pred_tev[:, 0].float().cpu().detach().numpy()
                     )
-                else:
-                    loss, energy_diff = self.compute_energy_loss(
-                        energy_pred, labels_energy_value, test_val=True, training=False
-                    )
 
-                    self.test_val_energy_diff_list.extend(energy_diff)
-                    self.test_val_energy_pred_list.extend(
-                        energy_pred_tev[:, 0].float().cpu().detach().numpy()
-                    )
-
-                # ---------------------------------------
             # ---------------------------------------
             # Collect the True Energy and Hillas Intensity
             # ---------------------------------------
@@ -954,28 +837,20 @@ class CTLearnPL(pl.LightningModule):
 
             if dataloader_idx == 0:
                 self.val_energy_label_list.extend(
-                    energy_label_tev[:, 0].float().cpu().detach().numpy()
+                    energy_label_tev[:, 0].float().cpu().detach().numpy().flatten().tolist()
                 )
                 self.val_hillas_intensity_list.extend(
-                    hillas_intensity.float().cpu().detach().numpy()
-                )
-            else:
-                self.test_val_energy_label_list.extend(
-                    energy_label_tev[:, 0].float().cpu().detach().numpy()
-                )
-                self.test_val_hillas_intensity_list.extend(
-                    hillas_intensity.float().cpu().detach().numpy()
+                    hillas_intensity.float().cpu().detach().numpy().flatten().tolist()
                 )
 
             # ---------------------------------------
             # Log validation loss
+            # ---------------------------------------
 
             if dataloader_idx == 0:
                 self.loss_val_sum += loss.item()
                 self.num_val_batches += 1
-            else:
-                self.loss_test_val_sum += loss.item()
-                self.num_test_val_batches += 1
+
 
         loss_key = "val_loss" if dataloader_idx == 0 else "test_loss"
         if loss is not None:
@@ -992,72 +867,46 @@ class CTLearnPL(pl.LightningModule):
             dist.barrier()
             # Gather y Sync values with the GPUs. 
             total_loss_val = self.all_gather(self.loss_val_sum).sum().item()
-            total_loss_test = self.all_gather(self.loss_test_val_sum).sum().item()
             total_batches_val = self.all_gather(torch.tensor(self.num_val_batches, device=self.device)).sum().item()
-            total_batches_test = self.all_gather(torch.tensor(self.num_test_val_batches, device=self.device)).sum().item()
-
 
         else:
-            # TODO: No Tested 
             total_loss_val = self.loss_val_sum 
-            total_loss_test = self.loss_test_val_sum 
             total_batches_val = self.num_val_batches 
-            total_batches_test = self.num_test_val_batches 
 
-            # total_loss_val = self.loss_val_sum.item()
-            # total_loss_test = self.loss_test_val_sum.item()
-            # total_batches_val = self.num_val_batches.item()
-            # total_batches_test = self.num_test_val_batches.item()
 
-        # Calcular la pérdida promedio global
-        global_loss_val = total_loss_val / max(1, total_batches_val)
-        global_loss_test = total_loss_test / max(1, total_batches_test)
-       
+        if self.trainer.is_global_zero:
+            # Calcular la pérdida promedio global
+            global_loss_val = total_loss_val / max(1, total_batches_val)
+            
+            self.logger.experiment.add_scalars(
+                "loss/Global Validation Loss",
+                {
+                    "loss": global_loss_val,
+                },
+                self.current_epoch,
+            )
 
-        self.logger.experiment.add_scalars(
-            "loss/Global Validation Loss",
-            {
-                "loss": global_loss_val,
-            },
-            self.current_epoch,
-        )
-
-        self.logger.experiment.add_scalars(
-            "loss/Global Test Loss",
-            {
-                "loss": global_loss_test,
-            },
-            self.current_epoch,
-        )
-
-        # Print the global loss for immediate feedback
-        print(
-            f"Epoch {self.current_epoch}: Global Validation Loss: {global_loss_val:.4f}"
-        )
-        print(f"Epoch {self.current_epoch}: Global Test Loss: {global_loss_test:.4f}")
+            # Print the global loss for immediate feedback
+            print(f"Epoch {self.current_epoch}: Global Validation Loss: {global_loss_val:.4f}")
         # ---------------------------------------
         # Particle Type
         # ---------------------------------------
-        if self.task == Task.type:
+        if self.task == Task.type and self.trainer.is_global_zero:
             conf_matrix = self.confusion_matrix.compute().detach().cpu().numpy()
             f1_score_val = self.f1_score_val.compute().detach().cpu().numpy()*100.0
-            f1_score_test = self.f1_score_test.compute().detach().cpu().numpy()*100.0            
             precision_val = self.precision_val.compute().detach().cpu().numpy()*100.0
-            precision_test = self.precision_test.compute().detach().cpu().numpy()*100.0
-
 
             # Compute the accuracy and reset the metric states after each epoch
             epoch_accuracy_val = self.class_val_accuracy.compute().item() * 100
-            epoch_accuracy_test = self.class_test_val_accuracy.compute().item() * 100
 
             if self.trainer.is_global_zero:
                 self.class_val_accuracy.reset()
-                self.class_test_val_accuracy.reset()                
+                     
                 self.confusion_matrix.reset()
                 self.f1_score_val.reset()
-                self.f1_score_test.reset()
+           
                 self.precision_val.reset()
-                self.precision_test.reset()
+     
 
                 # Log
                 self.logger.experiment.add_scalars(
@@ -1069,15 +918,7 @@ class CTLearnPL(pl.LightningModule):
                     },
                     self.current_epoch,
                 )
-                self.logger.experiment.add_scalars(
-                    "Metrics/Test",
-                    {
-                        "acc": epoch_accuracy_test,
-                        "f1": f1_score_test,
-                        "precision":precision_test,
-                    },
-                    self.current_epoch,
-                )
+
                 print(
                     f"Epoch {self.current_epoch}: Global Validation Accuracy: {epoch_accuracy_val:.4f}"
                 )
@@ -1087,16 +928,7 @@ class CTLearnPL(pl.LightningModule):
                 print(
                     f"Epoch {self.current_epoch}: Global Validation Precision: {precision_val:.4f}"
                 )                      
-
-                print(
-                    f"Epoch {self.current_epoch}: Global Test Accuracy: {epoch_accuracy_test:.4f}"
-                )
-                print(
-                    f"Epoch {self.current_epoch}: Global Test F1 Score: {f1_score_test:.4f}"
-                )     
-                print(
-                    f"Epoch {self.current_epoch}: Global Test Precision: {precision_test:.4f}"
-                )                   
+          
                 # ---------------------------------------
                 # Create Confusion Matrix
                 # ---------------------------------------        
@@ -1127,10 +959,10 @@ class CTLearnPL(pl.LightningModule):
         # ---------------------------------------
         # Direction
         # ---------------------------------------
-        if self.task == Task.direction:
-
+        if self.task == Task.cameradirection and self.trainer.is_global_zero:
+            
             self.print_direction_error(self.val_angular_diff_list, "Validation")
-            self.print_direction_error(self.test_val_angular_diff_list, "Test")
+
             plt.close("all")
             fig_direction_error = plot_direction_resolution_error(
                 self.val_alt_pred_list,
@@ -1160,70 +992,28 @@ class CTLearnPL(pl.LightningModule):
             )
             plt.close(fig_direction_error)  # Close the figure to release memory
             plt.close("all")
-            fig_direction_error = plot_direction_resolution_error(
-                self.test_val_alt_pred_list,
-                self.test_val_az_pred_list,
-                self.test_val_alt_label_list,
-                self.test_val_az_label_list,
-                self.test_val_energy_label_list,
-                self.test_val_hillas_intensity_list,
-            )
-            self.logger.experiment.add_figure(
-                "Direction Resolution Error/Test",
-                fig_direction_error,
-                self.current_epoch,
-            )  # Log the plot
 
-            # Save the figure
-            fig_direction_error.savefig(
-                os.path.join(
-                    self.logger.log_dir,
-                    "angular_resolution_test_"
-                    + str(self.current_epoch)
-                    + "_"
-                    + str(global_loss_test)
-                    + ".png",
-                ),
-                format="png",
-            )
-            plt.close(fig_direction_error)  # Close the figure to release memory
             # Log scalar values
             self.logger.experiment.add_scalars(
                 "loss/Loss Validation",
                 {
                     "loss": global_loss_val,
-                    "loss_separation": self.loss_val_separation / self.num_val_batches,
-                    "loss_alt_az": self.loss_val_alt_az / self.num_val_batches,
+                    "loss_distance": self.loss_val_distance / self.num_val_batches,
+                    "loss_dx_dy": self.loss_val_dx_dy / self.num_val_batches,
                     "loss_angular_error": self.loss_val_angular_error
                     / self.num_val_batches,
                 },
                 self.current_epoch,
             )
 
-            if self.test_dataloader != None:
 
-                # Log scalar values
-                self.logger.experiment.add_scalars(
-                    "loss/Loss Test",
-                    {
-                        "loss": global_loss_test,
-                        "loss_separation": self.loss_test_val_separation
-                        / self.num_test_val_batches,
-                        "loss_alt_az": self.loss_test_val_alt_az
-                        / self.num_test_val_batches,
-                        "loss_angular_error": self.loss_test_val_angular_error
-                        / self.num_test_val_batches,
-                    },
-                    self.current_epoch,
-                )
 
         # ---------------------------------------
         # Energy
         # ---------------------------------------
-        if self.task == Task.energy:
+        if self.task == Task.energy and self.trainer.is_global_zero:
 
             self.print_energy_error(self.val_energy_diff_list, "Validation")
-            self.print_energy_error(self.test_val_energy_diff_list, "Test")
             plt.close("all")
             fig_energy_error = plot_energy_resolution_error(
                 self.val_energy_pred_list,
@@ -1249,28 +1039,7 @@ class CTLearnPL(pl.LightningModule):
 
             plt.close(fig_energy_error)  # Close the figure to release memory
             plt.close("all")
-            fig_energy_error = plot_energy_resolution_error(
-                self.test_val_energy_pred_list,
-                self.test_val_energy_label_list,
-                self.test_val_hillas_intensity_list,
-            )
-            self.logger.experiment.add_figure(
-                "Energy Resolution Error/Test", fig_energy_error, self.current_epoch
-            )  # Log the plot
-            fig_energy_error.savefig(
-                os.path.join(
-                    self.logger.log_dir,
-                    "error_resulution_test_"
-                    + str(self.current_epoch)
-                    + "_"
-                    + str(global_loss_test)
-                    + ".png",
-                ),
-                format="png",
-            )
-
-            plt.close(fig_energy_error)  # Close the figure to release memory
-            plt.close("all")
+            
     # ----------------------------------------------------------------------------------------------------------
     def reset_values(self):
         # ---------------------------------------
@@ -1278,22 +1047,13 @@ class CTLearnPL(pl.LightningModule):
         # ---------------------------------------
         self.loss_val_sum = 0
         self.num_val_batches = 0
-        self.loss_test_val_sum = 0
-        self.num_test_val_batches = 0
+
         # Reset Energy and hillas intensity
         # --------------------------------------------------
         # Validation
         # --------------------------------------------------
         self.val_energy_label_list.clear()
-
         self.val_hillas_intensity_list.clear()
-
-        # --------------------------------------------------
-        # Test validation
-        # --------------------------------------------------
-        self.test_val_energy_label_list.clear()
-
-        self.test_val_hillas_intensity_list.clear()
 
         # --------------------------------------------------
         # Reset Direction
@@ -1308,23 +1068,10 @@ class CTLearnPL(pl.LightningModule):
         self.val_alt_label_list.clear()
         self.val_az_label_list.clear()
 
-        self.loss_val_separation = 0.0
-        self.loss_val_alt_az = 0.0
+        self.loss_val_distance = 0.0
+        self.loss_val_dx_dy = 0.0
         self.loss_val_angular_error = 0.0
-        # --------------------------------------------------
-        # Test validation
-        # --------------------------------------------------
-        self.test_val_angular_diff_list.clear()
 
-        self.test_val_alt_pred_list.clear()
-        self.test_val_az_pred_list.clear()
-        self.test_val_alt_label_list.clear()
-        self.test_val_az_label_list.clear()
-
-
-        self.loss_test_val_separation = 0.0
-        self.loss_test_val_alt_az = 0.0
-        self.loss_test_val_angular_error = 0.0
         # --------------------------------------------------
         # Reset Energy
         # --------------------------------------------------
@@ -1333,11 +1080,7 @@ class CTLearnPL(pl.LightningModule):
         self.val_energy_diff_list.clear()
         self.val_energy_pred_list.clear()
 
-        # --------------------------------------------------
-        # Test validation
-        # --------------------------------------------------
-        self.test_val_energy_diff_list.clear()
-        self.test_val_energy_pred_list.clear()
+
     # ----------------------------------------------------------------------------------------------------------
     def print_direction_error(self, angular_diff_list, type_val: str):
         # Count the angular error in ranges [20º-0.1º]
@@ -1420,8 +1163,6 @@ class CTLearnPL(pl.LightningModule):
         cm_file_name = f"{filename_prefix}_{epoch}_{accuracy:.4f}_{val_type}"
         cm = confusion_matrix(all_labels, all_preds)
 
-        # accuracies = (np.diag(cm) / np.sum(cm, axis=0))*100.0
-
         cm_norm = cm.astype("float") / cm.sum(axis=1)[:, np.newaxis]
 
         # Remove NaNs
@@ -1435,253 +1176,8 @@ class CTLearnPL(pl.LightningModule):
                 cm_file_name,
                 self.logger.log_dir,  # self.save_folder
             )
-        # # Empty the list
-        # all_val_preds = torch.tensor([])
-        # all_val_labels = torch.tensor([])
+
         return accuracies
-    # ----------------------------------------------------------------------------------------------------------
-    @torch.no_grad()
-    def generate_results(
-        self,
-        input_data_loader,
-        h5_file_name="./results.r1.dl2.h5",
-        task=None,
-        mode=None,
-    ):
-        self.model.to(self.device)        
-        self.model.eval()
-        # data_loader = DataLoader(
-        #     input_data_loader.dataset, batch_size=128, shuffle=False)
-        dataset = input_data_loader.dataset
-        data_loader = input_data_loader
-        with torch.no_grad():
-            pbar = tqdm(total=len(data_loader), desc="DL2 conv", leave=True)
-
-            class_predictions = []
-            class_feature_vector = []
-            class_predictions_class = []
-            energy_predictions = []
-            direction_predictions = []
-            direction_predictions_mu = []
-            direction_predictions_sigma = []
-            direction_pred_mu=[]
-            direction_pred_sigma=[] 
-
-            event_id_list = []
-            obs_id_list = []
-            labels_energy_list = []
-            labels_direction_list = []
-            labels_true_alt_az_list = []
-            hillas_list = []
-            total = 0
-            correct = 0
-            predicted_class = None
-            direction_pred = None
-            direction_pred = None
-            # tel_pointing_dir=[]
-            if mode == Mode.observation:  # "observation":
-                dataset.pointing_dir["pointing_alt"] = []
-                dataset.pointing_dir["pointing_az"] = []
-                dataset.pointing_dir["dragon_time"] = []
-                dataset.pointing_dir["utc_time"] = []
-                dataset.pointing_dir["src_x"] = []
-                dataset.pointing_dir["src_y"] = []
-
-            cnt = 0
-            for batch_idx, (features, labels) in enumerate(data_loader):
-                
-                # TODO: Check that features is not empty 
-                if len(features)==0:
-                    continue
-                imgs = features["image"].to(self.device).contiguous()
-
-                labels_class = (
-                    labels["particletype"].float().to(self.device).contiguous()
-                )
-                hillas = features["hillas"]
-                hillas = {
-                    key: tensor.cpu().detach().numpy() for key, tensor in hillas.items()
-                }
-
-                tel_alt = features["tel_alt"].float().cpu().detach().numpy()
-                tel_az = features["tel_az"].float().cpu().detach().numpy()
-
-                if "time" in features:
-                    tel_time = features["time"].double().cpu().detach().numpy()
-
-                if "src_x" and "src_y" in features:
-                    src_x = features["src_x"].float().cpu().detach().numpy()
-                    src_y = features["src_y"].float().cpu().detach().numpy()
-
-                if self.num_channels == 2:
-                    peak_time = features["peak_time"].to(self.device).contiguous()
-                    classification_pred, energy_pred, direction_pred = self.model(
-                        imgs, peak_time
-                    )
-                else:
-                    classification_pred, energy_pred, direction_pred = self.model(imgs)
-
-                # Convert to numpy
-                if task == Task.type:
-                    classification_pred_ = classification_pred[0]
-                    feature_vector = classification_pred[1].cpu().detach().numpy()
-                    predicted = torch.softmax(classification_pred_, dim=1)
-                    predicted_class = predicted.argmax(dim=1)
-                    correct += (predicted_class == labels_class).sum().item()
-                    predicted = predicted.cpu().detach().numpy()
-                    predicted_class = predicted_class.cpu().detach().numpy()
-                    total += labels_class.size(0)
-
-                if task == Task.energy:  
-                    energy = energy_pred.cpu().detach().numpy()
-                    # energy = energy[0]
-                    
-                if task == Task.direction: 
-                    if len(direction_pred)==2:
-                         direction_pred_mu = direction_pred[0].cpu().detach().numpy()
-                         direction_pred_sigma = direction_pred[1].cpu().detach().numpy()
-                    else:
-                        direction_pred = direction_pred.cpu().detach().numpy()
-
-                obs_id = hillas["obs_id"]
-                event_id = hillas["event_id"]
-                labels_energy = labels["energy"].cpu().detach().numpy()
-                labels_energy = 1 * (labels_energy)
-
-                labels_direction = labels["direction"].cpu().detach().numpy()
-                label_true_alt_az = labels["alt_az"].cpu().detach().numpy()
-
-                # ------------------------------------------------------------------
-                id = list(range(features["image"].shape[0]))
-                if task == Task.type: 
-                    class_predictions.extend(predicted[:, :])
-                    class_feature_vector.extend(feature_vector[:, :])
-                    class_predictions_class.extend(predicted_class[:])
-
-                if task == Task.energy:  
-                    energy_predictions.extend(energy[:, :])
-                if task == Task.direction:  
-
-                    if len(direction_pred)==2:
-                        direction_predictions_mu.extend(direction_pred_mu[:,0:2])
-                        direction_predictions_sigma.extend(direction_pred_sigma[:,0:2])   
-
-                    else:
-                        dir = direction_pred[:, 0:2]
-                        direction_predictions.extend(dir)
-
-                    if mode == Mode.observation:  
-                        dataset.pointing_dir["pointing_alt"].extend(tel_alt)
-                        dataset.pointing_dir["pointing_az"].extend(tel_az)
-                        dataset.pointing_dir["utc_time"].extend(tel_time)
-                        time = Time(tel_time, format="mjd")
-                        datetime_utc = time.to_datetime()
-                        # Convert to UNIX timestamp (dragon_time)
-                        # dragon_time = datetime_utc[:].timestamp()
-                        # Vectorized application of timestamp()
-                        dragon_time = np.vectorize(lambda dt: dt.timestamp())(
-                            datetime_utc
-                        )
-                        dataset.pointing_dir["dragon_time"].extend(dragon_time)
-
-                        dataset.pointing_dir["src_x"].extend(src_x)
-                        dataset.pointing_dir["src_y"].extend(src_y)
-
-                obs_id_list.extend(obs_id)
-                event_id_list.extend(event_id)
-
-                if mode != Mode.observation:
-                    labels_energy_list.extend(labels_energy[:, 0])
-                    dir = labels_direction[:, 0:2]
-                    labels_direction_list.extend(dir)
-                    labels_true_alt_az_list.extend(label_true_alt_az)
-
-                hillas_vector = np.array(utils.create_key_value_array(hillas, id)).T
-                hillas_list.extend(hillas_vector)
-                # ------------------------------------------------------------------
-                if task == Task.type and mode != Mode.observation:  
-                                    
-                    val_acc = 100 * correct / total if total > 0 else 0.0
-                    pbar.set_postfix({"val_accuracy": f"{val_acc:.2f}%"})
-                    pbar.refresh()
-                pbar.update(1)
-
-                # if task == Task.type and mode != Mode.observation:  
-                #     pbar.set_postfix(
-                #         {
-                #             "val_accuracy": f"{100 * correct / total:.2f}%",
-                #         }
-                #     )
-                # if batch_idx % 10 == 0:
-                #     pbar.update(10)
-
-                # TESTING
-                # h5_file_name="./test.dl2.h5"
-                # cnt += 1
-                # if cnt>5:
-                #    break
-
-
-        
-        predictions = {
-            "type": np.array(class_predictions),
-            "type_feature_vector": np.array(class_feature_vector), 
-            "type_class": np.array(class_predictions_class),
-            "energy": np.array(energy_predictions),
-            "direction": np.array(direction_predictions),
-            "direction_mu": np.array(direction_predictions_mu),
-            "direction_sigma": np.array(direction_predictions_sigma),
-        }
-
-        if not hasattr(dataset, "class_names"):
-            dataset.class_names = ["gamma", "proton"]
-
-        data = {
-            "effective_focal_length": dataset.optics.effective_focal_length,
-            "obs_id": np.array(obs_id_list),
-            "event_id": np.array(event_id_list),
-            "pointing": dataset.pointing_dir,
-            "true_shower_primary_id": dataset.true_shower_primary_id,
-            "include_nsb_patches": dataset.include_nsb_patches,
-            "simulation_info": dataset.simulation_info,
-            "parameter_names": dataset.hillas_names,
-            "parameter_data": hillas_list,
-            "mode": dataset.observation_mode,
-            "class_names": dataset.class_names,
-            "energy_unit": dataset.energy_unit,
-            "selected_telescopes": dataset.selected_telescopes,
-        }
-
-        labels = {
-            "true_energy": np.array(labels_energy_list),
-            "true_direction": np.array(labels_direction_list),
-            "true_alt_az": np.array(labels_true_alt_az_list),
-        }
-
-        if task == Task.type:  # "type":
-            average_accuracy = 100.0 * (correct / total)
-            print("Validation Accuracy: {:.2f}%".format(average_accuracy))
-        
-        gc.enable()
-        del self.model
-        del data_loader
-        del input_data_loader
-        del self.val_loader
-        del self.scheduler
-
-        gc.collect()
-
-        # Save h5 file dl2 format
-        utils.write_output(h5_file_name, data, predictions, labels, task, mode)
-
-        gc.enable()
-        del data
-        del predictions
-        del labels
-        gc.collect()
-        torch.cuda.empty_cache()
-        
-        return None
     # ----------------------------------------------------------------------------------------------------------
     def configure_optimizers(self):
 
@@ -1745,99 +1241,3 @@ class CTLearnPL(pl.LightningModule):
             "lr_scheduler": lr_dict,
         }
     # ----------------------------------------------------------------------------------------------------------
-    # TODO: Rewrite this function in order to create a mosaic with values to study the possible problems in classification and regression
-    # def missing_analysis(self):
-
-    #     self.model.eval()
-    #     total = 0
-    #     correct = 0
-    #     validation_loss = 0.0
-    #     with torch.no_grad():
-    #         pbar = tqdm(total=len(self.val_loader),
-    #                     desc='Validating', leave=True)
-    #         all_preds = torch.tensor([])
-    #         all_labels = torch.tensor([])
-    #         for batch_idx, (features, labels) in enumerate(tqdm(self.val_loader)):
-
-    #             images = features['image'].to(self.device)
-    #             labels = labels['particletype'].to(self.device)
-    #             hillas_cpu = features["hillas"]
-    #             # hillas = {key: tensor.to(self.device) for key, tensor in hillas_cpu.items()}
-    #             hillas = {key: tensor.cpu().detach().numpy()
-    #                       for key, tensor in hillas_cpu.items()}
-    #             filename_list = features["filename"].cpu().detach().numpy()
-
-    #             if self.num_channels == 2:
-    #                 peak_time = features['peak_time'].to(self.device)
-    #                 outputs = self.model(images, peak_time)
-    #             else:
-    #                 outputs = self.model(images)
-
-    #             # outputs = self.model(images)
-    #             outputs = torch.squeeze(outputs, dim=1)
-    #             # labels_one_hot = torch.nn.functional.one_hot(labels, num_classes=2).float()
-    #             loss = self.criterion(outputs, labels)
-    #             validation_loss += loss.item()
-    #             predicted = torch.sigmoid(outputs).round()
-
-    #             total += labels.size(0)
-    #             correct += (predicted == labels).sum().item()
-
-    #             all_preds = torch.cat(
-    #                 (all_preds, predicted.float().cpu()), dim=0)
-    #             all_labels = torch.cat(
-    #                 (all_labels, labels.float().cpu()), dim=0)
-
-    #             images_list = []
-    #             text_list = []
-    #             cnt = 0
-    #             for id_image in range(len(labels)):
-    #                 # if (labels[id_image] == predicted[id_image]):
-    #                 if not (labels[id_image] == predicted[id_image]):
-    #                     cnt += 1
-    #                     filename = self.convert_ascii_list_to_string(
-    #                         filename_list[id_image])
-    #                     # Transform image to opencv (WxHxC)
-    #                     image = cv2.UMat(images[id_image].cpu(
-    #                     ).detach().permute(1, 2, 0).numpy())
-
-    #                     text_list.append("Label: "+str(self.class_names[int(labels[id_image])])+" "+"Predicted: "+str(
-    #                         self.class_names[int(predicted[id_image])])+"\n"+filename)
-    #                     # Transform into C,W,H
-    #                     image = cv2.UMat.get(image)
-    #                     images_list.append(image)
-    #                     if cnt >= 16:
-    #                         break
-
-    #             canvas = self.create_image_mosaic(
-    #                 images_list, text_list, batch_idx)
-    #             # cv2.imshow("Missing",canvas)
-    #             # cv2.waitKey(0)
-
-    #             pbar.set_postfix({
-    #                 # 'val_loss': f'{validation_loss/total:.4f}',
-    #                 'val_accuracy': f'{100 * correct / total:.2f}%'
-    #             })
-    #             pbar.update(1)
-
-    #     average_accuracy = 100 * (correct / total)
-    #     print('Validation Accuracy: {:.2f}%'.format(average_accuracy))
-    #     # Save checkpoint if this is the best accuracy or loss so far
-    #     self.save_checkpoint(
-    #         average_accuracy, 'validation_accuracy', is_loss=False)
-
-    #     if average_accuracy > self.best_validation_accuracy:
-    #         all_labels = all_labels.numpy()
-    #         all_preds = all_preds.numpy()
-    #         filename_prefix = "./confusion_matrix"
-    #         cm_file_name = f'{filename_prefix}_{average_accuracy:.4f}.pth'
-    #         cm = confusion_matrix(all_labels, all_preds)
-
-    #         # accuracies = (np.diag(cm) / np.sum(cm, axis=0))*100.0
-
-    #         cm_norm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
-    #         accuracies = cm_norm.diagonal() * 100.0
-    #         self.plot_confusion_matrix(
-    #             cm, self.class_names, accuracies, cm_file_name)
-
-    #     return average_accuracy

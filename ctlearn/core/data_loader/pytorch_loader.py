@@ -4,6 +4,7 @@ from torch.utils.data import Dataset
 from .base_loader import BaseDLDataLoader
 from dl1_data_handler.reader import ProcessType
 from ctlearn.core.ctlearn_enum import Task
+from astropy import units as u
 
 class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
     def __init__(
@@ -144,9 +145,97 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         elif self.DLDataReader.mode == "stereo":
             batch = self.DLDataReader.generate_stereo_batch(batch_indices)
             features, labels = self._get_stereo_item(batch)
-
-            
+    
         return features, labels
+
+    def cam_to_alt_az(self, tel_id, focal_length, pix_rotation,tel_az,tel_alt, cam_x,cam_y):
+        """
+        Transform camera coordinate offsets (cam_x, cam_y) into Alt/Az sky coordinates.
+
+        This method converts the given camera coordinates for each telescope into sky coordinates
+        (Altitude and Azimuth), using the known pointing of each telescope and camera geometry
+        such as focal length and pixel rotation.
+
+        Parameters
+        ----------
+        tel_id : list or array-like
+            List of telescope IDs corresponding to each event or observation.
+        
+        focal_length : list or array-like
+            Focal length of the telescopes in meters.
+
+        pix_rotation : list or array-like
+            Pixel rotation angles (in degrees) for each telescope camera.
+
+        tel_az : list or array-like
+            Azimuth of telescope pointing (in radians).
+
+        tel_alt : list or array-like
+            Altitude of telescope pointing (in radians).
+
+        cam_x : list or array-like
+            Camera x-coordinate positions (in meters).
+
+        cam_y : list or array-like
+            Camera y-coordinate positions (in meters).
+
+        Returns
+        -------
+        sky_coords_alt : list
+            List of reconstructed Altitude coordinates (in degrees).
+
+        sky_coords_az : list
+            List of reconstructed Azimuth coordinates (in degrees).
+        """
+        from astropy.time import Time
+
+        LST_EPOCH = Time("2018-10-01T00:00:00", scale="utc")
+        from astropy.coordinates import AltAz, SkyCoord
+        from ctapipe.coordinates import CameraFrame
+        from astropy import units as u
+
+        # # Get telescope ground frame position
+        tel_ground_frame = self.DLDataReader.subarray.tel_coords[
+            self.DLDataReader.subarray.tel_ids_to_indices(tel_id)
+        ]
+
+        # AltAz frame setup
+        altaz = AltAz(
+            location=tel_ground_frame.to_earth_location(),
+            obstime=LST_EPOCH,
+        )
+
+        # Telescope pointing SkyCoord
+        fix_tel_pointing = SkyCoord(
+            az = tel_az*u.rad,
+            alt = tel_alt*u.rad,
+            frame=altaz,
+        )
+
+
+        sky_coords_alt = []
+        sky_coords_az = []
+
+        for id in range(len(focal_length)):
+
+            camera_frame = CameraFrame(
+                focal_length=focal_length[id]*u.m,
+                rotation=pix_rotation[id]*u.deg,
+                telescope_pointing=fix_tel_pointing[id]
+            )
+
+            cam_coord = SkyCoord(
+                x=cam_x[id] * u.m,
+                y=cam_y[id] * u.m,
+                frame=camera_frame
+            )
+
+            sky_coord = cam_coord.transform_to(altaz[id])
+
+            sky_coords_alt.append(sky_coord.alt.to_value(u.deg).item())
+            sky_coords_az.append(sky_coord.az.to_value(u.deg).item())
+
+        return sky_coords_alt,sky_coords_az
 
     def _get_mono_item(self, batch):
         """
@@ -175,8 +264,9 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
             if len(self.tasks) == 1:
                 labels = batch["true_shower_primary_class"].data
 
-        if "energy" in self.tasks:
-            labels["energy"] = batch["log_true_energy"].data
+        # if "energy" in self.tasks:
+        labels["energy"] = batch["log_true_energy"].data
+        
         if "skydirection" in self.tasks:
             labels["skydirection"] = np.stack(
                 (
@@ -191,14 +281,20 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
                 (
                     batch["cam_coord_offset_x"].data,
                     batch["cam_coord_offset_y"].data,
+                    batch["cam_coord_distance"].data,
                 ),
                 axis=1,
             )
 
-        # if "hillas" in self.tasks:
-        features["hillas"] = self.DLDataReader.get_parameters_dict(batch,self.hillas_names)
-        #features["hillas"] = self.DLDataReader.get_parameters(batch,self.hillas_names)
+        if "skydirection" in labels.keys():
+            labels["direction"] = labels["skydirection"]
+
+        if "cameradirection" in labels.keys():
+            labels["direction"] = labels["cameradirection"]  
+
  
+        features["hillas"] = self.DLDataReader.get_parameters(batch,self.hillas_names)
+            
         image = features["input"][..., 0:1]
         peak_time = features["input"][..., 1:2]
 
@@ -215,30 +311,64 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         peak_time[np.isnan(peak_time)] = 0
         peak_time[np.isinf(peak_time)] = 0
 
-        if self.task == Task.type:  # "type":
+        if self.task == Task.type: 
             image = (image - self.type_mu) / self.type_sigma
             peak_time = (peak_time - self.type_mu) / self.type_sigma
-        if self.task == Task.energy:  # "energy":
+
+        if self.task == Task.energy:  
             image = (image - self.energy_mu) / self.energy_sigma
             peak_time = (peak_time - self.energy_mu) / self.energy_sigma
-        if self.task == Task.direction:  # "direction":
+
+        if self.task == Task.cameradirection or self.task == Task.skydirection:  
             image = (image - self.dir_mu) / self.dir_sigma
             peak_time = (peak_time - self.dir_mu) / self.dir_sigma
  
         features_out={}
-        features_out["image"]=image #torch.from_numpy(image)
-        features_out["peak_time"]= peak_time #torch.from_numpy(peak_time)
+        features_out["image"]=image 
+        features_out["peak_time"]= peak_time
 
         features_out["image"]=torch.from_numpy(image).contiguous().float()
         features_out["peak_time"]=torch.from_numpy(peak_time).contiguous().float()
         features_out["hillas"] = features["hillas"]
-        # features_out["hillas_names"] = self.hillas_names
-
-        for key in labels.keys():
-            # labels[key] = labels[key]#torch.from_numpy(labels[key])
+      
+        for key in labels.keys():           
             labels[key] = torch.from_numpy(labels[key]).contiguous().unsqueeze(-1)
-        return features_out, labels
 
+        for key in features["hillas"].keys():
+            features["hillas"][key] = torch.from_numpy(np.array(features["hillas"][key])).contiguous().unsqueeze(-1)
+
+
+        if "cameradirection" in self.tasks:
+
+            tel_ids = batch["tel_id"].data
+
+            # tel_ground_frame = self.DLDataReader.subarray.tel_coords[
+            #     self.DLDataReader.subarray.tel_ids_to_indices(tel_ids)
+            # ]
+
+            focal_lengths = [
+                self.DLDataReader.subarray.tel[tel_id].camera.geometry.frame.focal_length
+                for tel_id in tel_ids
+            ]
+            pix_rotations = [self.DLDataReader.pix_rotation[tel_id] for tel_id in tel_ids]
+
+            labels["focal_length"] = np.array([focal.to_value(u.m) for focal in focal_lengths])  
+            labels["pix_rotation"] =  np.array([rot.to_value(u.deg) for rot in pix_rotations])  
+            # labels["tel_ground"] = tel_ground_frame
+            labels["tel_ids"] =tel_ids
+            labels["true_alt"]=[val for val in batch["true_alt"]]  
+            labels["true_az"]=[val for val in batch["true_az"]]   
+            labels["tel_az"]= batch["telescope_pointing_azimuth"].data 
+            labels["tel_alt"]= batch["telescope_pointing_altitude"].data 
+
+            # cam_x = labels["cameradirection"][:,0].cpu().numpy().squeeze(-1)
+            # cam_y = labels["cameradirection"][:,1].cpu().numpy().squeeze(-1)
+
+            # sky_coords_alt, sky_coords_az = self.cam_to_alt_az(labels["tel_ids"], labels["focal_length"], labels["pix_rotation"],labels["tel_az"],labels["tel_alt"], cam_x, cam_y)
+
+        return features_out, labels
+    
+    # TODO: Not adapted to pytorch 
     def _get_stereo_item(self, batch):
         """
         Retrieve the features and labels for one batch of stereoscopic data.

@@ -41,6 +41,7 @@ import os
 import numpy as np 
 import json
 
+
 class GPUStatsLogger(Callback):
     def on_train_epoch_end(self, trainer, pl_module):
         mem_allocated = torch.cuda.memory_allocated()
@@ -119,19 +120,20 @@ class TrainPyTorchModel(TrainCTLearnModel):
     }
 
     def __init__(self, **kwargs):
-
+        
+        # Setup GPU 
         os.environ["NCCL_P2P_DISABLE"] = "1"
         os.environ["NCCL_IB_DISABLE"] = "1"
         os.environ["NCCL_DEBUG"] = "WARN"
         os.environ["TORCH_NCCL_ASYNC_ERROR_HANDLING"] = "1"
         os.environ["NCCL_DEBUG"] = "INFO"
-                
-        print("Pytorch init")
+        torch.set_float32_matmul_precision('medium')        
+ 
         super().__init__(**kwargs)
-        print("CONFIG VALUES PYTORCH:", self.config)
+ 
 
     def setup(self):
-        print("Pytorch setup")
+ 
         super().setup()
 
         # Create tasks Enum List
@@ -173,6 +175,16 @@ class TrainPyTorchModel(TrainCTLearnModel):
         training_indices = indices[n_validation_examples:]
         validation_indices = indices[:n_validation_examples]
 
+        # --------------------------------------------------------------------
+        # Reduce for testing 
+        # --------------------------------------------------------------------
+        # Limit the number of examples (optional)
+        # max_training_samples = 500  # or whatever number you want
+        # max_validation_samples = 200  # or whatever number you want
+
+        # training_indices = training_indices[:max_training_samples]
+        # validation_indices = validation_indices[:max_validation_samples]
+
 
         print("BASE TRAIN FRAMEWORK", self.framework_type)
         
@@ -204,10 +216,7 @@ class TrainPyTorchModel(TrainCTLearnModel):
 
 
     def start(self):
-        print("Pytorch start")
         super().start()
-        print("Pytorch start")
-
         for task in self.tasks:
 
             # Create the experiment folder
@@ -218,17 +227,18 @@ class TrainPyTorchModel(TrainCTLearnModel):
             # ------------------------------------------------------------------------------
             # Select the model and precision
             # ------------------------------------------------------------------------------
-            if task == Task.direction:
-                precision = self.parameters["arch"]["precision_direction"]
-                model_net = create_model(self.parameters["model"]["model_direction"])
 
-            elif task == Task.type:
+            if task == Task.type:
                 precision = self.parameters["arch"]["precision_type"]
                 model_net = create_model(self.parameters["model"]["model_type"])
 
             elif task == Task.energy:
                 precision = self.parameters["arch"]["precision_energy"]
                 model_net = create_model(self.parameters["model"]["model_energy"])
+            
+            elif task == Task.cameradirection or task == Task.skydirection:
+                precision = self.parameters["arch"]["precision_direction"]
+                model_net = create_model(self.parameters["model"]["model_direction"])
 
             else:
                 raise ValueError(
@@ -241,21 +251,24 @@ class TrainPyTorchModel(TrainCTLearnModel):
             if task == Task.type:
                 check_point_path = self.parameters["data"]["type_checkpoint"]
 
-            if task == Task.energy:
+            elif task == Task.energy:
                 check_point_path = self.parameters["data"]["energy_checkpoint"]
 
-            if task == Task.direction:
+            elif task == Task.cameradirection or task == Task.skydirection:
                 check_point_path = self.parameters["data"]["direction_checkpoint"]
 
+            else:
+                raise ValueError(
+                    f"task:{task.name} is not supported. Task must be type, direction or energy"
+                )
             # Load the checkpoint
             model_net = ModelHelper.loadModel(
                 model_net, "", check_point_path, Mode.train, device_str=self.device_str
             )
            
-
-
-            log_dir = save_folder
             # Setup the TensorBoard logger
+            log_dir = save_folder
+            
             tb_logger = TensorBoardLogger(
                 save_dir=log_dir,
                 name="exp_"
@@ -266,8 +279,6 @@ class TrainPyTorchModel(TrainCTLearnModel):
                 default_hp_metric=False,
             )
 
-
-                        
             # Setup the Trainer
             trainer_pl = CTLearnTrainer(
                 max_epochs=self.parameters["hyp"]["epochs"],
@@ -283,21 +294,22 @@ class TrainPyTorchModel(TrainCTLearnModel):
                 callbacks=[GPUStatsLogger()],
                 sync_batchnorm=True,
             )
-
-            in_channels = 2
+ 
+            # Setup Lighting 
             lightning_model = CTLearnPL(
                 model=model_net,
                 save_folder=trainer_pl.get_log_dir(),
                 task=task,
                 mode = Mode.train,
                 parameters=self.parameters,
-                num_channels=in_channels,
                 k=self.save_k,
+                train_loader= self.training_loader,
+                val_loader= self.validation_loader,
             )
 
             # Save configuration file.
             if not os.path.exists(trainer_pl.get_log_dir()):
-                os.mkdir(trainer_pl.get_log_dir())
+                os.makedirs(trainer_pl.get_log_dir())
             
             with open(os.path.join(trainer_pl.get_log_dir(),"parameters.json"), "w") as f:
                 json.dump(self.parameters, f, indent=4)
