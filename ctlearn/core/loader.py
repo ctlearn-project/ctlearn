@@ -78,8 +78,6 @@ class DLDataLoader(Sequence):
                         self.input_shape[2],
                         self.input_shape[0] * self.input_shape[3],
                     )
-        if self.DLDataReader.hexagonal_convolution == True:
-            self.neighbor_array = self.DLDataReader.neighbor_array
 
 
     def __len__(self):

@@ -17,7 +17,7 @@ from ctlearn.core.attention import (
     triple_squeeze_excite_block_indexed3d,
 )
 from tensorflow.keras.layers import Conv1D, BatchNormalization, ReLU, GlobalAveragePooling1D, Conv3D, GlobalMaxPooling1D
-from ctlearn.core.indexed import NeighborGatherLayer, NeighborGatherLayer2D
+from ctlearn.core.indexed import NeighborGatherLayer3D, NeighborGatherLayer2D
 from ctlearn.utils import validate_trait_dict
 from traitlets.config import Config
 import numpy as np
@@ -160,6 +160,68 @@ class CTLearnModel(Component):
                 "mechanism": self.attention_mechanism,
                 "reduction_ratio": self.attention_reduction_ratio,
             }
+
+    def _indexed_convolution(self, x, filters, name):
+        """
+        Build the convolutional layers for the indexed flag.
+        """
+        if self.use_3d_conv:
+            x_conv = keras.layers.Conv3D(
+                        filters=filters,
+                        kernel_size=(1, 7, self.temporal_kernel_size),
+                        strides=(1, 1, 1),
+                        padding="valid",
+                        activation="relu",
+                        name=name,
+                    )(x)
+        else:
+            x_conv = keras.layers.Conv2D(
+                    filters=filters,
+                    kernel_size=(1, 7),
+                    strides=(1, 1),
+                    padding="valid",
+                    activation="relu",
+                    name=name,
+                )(x)
+
+        # Squeeze out the now 1dim neighbors dimension.
+        x = tf.squeeze(x_conv, axis=2)
+        return x
+
+    def _indexed_pooling(self,x, name):
+        if self.use_3d_conv:
+            if self.pooling_type.lower() == "max":
+                x_pool = keras.layers.MaxPool3D(
+                    pool_size=(1, 7, self.temporal_pool_size),
+                    strides=(1, 1, 1),
+                    padding='valid',
+                    name=name,
+                )(x)
+            else:  # average pooling
+                x_pool = keras.layers.AveragePooling3D(
+                    pool_size=(1, 7, self.temporal_pool_size),
+                    strides=(1, 1, 1),
+                    padding='valid',
+                    name=name,
+                )(x)
+        else:
+            if self.pooling_type.lower() == "max":
+                x_pool = keras.layers.MaxPool2D(
+                    pool_size=(1, 7),
+                    strides=(1, 1),
+                    padding='valid',
+                    name=name,
+                )(x)
+            else:  
+                x_pool = keras.layers.AveragePooling2D(
+                    pool_size=(1, 7),
+                    strides=(1, 1),
+                    padding='valid',
+                    name=name,
+                )(x)
+
+        x = tf.squeeze(x_pool, axis=2)
+        return x
 
 
 @abstractmethod
@@ -368,7 +430,8 @@ class SingleCNN(CTLearnModel):
         )
         return backbone_model, network_input
 
-class SingleCNNIndexed3D(CTLearnModel):
+
+class SingleCNNIndexed(CTLearnModel):
     """
     SingleCNNIndexed3D is a 3D CNN model with an added neighbor-gathering mechanism.
     The network first gathers neighbor information for every pixel (or patch element)
@@ -396,16 +459,16 @@ class SingleCNNIndexed3D(CTLearnModel):
         help="Type of pooling to apply.",
     ).tag(config=True)
 
-    pooling_parameters = Dict(
-        default_value={"size": (7, 2), "strides": (1, 2)},
-        allow_none=True,
-        help="Pooling layer parameters as a dict with keys 'size' and 'strides'.",
-    ).tag(config=True)
-
     batchnorm = Bool(
         default_value=True,
         allow_none=False,
-        help="Whether to apply batch normalization.",
+        help="Whether to apply batch normalization after each convolution plus pooling.",
+    ).tag(config=True)
+
+    init_batchnorm = Bool(
+        default_value=True,
+        allow_none=False,
+        help="Whether to apply batch normalization before the first convolution.",
     ).tag(config=True)
 
     bottleneck_filters = Int(
@@ -416,8 +479,20 @@ class SingleCNNIndexed3D(CTLearnModel):
 
     temporal_kernel_size = Int(
         default_value=3,
-        allow_none=False,
+        allow_none=True,
         help="Kernel size along the temporal dimension in the convolution layers.",
+    ).tag(config=True)
+
+    temporal_pool_size = Int(
+        default_value=1,
+        allow_none=True,
+        help="Kernel size along the temporal dimension in the pooling layers.",
+    ).tag(config=True)
+
+    use_3d_conv = Bool(
+        default_value = False,
+        allow_none = False,
+        help="Whether to apply 3 dimensional kernel."
     ).tag(config=True)
 
     def __init__(self, input_shape, indices, tasks, config=None, parent=None, **kwargs):
@@ -426,13 +501,15 @@ class SingleCNNIndexed3D(CTLearnModel):
         # Validate traits
         for layer in self.architecture:
             validate_trait_dict(layer, ["filters", "number"])
-        validate_trait_dict(self.pooling_parameters, ["size", "strides"])
 
         self.backbone_name = self.name + "_block"
 
         # Create the 3D neighbor gathering layer.
         # Preparing the mask and gathering neighbors.
-        self.neighbor_gather = NeighborGatherLayer(indices)
+        if self.use_3d_conv == True:
+            self.neighbor_gather = NeighborGatherLayer3D(indices)
+        else:
+            self.neighbor_gather = NeighborGatherLayer2D(indices)
 
 
         # Build the backbone model.
@@ -460,257 +537,189 @@ class SingleCNNIndexed3D(CTLearnModel):
 
     def _build_backbone(self, input_shape):
         """
-        Build the backbone of the SingleCNNIndexed3D model.
+        Build the backbone of the SingleCNN model.
         """
         network_input = keras.Input(input_shape, name="input")
         filters_list = [layer["filters"] for layer in self.architecture]
         numbers_list = [layer["number"] for layer in self.architecture]
         x = network_input  
 
-        if self.batchnorm:
-        #     x = keras.layers.BatchNormalization(momentum=0.99)(x)
-            mean = tf.reduce_mean(x, axis=2, keepdims=True)  # axis=2 for time
-            std = tf.math.reduce_std(x, axis=2, keepdims=True)
-            x = (x - mean) / (std + 1e-6)
+        if self.init_batchnorm:
+            x = keras.layers.BatchNormalization(momentum=0.99)(x)
         total_layers = len(filters_list)
 
         for i, (filters, number) in enumerate(zip(filters_list, numbers_list)):
             for nr in range(number):
                 # Prepare input by gathering neighbor features.
                 x_neighbors = self._prepare_for_convolution(x)
-                
-                # Apply 3D convolution over the gathered neighbors.
-                # Now of shape (batch, pixels, neighbors, time, channels)
-                x_conv = keras.layers.Conv3D(
-                    filters=filters,
-                    kernel_size=(1, 7, self.temporal_kernel_size),
-                    strides=(1, 1, 1),
-                    padding="valid",
-                    activation="relu",
-                    name=f"{self.backbone_name}_conv_{i+1}_{nr+1}",
-                )(x_neighbors)
-
-                # Squeeze out the now 1dim neighbors dimension.
-                x = tf.squeeze(x_conv, axis=2)
+                # Apply convolution over the gathered neighbors depending on the use_3d_conv flag.
+                x = self._indexed_convolution(x_neighbors, filters, f"{self.backbone_name}_conv_{i+1}_{nr+1}")
 
             if self.pooling_type is not None and i < total_layers - 1:
                 x_neighbors = self._prepare_for_convolution(x)
-                # x_norm = tf.keras.layers.BatchNormalization(momentum=0.9)(x_neighbors) #
-                if self.pooling_type.lower() == "max":
-                    x_pool = keras.layers.MaxPool3D(
-                        pool_size=(1, 7, 1),
-                        strides=(1, 1, 1),
-                        padding='valid',
-                        name=f"{self.backbone_name}_pool_{i+1}",
-                    )(x_neighbors)
-                else:  # average pooling
-                    x_pool = keras.layers.AveragePooling3D(
-                        pool_size=(1, 7, 1),
-                        strides=(1, 1, 1),
-                        padding='valid',
-                        name=f"{self.backbone_name}_pool_{i+1}",
-                    )(x_neighbors)
-                x = tf.squeeze(x_pool, axis=2)
+                x = self._indexed_pooling(x_neighbors, f"{self.backbone_name}_pool_{i+1}")
+
             if self.batchnorm:
                 x = keras.layers.BatchNormalization(momentum=0.99)(x)
-
+                # x = keras.layers.GroupNormalization(groups=1)(x)#momentum=0.99
         # Optional bottleneck layer.
         if self.bottleneck_filters is not None:
-            x = keras.layers.Conv2D(
-                filters=self.bottleneck_filters,
-                kernel_size=1,
-                padding="valid",
-                activation="relu",
-                name=f"{self.backbone_name}_bottleneck",
-            )(x)
+            if self.use_3d_conv:
+                x = keras.layers.Conv2D(
+                    filters=self.bottleneck_filters,
+                    kernel_size=1,
+                    padding="valid",
+                    activation="relu",
+                    name=f"{self.backbone_name}_bottleneck",
+                )(x)
+            else:
+                x = keras.layers.Conv1D(
+                    filters=self.bottleneck_filters,
+                    kernel_size=1,
+                    padding="valid",
+                    activation="relu",
+                    name=f"{self.backbone_name}_bottleneck",
+                )(x)
             if self.batchnorm:
                 x = keras.layers.BatchNormalization(momentum=0.99)(x)
         
         if self.attention is not None:
-            x = triple_squeeze_excite_block_indexed3d(
-                x, self.attention["reduction_ratio"], name=f"{self.backbone_name}_trse"
-            )
+            if self.use_3d_conv:
+                x = triple_squeeze_excite_block_indexed3d(
+                    x, self.attention["reduction_ratio"], name=f"{self.backbone_name}_trse"
+                )
+            else:
+                x = dual_squeeze_excite_block_indexed2d(
+                    x, self.attention["reduction_ratio"], name=f"{self.backbone_name}_dse"
+                )
 
         # Global average pooling.
-        network_output = keras.layers.GlobalAveragePooling2D(name=self.backbone_name + "_global_avgpool")(x)
+        if self.use_3d_conv:
+            network_output = keras.layers.GlobalAveragePooling2D(name=self.backbone_name + "_global_avgpool")(x)
+        else:
+            network_output = keras.layers.GlobalAveragePooling1D(name=self.backbone_name + "_global_avgpool")(x)
         backbone_model = keras.Model(network_input, network_output, name=self.backbone_name)
         return backbone_model, network_input
 
 
-class SingleCNNIndexed1D3D(SingleCNNIndexed3D):
+class IndexedResNet(CTLearnModel):
     """
-    Extension of SingleCNNIndexed1D3D that adds a 1D CNN-based preprocessing stage
-    to denoise and extract temporal features per pixel before spatial modeling.
+    ``IndexedResNet`` is a residual neural network model.
+
+    This class extends the functionality of ``CTLearnModel`` by implementing
+    methods to build a residual neural network model.
     """
-    name = Unicode("SingleCNNIndexed1D3D", help="Name of the model backbone.").tag(config=True)
 
+    name = Unicode(
+        "IndexedThinResNet",
+        help="Name of the model backbone.",
+    ).tag(config=True)
 
-    def _build_backbone(self, input_shape):
-        network_input = keras.Input(input_shape, name="input")
+    init_layer = Dict(
+        default_value=None,
+        allow_none=True,
+        help=(
+            "Parameters for the first convolutional layer. "
+            "E.g. ``{'filters': 64, 'kernel_size': 7, 'strides': 2}``."
+        ),
+    ).tag(config=True)
 
-        # Shape: (batch, pixels_per_patch, n_samples, channels)
-        x = network_input
+    init_max_pool = Dict(
+        default_value=None,
+        allow_none=True,
+        help=(
+            "Parameters for the first max pooling layer. "
+            "E.g. ``{'size': 3, 'strides': 2}``."
+        ),
+    ).tag(config=True)
 
-        if self.batchnorm:
-            # x = keras.layers.LayerNormalization(momentum=0.99)(x)
-            mean = tf.reduce_mean(x, axis=2, keepdims=True)  # axis=2 for time
-            std = tf.math.reduce_std(x, axis=2, keepdims=True)
-            x = (x - mean) / (std + 1e-6)
+    use_3d_conv = Bool(
+        default_value = False,
+        allow_none = False,
+        help='Whether to perform 3D or 2D convolutions',
+    ).tag(config=True)
 
-        # Reshape to (batch * pixels_per_patch, n_samples, channels)
-        b, p, t, c = tf.unstack(tf.shape(x))
-        x_flat = tf.reshape(x, (-1, t, c))
+    temporal_kernel_size = Int(
+        default_value=3,
+        allow_none=False,
+        help="Kernel size along the temporal dimension in the convolution layers.",
+    ).tag(config=True)
 
-        # 1D CNN 
-        x_c1 = keras.layers.Conv1D(16, kernel_size=2, padding='same', activation='relu')(x_flat)
-        x_c2 = keras.layers.Conv1D(32, kernel_size=3, padding='same', activation='relu')(x_c1)
+    temporal_pool_size = Int(
+        default_value=1,
+        allow_none=True,
+        help="Kernel size along the temporal dimension in the pooling layers.",
+    ).tag(config=True)
 
-        x_c2 = keras.layers.MaxPool1D(pool_size=2, strides=1, padding='valid')(x_c2)
-        new_t = tf.shape(x_c2)[1]
-
-        feature_dim = int(x_c2.shape[-1])
-        seq = x_c2
-
-        # Reshape back to (batch, pixels_per_patch, new_t, feature_dim)
-        x_seq = tf.reshape(seq, (b, p, new_t, feature_dim))
-
-
-        filters_list = [layer["filters"] for layer in self.architecture]
-        numbers_list = [layer["number"] for layer in self.architecture]
-        total_layers = len(filters_list)
-        x = x_seq
-
-
-        for i, (filters, number) in enumerate(zip(filters_list, numbers_list)):
-            for nr in range(number):
-                x_neighbors = self._prepare_for_convolution(x)
-                x_conv = keras.layers.Conv3D(
-                    filters=filters,
-                    kernel_size=(1, 7, self.temporal_kernel_size),
-                    strides=(1, 1, 1),
-                    padding="valid",
-                    activation="relu",
-                    name=f"{self.backbone_name}_conv_{i+1}_{nr+1}",
-                )(x_neighbors)
-
-                x = tf.squeeze(x_conv, axis=2)
-
-            if self.pooling_type is not None and i < total_layers - 1:
-                x_neighbors = self._prepare_for_convolution(x)
-                if self.pooling_type.lower() == "max":
-                    x_pool = keras.layers.MaxPool3D(
-                        pool_size=(1, 7, 1),
-                        strides=(1, 1, 1),
-                        padding='valid',
-                        name=f"{self.backbone_name}_pool_{i+1}",
-                    )(x_neighbors)
-                else:
-                    x_pool = keras.layers.AveragePooling3D(
-                        pool_size=(1, 7, 1),
-                        strides=(1, 1, 1),
-                        padding='valid',
-                        name=f"{self.backbone_name}_pool_{i+1}",
-                    )(x_neighbors)
-                x = tf.squeeze(x_pool, axis=2)
-
-            if self.batchnorm:
-                x = keras.layers.BatchNormalization(momentum=0.99)(x)
-
-        if self.bottleneck_filters is not None:
-            x = keras.layers.Conv2D(
-                filters=self.bottleneck_filters,
-                kernel_size=1,
-                padding="valid",
-                activation="relu",
-                name=f"{self.backbone_name}_bottleneck",
-            )(x)
-            if self.batchnorm:
-                x = keras.layers.BatchNormalization(momentum=0.99)(x)
-
-        if self.attention is not None:
-            x = triple_squeeze_excite_block_indexed3d(
-                x, self.attention["reduction_ratio"], name=f"{self.backbone_name}_trse"
-            )
-
-        network_output = keras.layers.GlobalAveragePooling2D(name=self.backbone_name + "_global_avgpool")(x)
-        backbone_model = keras.Model(network_input, network_output, name=self.backbone_name)
-        return backbone_model, network_input
-
-
-
-class SingleCNNIndexed2D(CTLearnModel):
-    """
-    SingleCNNIndexed2D is a 2D CNN model with an added neighbor-gathering mechanism.
-    The network first gathers neighbor information for every pixel (or patch element)
-    using the provided indices and then applies a sequence of 3D convolutions (over 
-    pixels, neighbor dimension, and temporal dimension) and pooling operations.
-    """
-    name = Unicode("SingleCNNIndexed2D", help="Name of the model backbone.").tag(config=True)
+    residual_block_type = CaselessStrEnum(
+        ["basic", "bottleneck"],
+        default_value="bottleneck",
+        allow_none=False,
+        help="Type of residual block to use.",
+    ).tag(config=True)
 
     architecture = List(
         trait=Dict(),
         default_value=[
-            {"filters": 32, "number": 1},
-            {"filters": 32, "number": 1},
-            {"filters": 64, "number": 1},
-            {"filters": 128, "number": 1},
+            {"filters": 48, "blocks": 2},
+            {"filters": 96, "blocks": 3},
+            {"filters": 128, "blocks": 3},
+            {"filters": 256, "blocks": 3},
         ],
         allow_none=False,
-        help="List of layer parameters (number of filters and number of times to repeat).",
+        help=(
+            "List of dicts containing the number of filters and residual blocks. "
+            "E.g. ``[{'filters': 12, 'blocks': 2}, ...]``."
+        ),
     ).tag(config=True)
 
-    pooling_type = CaselessStrEnum(
-        ["max", "average"],
-        default_value="max",
-        allow_none=True,
-        help="Type of pooling to apply.",
-    ).tag(config=True)
+    def __init__(
+        self,
+        input_shape,
+        tasks,
+        indices,
+        config=None,
+        parent=None,
+        **kwargs,
+    ):
+        super().__init__(
+            config=config,
+            parent=parent,
+            **kwargs,
+        )
 
-    pooling_parameters = Dict(
-        default_value={"size": 7, "strides": 1},
-        allow_none=True,
-        help="Pooling layer parameters as a dict with keys 'size' and 'strides'.",
-    ).tag(config=True)
-
-    batchnorm = Bool(
-        default_value=False,
-        allow_none=False,
-        help="Whether to apply batch normalization.",
-    ).tag(config=True)
-
-    bottleneck_filters = Int(
-        default_value=None,
-        allow_none=True,
-        help="Number of filters in the bottleneck layer, if any.",
-    ).tag(config=True)
-
-
-    def __init__(self, input_shape, indices, tasks, config=None, parent=None, **kwargs):
-        super().__init__(config=config, parent=parent, **kwargs)
-
-        # Validate traits
+        # Validate the architecture trait
         for layer in self.architecture:
-            validate_trait_dict(layer, ["filters", "number"])
-        validate_trait_dict(self.pooling_parameters, ["size", "strides"])
+            validate_trait_dict(layer, ["filters", "blocks"])
+        # Validate the initial layers trait
+        if self.init_layer is not None:
+            validate_trait_dict(self.init_layer, ["filters", "strides"])
+        if self.init_max_pool is not None:
+            validate_trait_dict(self.init_max_pool, ["strides"])
 
+        # Construct the name of the backbone model by appending "_block" to the model name
         self.backbone_name = self.name + "_block"
 
         # Create the neighbor gathering layer.
         # Preparing the mask and gathering neighbors.
-        self.neighbor_gather = NeighborGatherLayer2D(indices)
+        if self.use_3d_conv == True:
+            self.neighbor_gather = NeighborGatherLayer3D(indices)
+        else:
+            self.neighbor_gather = NeighborGatherLayer2D(indices)
 
-
-        # Build the backbone model.
+        # Build the ResNet model backbone
         self.backbone_model, self.input_layer = self._build_backbone(input_shape)
         backbone_output = self.backbone_model(self.input_layer)
-
+        # Validate the head traits with the provided tasks
         validate_trait_dict(self.head_layers, tasks)
         validate_trait_dict(self.head_activation_function, tasks)
+        # Build the fully connected head depending on the tasks
         self.logits = build_fully_connect_head(
             backbone_output, self.head_layers, self.head_activation_function, tasks
         )
 
         self.model = keras.Model(self.input_layer, self.logits, name="CTLearn_model")
+
 
     def _prepare_for_convolution(self, x):
         """
@@ -719,84 +728,379 @@ class SingleCNNIndexed2D(CTLearnModel):
         x: Tensor of shape (batch, pixels_per_patch, seq_length, channels)
 
         Returns:
-            neighbor_feats: Tensor of shape (batch, pixels_per_patch, K, seq_length, channels)
+            neighbor_feats: Tensor of shape (batch, pixels_per_patch, 7, seq_length, channels)
         """
         return self.neighbor_gather(x)
 
     def _build_backbone(self, input_shape):
         """
-        Build the backbone of the SingleCNNIndexed2D model.
+        Build the ResNet model backbone.
+
+        Function to build the backbone of the ResNet model using the specified parameters.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input data (batch_size, height, width, channels).
+
+        Returns
+        -------
+        backbone_model : keras.Model
+            Keras model object representing the ResNet backbone.
+        network_input : keras.Input
+            Keras input layer object for the backbone model.
         """
-        network_input = keras.Input(input_shape, name="input")
-        filters_list = [layer["filters"] for layer in self.architecture]
-        numbers_list = [layer["number"] for layer in self.architecture]
-        x = network_input  
 
-        if self.batchnorm:
-            x = keras.layers.BatchNormalization(momentum=0.99)(x)
-        total_layers = len(filters_list)
+        # Define the input layer from the input shape
+        network_input = keras.Input(shape=input_shape, name="input")
 
-        for i, (filters, number) in enumerate(zip(filters_list, numbers_list)):
-            for nr in range(number):
-                # Prepare input by gathering neighbor features.
-                x_neighbors = self._prepare_for_convolution(x)
-                
-                # Apply 2D convolution over the gathered neighbors.
-                # Now of shape (batch, pixels, neighbors, channels)
-                x_conv = keras.layers.Conv2D(
-                    filters=filters,
-                    kernel_size=(1, 7),
-                    strides=(1, 1),
-                    padding="valid",
-                    activation="relu",
-                    name=f"{self.backbone_name}_conv_{i+1}_{nr+1}",
-                )(x_neighbors)
+        # Apply initial convolutional layer if specified
+        if self.init_layer is not None:
+            # Prepare input by gathering neighbor features.
+            x_neighbors = self._prepare_for_convolution(newtork_input)
+            # Apply convolution over the gathered neighbors depending on the use_3d_conv flag.
+            newtork_input = self._indexed_convolution(x_neighbors, self.init_layer["filters"], self.backbone_name + "_conv1_conv")
 
-                # Squeeze out the now 1dim neighbors dimension.
-                x = tf.squeeze(x_conv, axis=2)
+        # Apply max pooling if specified
+        if self.init_max_pool is not None:
+            x_neighbors = self._prepare_for_convolution(newtork_input)
+            newtork_input = self._indexed_pooling(x_neighbors, self.backbone_name + "_pool1_pool")              
+        # Build the residual blocks
+        engine_output = self._stacked_res_blocks(
+            network_input,
+            architecture=self.architecture,
+            residual_block_type=self.residual_block_type,
+            attention=self.attention,
+            name=self.backbone_name,
+        )
+        # Apply global average pooling as the final layer of the backbone
+        if self.use_3d_conv:
+            network_output = keras.layers.GlobalAveragePooling2D(name=self.backbone_name + "_global_avgpool")(engine_output)
+        else:
+            network_output = keras.layers.GlobalAveragePooling1D(name=self.backbone_name + "_global_avgpool")(engine_output)
 
-            if self.pooling_type is not None and i < total_layers - 1:
-                x_neighbors = self._prepare_for_convolution(x)
-                if self.pooling_type.lower() == "max":
-                    x_pool = keras.layers.MaxPool2D(
-                        pool_size=(1, 7),
-                        strides=(1, 1),
-                        padding='valid',
-                        name=f"{self.backbone_name}_pool_{i+1}",
-                    )(x_neighbors)
-                else:  
-                    x_pool = keras.layers.AveragePooling2D(
-                        pool_size=(1, 7),
-                        strides=(1, 1),
-                        padding='valid',
-                        name=f"{self.backbone_name}_pool_{i+1}",
-                    )(x_neighbors)
-                x = tf.squeeze(x_pool, axis=2)
-            if self.batchnorm:
-                x = keras.layers.BatchNormalization(momentum=0.99)(x)
-
-        # Optional bottleneck layer.
-        if self.bottleneck_filters is not None:
-            x = keras.layers.Conv2D(
-                filters=self.bottleneck_filters,
-                kernel_size=1,
-                padding="valid",
-                activation="relu",
-                name=f"{self.backbone_name}_bottleneck",
-            )(x)
-            if self.batchnorm:
-                x = keras.layers.BatchNormalization(momentum=0.99)(x)
-        
-        if self.attention is not None:
-            x = dual_squeeze_excite_block_indexed2d(
-                x, self.attention["reduction_ratio"], name=f"{self.backbone_name}_dse"
-            )
-
-        # Global average pooling.
-        network_output = keras.layers.GlobalAveragePooling1D(name=self.backbone_name + "_global_avgpool")(x)
-        backbone_model = keras.Model(network_input, network_output, name=self.backbone_name)
+        # Create the backbone model
+        backbone_model = keras.Model(
+            network_input, network_output, name=self.backbone_name
+        )
         return backbone_model, network_input
 
+    def _stacked_res_blocks(
+        self, inputs, architecture, residual_block_type, attention, name=None
+    ):
+        """
+        Build a stack of residual blocks for the CTLearn model.
+
+        This function constructs a stack of residual blocks, which are used to build the backbone of the CTLearn model.
+        Each residual block consists of a series of convolutional layers with skip connections.
+
+        Parameters
+        ----------
+        inputs : keras.layers.Layer
+            Input Keras layer to the residual blocks.
+        architecture : list of dict
+            List of dictionaries containing the architecture of the ResNet model, which includes:
+            - Number of filters for the convolutional layers in the residual blocks.
+            - Number of residual blocks to stack.
+        residual_block_type : str
+            Type of residual block to use. Options are 'basic' or 'bottleneck'.
+        attention : dict
+            Dictionary containing the configuration parameters for the attention mechanism.
+        name : str, optional
+            Label for the model.
+
+        Returns
+        -------
+        x : keras.layers.Layer
+            Output Keras layer after passing through the stack of residual blocks.
+        """
+
+        # Get hyperparameters for the model architecture
+        filters_list = [layer["filters"] for layer in architecture]
+        blocks_list = [layer["blocks"] for layer in architecture]
+        # mean = tf.reduce_mean(inputs, axis=[1, 2, 3], keepdims=True)
+        # inputs = inputs - mean
+        # Build the ResNet model
+        x = self._stack_fn(
+            inputs,
+            filters_list[0],
+            blocks_list[0],
+            residual_block_type,
+            stride=1,
+            attention=attention,
+            name=name + "_conv2",
+        )
+        for i, (filters, blocks) in enumerate(zip(filters_list[1:], blocks_list[1:])):
+            x = self._stack_fn(
+                x,
+                filters,
+                blocks,
+                residual_block_type,
+                attention=attention,
+                name=name + "_conv" + str(i + 3),
+            )
+        return x
+
+    def _stack_fn(
+        self,
+        inputs,
+        filters,
+        blocks,
+        residual_block_type,
+        stride=2,
+        attention=None,
+        name=None,
+    ):
+        """
+        Stack residual blocks for the CTLearn model.
+
+        This function constructs a stack of residual blocks, which are used to build the backbone of the CTLearn model.
+        Each residual block can be of different types (e.g., basic or bottleneck) and can include attention mechanisms.
+
+        Parameters
+        ----------
+        inputs : keras.layers.Layer
+            Input tensor to the residual blocks.
+        filters : int
+            Number of filters for the bottleneck layer in a block.
+        blocks : int
+            Number of residual blocks to stack.
+        residual_block_type : str
+            Type of residual block ('basic' or 'bottleneck').
+        stride : int, optional
+            Stride for the first layer in the first block. Default is 2.
+        attention : dict, optional
+            Configuration parameters for the attention mechanism. Default is None.
+        name : str, optional
+            Label for the stack. Default is None.
+
+        Returns
+        -------
+        keras.layers.Layer
+            Output tensor for the stacked blocks.
+        """
+
+        res_blocks = {
+            "basic": self._basic_residual_block,
+            "bottleneck": self._bottleneck_residual_block,
+        }
+
+        x = res_blocks[residual_block_type](
+            inputs,
+            filters,
+            stride=stride,
+            attention=attention,
+            name=name + "_block1",
+        )
+        for i in range(2, blocks + 1):
+            x = res_blocks[residual_block_type](
+                x,
+                filters,
+                conv_shortcut=False,
+                attention=attention,
+                name=name + "_block" + str(i),
+            )
+
+        return x
+
+    def _basic_residual_block(
+        self,
+        inputs,
+        filters,
+        kernel_size=3,
+        stride=1,
+        conv_shortcut=True,
+        attention=None,
+        name=None,
+    ):
+        """
+        Build a basic residual block for the CTLearn model.
+
+        This function constructs a basic residual block, which is a fundamental building block
+        of ResNet architectures. The block consists of two convolutional layers with an optional
+        convolutional shortcut, and can include attention mechanisms.
+
+        Parameters
+        ----------
+        inputs : keras.layers.Layer
+            Input tensor to the residual block.
+        filters : int
+            Number of filters for the convolutional layers.
+        kernel_size : int, optional
+            Size of the convolutional kernel. Default is 3.
+        stride : int, optional
+            Stride for the convolutional layers. Default is 1.
+        conv_shortcut : bool, optional
+            Whether to use a convolutional layer for the shortcut connection. Default is True.
+        attention : dict, optional
+            Configuration parameters for the attention mechanism. Default is None.
+        name : str, optional
+            Name for the residual block. Default is None.
+
+        Returns
+        -------
+        keras.layers.Layer
+            Output tensor after applying the residual block.
+        """
+
+        if conv_shortcut:
+            if self.use_3d_conv:
+                shortcut = keras.layers.Conv2D(
+                    filters=filters,
+                    kernel_size=1,
+                    strides=1,
+                    padding="same",
+                    name=name + "_0_conv",
+                )(inputs)
+            else:
+                shortcut = keras.layers.Conv1D(
+                    filters=filters,
+                    kernel_size=1,
+                    strides=1,
+                    padding="same",
+                    name=name + "_0_conv",
+                )(inputs)
+        else:
+            shortcut = inputs
+
+        if self.use_3d_conv:
+            # Pad in order to be able to have same padding in the temporal dimension
+            inputs = keras.layers.ZeroPadding2D(padding=((0,0), (1,1)))(inputs)
+        x_neighbors = self._prepare_for_convolution(inputs)
+        x = self._indexed_convolution(x_neighbors, filters, name + "_1_conv")
+
+        if self.use_3d_conv:
+            # Pad in order to be able to have same padding in the temporal dimension
+            x = keras.layers.ZeroPadding2D(padding=((0,0), (1,1)))(x)
+        x_neighbors = self._prepare_for_convolution(x)
+        x = self._indexed_convolution(x_neighbors, filters, name + "_2_conv")
+
+        # Attention mechanism
+        if attention is not None:
+            if self.use_3d_conv:
+                x = triple_squeeze_excite_block_indexed3d(
+                    x, self.attention["reduction_ratio"], name=name + "_trse"
+                )
+            else:
+                x = dual_squeeze_excite_block_indexed2d(
+                    x, self.attention["reduction_ratio"], name=name + "_dse"
+                )
+
+        x = keras.layers.Add(name=name + "_add")([shortcut, x])
+        x = keras.layers.ReLU(name=name + "_out")(x)
+
+        return x
+
+    def _bottleneck_residual_block(
+        self,
+        inputs,
+        filters,
+        kernel_size=3,
+        stride=1,
+        conv_shortcut=True,
+        attention=None,
+        name=None,
+    ):
+        """
+        Build a bottleneck residual block for the CTLearn model.
+
+        This function constructs a bottleneck residual block, which is a fundamental building block of
+        ResNet architectures. The block consists of three convolutional layers: a 1x1 convolution to reduce
+        dimensionality, a 3x3 convolution for main computation, and another 1x1 convolution to restore dimensionality.
+        It also includes an optional shortcut connection and can include attention mechanisms.
+
+        Parameters
+        ----------
+        inputs : keras.layers.Layer
+            Input tensor to the residual block.
+        filters : int
+            Number of filters for the convolutional layers.
+        kernel_size : int, optional
+            Size of the convolutional kernel. Default is 3.
+        stride : int, optional
+            Stride for the convolutional layers. Default is 1.
+        conv_shortcut : bool, optional
+            Whether to use a convolutional layer for the shortcut connection. Default is True.
+        attention : dict, optional
+            Configuration parameters for the attention mechanism. Default is None.
+        name : str, optional
+            Name for the residual block. Default is None.
+
+        Returns
+        -------
+        output : keras.layers.Layer
+            Output layer of the residual block.
+        """
+
+        if conv_shortcut:
+            if self.use_3d_conv:
+                shortcut = keras.layers.Conv2D(
+                    filters=4 * filters,
+                    kernel_size=1,
+                    strides=1,
+                    padding="same",
+                    name=name + "_0_conv",
+                )(inputs)
+            else:
+                shortcut = keras.layers.Conv1D(
+                    filters=4 * filters,
+                    kernel_size=1,
+                    strides=1,
+                    padding="same",
+                    name=name + "_0_conv",
+                )(inputs)
+        else:
+            shortcut = inputs
+
+        if self.use_3d_conv:
+            x = keras.layers.Conv2D(
+                filters= filters,
+                kernel_size=1,
+                strides=1,
+                padding="same",
+                activation="relu",
+                name=name + "_1_conv",
+            )(inputs)
+        else:
+            x = keras.layers.Conv1D(
+                filters= filters,
+                kernel_size=1,
+                strides=1,
+                padding="same",
+                activation="relu",
+                name=name + "_1_conv",
+            )(inputs)
+
+        if self.use_3d_conv:
+            # Pad in order to be able to have same padding in the temporal dimension
+            x = keras.layers.ZeroPadding2D(padding=((0,0), (1,1)))(x)
+        x_neighbors = self._prepare_for_convolution(x)
+        x = self._indexed_convolution(x_neighbors, filters, name + "_2_conv")
+
+        if self.use_3d_conv:
+            x = keras.layers.Conv2D(
+                filters=4 * filters, kernel_size=1, name=name + "_3_conv"
+            )(x)
+        else:
+            x = keras.layers.Conv1D(
+                filters=4 * filters, kernel_size=1, name=name + "_3_conv"
+            )(x)
+
+        # Attention mechanism
+        if attention is not None:
+            if self.use_3d_conv:
+                x = triple_squeeze_excite_block_indexed3d(
+                    x, attention["reduction_ratio"], name=name + "_trse"
+                )
+            else:
+                x = dual_squeeze_excite_block_indexed2d(
+                    x, attention["reduction_ratio"], name=name + "_dse"
+                )
+
+        x = keras.layers.Add(name=name + "_add")([shortcut, x])
+        x = keras.layers.ReLU(name=name + "_out")(x)
+
+        return x
 
 class ResNet(CTLearnModel):
     """
@@ -849,11 +1153,6 @@ class ResNet(CTLearnModel):
             "List of dicts containing the number of filters and residual blocks. "
             "E.g. ``[{'filters': 12, 'blocks': 2}, ...]``."
         ),
-    ).tag(config=True)
-
-    use_3d_conv = Bool(
-        default_value=False,
-        help="If True, use 3D convolutions (expects input shape (H, W, T) and adds a channel dimension)."
     ).tag(config=True)
 
     def __init__(
@@ -913,57 +1212,31 @@ class ResNet(CTLearnModel):
         network_input : keras.Input
             Keras input layer object for the backbone model.
         """
-        if self.use_3d_conv:
-            input_shape = input_shape + (1,)
-            print(f"new input shape is {input_shape}")
-            # Define the input layer from the input shape
+        # Define the input layer from the input shape
         network_input = keras.Input(shape=input_shape, name="input")
         # Apply initial padding if specified
         if self.init_padding > 0:
-            if self.use_3d_conv:
-                network_input = keras.layers.ZeroPadding3D(
-                    padding=self.init_padding,
-                    kernel_size=self.init_layer["kernel_size"],
-                    strides=self.init_layer["strides"],
-                    name=self.backbone_name + "_padding",
-                )(network_input)
-            else:
-                network_input = keras.layers.ZeroPadding2D(
-                    padding=self.init_padding,
-                    kernel_size=self.init_layer["kernel_size"],
-                    strides=self.init_layer["strides"],
-                    name=self.backbone_name + "_padding",
-                )(network_input)
+            network_input = keras.layers.ZeroPadding2D(
+                padding=self.init_padding,
+                kernel_size=self.init_layer["kernel_size"],
+                strides=self.init_layer["strides"],
+                name=self.backbone_name + "_padding",
+            )(network_input)
         # Apply initial convolutional layer if specified
         if self.init_layer is not None:
-            if self.use_3d_conv:
-                network_input = keras.layers.Conv3D(
-                    filters=self.init_layer["filters"],
-                    kernel_size=self.init_layer["kernel_size"],
-                    strides=self.init_layer["strides"],
-                    name=self.backbone_name + "_conv1_conv",
-                )(network_input)
-            else:
-                network_input = keras.layers.Conv2D(
-                    filters=self.init_layer["filters"],
-                    kernel_size=self.init_layer["kernel_size"],
-                    strides=self.init_layer["strides"],
-                    name=self.backbone_name + "_conv1_conv",
-                )(network_input)
+            network_input = keras.layers.Conv2D(
+                filters=self.init_layer["filters"],
+                kernel_size=self.init_layer["kernel_size"],
+                strides=self.init_layer["strides"],
+                name=self.backbone_name + "_conv1_conv",
+            )(network_input)
         # Apply max pooling if specified
         if self.init_max_pool is not None:
-            if self.use_3d_conv:
-                network_input = keras.layers.MaxPool3D(
-                    pool_size=self.init_max_pool["size"],
-                    strides=self.init_max_pool["strides"],
-                    name=self.backbone_name + "_pool1_pool",
-                )(network_input)
-            else:
-                network_input = keras.layers.MaxPool2D(
-                    pool_size=self.init_max_pool["size"],
-                    strides=self.init_max_pool["strides"],
-                    name=self.backbone_name + "_pool1_pool",
-                )(network_input)               
+            network_input = keras.layers.MaxPool2D(
+                pool_size=self.init_max_pool["size"],
+                strides=self.init_max_pool["strides"],
+                name=self.backbone_name + "_pool1_pool",
+            )(network_input)
         # Build the residual blocks
         engine_output = self._stacked_res_blocks(
             network_input,
@@ -973,10 +1246,9 @@ class ResNet(CTLearnModel):
             name=self.backbone_name,
         )
         # Apply global average pooling as the final layer of the backbone
-        if self.use_3d_conv:
-            network_output = keras.layers.GlobalAveragePooling3D(name=self.backbone_name + "_global_avgpool")(engine_output)
-        else:
-            network_output = keras.layers.GlobalAveragePooling2D(name=self.backbone_name + "_global_avgpool")(engine_output)
+        network_output = keras.layers.GlobalAveragePooling2D(
+            name=self.backbone_name + "_global_avgpool"
+        )(engine_output)
         # Create the backbone model
         backbone_model = keras.Model(
             network_input, network_output, name=self.backbone_name
@@ -1140,57 +1412,27 @@ class ResNet(CTLearnModel):
         """
 
         if conv_shortcut:
-            if self.use_3d_conv:
-                shortcut = keras.layers.Conv3D(
-                    filters=filters,
-                    kernel_size=1,
-                    strides=stride,
-                    padding="same",
-                    name=name + "_0_conv",
-                )(inputs)
-            else:
-                shortcut = keras.layers.Conv2D(
-                    filters=filters,
-                    kernel_size=1,
-                    strides=stride,
-                    padding="same",
-                    name=name + "_0_conv",
-                )(inputs)
+            shortcut = keras.layers.Conv2D(
+                filters=filters, kernel_size=1, strides=stride, name=name + "_0_conv"
+            )(inputs)
         else:
             shortcut = inputs
 
-        if self.use_3d_conv:
-            x = keras.layers.Conv3D(
-                filters=filters,
-                kernel_size=kernel_size,
-                strides=stride,
-                padding="same",
-                activation="relu",
-                name=name + "_1_conv",
-            )(inputs)
-            x = keras.layers.Conv3D(
-                filters=filters,
-                kernel_size=kernel_size,
-                padding="same",
-                activation="relu",
-                name=name + "_2_conv",
-            )(x)
-        else:
-            x = keras.layers.Conv2D(
-                filters=filters,
-                kernel_size=kernel_size,
-                strides=stride,
-                padding="same",
-                activation="relu",
-                name=name + "_1_conv",
-            )(inputs)
-            x = keras.layers.Conv2D(
-                filters=filters,
-                kernel_size=kernel_size,
-                padding="same",
-                activation="relu",
-                name=name + "_2_conv",
-            )(x)
+        x = keras.layers.Conv2D(
+            filters=filters,
+            kernel_size=kernel_size,
+            strides=stride,
+            padding="same",
+            activation="relu",
+            name=name + "_1_conv",
+        )(inputs)
+        x = keras.layers.Conv2D(
+            filters=filters,
+            kernel_size=kernel_size,
+            padding="same",
+            activation="relu",
+            name=name + "_2_conv",
+        )(x)
 
         # Attention mechanism
         if attention is not None:

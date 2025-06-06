@@ -2,7 +2,7 @@ import keras
 import tensorflow as tf
 
 
-class NeighborGatherLayer(tf.keras.layers.Layer):
+class NeighborGatherLayer3D(tf.keras.layers.Layer):
     """
     Custom layer to gather neighbor features.
     
@@ -44,7 +44,7 @@ class NeighborGatherLayer(tf.keras.layers.Layer):
         
         # Apply the mask (casting is necessary to match neighbor_feats.dtype)
         neighbor_feats = neighbor_feats * tf.cast(tiled_mask, neighbor_feats.dtype)
-        # tf.print("neighbor_feats shape:", tf.shape(neighbor_feats), "Example slice:", neighbor_feats[0, :, :, 0, 0])  # shape: (K,)
+        # tf.print("neighbor_feats shape:", tf.shape(neighbor_feats), "Example slice:", neighbor_feats[0, :, :, 2, 0])  # shape: (K,)
         return neighbor_feats
 
 
@@ -91,3 +91,5 @@ class NeighborGatherLayer2D(tf.keras.layers.Layer):
         neighbor_feats = neighbor_feats * tf.cast(tiled_mask, neighbor_feats.dtype)
         # tf.print("neighbor_feats shape:", tf.shape(neighbor_feats), "Example slice:", neighbor_feats[0, :, :, 0])  # shape: (K,)
         return neighbor_feats
+
+

@@ -384,21 +384,13 @@ class TrainCTLearnModel(Tool):
         with self.strategy.scope():
             # Construct the model
             self.log.info("Setting up the model.")
-            if self.dl1dh_reader.hexagonal_convolution:
-                self.model = CTLearnModel.from_name(
-                    self.model_type,
-                    input_shape=self.training_loader.input_shape,
-                    indices=self.dl1dh_reader.neighbor_array,
-                    tasks=self.reco_tasks,
-                    parent=self,
-                ).model  #
-            else:
-                self.model = CTLearnModel.from_name(
-                    self.model_type,
-                    input_shape=self.training_loader.input_shape,
-                    tasks=self.reco_tasks,
-                    parent=self,
-                ).model
+            self.model = CTLearnModel.from_name(
+                self.model_type,
+                input_shape=self.training_loader.input_shape,
+                indices=self.dl1dh_reader.neighbor_array,
+                tasks=self.reco_tasks,
+                parent=self,
+            ).model  
             # Validate the optimizer parameters
             validate_trait_dict(self.optimizer, ["name", "base_learning_rate"])
             # Set the learning rate for the optimizer
