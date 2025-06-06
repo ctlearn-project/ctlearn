@@ -58,6 +58,11 @@ class evidential_regression_loss(nn.Module):
 
         return nig_nll_error + self.lamb *nig_reg_error
 
+def cosine_direction_loss(pred_x, pred_y, true_x, true_y):
+    pred_vec = F.normalize(torch.stack([pred_x, pred_y], dim=1), dim=1)
+    true_vec = F.normalize(torch.stack([true_x, true_y], dim=1), dim=1)
+    return 1 - torch.sum(pred_vec * true_vec, dim=1).mean()
+
 
 def AngularDistance(alt1_rad, alt2_rad, az1_rad, az2_rad,reduction = None):
     """
