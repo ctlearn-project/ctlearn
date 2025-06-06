@@ -86,7 +86,7 @@ model:
 # Hyper-parameters
 hyp: 
 
-  epochs: 2
+  epochs: 12
   batches: 128 #64
   dynamic_batches: True
   optimizer: Adamw
