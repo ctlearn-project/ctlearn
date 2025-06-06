@@ -121,13 +121,13 @@ class TrainPyTorchModel(TrainCTLearnModel):
 
     def __init__(self, **kwargs):
         
-        # Setup GPU Debug
+        # Setup GPU 
         os.environ["NCCL_P2P_DISABLE"] = "1"
         os.environ["NCCL_IB_DISABLE"] = "1"
         os.environ["NCCL_DEBUG"] = "WARN"
         os.environ["TORCH_NCCL_ASYNC_ERROR_HANDLING"] = "1"
         os.environ["NCCL_DEBUG"] = "INFO"
-                
+        torch.set_float32_matmul_precision('medium')        
  
         super().__init__(**kwargs)
  
