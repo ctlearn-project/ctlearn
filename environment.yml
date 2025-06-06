@@ -12,7 +12,7 @@ dependencies:
     - pip
     - pytables
     - tables
-    - c-blosc2=2.13
+    - c-blosc2=2.13    
     - pyyaml
     - scikit-learn
     - ctapipe
