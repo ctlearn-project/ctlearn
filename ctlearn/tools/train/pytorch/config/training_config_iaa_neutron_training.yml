@@ -25,7 +25,7 @@ data:
   # Check points
   type_checkpoint: ./run/run_type_train_14/exp_14_type_train/version_4/Epoch_20_type_train_acc_80.5776238441467285.pth # ./run/run_type_train_14/exp_14_type_train/version_0/Epoch_27_type_train_acc_81.0595095157623291.pth #./run/run_type_train_2/exp_2_type_train/version_4/type_train_acc_81.1937808990478516.pth #./run/run_type_train_1/type_validation_accuracy_81.6743765368707670.pth #./run/run_type_train_2/exp_2_type_train/version_4/type_train_acc_81.1937808990478516.pth
   energy_checkpoint: ./run/run_energy_train_2/exp_2_energy_train/version_0/energy_train_loss_9.7920012821687248.pth
-  direction_checkpoint: ./run/run_direction_train_2/exp_2_direction_train/version_1/direction_train_loss_1.0721765518581907.pth 
+  direction_checkpoint: /storage/ctlearn_data/check_points/v_0_3/Epoch_42_direction_train_loss_-2739.9621516285983489.pth #./run/run_direction_train_2/exp_2_direction_train/version_1/direction_train_loss_1.0721765518581907.pth 
   
 run_details:
 
