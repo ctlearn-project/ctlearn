@@ -179,11 +179,11 @@ class TrainPyTorchModel(TrainCTLearnModel):
         # Reduce for testing 
         # --------------------------------------------------------------------
         # Limit the number of examples (optional)
-        max_training_samples = 5000  # or whatever number you want
-        max_validation_samples = 1000  # or whatever number you want
+        # max_training_samples = 500  # or whatever number you want
+        # max_validation_samples = 200  # or whatever number you want
 
-        training_indices = training_indices[:max_training_samples]
-        validation_indices = validation_indices[:max_validation_samples]
+        # training_indices = training_indices[:max_training_samples]
+        # validation_indices = validation_indices[:max_validation_samples]
 
 
         print("BASE TRAIN FRAMEWORK", self.framework_type)
@@ -303,6 +303,8 @@ class TrainPyTorchModel(TrainCTLearnModel):
                 mode = Mode.train,
                 parameters=self.parameters,
                 k=self.save_k,
+                train_loader= self.training_loader,
+                val_loader= self.validation_loader,
             )
 
             # Save configuration file.
