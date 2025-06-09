@@ -158,15 +158,7 @@ class CTLearnPL(pl.LightningModule):
             weight=class_weights, reduction="mean"
         )
 
-        self.alpha = torch.tensor([1.0, 1.2], dtype=torch.float32)  
-        gamma = 2.0  # Increase the penalty on misclassified examples.
 
-        self.criterion_class = FocalLoss(alpha=self.alpha,gamma=gamma)
-
-
-        self.criterion_energy_class = nn.CrossEntropyLoss(
-            reduction="sum"
-        )   
         self.criterion_energy_value = torch.nn.L1Loss(reduction="mean")
         self.criterion_direction = torch.nn.SmoothL1Loss()  # nn.MSELoss()
         self.criterion_magnitud = torch.nn.L1Loss(reduction="mean") 
@@ -322,10 +314,11 @@ class CTLearnPL(pl.LightningModule):
     def compute_type_loss(
         self, classification_pred, labels_class, test_val=False, training=False
     ):
-        self.criterion_class.set_alpha(self.alpha.to(self.device))
-
         target = labels_class.to(torch.int64)
-        loss_class = self.criterion_class(classification_pred, target)
+        class_weights = torch.tensor([1.0, 2.0], dtype=torch.float).to(self.device)
+
+        # Cálculo de la loss con F.cross_entropy
+        loss_class = F.cross_entropy(classification_pred, target, weight=class_weights, reduction='mean')
 
         # Calculate accuracy
         predicted = torch.softmax(classification_pred, dim=1)
@@ -591,7 +584,10 @@ class CTLearnPL(pl.LightningModule):
         else:            
             total_loss_train = self.loss_train_sum
             total_batches_val = self.num_train_batches
- 
+
+        if total_batches_val==0:
+            return 0
+
         if self.trainer.is_global_zero:
             global_loss = total_loss_train / total_batches_val
 
@@ -720,7 +716,7 @@ class CTLearnPL(pl.LightningModule):
             imgs = features["image"]
 
             if self.task == Task.type:
-                labels_class = labels["particletype"]
+                labels_class = labels["type"]
 
             labels_energy_value = labels["energy"]
             hillas_intensity = features["hillas"]["hillas_intensity"]
@@ -888,7 +884,7 @@ class CTLearnPL(pl.LightningModule):
         # ---------------------------------------
         # Particle Type
         # ---------------------------------------
-        if self.task == Task.type and self.trainer.is_global_zero:
+        if self.task == Task.type:
             conf_matrix = self.confusion_matrix.compute().detach().cpu().numpy()
             f1_score_val = self.f1_score_val.compute().detach().cpu().numpy()*100.0
             precision_val = self.precision_val.compute().detach().cpu().numpy()*100.0
@@ -896,15 +892,16 @@ class CTLearnPL(pl.LightningModule):
             # Compute the accuracy and reset the metric states after each epoch
             epoch_accuracy_val = self.class_val_accuracy.compute().item() * 100
 
+            # if self.trainer.is_global_zero:
+            self.class_val_accuracy.reset() 
+            self.confusion_matrix.reset()
+            self.f1_score_val.reset()
+            self.precision_val.reset()
+  
+            # ---------------------------------------
+            # Create Confusion Matrix
+            # ---------------------------------------        
             if self.trainer.is_global_zero:
-                self.class_val_accuracy.reset()
-                     
-                self.confusion_matrix.reset()
-                self.f1_score_val.reset()
-           
-                self.precision_val.reset()
-     
-
                 # Log
                 self.logger.experiment.add_scalars(
                     "Metrics/Validation",
@@ -925,34 +922,29 @@ class CTLearnPL(pl.LightningModule):
                 print(
                     f"Epoch {self.current_epoch}: Global Validation Precision: {precision_val:.4f}"
                 )                      
-          
-                # ---------------------------------------
-                # Create Confusion Matrix
-                # ---------------------------------------        
-                if self.trainer.is_global_zero:
-
-                    filename_prefix = "confusion_matrix_val"
-                    cm_file_name = f"{filename_prefix}_{self.current_epoch}_{epoch_accuracy_val:.4f}_Validation"
-                    
-                    if self.logger.log_dir:
-                        plot_confusion_matrix(
-                            conf_matrix,
-                            self.class_names,
-                            cm_file_name,
-                            self.logger.log_dir,  
-                        )
-                    # Compute class-wise accuracies
-                    class_accuracies = (conf_matrix.diagonal() / conf_matrix.sum(axis=1))*100
-
-                    self.logger.experiment.add_scalars(
-                        "confusion_matrix",
-                        {
-                            "val_acc_gamma": class_accuracies[0],
-                            "val_acc_proton": class_accuracies[1],
-                            "val_global_acc": epoch_accuracy_val,
-                        },
-                        self.current_epoch,
+                filename_prefix = "confusion_matrix_val"
+                cm_file_name = f"{filename_prefix}_{self.current_epoch}_{epoch_accuracy_val:.4f}_Validation"
+                
+                if self.logger.log_dir:
+                    plot_confusion_matrix(
+                        conf_matrix,
+                        self.class_names,
+                        cm_file_name,
+                        self.logger.log_dir,  
                     )
+                # Compute class-wise accuracies
+                class_accuracies = (conf_matrix.diagonal() / conf_matrix.sum(axis=1))*100
+
+                self.logger.experiment.add_scalars(
+                    "confusion_matrix",
+                    {
+                        "val_acc_gamma": class_accuracies[0],
+                        "val_acc_proton": class_accuracies[1],
+                        "val_global_acc": epoch_accuracy_val,
+                    },
+                    self.current_epoch,
+                )
+                # return 0
         # ---------------------------------------
         # Direction
         # ---------------------------------------
