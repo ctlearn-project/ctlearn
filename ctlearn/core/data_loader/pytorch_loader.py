@@ -5,6 +5,8 @@ from .base_loader import BaseDLDataLoader
 from dl1_data_handler.reader import ProcessType
 from ctlearn.core.ctlearn_enum import Task
 from astropy import units as u
+import random
+import cv2
 
 
 class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
@@ -117,6 +119,64 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         if self.random_seed is not None:
             np.random.seed(self.random_seed)
             np.random.shuffle(self.indices)
+
+    def apply_augmentation(self, image, peak_time):
+
+        for id_batch in range(image.shape[0]):
+            random_aug = random.random()
+
+            if random_aug > self.aug_prob:
+
+                if self.task != Task.cameradirection and self.task != Task.skydirection:
+
+                    random_aug_flip_ver = random.random()
+                    if random_aug_flip_ver > self.flip_ver_prob:
+                        # Vertical flip
+                        image[id_batch] = np.expand_dims(cv2.flip(image[id_batch].astype(np.float32), 0), axis=-1)
+                        peak_time[id_batch] = np.expand_dims(cv2.flip(peak_time[id_batch].astype(np.float32), 0), axis=-1)
+
+                    random_aug_flip_hor = random.random()
+                    if random_aug_flip_hor > self.flip_hor_prob:
+                        # Horizontal
+                        image[id_batch] = np.expand_dims(cv2.flip(image[id_batch].astype(np.float32), 1), axis=-1)
+                        peak_time[id_batch] = np.expand_dims(cv2.flip(peak_time[id_batch].astype(np.float32), 1), axis=-1)
+                    # Rotation
+                    random_aug_rot = random.random()
+                    if random_aug_rot > self.rot_prob:
+                        (h, w) = image[id_batch].shape[:2]
+
+                        angle = random.uniform(-self.max_aug_rot, self.max_aug_rot)
+                        scale = 1.0  # No scaling
+                        center = (w // 2, h // 2)
+                        # Step 5: Get the rotation matrix
+                        rotation_matrix = cv2.getRotationMatrix2D(center, angle, scale)
+
+                        # Step 6: Rotate the image
+                        image[id_batch] = np.expand_dims(cv2.warpAffine(
+                            image[id_batch].astype(np.float32), rotation_matrix, (w, h)
+                        ), axis=-1)
+                        peak_time[id_batch] = np.expand_dims(cv2.warpAffine(
+                            peak_time[id_batch].astype(np.float32), rotation_matrix, (w, h)
+                        ), axis=-1)
+                    # Translation
+                    random_aug_trans = random.random()
+                    if random_aug_trans > self.trans_prob:
+                        # Translation
+                        (h, w) = image[id_batch].shape[:2]
+
+                        tx = random.uniform(-self.max_aug_trans, self.max_aug_trans)
+                        ty = random.uniform(-self.max_aug_trans, self.max_aug_trans)
+                        translation_matrix = np.float32([[1, 0, tx], [0, 1, ty]])
+                        image[id_batch] =  np.expand_dims(cv2.warpAffine(
+                            image[id_batch].astype(np.float32), translation_matrix, (w, h)
+                        ), axis=-1)
+                        peak_time[id_batch] =  np.expand_dims(cv2.warpAffine(
+                            peak_time[id_batch].astype(np.float32), translation_matrix, (w, h)
+                        ), axis=-1)
+                else:
+                    doNothing = True
+
+        return image, peak_time
 
     def __getitem__(self, index):
         """
@@ -293,6 +353,10 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         image = features["input"][..., 0:1]
         peak_time = features["input"][..., 1:2]
 
+
+        if self.use_augmentation:
+            image, peak_time = self.apply_augmentation(image, peak_time)
+
         image = np.transpose(image, (0, 3, 1, 2))
         peak_time = np.transpose(peak_time, (0, 3, 1, 2))
 
@@ -317,6 +381,8 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         if self.task == Task.cameradirection or self.task == Task.skydirection:
             image = (image - self.dir_mu) / self.dir_sigma
             peak_time = (peak_time - self.dir_mu) / self.dir_sigma
+
+
 
         features_out = {}
         features_out["image"] = image
