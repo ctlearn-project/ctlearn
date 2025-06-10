@@ -612,7 +612,7 @@ class CTLearnPL(pl.LightningModule):
         # ---------------------------------------
         # Particle Type
         # ---------------------------------------
-        if self.task == Task.type and self.trainer.is_global_zero:
+        if self.task == Task.type:
 
             f1_score = self.f1_score_train.compute().detach().cpu().numpy()*100.0
             self.f1_score_train.reset()
@@ -892,16 +892,16 @@ class CTLearnPL(pl.LightningModule):
             # Compute the accuracy and reset the metric states after each epoch
             epoch_accuracy_val = self.class_val_accuracy.compute().item() * 100
 
-            # if self.trainer.is_global_zero:
             self.class_val_accuracy.reset() 
             self.confusion_matrix.reset()
             self.f1_score_val.reset()
             self.precision_val.reset()
-  
+            
             # ---------------------------------------
             # Create Confusion Matrix
             # ---------------------------------------        
             if self.trainer.is_global_zero:
+
                 # Log
                 self.logger.experiment.add_scalars(
                     "Metrics/Validation",
