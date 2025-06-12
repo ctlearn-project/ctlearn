@@ -52,6 +52,7 @@ def predictions(self):
         tel_azimuth.extend(dl1_table["tel_az"].data)
         tel_altitude.extend(dl1_table["tel_alt"].data)
         trigger_time.extend(dl1_table["time"].mjd)
+        
         if self.load_type_model_from is not None:
             classification_feature_vectors = self.backbone_type.predict_on_batch(input_data)
             classification_fvs.extend(classification_feature_vectors)

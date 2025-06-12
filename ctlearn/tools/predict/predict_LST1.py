@@ -37,6 +37,13 @@ from ctlearn.utils import get_lst1_subarray_description
 from dl1_data_handler.image_mapper import ImageMapper
 from dl1_data_handler.reader import TableQualityQuery
 from ctlearn.tools.predict.utils.load_model import load_model
+from ctlearn.core.ctlearn_enum import Task, Mode
+from ctlearn.tools.train.pytorch.utils import (
+    sanity_check,
+    read_configuration,
+    expected_structure,
+)
+
 POINTING_GROUP = "/dl1/monitoring/telescope/pointing"
 DL1_TELESCOPE_GROUP = "/dl1/event/telescope"
 DL2_TELESCOPE_GROUP = "/dl2/event/telescope"
@@ -194,6 +201,11 @@ class LST1PredictionTool(Tool):
         help="Output path to save the dl2 prediction results",
     ).tag(config=True)
     
+    pytorch_config_file = Path(
+        default_value="./ctlearn/tools/train/pytorch/config/training_config_iaa_neutron_training.yml",
+        help="Pytorch config file",
+    ).tag(config=True)
+    
     framework_type = CaselessStrEnum(
         ["pytorch", "keras"],
         default_value="keras",
@@ -208,7 +220,7 @@ class LST1PredictionTool(Tool):
         ("e", "energy_model"): "LST1PredictionTool.load_energy_model_from",
         ("d", "cameradirection_model"): "LST1PredictionTool.load_cameradirection_model_from",
         ("o", "output"): "LST1PredictionTool.output_path",
-        ("f", "framework"): "PredictCTLearnModel.framework_type",
+        ("f", "framework"): "LST1PredictionTool.framework_type",
     }
 
     flags = {
@@ -222,15 +234,42 @@ class LST1PredictionTool(Tool):
 
     def _predictions(self):
         if self.framework_type == "keras":
+            self.log.info("Using the Keras Model")
             from ctlearn.tools.predict.keras.predic_LST1_keras import predictions
+            return predictions(self)
+        
+        elif self.framework_type == "pytorch":
+            self.log.info("Using the Pytorch Model")
+            from ctlearn.tools.predict.pytorch.predic_LST1_pytorch import predictions
             return predictions(self)
         
     def setup(self):
         # Save dl1 image and parameters tree schemas and tel id for easy access
+        import torch
         self.image_table_path = "/dl1/event/telescope/image/LST_LSTCam"
         self.parameter_table_name = "/dl1/event/telescope/parameters/LST_LSTCam"
         self.tel_id = 1
-
+        if self.framework_type == "pytorch":
+            self.log.info(f"Using {self.pytorch_config_file} config file for pytorch framework")
+            self.parameters = read_configuration(self.pytorch_config_file)
+            sanity_check(self.parameters, expected_structure)
+            self.device_str = self.parameters["arch"]["device"]
+            self.device = torch.device(self.device_str)
+            self.tasks = []
+            self.type_mu = self.parameters["normalization"]["type_mu"]
+            self.type_sigma = self.parameters["normalization"]["type_sigma"]
+            self.dir_mu = self.parameters["normalization"]["dir_mu"]
+            self.dir_sigma = self.parameters["normalization"]["dir_sigma"]
+            self.energy_mu = self.parameters["normalization"]["energy_mu"]
+            self.energy_sigma = self.parameters["normalization"]["energy_sigma"]
+            
+            if self.load_type_model_from is not None:
+                self.tasks.append(Task.type)
+            if self.load_energy_model_from is not None:
+                self.tasks.append(Task.energy)
+            if self.load_cameradirection_model_from is not None:
+                self.tasks.append(Task.direction)
+                
         # Get the number of rows in the table
         with tables.open_file(self.input_url) as input_file:
             self.table_length = len(input_file.get_node(self.image_table_path))
@@ -258,12 +297,13 @@ class LST1PredictionTool(Tool):
             parent=self,
         )
         # Check if the input shape of the model matches the image shape of the ImageMapper
-        if input_shape[0] != self.image_mapper.image_shape:
-            raise ToolConfigurationError(
-                f"The input shape of the model ('{input_shape[0]}') does not match "
-                f"the image shape of the ImageMapper ('{self.image_mapper.image_shape}'). "
-                f"Use e.g. '--BilinearMapper.interpolation_image_shape={input_shape[0]}' ."
-            )
+        if self.framework_type == "keras":
+            if input_shape[0] != self.image_mapper.image_shape:
+                raise ToolConfigurationError(
+                    f"The input shape of the model ('{input_shape[0]}') does not match "
+                    f"the image shape of the ImageMapper ('{self.image_mapper.image_shape}'). "
+                    f"Use e.g. '--BilinearMapper.interpolation_image_shape={input_shape[0]}' ."
+                )
 
         # Get offset and scaling of images
         self.transforms = {}
@@ -290,9 +330,8 @@ class LST1PredictionTool(Tool):
             self.transforms["peak_time_offset"] = img_table_v_attrs[
                 "CTAFIELD_4_TRANSFORM_OFFSET"
             ]
-
+            
     def start(self):
-
         all_identifiers = read_table(self.input_url, self.parameter_table_name)
         all_identifiers.meta = {}
         if self.override_obs_id is not None:
