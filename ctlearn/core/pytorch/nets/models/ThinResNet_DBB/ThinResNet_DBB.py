@@ -91,7 +91,9 @@ class ThinResNet_DBB(nn.Module):
         self.conv2 = nn.Conv2d(num_inputs, 64, kernel_size=3, stride=1, padding=1, bias=False)
         self.layer1_2 = self._make_layer(block, 64, num_blocks[0], stride=1)
         self.layer2_2 = self._make_layer(block, 128, num_blocks[1], stride=2)
-        self.layer3_2 = self._make_layer(block, 256, num_blocks[2], stride=2)
+        self.layer3_2 = self._make_layer(block, 256, num_blocks[3], stride=2) # Change for 2 or 3
+        #self.layer3_2 = self._make_layer(block, 256, num_blocks[3], stride=2)
+
         
         if self.use_bn:
             self.bn2 = nn.BatchNorm2d(64)
@@ -106,13 +108,8 @@ class ThinResNet_DBB(nn.Module):
             layers.append(block(self.in_channels, out_channels, stride, use_bn=self.use_bn))
             self.in_channels = out_channels * block.expansion
         return nn.Sequential(*layers)
-
-    def forward(self, x, y):
-
-        energy = None
-        classification = None
-        direction = None
-
+    
+    def extract_feature_vector(self,x, y):
         # out_1 = F.relu(self.bn1(self.conv1(x)))    
         out_1 = F.relu(self.conv1(x)) 
         out_1 = self.layer1_1(out_1)
@@ -130,13 +127,23 @@ class ThinResNet_DBB(nn.Module):
         out = self.layer4(out)
         out = self.adaptive_pool(out)
         out_feature = out.view(out.size(0), -1)
-        out = self.dropout(out_feature) 
+        fused_features = self.dropout(out_feature) 
+        return fused_features
+    
+    def forward(self, x, y):
+
+        energy = None
+        classification = None
+        direction = None
+
+        fused_features = self.extract_feature_vector(x,y)
+        # out = self.layer3(out)
 
         # if self.training:
         #     out_sep = self.fc_1_separation(out)
         #     out_sep = self.fc_2_separation(out_sep)
         
-        out = self.fc_1(out)
+        out = self.fc_1(fused_features)
         # out = self.bn_final(out)
         # out = self.prelu(out)
         # Original
@@ -165,7 +172,7 @@ class ThinResNet_DBB(nn.Module):
         # if self.training:
         #     out = torch.cat((out, out_sep), dim=1)
             
-        return classification, energy, direction
+        return [classification,fused_features], [energy,fused_features], [direction,fused_features]
 
 # def thin_resnet34(num_blocks=[2, 3, 3, 3], num_inputs=1, num_classes=2):
 #     # Here we configure fewer blocks for a lighter model
