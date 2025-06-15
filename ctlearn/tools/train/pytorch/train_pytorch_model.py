@@ -11,6 +11,7 @@ from ctapipe.core.traits import (
     Unicode,
 )
 
+
 from ctlearn.tools.train.pytorch.CTLearnPL import CTLearnTrainer, CTLearnPL
 try:
     import torch
@@ -179,8 +180,8 @@ class TrainPyTorchModel(TrainCTLearnModel):
         # Reduce for testing 
         # --------------------------------------------------------------------
         # Limit the number of examples (optional)
-        # max_training_samples = 500  # or whatever number you want
-        # max_validation_samples = 200  # or whatever number you want
+        # max_training_samples = 5000  # or whatever number you want
+        # max_validation_samples = 1200  # or whatever number you want
 
         # training_indices = training_indices[:max_training_samples]
         # validation_indices = validation_indices[:max_validation_samples]
@@ -245,6 +246,8 @@ class TrainPyTorchModel(TrainCTLearnModel):
                     f"task:{task.name} is not supported. Task must be type, direction or energy"
                 )
 
+            # if hasattr(model_net, 'T'):
+            #     self.training_loader.set_T(model_net.T)
             # ------------------------------------------------------------------------------
             # Load Checkpoints
             # ------------------------------------------------------------------------------
