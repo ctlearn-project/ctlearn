@@ -23,9 +23,9 @@ data:
   validation_test_reduce_factor: 0 #16 #8
 
   # Check points
-  type_checkpoint: ./run/fake #./run/run_type_training_14/exp_14_type_train/version_97/Epoch_11_type_train_acc_78.7880003452301025.pth #./run/run_type_training_14/exp_14_type_train/version_96/Epoch_0_type_train_acc_66.1041736602783203.pth #./run/run_type_training_14/exp_14_type_train/version_6/Epoch_0_type_train_acc_87.4014854431152344.pth #./run/run_type_training_14/exp_14_type_train/version_3/Epoch_11_type_train_acc_82.2395861148834229.pth #./run/run_type_training_14/exp_14_type_train/version_0/Epoch_8_type_train_acc_82.0280253887176514.pth #/storage/ctlearn_data/check_points/v_0_3/type_train_acc_81.1937808990478516.pth #./run/run_type_train_14/exp_14_type_train/version_4/Epoch_20_type_train_acc_80.5776238441467285.pth # ./run/run_type_train_14/exp_14_type_train/version_0/Epoch_27_type_train_acc_81.0595095157623291.pth #./run/run_type_train_2/exp_2_type_train/version_4/type_train_acc_81.1937808990478516.pth #./run/run_type_train_1/type_validation_accuracy_81.6743765368707670.pth #./run/run_type_train_2/exp_2_type_train/version_4/type_train_acc_81.1937808990478516.pth
+  type_checkpoint: ./run/run_type_training_14/exp_14_type_train/version_108/Epoch_0_type_train_acc_80.0708770751953125.pth #./run/run_type_training_14/exp_14_type_train/version_106/Epoch_3_type_train_acc_79.8272967338562012.pth #./run/run_type_training_14/exp_14_type_train/version_97/Epoch_11_type_train_acc_78.7880003452301025.pth #./run/run_type_training_14/exp_14_type_train/version_96/Epoch_0_type_train_acc_66.1041736602783203.pth #./run/run_type_training_14/exp_14_type_train/version_6/Epoch_0_type_train_acc_87.4014854431152344.pth #./run/run_type_training_14/exp_14_type_train/version_3/Epoch_11_type_train_acc_82.2395861148834229.pth #./run/run_type_training_14/exp_14_type_train/version_0/Epoch_8_type_train_acc_82.0280253887176514.pth #/storage/ctlearn_data/check_points/v_0_3/type_train_acc_81.1937808990478516.pth #./run/run_type_train_14/exp_14_type_train/version_4/Epoch_20_type_train_acc_80.5776238441467285.pth # ./run/run_type_train_14/exp_14_type_train/version_0/Epoch_27_type_train_acc_81.0595095157623291.pth #./run/run_type_train_2/exp_2_type_train/version_4/type_train_acc_81.1937808990478516.pth #./run/run_type_train_1/type_validation_accuracy_81.6743765368707670.pth #./run/run_type_train_2/exp_2_type_train/version_4/type_train_acc_81.1937808990478516.pth
   energy_checkpoint: ./run/run_energy_train_2/exp_2_energy_train/version_0/energy_train_loss_9.7920012821687248.pth
-  direction_checkpoint: ./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_0/Epoch_5_cameradirection_train_loss_2.3584697707690330.pth #/storage/ctlearn_data/check_points/v_0_3/Epoch_42_direction_train_loss_-2739.9621516285983489.pth #./run/run_direction_train_2/exp_2_direction_train/version_1/direction_train_loss_1.0721765518581907.pth 
+  direction_checkpoint: ./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_49/Epoch_9_cameradirection_train_loss_0.7614041910688141.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_41/Epoch_16_cameradirection_train_loss_1.7467666558954063.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_28/Epoch_16_cameradirection_train_loss_0.8549746516163398.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_23/Epoch_41_cameradirection_train_loss_0.8230013581664681.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_26/Epoch_41_cameradirection_train_loss_1.2093983759278775.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_23/Epoch_41_cameradirection_train_loss_0.8230013581664681.pth # ./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_20/Epoch_21_cameradirection_train_loss_1.2520693633078133.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_0/Epoch_5_cameradirection_train_loss_2.3584697707690330.pth #/storage/ctlearn_data/check_points/v_0_3/Epoch_42_direction_train_loss_-2739.9621516285983489.pth #./run/run_direction_train_2/exp_2_direction_train/version_1/direction_train_loss_1.0721765518581907.pth 
   
 run_details:
 
@@ -57,7 +57,7 @@ model:
       # task: 'type'
       num_outputs: 2
       embedding_dim: 512
-      T: 8
+      T: 6
       eta: 0.1 #0.1
   # model_type:
   #   model_name: "ThinResNet_DBB"
@@ -80,22 +80,30 @@ model:
       use_bn: False  
     
 
+  # model_direction: 
+  #   model_name: "ThinResNet_DBB"
+  #   parameters:
+  #     task: 'direction'
+  #     num_inputs: 1
+  #     num_outputs: 3
+  #     num_blocks: [3, 4, 6, 3]
+  #     dropout: 0.1 
+  #     use_bn: False  
+
   model_direction: 
-    model_name: "ThinResNet_DBB"
+    model_name: "NoPropDTReg"
     parameters:
       task: 'direction'
-      num_inputs: 1
       num_outputs: 3
-      num_blocks: [3, 4, 6, 3]
-      dropout: 0.1 
-      use_bn: False  
-      
+      embedding_dim: 512
+      T: 6
+      eta: 0.1 #0.1     
 
 # Hyper-parameters
 hyp: 
 
-  epochs: 12
-  batches: 128 #64
+  epochs: 142
+  batches: 128 #128 #64
   dynamic_batches: True
   optimizer: Adamw
   momentum: 0.957 #Yolo 0.937 # Efficient-b3 0.757

@@ -6,4 +6,6 @@ import ctlearn.core.pytorch.nets.models.DoubleBBEfficientNet.DoubleBBEfficientNe
 import ctlearn.core.pytorch.nets.models.DualBackboneEfficientNetV2.DoubleBBEfficientNetV2  
 import ctlearn.core.pytorch.nets.models.DBBDanet.DBBDanet
 
+# Diffusion
 import ctlearn.core.pytorch.nets.models.NoPropDT.NoPropDT
+import ctlearn.core.pytorch.nets.models.NoPropDTReg.NoPropDTReg

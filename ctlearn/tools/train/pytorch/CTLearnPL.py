@@ -40,8 +40,9 @@ import torch.distributed as dist
 import torch.multiprocessing as mp
 from ctlearn.core.pytorch.nets.loss_functions.loss_functions import evidential_regression_loss
 import inspect
-# from ctlearn.nets.loss_functions.loss_functions import evidential_classification
- 
+
+import matplotlib
+matplotlib.use('Agg')  
 
 class CTLearnTrainer(pl.Trainer):
     def __init__(self,**kwargs):
@@ -168,11 +169,15 @@ class CTLearnPL(pl.LightningModule):
         self.criterion_energy_value = torch.nn.L1Loss(reduction="mean")
         self.criterion_direction = torch.nn.SmoothL1Loss()  # nn.MSELoss()
         self.criterion_magnitud = torch.nn.L1Loss(reduction="mean") 
-        
+
+        self.criterion_direction_none = torch.nn.SmoothL1Loss(reduction="none")  # nn.MSELoss()
+        self.criterion_magnitud_none = torch.nn.L1Loss(reduction="none") 
+        self.criterion_alt_az_l1_none = torch.nn.L1Loss(reduction="none")
 
         self.criterion_direction = torch.nn.L1Loss(reduction="mean")  # nn.MSELoss()
         self.criterion_vector = VectorLoss(alpha=0.1, reduction="mean")
         self.criterion_alt_az_l1 = torch.nn.L1Loss(reduction="mean")
+
         self.criterion_alt_az = evidential_regression_loss(lamb=0.01, reduction="mean")
 
 
@@ -415,6 +420,80 @@ class CTLearnPL(pl.LightningModule):
 
         return loss, energy_diff
     # ----------------------------------------------------------------------------------------------------------
+    def compute_direction_loss_diffusion(self, x, y, labels_energy_value):
+
+        loss = 0
+        y = y.squeeze(-1)
+        y_embed = self.model.target_embedder(y)
+
+        for t in range(self.model.T):
+            # Add noise to target (landmarks)
+            alpha_bar_t = self.model.alpha_bar[t]
+            noise = torch.randn_like(y_embed)
+            z_t = torch.sqrt(alpha_bar_t) * y_embed + torch.sqrt(1 - alpha_bar_t) * noise
+
+            # Denoise step
+            z, _ = self.model.blocks[t](x, z_t, None)  # W_embed not needed
+            
+            preds = self.model.regress(z)
+            # Loss to clean target
+            loss_l2 = F.mse_loss(preds, y)
+
+            # Weighted by SNR difference
+            step_loss = 2.5 * self.model.eta * self.model.snr_diff[t] * loss_l2
+
+            # Final step: use regression head
+            if t == self.model.T - 1:
+                labels_dx_dy = y[:, 0:2]
+                label_distance = y[:, 2]
+                direction_pred = self.model.regress(z)
+                if isinstance(direction_pred, tuple):
+                    # Not Tested 
+                    direction_pred = list(direction_pred)
+
+                    pred_dx_dy = direction_pred[0][:,0:2].unsqueeze(-1)
+                    pred_distance = direction_pred[0][:,2].unsqueeze(-1)
+                else:
+                    pred_dx_dy = direction_pred[:,0:2] 
+                    pred_distance = direction_pred[:,2] 
+
+                # loss_angular_diff = cosine_direction_loss(pred_dx_dy[:,0],pred_dx_dy[:,1], labels_dx_dy[:, 0],labels_dx_dy[:, 1])
+                loss_angular_diff = cosine_direction_loss(pred_dx_dy[:,0],pred_dx_dy[:,1], labels_dx_dy[:, 0],labels_dx_dy[:, 1],reduction="none")
+                _, angular_diff = AngularDistance(
+                    pred_dx_dy[:,0],
+                    labels_dx_dy[:, 0],
+                    pred_dx_dy[:,1],
+                    labels_dx_dy[:, 1],
+                    reduction="None",
+                   
+                )
+
+                vector_cam_distance = torch.sqrt(pred_dx_dy[:,0]**2 + pred_dx_dy[:,1]**2)
+                # loss_dx_dy = self.criterion_alt_az_l1(pred_dx_dy, labels_dx_dy)
+                # loss_distance = self.criterion_magnitud(label_distance, pred_distance)
+                # loss_distance_dx_dy = self.criterion_magnitud(label_distance, vector_cam_distance)
+                loss_dx_dy = self.criterion_alt_az_l1_none(pred_dx_dy, labels_dx_dy).mean(dim=1)
+                loss_distance = self.criterion_magnitud_none(label_distance, pred_distance)
+                loss_distance_dx_dy = self.criterion_magnitud_none(label_distance, vector_cam_distance)
+
+                energy = torch.pow(10,labels_energy_value)
+                k=4.3
+                e_thrs= 4
+                energy_weight = k*(1/(1+torch.exp(-(1/k)*(energy-e_thrs))))    
+                # weight_loss = energy_weight * (loss_dx_dy + loss_distance + loss_distance_dx_dy + loss_angular_diff)
+                weight_loss = energy_weight * (loss_dx_dy + loss_distance + loss_distance_dx_dy)
+
+                loss_distance=loss_distance.mean()
+                loss_dx_dy = loss_dx_dy.mean()
+                loss_distance_dx_dy = loss_distance_dx_dy.mean()
+                loss_angular_diff = loss_angular_diff.mean()
+
+                step_loss = step_loss + weight_loss.mean()
+
+            loss = loss + step_loss
+
+        return loss, loss_dx_dy, loss_distance, loss_distance_dx_dy, loss_angular_diff, angular_diff
+    # ----------------------------------------------------------------------------------------------------------
     def compute_type_loss_diffusion(self, x,y, training=False):
 
         loss = 0
@@ -481,7 +560,7 @@ class CTLearnPL(pl.LightningModule):
                     precision = self.precision_val.compute().item()
             loss = loss + step_loss
 
-        return loss, accuracy, predicted, precision    
+        return loss, accuracy, predicted, precision       
     # ----------------------------------------------------------------------------------------------------------
     def training_step(self, batch, batch_idx):
 
@@ -497,6 +576,7 @@ class CTLearnPL(pl.LightningModule):
             if self.task == Task.type:
                 labels_class = labels["type"]
 
+            labels_energy_value = labels["energy"]
             if self.task == Task.energy:
                 labels_energy_value = labels["energy"]
                 labels_energy_value = labels_energy_value.to(self.device)
@@ -555,10 +635,13 @@ class CTLearnPL(pl.LightningModule):
             # Direction
             # ---------------------------------------
             if self.task == Task.cameradirection:
-                if len(direction_pred)==2:
-                    direction_pred = direction_pred[0]
 
-                loss, loss_dx_dy, loss_distance, loss_distance_dx_dy, loss_angular_diff, angular_diff = self.compute_direction_loss( direction_pred, labels_direction, training=True)
+                if self.is_difussion:
+                    loss, loss_dx_dy, loss_distance, loss_distance_dx_dy, loss_angular_diff, angular_diff = self.compute_direction_loss_diffusion(imgs, labels_direction,labels_energy_value)
+                else:
+                    if len(direction_pred)==2:
+                        direction_pred = direction_pred[0]
+                    loss, loss_dx_dy, loss_distance, loss_distance_dx_dy, loss_angular_diff, angular_diff = self.compute_direction_loss( direction_pred, labels_direction, training=True)
 
                 self.loss_train_distance += loss_distance.item() 
                 self.loss_train_dx_dy += loss_dx_dy.item()
@@ -600,11 +683,11 @@ class CTLearnPL(pl.LightningModule):
         return loss
     # ----------------------------------------------------------------------------------------------------------
     def on_train_epoch_end(self):
-        print("train epoch end 1 ")
+ 
         if self.trainer.world_size > 1:
-            print("train epoch end 1 ")
+ 
             # dist.barrier()
-            print("train epoch end 2 ")
+ 
             # Gather y Sync values with the GPUs. 
             total_loss_train= self.all_gather(self.loss_train_sum).sum().item()
             total_batches_val = self.all_gather(torch.tensor(self.num_train_batches, device=self.device)).sum().item()
@@ -612,14 +695,13 @@ class CTLearnPL(pl.LightningModule):
         else:            
             total_loss_train = self.loss_train_sum
             total_batches_val = self.num_train_batches
-
-        print("train epoch end 2 ")
+ 
         if total_batches_val==0:
-            print("train epoch end 3 ")
+ 
             return 0
 
         if self.trainer.is_global_zero:
-            print("train epoch end 4 ")
+ 
             global_loss = total_loss_train / total_batches_val
 
             self.logger.experiment.add_scalars(
@@ -629,7 +711,7 @@ class CTLearnPL(pl.LightningModule):
                 },
                 self.current_epoch,
             )
-            print("train epoch end 5 ")
+ 
             self.logger.experiment.add_scalars(
                 "Learning rate",
                 {
