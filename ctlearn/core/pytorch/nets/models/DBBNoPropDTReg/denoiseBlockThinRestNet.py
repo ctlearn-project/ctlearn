@@ -63,7 +63,7 @@ class DenoiseBlock(nn.Module):
     def __init__(self, embedding_dim, num_channels=1, drop_prob=0.2):
         super().__init__()
         # Ahora más profundo y ancho: 
-        self.conv_path = nn.Sequential(
+        self.conv_path_x = nn.Sequential(
             ResidualBlock(num_channels, 64),     # Más ancho
             nn.MaxPool2d(2),
             nn.Dropout(drop_prob),
@@ -74,13 +74,29 @@ class DenoiseBlock(nn.Module):
             nn.MaxPool2d(2),
             nn.Dropout(drop_prob),
             ResidualBlock(256, 256),             # Otro bloque extra para profundidad
+        )
+
+        self.conv_path_y = nn.Sequential(
+            ResidualBlock(num_channels, 64),     # Más ancho
+            nn.MaxPool2d(2),
+            nn.Dropout(drop_prob),
+            ResidualBlock(64, 128),              # Más ancho
+            nn.MaxPool2d(2),
+            nn.Dropout(drop_prob),
+            ResidualBlock(128, 256),             # Más profundo/ancho
+            nn.MaxPool2d(2),
+            nn.Dropout(drop_prob),
+            ResidualBlock(256, 256),             # Otro bloque extra para profundidad
+        )
+
+        self.conv_path_end = nn.Sequential(
             nn.AdaptiveAvgPool2d((1, 1)),
             nn.Flatten(),
             nn.Linear(256, 512),                 # Embedding más grande
             nn.BatchNorm1d(512),
-            nn.GELU()
+            nn.GELU(),
         )
-
+        
         self.fc_z1 = nn.Linear(embedding_dim, 512)
         self.bn_z1 = nn.BatchNorm1d(512)
         self.fc_z2 = nn.Linear(512, 512)
@@ -98,8 +114,13 @@ class DenoiseBlock(nn.Module):
         self.act_f1 = nn.PReLU()
         self.act_f2 = nn.PReLU()
 
-    def forward(self, x, z_prev, _):
-        x_feat = self.conv_path(x)
+    def forward(self, x, y, z_prev, _):
+        x_feat = self.conv_path_x(x)
+        y_feat = self.conv_path_y(y)
+
+        x_feat = self.conv_path_end(x_feat + y_feat)
+
+
         h1 = self.act1(self.bn_z1(self.fc_z1(z_prev)))
         h2 = self.act2(self.bn_z2(self.fc_z2(h1)))
         h3 = self.bn_z3(self.fc_z3(h2))
