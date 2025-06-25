@@ -322,16 +322,7 @@ class CTLearnPL(pl.LightningModule):
                 except FileNotFoundError:
                     pass  # File doesn't exist, continue execution
 
-    # def on_after_backward(self):
-    #     print('on_after_backward:')
-    #     print('W_embed grad:', self.model.W_embed.grad)
-    #     print('classifier.weight grad:', self.model.classifier.weight.grad)
-    #     for name, param in self.model.named_parameters():
-    #         if param.grad:
-    #            print(f"{name} grad norm: {param.grad.norm().item()}")
-    #             # print(f"{name} has no grad!")
-    #         # else:
-    #             # print(f"{name} grad norm: {param.grad.norm().item()}")
+
     # ----------------------------------------------------------------------------------------------------------
     def compute_type_loss(
         self, classification_pred, labels_class, test_val=False, training=False
@@ -369,7 +360,7 @@ class CTLearnPL(pl.LightningModule):
                 
         return loss, accuracy, predicted, precision
     # ----------------------------------------------------------------------------------------------------------
-    def compute_direction_loss(self, direction_pred, labels_direction, training=False):
+    def compute_camera_direction_loss(self, direction_pred, labels_direction, training=False):
         
         labels_dx_dy = labels_direction[:, 0:2]
         label_distance = labels_direction[:, 2]
@@ -420,7 +411,7 @@ class CTLearnPL(pl.LightningModule):
 
         return loss, energy_diff
     # ----------------------------------------------------------------------------------------------------------
-    def compute_direction_loss_diffusion(self, x, y, labels_energy_value):
+    def compute_camera_direction_loss_diffusion(self, x_1, y, labels_energy_value, x_2 = None):
 
         loss = 0
         y = y.squeeze(-1)
@@ -432,9 +423,12 @@ class CTLearnPL(pl.LightningModule):
             noise = torch.randn_like(y_embed)
             z_t = torch.sqrt(alpha_bar_t) * y_embed + torch.sqrt(1 - alpha_bar_t) * noise
 
-            # Denoise step
-            z, _ = self.model.blocks[t](x, z_t, None)  # W_embed not needed
-            
+            if x_2 is None:
+                # Denoise step
+                z, _ = self.model.blocks[t](x_1, z_t, None)  # W_embed not needed
+            else:
+                z, _ = self.model.blocks[t](x_1,x_2, z_t, None)  # W_embed not needed
+
             preds = self.model.regress(z)
             # Loss to clean target
             loss_l2 = F.mse_loss(preds, y)
@@ -469,31 +463,138 @@ class CTLearnPL(pl.LightningModule):
                 )
 
                 vector_cam_distance = torch.sqrt(pred_dx_dy[:,0]**2 + pred_dx_dy[:,1]**2)
-                # loss_dx_dy = self.criterion_alt_az_l1(pred_dx_dy, labels_dx_dy)
-                # loss_distance = self.criterion_magnitud(label_distance, pred_distance)
-                # loss_distance_dx_dy = self.criterion_magnitud(label_distance, vector_cam_distance)
-                loss_dx_dy = self.criterion_alt_az_l1_none(pred_dx_dy, labels_dx_dy).mean(dim=1)
-                loss_distance = self.criterion_magnitud_none(label_distance, pred_distance)
-                loss_distance_dx_dy = self.criterion_magnitud_none(label_distance, vector_cam_distance)
+                loss_dx_dy = self.criterion_alt_az_l1(pred_dx_dy, labels_dx_dy)
+                loss_distance = self.criterion_magnitud(label_distance, pred_distance)
+                loss_distance_dx_dy = self.criterion_magnitud(label_distance, vector_cam_distance)
+                # loss_dx_dy = self.criterion_alt_az_l1_none(pred_dx_dy, labels_dx_dy).mean(dim=1)
+                # loss_distance = self.criterion_magnitud_none(label_distance, pred_distance)
+                # loss_distance_dx_dy = self.criterion_magnitud_none(label_distance, vector_cam_distance)
 
                 energy = torch.pow(10,labels_energy_value)
-                k=4.3
-                e_thrs= 4
-                energy_weight = k*(1/(1+torch.exp(-(1/k)*(energy-e_thrs))))    
+                # k=4.3
+                # e_thrs= 4
+                # energy_weight = k*(1/(1+torch.exp(-(1/k)*(energy-e_thrs))))
+                # weight_loss = energy_weight * (loss_dx_dy + loss_distance + loss_distance_dx_dy + loss_angular_diff)
+   
+                k=0.6
+                e_thrs= -0.3
+
+                energy_weight=k*torch.exp(1+(np.log10(1/k)*(energy-e_thrs)))
                 # weight_loss = energy_weight * (loss_dx_dy + loss_distance + loss_distance_dx_dy + loss_angular_diff)
                 weight_loss = energy_weight * (loss_dx_dy + loss_distance + loss_distance_dx_dy)
 
-                loss_distance=loss_distance.mean()
-                loss_dx_dy = loss_dx_dy.mean()
-                loss_distance_dx_dy = loss_distance_dx_dy.mean()
+                # loss_distance=loss_distance.mean()
+                # loss_dx_dy = loss_dx_dy.mean()
+                # loss_distance_dx_dy = loss_distance_dx_dy.mean()
+
                 loss_angular_diff = loss_angular_diff.mean()
 
-                step_loss = step_loss + weight_loss.mean()
-
+                # step_loss = step_loss + weight_loss.mean()
+                step_loss = step_loss + loss_dx_dy + loss_distance + loss_distance_dx_dy
             loss = loss + step_loss
 
         return loss, loss_dx_dy, loss_distance, loss_distance_dx_dy, loss_angular_diff, angular_diff
     # ----------------------------------------------------------------------------------------------------------
+    def compute_sky_direction_loss_diffusion(self, x, y, labels_energy_value):
+
+        loss = 0
+        y = y.squeeze(-1)
+        y_embed = self.model.target_embedder(y)
+
+        for t in range(self.model.T):
+            # Add noise to target (landmarks)
+            alpha_bar_t = self.model.alpha_bar[t]
+            noise = torch.randn_like(y_embed)
+            z_t = torch.sqrt(alpha_bar_t) * y_embed + torch.sqrt(1 - alpha_bar_t) * noise
+
+            # Denoise step
+            z, _ = self.model.blocks[t](x, z_t, None)  # W_embed not needed
+            
+            preds = self.model.regress(z)
+            # Loss to clean target
+            loss_l2 = F.mse_loss(preds, y)
+
+            # Weighted by SNR difference
+            step_loss = 2.5 * self.model.eta * self.model.snr_diff[t] * loss_l2
+
+            # Final step: use regression head
+            if t == self.model.T - 1:
+
+
+                labels_dx_dy = y[:, 0:2]
+                label_distance = y[:, 2]
+                direction_pred = self.model.regress(z)
+
+                # if len(direction_pred)>1 and type(direction_pred)!=torch.Tensor:
+                #     direction_pred = list(direction_pred)
+                #     pred_az_atl = direction_pred[0][:,0:2]
+                #     pred_separation = direction_pred[0][:,2]
+                #     # direction_pred[0]= direction_pred[0][:,0:2]
+                # else:
+
+                #     pred_az_atl = direction_pred[:, 0:2]
+                #     pred_separation = direction_pred[:, 2]
+                
+                # labels_az_alt = labels_direction[:, 0:2]
+                # label_separation = labels_direction[:, 2]
+                # loss_separation = self.criterion_direction(pred_separation, label_separation)
+
+                # # loss_vector = self.criterion_vector(pred_dir_cartesian, labels_direction_cartesian)
+                # # vect_magnitud = torch.sqrt(torch.sum(pred_dir_cartesian**2, dim=1))
+                # # loss_magnitud = torch.abs(1.0-vect_magnitud).sum()
+
+                # # alt_az = utils_torch.cartesian_to_alt_az(direction[:,0:3])
+                # if len(direction_pred)>1 and type(direction_pred)!=torch.Tensor:
+                #     loss_alt_az = self.criterion_alt_az(direction_pred, labels_direction)
+                # else: 
+                #     loss_alt_az = self.criterion_alt_az_l1(pred_az_atl, labels_az_alt)
+
+                # if len(direction_pred)>1 and type(direction_pred)!=torch.Tensor:
+                
+                #     loss_angular_error, _ = AngularDistance(
+                #         (direction_pred[0][:, 1]),
+                #         labels_az_alt[:, 1],
+                #         (direction_pred[0][:, 0]),
+                #         labels_az_alt[:, 0],
+                #         reduction="sum",
+                #     )
+
+                # else:
+
+                #     loss_angular_error, _ = AngularDistance(
+                #         (direction_pred[:, 1]),
+                #         labels_az_alt[:, 1],
+                #         (direction_pred[:, 0]),
+                #         labels_az_alt[:, 0],
+                #         reduction="sum",
+                #     )
+
+                # if training == False:
+                #     if len(direction_pred)>1 and type(direction_pred)!=torch.Tensor:
+                #         _, angular_diff = AngularDistance(
+                #             (direction_pred[0][:, 1]),
+                #             labels_az_alt[:, 0],
+                #             (direction_pred[0][:, 0]),
+                #             labels_az_alt[:, 1],
+                #             reduction=None,
+                #         )
+                #     else: 
+                #         _, angular_diff = AngularDistance(
+                #             (direction_pred[:, 1]),
+                #             labels_az_alt[:, 0],
+                #             (direction_pred[:, 0]),
+                #             labels_az_alt[:, 1],
+                #             reduction=None,
+                #         )
+                # else:
+                #     angular_diff = None
+
+                # loss = loss_alt_az + 0.001*(loss_separation + loss_angular_error)
+
+        #     loss = loss + step_loss
+
+        # return loss, loss_dx_dy, loss_distance, loss_distance_dx_dy, loss_angular_diff, angular_diff
+    # ----------------------------------------------------------------------------------------------------------    
     def compute_type_loss_diffusion(self, x,y, training=False):
 
         loss = 0
@@ -637,11 +738,17 @@ class CTLearnPL(pl.LightningModule):
             if self.task == Task.cameradirection:
 
                 if self.is_difussion:
-                    loss, loss_dx_dy, loss_distance, loss_distance_dx_dy, loss_angular_diff, angular_diff = self.compute_direction_loss_diffusion(imgs, labels_direction,labels_energy_value)
+                    if self.num_inputs == 2:
+                        peak_time = features["peak_time"]
+                        peak_time = peak_time.to(self.device)
+                        loss, loss_dx_dy, loss_distance, loss_distance_dx_dy, loss_angular_diff, angular_diff = self.compute_camera_direction_loss_diffusion(imgs, labels_direction,labels_energy_value, peak_time)
+                    else:
+
+                        loss, loss_dx_dy, loss_distance, loss_distance_dx_dy, loss_angular_diff, angular_diff = self.compute_camera_direction_loss_diffusion(imgs, labels_direction,labels_energy_value)
                 else:
                     if len(direction_pred)==2:
                         direction_pred = direction_pred[0]
-                    loss, loss_dx_dy, loss_distance, loss_distance_dx_dy, loss_angular_diff, angular_diff = self.compute_direction_loss( direction_pred, labels_direction, training=True)
+                    loss, loss_dx_dy, loss_distance, loss_distance_dx_dy, loss_angular_diff, angular_diff = self.compute_camera_direction_loss( direction_pred, labels_direction, training=True)
 
                 self.loss_train_distance += loss_distance.item() 
                 self.loss_train_dx_dy += loss_dx_dy.item()
@@ -902,7 +1009,7 @@ class CTLearnPL(pl.LightningModule):
                 if len(direction_pred)==2:
                     direction_pred = direction_pred[0]
 
-                loss, loss_dx_dy, loss_distance, loss_distance_dx_dy, loss_angular_diff, angular_error= self.compute_direction_loss( direction_pred, labels_direction, training=False)
+                loss, loss_dx_dy, loss_distance, loss_distance_dx_dy, loss_angular_diff, angular_error= self.compute_camera_direction_loss( direction_pred, labels_direction, training=False)
 
                 # ------------------------------------------------------------------------
                 # Convert the offset to altitud and azimuth
