@@ -411,6 +411,66 @@ class CTLearnPL(pl.LightningModule):
 
         return loss, energy_diff
     # ----------------------------------------------------------------------------------------------------------
+    def compute_energy_loss_diffusion(self, x_1, y,training=False, x_2 = None
+        # self, energy_pred, labels_energy, test_val=False, training=False
+    ):
+        
+        loss = 0
+        # y = y.squeeze(-1)
+        y_embed = self.model.target_embedder(y)
+
+        for t in range(self.model.T):
+            # Add noise to target (landmarks)
+            alpha_bar_t = self.model.alpha_bar[t]
+            noise = torch.randn_like(y_embed)
+            z_t = torch.sqrt(alpha_bar_t) * y_embed + torch.sqrt(1 - alpha_bar_t) * noise
+
+            if x_2 is None:
+                # Denoise step
+                z, _ = self.model.blocks[t](x_1, z_t, None)  # W_embed not needed
+            else:
+                z, _ = self.model.blocks[t](x_1,x_2, z_t, None)  # W_embed not needed
+
+            preds = self.model.regress(z)
+            # Loss to clean target
+            loss_l2 = F.mse_loss(preds, y)
+
+            # Weighted by SNR difference
+            step_loss = 2.5 * self.model.eta * self.model.snr_diff[t] * loss_l2
+
+            # Final step: use regression head
+            if t == self.model.T - 1:
+                # labels_dx_dy = y[:, 0:2]
+                # label_distance = y[:, 2]
+                # direction_pred = self.model.regress(z)
+                # if isinstance(direction_pred, tuple):
+                #     # Not Tested 
+                #     direction_pred = list(direction_pred)
+
+                #     pred_dx_dy = direction_pred[0][:,0:2].unsqueeze(-1)
+                #     pred_distance = direction_pred[0][:,2].unsqueeze(-1)
+                # else:
+                #     pred_dx_dy = direction_pred[:,0:2] 
+                #     pred_distance = direction_pred[:,2] 
+                labels_energy = y
+                energy_pred = self.model.regress(z)
+                loss_energy = self.criterion_energy_value(energy_pred, labels_energy)
+                 
+
+                if training == False:
+                    energy_pred = pow(10, energy_pred)
+                    labels_energy = pow(10, labels_energy)
+                    energy_diff = torch.abs(energy_pred - labels_energy)
+                    energy_diff = energy_diff.float().cpu().detach().numpy()
+                else:
+                    energy_diff = None
+
+                step_loss = step_loss + loss_energy
+                # step_loss = step_loss + loss_dx_dy + loss_distance + loss_distance_dx_dy
+            loss = loss + step_loss
+
+        return loss, energy_diff
+    # ----------------------------------------------------------------------------------------------------------
     def compute_camera_direction_loss_diffusion(self, x_1, y, labels_energy_value, x_2 = None):
 
         loss = 0
@@ -463,12 +523,12 @@ class CTLearnPL(pl.LightningModule):
                 )
 
                 vector_cam_distance = torch.sqrt(pred_dx_dy[:,0]**2 + pred_dx_dy[:,1]**2)
-                loss_dx_dy = self.criterion_alt_az_l1(pred_dx_dy, labels_dx_dy)
-                loss_distance = self.criterion_magnitud(label_distance, pred_distance)
-                loss_distance_dx_dy = self.criterion_magnitud(label_distance, vector_cam_distance)
-                # loss_dx_dy = self.criterion_alt_az_l1_none(pred_dx_dy, labels_dx_dy).mean(dim=1)
-                # loss_distance = self.criterion_magnitud_none(label_distance, pred_distance)
-                # loss_distance_dx_dy = self.criterion_magnitud_none(label_distance, vector_cam_distance)
+                # loss_dx_dy = self.criterion_alt_az_l1(pred_dx_dy, labels_dx_dy)
+                # loss_distance = self.criterion_magnitud(label_distance, pred_distance)
+                # loss_distance_dx_dy = self.criterion_magnitud(label_distance, vector_cam_distance)
+                loss_dx_dy = self.criterion_alt_az_l1_none(pred_dx_dy, labels_dx_dy).mean(dim=1)
+                loss_distance = self.criterion_magnitud_none(label_distance, pred_distance)
+                loss_distance_dx_dy = self.criterion_magnitud_none(label_distance, vector_cam_distance)
 
                 energy = torch.pow(10,labels_energy_value)
                 # k=4.3
@@ -483,14 +543,14 @@ class CTLearnPL(pl.LightningModule):
                 # weight_loss = energy_weight * (loss_dx_dy + loss_distance + loss_distance_dx_dy + loss_angular_diff)
                 weight_loss = energy_weight * (loss_dx_dy + loss_distance + loss_distance_dx_dy)
 
-                # loss_distance=loss_distance.mean()
-                # loss_dx_dy = loss_dx_dy.mean()
-                # loss_distance_dx_dy = loss_distance_dx_dy.mean()
+                loss_distance=loss_distance.mean()
+                loss_dx_dy = loss_dx_dy.mean()
+                loss_distance_dx_dy = loss_distance_dx_dy.mean()
 
                 loss_angular_diff = loss_angular_diff.mean()
 
-                # step_loss = step_loss + weight_loss.mean()
-                step_loss = step_loss + loss_dx_dy + loss_distance + loss_distance_dx_dy
+                step_loss = step_loss + weight_loss.mean()
+                # step_loss = step_loss + loss_dx_dy + loss_distance + loss_distance_dx_dy
             loss = loss + step_loss
 
         return loss, loss_dx_dy, loss_distance, loss_distance_dx_dy, loss_angular_diff, angular_diff
@@ -762,9 +822,19 @@ class CTLearnPL(pl.LightningModule):
             # Energy
             # ---------------------------------------
             if self.task == Task.energy:
-                loss, *_ = self.compute_energy_loss(
-                    energy_pred, labels_energy_value, training=True
-                )
+
+                if self.is_difussion:
+                    if self.num_inputs == 1:
+                        loss, *_ = self.compute_energy_loss_diffusion(imgs,labels_energy_value,training=True,x_2=None)
+                    else:
+                        peak_time = features["peak_time"]
+                        loss, *_ = self.compute_energy_loss_diffusion(imgs,labels_energy_value,training=True,x_2=peak_time)
+                    
+                else:
+
+                    loss, *_ = self.compute_energy_loss(
+                        energy_pred, labels_energy_value, test_val=False, training=False
+                    )
             # ---------------------------------------
 
             # L2 Regularization
@@ -1046,6 +1116,17 @@ class CTLearnPL(pl.LightningModule):
 
                 if dataloader_idx == 0:
 
+                    # if self.is_difussion:
+                    #     if self.num_inputs == 1:
+                    #         loss, energy_diff = self.compute_energy_loss_diffusion(imgs,labels_energy_value,training=False,x_2=None)
+                    #     else:
+                    #         peak_time = features["peak_time"]
+                    #         loss, energy_diff = self.compute_energy_loss_diffusion(imgs,labels_energy_value,training=False,x_2=peak_time)
+                        
+                    # else:
+                    if len(energy_pred)==2:
+                        energy_pred = energy_pred[0]
+
                     loss, energy_diff = self.compute_energy_loss(
                         energy_pred, labels_energy_value, test_val=False, training=False
                     )
@@ -1250,7 +1331,7 @@ class CTLearnPL(pl.LightningModule):
             fig_energy_error.savefig(
                 os.path.join(
                     self.logger.log_dir,
-                    "error_resulution_validation_"
+                    "error_resolution_validation_"
                     + str(self.current_epoch)
                     + "_"
                     + str(global_loss_val)
