@@ -11,6 +11,7 @@ from ctapipe.core.traits import (
     Unicode,
 )
 
+
 from ctlearn.tools.train.pytorch.CTLearnPL import CTLearnTrainer, CTLearnPL
 try:
     import torch
@@ -179,8 +180,8 @@ class TrainPyTorchModel(TrainCTLearnModel):
         # Reduce for testing 
         # --------------------------------------------------------------------
         # Limit the number of examples (optional)
-        # max_training_samples = 500  # or whatever number you want
-        # max_validation_samples = 200  # or whatever number you want
+        # max_training_samples = 5000  # or whatever number you want
+        # max_validation_samples = 1200  # or whatever number you want
 
         # training_indices = training_indices[:max_training_samples]
         # validation_indices = validation_indices[:max_validation_samples]
@@ -245,6 +246,8 @@ class TrainPyTorchModel(TrainCTLearnModel):
                     f"task:{task.name} is not supported. Task must be type, direction or energy"
                 )
 
+            # if hasattr(model_net, 'T'):
+            #     self.training_loader.set_T(model_net.T)
             # ------------------------------------------------------------------------------
             # Load Checkpoints
             # ------------------------------------------------------------------------------
@@ -306,18 +309,19 @@ class TrainPyTorchModel(TrainCTLearnModel):
                 train_loader= self.training_loader,
                 val_loader= self.validation_loader,
             )
-
-            # Save configuration file.
-            if not os.path.exists(trainer_pl.get_log_dir()):
-                os.makedirs(trainer_pl.get_log_dir())
             
-            with open(os.path.join(trainer_pl.get_log_dir(),"parameters.json"), "w") as f:
-                json.dump(self.parameters, f, indent=4)
-    
-            print(f"Run tensorboard server: tensorboard --load_fast=false --host=0.0.0.0 --logdir={trainer_pl.get_log_dir()}/")
+            if trainer_pl.is_global_zero:
+                # Save configuration file.
+                if not os.path.exists(trainer_pl.get_log_dir()):
+                    os.makedirs(trainer_pl.get_log_dir())
+                
+                with open(os.path.join(trainer_pl.get_log_dir(),"parameters.json"), "w") as f:
+                    json.dump(self.parameters, f, indent=4)
+        
+                print(f"Run tensorboard server: tensorboard --load_fast=false --host=0.0.0.0 --logdir={trainer_pl.get_log_dir()}/")
 
-            print(f"Accelerator: {trainer_pl.accelerator}")   
-            print(f"Num. Devices: {trainer_pl.num_devices}")  
+                print(f"Accelerator: {trainer_pl.accelerator}")   
+                print(f"Num. Devices: {trainer_pl.num_devices}")  
                  
             trainer_pl.fit(
                 model=lightning_model,
