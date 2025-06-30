@@ -210,7 +210,8 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
             batch = self.DLDataReader.generate_stereo_batch(batch_indices)
             features, labels = self._get_stereo_item(batch)
         return features, labels
-
+    
+    # Fetching batches
     def __getitem__(self, index):
    
         data_idx = index
@@ -267,88 +268,134 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
 
     #     return features, labels, t
 
-    def cam_to_alt_az(
-        self, tel_id, focal_length, pix_rotation, tel_az, tel_alt, cam_x, cam_y
-    ):
-        """
-        Transform camera coordinate offsets (cam_x, cam_y) into Alt/Az sky coordinates.
+    # def cam_to_alt_az(
+    #     self, tel_id, focal_length, pix_rotation, tel_az, tel_alt, cam_x, cam_y
+    # ):
+    #     """
+    #     Transform camera coordinate offsets (cam_x, cam_y) into Alt/Az sky coordinates.
 
-        This method converts the given camera coordinates for each telescope into sky coordinates
-        (Altitude and Azimuth), using the known pointing of each telescope and camera geometry
-        such as focal length and pixel rotation.
+    #     This method converts the given camera coordinates for each telescope into sky coordinates
+    #     (Altitude and Azimuth), using the known pointing of each telescope and camera geometry
+    #     such as focal length and pixel rotation.
 
-        Parameters
-        ----------
-        tel_id : list or array-like
-            List of telescope IDs corresponding to each event or observation.
+    #     Parameters
+    #     ----------
+    #     tel_id : list or array-like
+    #         List of telescope IDs corresponding to each event or observation.
 
-        focal_length : list or array-like
-            Focal length of the telescopes in meters.
+    #     focal_length : list or array-like
+    #         Focal length of the telescopes in meters.
 
-        pix_rotation : list or array-like
-            Pixel rotation angles (in degrees) for each telescope camera.
+    #     pix_rotation : list or array-like
+    #         Pixel rotation angles (in degrees) for each telescope camera.
 
-        tel_az : list or array-like
-            Azimuth of telescope pointing (in radians).
+    #     tel_az : list or array-like
+    #         Azimuth of telescope pointing (in radians).
 
-        tel_alt : list or array-like
-            Altitude of telescope pointing (in radians).
+    #     tel_alt : list or array-like
+    #         Altitude of telescope pointing (in radians).
 
-        cam_x : list or array-like
-            Camera x-coordinate positions (in meters).
+    #     cam_x : list or array-like
+    #         Camera x-coordinate positions (in meters).
 
-        cam_y : list or array-like
-            Camera y-coordinate positions (in meters).
+    #     cam_y : list or array-like
+    #         Camera y-coordinate positions (in meters).
 
-        Returns
-        -------
-        sky_coords_alt : list
-            List of reconstructed Altitude coordinates (in degrees).
+    #     Returns
+    #     -------
+    #     sky_coords_alt : list
+    #         List of reconstructed Altitude coordinates (in degrees).
 
-        sky_coords_az : list
-            List of reconstructed Azimuth coordinates (in degrees).
-        """
+    #     sky_coords_az : list
+    #         List of reconstructed Azimuth coordinates (in degrees).
+    #     """
+    #     from astropy.time import Time
+
+    #     LST_EPOCH = Time("2018-10-01T00:00:00", scale="utc")
+    #     from astropy.coordinates import AltAz, SkyCoord
+    #     from ctapipe.coordinates import CameraFrame
+    #     from astropy import units as u
+
+    #     # # Get telescope ground frame position
+    #     tel_ground_frame = self.DLDataReader.subarray.tel_coords[
+    #         self.DLDataReader.subarray.tel_ids_to_indices(tel_id)
+    #     ]
+
+    #     # AltAz frame setup
+    #     altaz = AltAz(
+    #         location=tel_ground_frame.to_earth_location(),
+    #         obstime=LST_EPOCH,
+    #     )
+
+    #     # Telescope pointing SkyCoord
+    #     fix_tel_pointing = SkyCoord(
+    #         az=tel_az * u.rad,
+    #         alt=tel_alt * u.rad,
+    #         frame=altaz,
+    #     )
+
+    #     sky_coords_alt = []
+    #     sky_coords_az = []
+
+    #     for id in range(len(focal_length)):
+
+    #         camera_frame = CameraFrame(
+    #             focal_length=focal_length[id] * u.m,
+    #             rotation=pix_rotation[id] * u.deg,
+    #             telescope_pointing=fix_tel_pointing[id],
+    #         )
+
+    #         cam_coord = SkyCoord(
+    #             x=cam_x[id] * u.m, y=cam_y[id] * u.m, frame=camera_frame
+    #         )
+
+    #         sky_coord = cam_coord.transform_to(altaz[id])
+
+    #         sky_coords_alt.append(sky_coord.alt.to_value(u.deg).item())
+    #         sky_coords_az.append(sky_coord.az.to_value(u.deg).item())
+
+    #     return sky_coords_alt, sky_coords_az
+    def cam_to_alt_az(self, tel_id, focal_length, pix_rotation, tel_az, tel_alt, cam_x, cam_y):
+
         from astropy.time import Time
-
-        LST_EPOCH = Time("2018-10-01T00:00:00", scale="utc")
         from astropy.coordinates import AltAz, SkyCoord
         from ctapipe.coordinates import CameraFrame
         from astropy import units as u
 
-        # # Get telescope ground frame position
-        tel_ground_frame = self.DLDataReader.subarray.tel_coords[
-            self.DLDataReader.subarray.tel_ids_to_indices(tel_id)
-        ]
-
-        # AltAz frame setup
-        altaz = AltAz(
-            location=tel_ground_frame.to_earth_location(),
-            obstime=LST_EPOCH,
-        )
-
-        # Telescope pointing SkyCoord
-        fix_tel_pointing = SkyCoord(
-            az=tel_az * u.rad,
-            alt=tel_alt * u.rad,
-            frame=altaz,
-        )
-
+        LST_EPOCH = Time("2018-10-01T00:00:00", scale="utc")
         sky_coords_alt = []
         sky_coords_az = []
 
         for id in range(len(focal_length)):
+            # Telescopio correspondiente
+            tel_ground_frame = self.DLDataReader.subarray.tel_coords[
+                self.DLDataReader.subarray.tel_ids_to_indices(tel_id[id])
+            ]
+
+            # Frame AltAz particular para cada telescopio
+            altaz_frame = AltAz(
+                location=tel_ground_frame.to_earth_location(),
+                obstime=LST_EPOCH,
+            )
+
+            fix_tel_pointing = SkyCoord(
+                az=tel_az[id] * u.rad,
+                alt=tel_alt[id] * u.rad,
+                frame=altaz_frame,
+            )
 
             camera_frame = CameraFrame(
                 focal_length=focal_length[id] * u.m,
                 rotation=pix_rotation[id] * u.deg,
-                telescope_pointing=fix_tel_pointing[id],
+                telescope_pointing=fix_tel_pointing,
             )
 
             cam_coord = SkyCoord(
                 x=cam_x[id] * u.m, y=cam_y[id] * u.m, frame=camera_frame
             )
 
-            sky_coord = cam_coord.transform_to(altaz[id])
+            # Transformar correctamente
+            sky_coord = cam_coord.transform_to(altaz_frame)
 
             sky_coords_alt.append(sky_coord.alt.to_value(u.deg).item())
             sky_coords_az.append(sky_coord.az.to_value(u.deg).item())
@@ -447,7 +494,7 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
 
         features_out["image"] = torch.from_numpy(image).contiguous().float()
         features_out["peak_time"] = torch.from_numpy(peak_time).contiguous().float()
-        features_out["hillas"] = features["hillas"]
+        
 
         for key in labels.keys():
 
@@ -489,8 +536,8 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
             )
             # labels["tel_ground"] = tel_ground_frame
             labels["tel_ids"] = tel_ids
-            labels["true_alt"] = [val for val in batch["true_alt"]]
-            labels["true_az"] = [val for val in batch["true_az"]]
+            labels["true_alt"] = np.array([val for val in batch["true_alt"]])
+            labels["true_az"] = np.array([val for val in batch["true_az"]])
             labels["tel_az"] = batch["telescope_pointing_azimuth"].data
             labels["tel_alt"] = batch["telescope_pointing_altitude"].data
 
@@ -499,6 +546,25 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
 
             # sky_coords_alt, sky_coords_az = self.cam_to_alt_az(labels["tel_ids"], labels["focal_length"], labels["pix_rotation"],labels["tel_az"],labels["tel_alt"], cam_x, cam_y)
 
+        # Generate keep_idx as before
+        hillas = features["hillas"]
+        leakage = np.array(hillas["leakage_intensity_width_2"])
+        intensity = np.array(hillas["hillas_intensity"])
+        keep_idx = np.where((leakage <= 0.2) & (intensity >= 50))[0]
+
+        # Filter features_out
+        for key in features_out:
+            features_out[key] = features_out[key][keep_idx]
+
+        features_out["hillas"] = features["hillas"]
+
+        for key in features["hillas"]:
+            features_out["hillas"][key] = (features["hillas"][key])[keep_idx]
+            
+        # Filter labels (since it's a dict too)
+        for key in labels:
+            labels[key] = labels[key][keep_idx]
+                
         return features_out, labels
 
     # TODO: Not adapted to pytorch

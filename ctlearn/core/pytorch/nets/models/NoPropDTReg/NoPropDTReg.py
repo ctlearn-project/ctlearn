@@ -53,7 +53,7 @@ class SimplifiedDenoiseBlock(nn.Module):
         return z_next, logits
     
 class NoPropDTReg(nn.Module):
-    def __init__(self, task, num_outputs, embedding_dim=128, T=3, eta=0.1):
+    def __init__(self, task, num_outputs, embedding_dim=128, T=3, eta=0.1,num_blocks=[2, 3, 3, 3]):
         super().__init__()
 
         self.task = task
@@ -63,11 +63,11 @@ class NoPropDTReg(nn.Module):
         self.T = T
         self.eta = eta
 
-        self.blocks = nn.ModuleList([DenoiseBlock(embedding_dim,num_channels=1) for _ in range(T)])
-        # self.regressor = nn.Linear(embedding_dim, num_outputs)
+        self.blocks = nn.ModuleList([DenoiseBlock(embedding_dim,num_channels=1,num_blocks=num_blocks) for _ in range(T)])
+
         self.regressor = nn.Sequential(
             nn.Linear(embedding_dim, embedding_dim//2),
-            MemoryEfficientSwish(),
+            # MemoryEfficientSwish(),
             nn.Linear(embedding_dim//2, num_outputs)
 )
         
