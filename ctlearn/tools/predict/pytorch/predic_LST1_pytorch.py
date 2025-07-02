@@ -15,7 +15,23 @@ from dl1_data_handler.reader import (
 )
 import numpy as np
 from tqdm import tqdm
- 
+
+from pytorch_lightning.callbacks import Callback
+
+from ctlearn.tools.train.pytorch.CTLearnPL import CTLearnTrainer
+
+class GPUStatsLogger(Callback):
+    def on_train_epoch_end(self, trainer, pl_module):
+        mem_allocated = torch.cuda.memory_allocated()
+        mem_reserved = torch.cuda.memory_reserved()
+        
+        trainer.logger.experiment.add_scalar(
+            "gpu_mem_allocated", mem_allocated, global_step=trainer.current_epoch
+        )
+        trainer.logger.experiment.add_scalar(
+            "gpu_mem_reserved", mem_reserved, global_step=trainer.current_epoch
+        )
+        
 def predictions(self):
     event_id, tel_azimuth, tel_altitude, trigger_time = [], [], [], []
     prediction, energy, cam_coord_offset_x, cam_coord_offset_y = [], [], [], []
@@ -163,15 +179,31 @@ def load_pytorch_model(self):
         
         if task == Task.type:
             self.type_model = model
-            
+            precision = self.parameters["arch"]["precision_type"]
         elif task == Task.energy:
             self.energy_model = model
-            
+            precision = self.parameters["arch"]["precision_energy"]
         elif task == Task.cameradirection or task == Task.skydirection or task == Task.direction:
             self.dirrection_model = model
-            
+            precision = self.parameters["arch"]["precision_direction"]
+
         else:
             raise ValueError(
                 f"task:{task.name} is not supported. Task must be type, direction or energy"
             )
-    return None
+            
+        trainer_pl = CTLearnTrainer(
+            max_epochs=self.parameters["hyp"]["epochs"],
+            accelerator=self.parameters["arch"]["device"],
+            devices=self.parameters["arch"]["devices"],
+            strategy= self.parameters["arch"]["strategy"],
+            default_root_dir=self.output_path,
+            log_every_n_steps=1,
+            logger=None,
+            num_sanity_val_steps=0,
+            precision=precision,
+            gradient_clip_val=self.parameters["hyp"]["gradient_clip_val"],
+            callbacks=[GPUStatsLogger()],
+            sync_batchnorm=True,
+        )
+    return model, trainer_pl

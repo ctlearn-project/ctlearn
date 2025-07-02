@@ -9,6 +9,7 @@ import os
 import tensorflow as tf
 import keras
 import threading
+from ctlearn.core.ctlearn_enum import Task
 
 from astropy import units as u
 from astropy.coordinates.earth import EarthLocation
@@ -19,6 +20,11 @@ from astropy.table import (
     vstack,
     join,
     setdiff,
+)
+from ctlearn.tools.train.pytorch.utils import (
+    sanity_check,
+    read_configuration,
+    expected_structure,
 )
 
 from ctapipe.containers import (
@@ -286,7 +292,12 @@ class PredictCTLearnModel(Tool):
         allow_none=False,
         help="Overwrite the table in the output file if it exists",
     ).tag(config=True)
-
+    
+    pytorch_config_file = Path(
+        default_value="./ctlearn/tools/train/pytorch/config/training_config_iaa_neutron_training.yml",
+        help="Pytorch config file",
+    ).tag(config=True)
+    
     keras_verbose = Int(
         default_value=1,
         min=0,
@@ -383,6 +394,28 @@ class PredictCTLearnModel(Tool):
     classes = classes_with_traits(DLDataReader)
 
     def setup(self):
+        if self.framework_type == "pytorch":
+            import torch
+            self.log.info(f"Using {self.pytorch_config_file} config file for pytorch framework")
+            self.parameters = read_configuration(self.pytorch_config_file)
+            sanity_check(self.parameters, expected_structure)
+            self.device_str = self.parameters["arch"]["device"]
+            self.device = torch.device(self.device_str)
+            self.tasks = []
+            self.type_mu = self.parameters["normalization"]["type_mu"]
+            self.type_sigma = self.parameters["normalization"]["type_sigma"]
+            self.dir_mu = self.parameters["normalization"]["dir_mu"]
+            self.dir_sigma = self.parameters["normalization"]["dir_sigma"]
+            self.energy_mu = self.parameters["normalization"]["energy_mu"]
+            self.energy_sigma = self.parameters["normalization"]["energy_sigma"]
+            
+            if self.load_type_model_from is not None:
+                self.tasks.append(Task.type)
+            if self.load_energy_model_from is not None:
+                self.tasks.append(Task.energy)
+            if self.load_cameradirection_model_from is not None:
+                self.tasks.append(Task.direction)
+
         # Check if the ctapipe HDF5Merger component is enabled
         if self.use_HDF5Merger:
             if os.path.exists(self.output_path):
@@ -437,7 +470,7 @@ class PredictCTLearnModel(Tool):
     def finish(self):
         self.log.info("Tool is shutting down")
 
-    def _predict_with_model(self, model_path):
+    def _predict_with_model(self, model_path, task):
         """
         Load and predict with a CTLearn model.
 
@@ -456,11 +489,18 @@ class PredictCTLearnModel(Tool):
         feature_vectors : np.ndarray
             Feature vectors extracted from the backbone model.
         """
+        predict_data = None
+        feature_vectors = None
+        
         if self.framework_type == "keras":
              from ctlearn.tools.predict.keras.predic_model_keras import predict_with_model
              predict_data, feature_vectors = predict_with_model(self,model_path)
-
              return predict_data, feature_vectors
+         
+        if self.framework_type == "pytorch":
+            from ctlearn.tools.predict.pytorch.predic_model_pytorch import predict_with_model_pytorch
+            predict_data, feature_vectors = predict_with_model_pytorch(self, task)
+            return predict_data, feature_vectors
         return predict_data, feature_vectors
 
     def _predict_classification(self, example_identifiers):
@@ -484,7 +524,7 @@ class PredictCTLearnModel(Tool):
         )
         # Predict the data using the loaded type_model
         predict_data, feature_vectors = self._predict_with_model(
-            self.load_type_model_from
+            self.load_type_model_from, Task.type
         )
         # Create prediction table and add the predicted classification score ('gammaness')
         classification_table = example_identifiers.copy()
@@ -512,7 +552,7 @@ class PredictCTLearnModel(Tool):
         self.log.info("Predicting for the regression of the primary particle energy...")
         # Predict the data using the loaded energy_model
         predict_data, feature_vectors = self._predict_with_model(
-            self.load_energy_model_from
+            self.load_energy_model_from, Task.energy
         )
         # Convert the reconstructed energy from log10(TeV) to TeV
         reco_energy = u.Quantity(
@@ -550,7 +590,7 @@ class PredictCTLearnModel(Tool):
         )
         # Predict the data using the loaded direction_model
         predict_data, feature_vectors = self._predict_with_model(
-            self.load_cameradirection_model_from
+            self.load_cameradirection_model_from, Task.direction
         )
         # For the direction task, the prediction is the camera coordinate offset in x and y
         # from the telescope pointing.

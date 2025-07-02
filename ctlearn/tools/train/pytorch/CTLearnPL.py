@@ -89,7 +89,7 @@ class CTLearnTrainer(pl.Trainer):
             # Call your custom logic here
             results = model.generate_results(
                 input_data_loader=dataloaders,
-                h5_file_name=h5_file_name,
+                h5_file_name=None,
                 task=task,
                 mode=mode,
             )
