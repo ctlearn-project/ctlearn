@@ -25,6 +25,10 @@ def plot_energy_resolution_error(val_energy_pred_list,val_energy_label_list,val_
 
     fig, ax = plt.subplots()
     ctaplot.plot_energy_resolution(true_energy, reco_energy, label="Energy resolution", ax=ax)
+    # Skip warning 
+    ax.get_xaxis().set_units(None)
+    ax.get_yaxis().set_units(None)
+
     ctaplot.plot_energy_resolution_cta_requirement('north', ax=ax, color='black')
     ax.legend()
     ax.set_ylim(bottom=0, top=1.5) 
