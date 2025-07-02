@@ -32,6 +32,23 @@ class GPUStatsLogger(Callback):
             "gpu_mem_reserved", mem_reserved, global_step=trainer.current_epoch
         )
         
+
+from pytorch_lightning.callbacks import Callback
+
+from ctlearn.tools.train.pytorch.CTLearnPL import CTLearnTrainer
+
+class GPUStatsLogger(Callback):
+    def on_train_epoch_end(self, trainer, pl_module):
+        mem_allocated = torch.cuda.memory_allocated()
+        mem_reserved = torch.cuda.memory_reserved()
+        
+        trainer.logger.experiment.add_scalar(
+            "gpu_mem_allocated", mem_allocated, global_step=trainer.current_epoch
+        )
+        trainer.logger.experiment.add_scalar(
+            "gpu_mem_reserved", mem_reserved, global_step=trainer.current_epoch
+        )
+        
 def predictions(self):
     event_id, tel_azimuth, tel_altitude, trigger_time = [], [], [], []
     prediction, energy, cam_coord_offset_x, cam_coord_offset_y = [], [], [], []
