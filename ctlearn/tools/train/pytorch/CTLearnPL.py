@@ -104,6 +104,34 @@ class CTLearnTrainer(pl.Trainer):
 
 class CTLearnPL(pl.LightningModule):
 
+    # def setup(self,stage):
+
+    #     # self.dummy = None 
+        
+    #     self.dummy = self.occupy_free_gpu_memory(self.device)
+
+    def occupy_free_gpu_memory(self,device):
+        # Get free and total GPU memory using CUDA APIs
+        free_mem, total_mem = torch.cuda.mem_get_info(device)
+        
+        # Leave a margin (e.g., 100 MB)
+        margin = 2000 * 1024 * 1024  # 1000 MB
+        mem_to_allocate = max(0, free_mem - margin)
+        
+        if mem_to_allocate > 0:
+            try:
+                # Each float32 element takes 4 bytes
+                num_elements = mem_to_allocate // 4
+                dummy_tensor = torch.zeros(num_elements, dtype=torch.float32, device=device)
+                print(f"Occupied {mem_to_allocate/1024**2:.2f} MB of GPU memory on {device}")
+                return dummy_tensor
+            except RuntimeError as e:
+                print(f"Could not allocate memory: {e}")
+                return None
+        else:
+            print("Not enough free GPU memory to occupy.")
+            return None
+
     def __init__(
         self,
         model,
@@ -133,6 +161,12 @@ class CTLearnPL(pl.LightningModule):
 
         self.model.to(self.device)
 
+
+ 
+        # # Ejecutar la función
+        # self.dummy = None 
+        
+        # self.occupy_free_gpu_memory(self.device)
         self.k = k  # Number of top results to save
         # Get the number of inputs of the net
         sig = inspect.signature(model.forward)
@@ -173,6 +207,7 @@ class CTLearnPL(pl.LightningModule):
         self.criterion_direction_none = torch.nn.SmoothL1Loss(reduction="none")  # nn.MSELoss()
         self.criterion_magnitud_none = torch.nn.L1Loss(reduction="none") 
         self.criterion_alt_az_l1_none = torch.nn.L1Loss(reduction="none")
+        self.criterion_energy_value_none = torch.nn.L1Loss(reduction="none")
 
         self.criterion_direction = torch.nn.L1Loss(reduction="mean")  # nn.MSELoss()
         self.criterion_vector = VectorLoss(alpha=0.1, reduction="mean")
@@ -440,23 +475,30 @@ class CTLearnPL(pl.LightningModule):
 
             # Final step: use regression head
             if t == self.model.T - 1:
-                # labels_dx_dy = y[:, 0:2]
-                # label_distance = y[:, 2]
-                # direction_pred = self.model.regress(z)
-                # if isinstance(direction_pred, tuple):
-                #     # Not Tested 
-                #     direction_pred = list(direction_pred)
 
-                #     pred_dx_dy = direction_pred[0][:,0:2].unsqueeze(-1)
-                #     pred_distance = direction_pred[0][:,2].unsqueeze(-1)
-                # else:
-                #     pred_dx_dy = direction_pred[:,0:2] 
-                #     pred_distance = direction_pred[:,2] 
                 labels_energy = y
                 energy_pred = self.model.regress(z)
-                loss_energy = self.criterion_energy_value(energy_pred, labels_energy)
-                 
+                
+                # labels_energy_tev = torch.pow(10,labels_energy)
+                # energy_pred_tev = torch.pow(10,energy_pred)
 
+                # loss_energy = self.criterion_energy_value(energy_pred_tev, labels_energy_tev)
+
+                # loss_energy = self.criterion_energy_value(energy_pred, labels_energy)
+                # loss_energy = F.mse_loss(energy_pred, labels_energy,reduction="sum")
+                loss_energy = self.criterion_energy_value_none(energy_pred, labels_energy)
+                energy_tev = torch.pow(10,labels_energy)
+     
+                k=0.6
+                e_thrs= -0.3
+
+                energy_weight=k*torch.exp(1+(np.log10(1/k)*(energy_tev-e_thrs)))
+                weight_loss = energy_weight * (loss_energy)
+
+                loss_energy=loss_energy.mean()
+
+                step_loss = step_loss + weight_loss.sum()
+                
                 if training == False:
                     energy_pred = pow(10, energy_pred)
                     labels_energy = pow(10, labels_energy)
@@ -465,8 +507,8 @@ class CTLearnPL(pl.LightningModule):
                 else:
                     energy_diff = None
 
-                step_loss = step_loss + loss_energy
-                # step_loss = step_loss + loss_dx_dy + loss_distance + loss_distance_dx_dy
+                # step_loss = step_loss + loss_energy
+
             loss = loss + step_loss
 
         return loss, energy_diff
@@ -723,6 +765,13 @@ class CTLearnPL(pl.LightningModule):
 
         return loss, accuracy, predicted, precision       
     # ----------------------------------------------------------------------------------------------------------
+    # def on_train_start(self):
+    #      self.dummy_tensor = self.occupy_free_gpu_memory(self.device)
+    # ----------------------------------------------------------------------------------------------------------
+    def on_train_batch_start(self, batch, batch_idx):
+        if batch_idx == 5 and not hasattr(self, "dummy_tensor"):
+             self.dummy_tensor = self.occupy_free_gpu_memory(self.device)
+    # ----------------------------------------------------------------------------------------------------------
     def training_step(self, batch, batch_idx):
 
         # ------------------------------------------------------------------
@@ -856,7 +905,7 @@ class CTLearnPL(pl.LightningModule):
                 self.loss_train_sum += loss.item()
                 self.num_train_batches += 1
 
-            torch.cuda.empty_cache()
+            # torch.cuda.empty_cache()
         return loss
     # ----------------------------------------------------------------------------------------------------------
     def on_train_epoch_end(self):
@@ -997,14 +1046,17 @@ class CTLearnPL(pl.LightningModule):
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
         loss=0
         self.model.eval()
-
+        
         # ------------------------------------------------------------------
         # Read inputs (features) and labels
         # ------------------------------------------------------------------
         features, labels, t = batch
+
         if len(features) > 0:
+            
             imgs = features["image"]
 
+            batch_size = imgs.shape[0]
             if self.task == Task.type:
                 labels_class = labels["type"]
 
@@ -1062,6 +1114,7 @@ class CTLearnPL(pl.LightningModule):
                         on_epoch=False,
                         prog_bar=True,
                         logger=False,
+                        batch_size=batch_size,
                     )
                     self.log(
                         "val_prec",
@@ -1070,6 +1123,7 @@ class CTLearnPL(pl.LightningModule):
                         on_epoch=False,
                         prog_bar=True,
                         logger=False,
+                        batch_size=batch_size,
                     )                    
             # ---------------------------------------
             # Direction
@@ -1161,10 +1215,10 @@ class CTLearnPL(pl.LightningModule):
 
         loss_key = "val_loss" if dataloader_idx == 0 else "test_loss"
         if loss is not None:
-            self.log(loss_key, loss,on_step=False, on_epoch=True, prog_bar=True, logger=True, sync_dist=True)
+            self.log(loss_key, loss,on_step=False, on_epoch=True, prog_bar=True, logger=True, sync_dist=True, batch_size=batch_size)
 
         # Release cuda memory
-        torch.cuda.empty_cache()
+        # torch.cuda.empty_cache()
         return loss
     # ----------------------------------------------------------------------------------------------------------
     @torch.no_grad()
@@ -1422,6 +1476,7 @@ class CTLearnPL(pl.LightningModule):
     # ----------------------------------------------------------------------------------------------------------
     def print_energy_error(self, energy_diff_list, type_val: str):
 
+        
         error_30 = len([num for num in energy_diff_list if num < 30])
         error_20 = len([num for num in energy_diff_list if num < 20])
         error_10 = len([num for num in energy_diff_list if num < 10])
@@ -1448,6 +1503,7 @@ class CTLearnPL(pl.LightningModule):
             self.current_epoch,
         )
         # Print
+        print(f"Total: {len(energy_diff_list)}")
         print(type_val + " Energy Error < 30:", error_30)
         print(type_val + " Energy Error < 20:", error_20)
         print(type_val + " Energy Error < 10:", error_10)

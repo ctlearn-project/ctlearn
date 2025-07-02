@@ -109,7 +109,7 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
 
     def set_T(self,T):
         self.T=T 
-        # self.total_len = len(self.indices) * T
+ 
         self.indices = np.tile(self.indices, self.T)
         pp=0
     def __len__(self):
@@ -125,8 +125,7 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
             Number of batches per epoch.
         """
         return int(np.floor(len(self.indices) / self.batch_size))
-        # return int(np.floor((self.total_len/self.T) / self.batch_size)) 
-        # return int(np.floor(((self.total_len)) / self.batch_size))
+ 
     
     def on_epoch_end(self):
         """
@@ -212,61 +211,61 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         return features, labels
     
     # Fetching batches
-    def __getitem__(self, index):
-   
-        data_idx = index
-        # data_idx = index % int((self.total_len/self.T)/self.batch_size)
-        t = index // int(np.ceil(len(self.indices)/self.T/self.batch_size))
-   
-        # If this is the first call, fetch synchronously, and schedule the next
-        if self._next_batch_future is None:
-            features, labels = self._fetch_batch(data_idx)
-        else:
-            features, labels = self._next_batch_future.result()  # Wait for the prefetch to finish
-
-        # Schedule the next batch prefetch
-        if data_idx + 1 < len(self):
-            self._next_batch_future = self.executor.submit(self._fetch_batch, data_idx + 1)
-        else:
-            self._next_batch_future = None  # No more batches
-
-        return features, labels, t
-
     # def __getitem__(self, index):
-    #     """
-    #     Generate one batch of data and retrieve the features and labels.
-
-    #     This method is called to generate one batch of monoscopic and stereoscopic data based on
-    #     the index provided. It calls either _get_mono_item(batch) or _get_stereo_item(batch)
-    #     based on the mode of the DLDataReader.
-
-    #     Parameters:
-    #     -----------
-    #     index : int
-    #         Index of the batch to generate.
-
-    #     Returns:
-    #     --------
-    #     tuple
-    #         A tuple containing the input data as features and the corresponding labels.
-    #     """
-
-    #     # data_idx = index
+   
+    #     data_idx = index
     #     # data_idx = index % int((self.total_len/self.T)/self.batch_size)
     #     t = index // int(np.ceil(len(self.indices)/self.T/self.batch_size))
-    #     # Generate indices of the batch
-    #     batch_indices = self.indices[
-    #         index * self.batch_size : (index + 1) * self.batch_size
-    #     ]
-    #     features, labels = None, None
-    #     if self.DLDataReader.mode == "mono":
-    #         batch = self.DLDataReader.generate_mono_batch(batch_indices)
-    #         features, labels = self._get_mono_item(batch)
-    #     elif self.DLDataReader.mode == "stereo":
-    #         batch = self.DLDataReader.generate_stereo_batch(batch_indices)
-    #         features, labels = self._get_stereo_item(batch)
+   
+    #     # If this is the first call, fetch synchronously, and schedule the next
+    #     if self._next_batch_future is None:
+    #         features, labels = self._fetch_batch(data_idx)
+    #     else:
+    #         features, labels = self._next_batch_future.result()  # Wait for the prefetch to finish
+
+    #     # Schedule the next batch prefetch
+    #     if data_idx + 1 < len(self):
+    #         self._next_batch_future = self.executor.submit(self._fetch_batch, data_idx + 1)
+    #     else:
+    #         self._next_batch_future = None  # No more batches
 
     #     return features, labels, t
+
+    def __getitem__(self, index):
+        """
+        Generate one batch of data and retrieve the features and labels.
+
+        This method is called to generate one batch of monoscopic and stereoscopic data based on
+        the index provided. It calls either _get_mono_item(batch) or _get_stereo_item(batch)
+        based on the mode of the DLDataReader.
+
+        Parameters:
+        -----------
+        index : int
+            Index of the batch to generate.
+
+        Returns:
+        --------
+        tuple
+            A tuple containing the input data as features and the corresponding labels.
+        """
+
+        # data_idx = index
+        # data_idx = index % int((self.total_len/self.T)/self.batch_size)
+        t = index // int(np.ceil(len(self.indices)/self.T/self.batch_size))
+        # Generate indices of the batch
+        batch_indices = self.indices[
+            index * self.batch_size : (index + 1) * self.batch_size
+        ]
+        features, labels = None, None
+        if self.DLDataReader.mode == "mono":
+            batch = self.DLDataReader.generate_mono_batch(batch_indices)
+            features, labels = self._get_mono_item(batch)
+        elif self.DLDataReader.mode == "stereo":
+            batch = self.DLDataReader.generate_stereo_batch(batch_indices)
+            features, labels = self._get_stereo_item(batch)
+
+        return features, labels, t
 
     # def cam_to_alt_az(
     #     self, tel_id, focal_length, pix_rotation, tel_az, tel_alt, cam_x, cam_y
@@ -422,6 +421,7 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         # Retrieve the telescope images and store in the features dictionary
         labels = {}
         features = {"input": batch["features"].data}
+        
         if "type" in self.tasks:
             labels["type"] = np.stack(batch["true_shower_primary_class"].data)
 
@@ -495,9 +495,8 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         features_out["image"] = torch.from_numpy(image).contiguous().float()
         features_out["peak_time"] = torch.from_numpy(peak_time).contiguous().float()
         
-
+    
         for key in labels.keys():
-
             labels[key] = torch.from_numpy(labels[key]).contiguous()
 
             if key != "type":

@@ -25,7 +25,7 @@ data:
   # Check points
   type_checkpoint: ./run/run_type_training_14/exp_14_type_train/version_108/Epoch_0_type_train_acc_80.0708770751953125.pth #./run/run_type_training_14/exp_14_type_train/version_106/Epoch_3_type_train_acc_79.8272967338562012.pth #./run/run_type_training_14/exp_14_type_train/version_97/Epoch_11_type_train_acc_78.7880003452301025.pth #./run/run_type_training_14/exp_14_type_train/version_96/Epoch_0_type_train_acc_66.1041736602783203.pth #./run/run_type_training_14/exp_14_type_train/version_6/Epoch_0_type_train_acc_87.4014854431152344.pth #./run/run_type_training_14/exp_14_type_train/version_3/Epoch_11_type_train_acc_82.2395861148834229.pth #./run/run_type_training_14/exp_14_type_train/version_0/Epoch_8_type_train_acc_82.0280253887176514.pth #/storage/ctlearn_data/check_points/v_0_3/type_train_acc_81.1937808990478516.pth #./run/run_type_train_14/exp_14_type_train/version_4/Epoch_20_type_train_acc_80.5776238441467285.pth # ./run/run_type_train_14/exp_14_type_train/version_0/Epoch_27_type_train_acc_81.0595095157623291.pth #./run/run_type_train_2/exp_2_type_train/version_4/type_train_acc_81.1937808990478516.pth #./run/run_type_train_1/type_validation_accuracy_81.6743765368707670.pth #./run/run_type_train_2/exp_2_type_train/version_4/type_train_acc_81.1937808990478516.pth
   # energy_checkpoint: ./run/run_energy_train_2/exp_2_energy_train/version_0/energy_train_loss_9.7920012821687248.pth
-  energy_checkpoint: ./run/run_energy_training_14/exp_14_energy_train/version_9/Epoch_31_energy_train_loss_0.1808181692378312.pth
+  energy_checkpoint: ./run/run_energy_training_14/exp_14_energy_train/version_41/Epoch_18_energy_train_loss_4.9782595586117511.pth #./run/run_energy_training_14/exp_14_energy_train/version_26/error_resolution_validation_20_0.24182469136006124.png #./run/run_energy_training_14/exp_14_energy_train/version_13/Epoch_9_energy_train_loss_11.5885416405641433.pth
   # direction_checkpoint: ./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_64/Epoch_1_cameradirection_train_loss_0.9215379215089677.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_57/Epoch_17_cameradirection_train_loss_273.2955710102489206.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_41/Epoch_16_cameradirection_train_loss_1.7467666558954063.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_28/Epoch_16_cameradirection_train_loss_0.8549746516163398.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_23/Epoch_41_cameradirection_train_loss_0.8230013581664681.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_26/Epoch_41_cameradirection_train_loss_1.2093983759278775.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_23/Epoch_41_cameradirection_train_loss_0.8230013581664681.pth # ./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_20/Epoch_21_cameradirection_train_loss_1.2520693633078133.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_0/Epoch_5_cameradirection_train_loss_2.3584697707690330.pth #/storage/ctlearn_data/check_points/v_0_3/Epoch_42_direction_train_loss_-2739.9621516285983489.pth #./run/run_direction_train_2/exp_2_direction_train/version_1/direction_train_loss_1.0721765518581907.pth 
   direction_checkpoint: ./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_78/Epoch_16_cameradirection_train_loss_0.4441796087449597.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_69/Epoch_16_cameradirection_train_loss_0.4575265348232287.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_68/Epoch_30_cameradirection_train_loss_0.5867161673996844.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_66/Epoch_31_cameradirection_train_loss_0.5885510200288251.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_57/Epoch_17_cameradirection_train_loss_273.2955710102489206.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_41/Epoch_16_cameradirection_train_loss_1.7467666558954063.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_28/Epoch_16_cameradirection_train_loss_0.8549746516163398.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_23/Epoch_41_cameradirection_train_loss_0.8230013581664681.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_26/Epoch_41_cameradirection_train_loss_1.2093983759278775.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_23/Epoch_41_cameradirection_train_loss_0.8230013581664681.pth # ./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_20/Epoch_21_cameradirection_train_loss_1.2520693633078133.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_0/Epoch_5_cameradirection_train_loss_2.3584697707690330.pth #/storage/ctlearn_data/check_points/v_0_3/Epoch_42_direction_train_loss_-2739.9621516285983489.pth #./run/run_direction_train_2/exp_2_direction_train/version_1/direction_train_loss_1.0721765518581907.pth 
 
@@ -88,7 +88,7 @@ model:
       num_outputs: 1
       embedding_dim: 512
       T: 3
-      eta: 0.1 #0.1     
+      eta: 100.1 #0.1     
       num_blocks: [2, 3, 3, 3]
 
   # model_direction: 
@@ -124,12 +124,12 @@ model:
 hyp: 
 
   epochs: 50
-  batches: 256 #128 #64
+  batches: 128 #128 #64
   dynamic_batches: True
   optimizer: Adamw
   momentum: 0.957 #Yolo 0.937 # Efficient-b3 0.757
   weight_decay: 0.0005 #0.004676 #0.0001 #0.00002 Efficient-b3 0.0005
-  learning_rate: 1e-3 #1e-5 #Efficient-b3 1e-5
+  learning_rate: 1e-4 #1e-5 #Efficient-b3 1e-5
   lrf: 0.1
   start_epoch: 0
   steps_epoch: 100 # Computed online. Must be removed
@@ -182,7 +182,7 @@ arch:
   # device: 'mps' # Apple Mx
   device: 'cuda'
   precision_type: "32-true" # Options: "64-true" "32-true" "16-true" "16-mixed" "bf16-mixed" "bf16-true" 
-  precision_energy: "32-true" # Options:  "64-true" "32-true" "16-true" "16-mixed" "bf16-mixed" "bf16-true" 
+  precision_energy: "32-true" #"32-true" # Options:  "64-true" "32-true" "16-true" "16-mixed" "bf16-mixed" "bf16-true" 
   precision_direction: "32-true" # "bf16-mixed" # Options:  "64-true" "32-true" "16-true" "16-mixed" "bf16-mixed" "bf16-true" 
                                     # (bf16 for GPU with Ampere or higher, it is better that 16 because is numerical more stability)
   # devices: [0,1] # [0,1] For multiple GPUs
