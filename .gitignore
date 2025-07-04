@@ -25,3 +25,4 @@ docs/build/
 
 # Default pytorch output
 run/
+test_local_cristian/

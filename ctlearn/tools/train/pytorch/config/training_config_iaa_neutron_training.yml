@@ -124,7 +124,7 @@ model:
 hyp: 
 
   epochs: 50
-  batches: 10 #128 #64
+  batches: 32 #128 #64
   dynamic_batches: True
   optimizer: Adamw
   momentum: 0.957 #Yolo 0.937 # Efficient-b3 0.757

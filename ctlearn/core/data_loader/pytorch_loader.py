@@ -111,7 +111,7 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         self.T=T 
         # self.total_len = len(self.indices) * T
         self.indices = np.tile(self.indices, self.T)
-        pp=0
+        
     def __len__(self):
         """
         Returns the number of batches per epoch.
@@ -552,18 +552,18 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         intensity = np.array(hillas["hillas_intensity"])
         keep_idx = np.where((leakage <= 0.2) & (intensity >= 50))[0]
 
-        # Filter features_out
-        for key in features_out:
-            features_out[key] = features_out[key][keep_idx]
+        # # Filter features_out
+        # for key in features_out:
+        #     features_out[key] = features_out[key][keep_idx]
 
         features_out["hillas"] = features["hillas"]
 
-        for key in features["hillas"]:
-            features_out["hillas"][key] = (features["hillas"][key])[keep_idx]
+        # for key in features["hillas"]:
+        #     features_out["hillas"][key] = (features["hillas"][key])[keep_idx]
             
-        # Filter labels (since it's a dict too)
-        for key in labels:
-            labels[key] = labels[key][keep_idx]
+        # # Filter labels (since it's a dict too)
+        # for key in labels:
+        #     labels[key] = labels[key][keep_idx]
                 
         return features_out, labels
 

@@ -53,23 +53,23 @@ def predict_with_model_pytorch(self, task):
     # In prediction mode we don't want to loose the last
     # uncomplete batch, so we are creating an additional
     # batch generator for the remaining events.
-    data_loader_last_batch = None
-    if self.last_batch_size > 0:
-        last_batch_indices = self.indices[-self.last_batch_size :]
-        data_loader_last_batch = DLDataLoader.create(
-            framework="pytorch",
-            DLDataReader=self.dl1dh_reader,
-            indices=last_batch_indices,
-            tasks=task,
-            parameters = self.parameters,
-            use_augmentation = False,
-            batch_size=self.last_batch_size,
-            sort_by_intensity=self.sort_by_intensity,
-            stack_telescope_images=self.stack_telescope_images,
-        )
+    # data_loader_last_batch = None
+    # if self.last_batch_size > 0:
+    #     last_batch_indices = self.indices[-self.last_batch_size :]
+    #     data_loader_last_batch = DLDataLoader.create(
+    #         framework="pytorch",
+    #         DLDataReader=self.dl1dh_reader,
+    #         indices=last_batch_indices,
+    #         tasks=task,
+    #         parameters = self.parameters,
+    #         use_augmentation = False,
+    #         batch_size=self.last_batch_size,
+    #         sort_by_intensity=self.sort_by_intensity,
+    #         stack_telescope_images=self.stack_telescope_images,
+    #     )
 
     # Load the model from the specified path
-    model, trainer_pl = load_model(self)
+    model = load_model(self)
     sig = inspect.signature(model.forward)
     num_inputs = len(sig.parameters)
     predict_data = {}
@@ -79,10 +79,12 @@ def predict_with_model_pytorch(self, task):
     
     model.eval() 
     for x in tqdm(data_loader, desc="Processing", total=len(data_loader)):
+        if len(x[0]['image'])==0:
+            continue
         if num_inputs == 2:
             classification_pred, energy_pred, direction_pred = model(x[0]['image'].to(self.device) ,x[0]['peak_time'].to(self.device))
         else:
-            classification_pred, energy_pred, direction_pred = model(x[0]['image'].to(self.device) )
+            classification_pred, energy_pred, direction_pred = model(x[0]['image'].to(self.device))
         
         if classification_pred is not None:
             predict_data['type'].extend(classification_pred.cpu().detach().numpy())
@@ -90,7 +92,8 @@ def predict_with_model_pytorch(self, task):
             predict_data['energy'].extend(energy_pred.cpu().detach().numpy())
         if direction_pred is not None:
             predict_data["cameradirection"].extend(direction_pred.cpu().detach().numpy())
-        
-    del trainer_pl
 
+    predict_data["cameradirection"] = np.array(predict_data["cameradirection"])
+    predict_data["type"] = np.array(predict_data["type"])
+    predict_data["energy"] = np.array(predict_data["energy"])
     return predict_data , None

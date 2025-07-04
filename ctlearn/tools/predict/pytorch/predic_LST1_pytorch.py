@@ -177,33 +177,4 @@ def load_pytorch_model(self):
         
         model.eval()
         
-        if task == Task.type:
-            self.type_model = model
-            precision = self.parameters["arch"]["precision_type"]
-        elif task == Task.energy:
-            self.energy_model = model
-            precision = self.parameters["arch"]["precision_energy"]
-        elif task == Task.cameradirection or task == Task.skydirection or task == Task.direction:
-            self.dirrection_model = model
-            precision = self.parameters["arch"]["precision_direction"]
-
-        else:
-            raise ValueError(
-                f"task:{task.name} is not supported. Task must be type, direction or energy"
-            )
-            
-        trainer_pl = CTLearnTrainer(
-            max_epochs=self.parameters["hyp"]["epochs"],
-            accelerator=self.parameters["arch"]["device"],
-            devices=self.parameters["arch"]["devices"],
-            strategy= self.parameters["arch"]["strategy"],
-            default_root_dir=self.output_path,
-            log_every_n_steps=1,
-            logger=None,
-            num_sanity_val_steps=0,
-            precision=precision,
-            gradient_clip_val=self.parameters["hyp"]["gradient_clip_val"],
-            callbacks=[GPUStatsLogger()],
-            sync_batchnorm=True,
-        )
-    return model, trainer_pl
+    return model
