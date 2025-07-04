@@ -112,7 +112,7 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         self.T=T 
  
         self.indices = np.tile(self.indices, self.T)
-        pp=0
+        
     def __len__(self):
         """
         Returns the number of batches per epoch.
