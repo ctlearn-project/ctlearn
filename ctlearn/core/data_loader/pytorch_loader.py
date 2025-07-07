@@ -452,7 +452,7 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         if "cameradirection" in labels.keys():
             labels["direction"] = labels["cameradirection"]
 
-        features["hillas"] = self.DLDataReader.get_parameters_dict(batch, self.hillas_names)
+        features["hillas"] = self.DLDataReader.get_parameters(batch, self.hillas_names)
 
         image = features["input"][..., 0:1]
         peak_time = features["input"][..., 1:2]

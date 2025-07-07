@@ -22,7 +22,7 @@ dist
 *.log
 # Sphinx documentation
 docs/build/
-
+build/
 # Default pytorch output
 run/
 test_local_cristian/
