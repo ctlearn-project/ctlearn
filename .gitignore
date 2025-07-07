@@ -29,7 +29,7 @@ dist
 .pytest_cache/*.log
 # Sphinx documentation
 docs/build/
-
+build/
 # Default pytorch output
 run/
 test/
