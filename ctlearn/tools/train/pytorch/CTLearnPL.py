@@ -43,6 +43,8 @@ import inspect
 
 import matplotlib
 matplotlib.use('Agg')  
+torch.cuda.empty_cache()
+os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
 class CTLearnTrainer(pl.Trainer):
     def __init__(self,**kwargs):
@@ -115,7 +117,7 @@ class CTLearnPL(pl.LightningModule):
         free_mem, total_mem = torch.cuda.mem_get_info(device)
         
         # Leave a margin (e.g., 100 MB)
-        margin = 2000 * 1024 * 1024  # 1000 MB
+        margin = 20000 * 1024 * 1024  # 1000 MB
         mem_to_allocate = max(0, free_mem - margin)
         
         if mem_to_allocate > 0:
@@ -200,7 +202,7 @@ class CTLearnPL(pl.LightningModule):
         )
 
 
-        self.criterion_energy_value = torch.nn.L1Loss(reduction="mean")
+        self.criterion_energy_value = torch.nn.L1Loss(reduction="sum")
         self.criterion_direction = torch.nn.SmoothL1Loss()  # nn.MSELoss()
         self.criterion_magnitud = torch.nn.L1Loss(reduction="mean") 
 
@@ -436,6 +438,18 @@ class CTLearnPL(pl.LightningModule):
 
         loss_energy = self.criterion_energy_value(energy_pred, labels_energy)
         loss = loss_energy
+
+        #-----------------------------------------
+        # k=0.6
+        # e_thrs= -0.3
+        # loss_energy = self.criterion_energy_value_none(energy_pred, labels_energy)
+        # energy_tev = torch.pow(10,labels_energy)  
+        # energy_weight=k*torch.exp(1+(np.log10(1/k)*(energy_tev-e_thrs)))
+        # weight_loss = energy_weight * (loss_energy)
+
+        # loss = weight_loss.sum()
+        #-----------------------------------------
+
         if training == False:
             energy_pred = pow(10, energy_pred)
             labels_energy = pow(10, labels_energy)
@@ -453,7 +467,8 @@ class CTLearnPL(pl.LightningModule):
         loss = 0
         # y = y.squeeze(-1)
         y_embed = self.model.target_embedder(y)
-
+        k=0.6
+        e_thrs= -0.3
         for t in range(self.model.T):
             # Add noise to target (landmarks)
             alpha_bar_t = self.model.alpha_bar[t]
@@ -464,11 +479,13 @@ class CTLearnPL(pl.LightningModule):
                 # Denoise step
                 z, _ = self.model.blocks[t](x_1, z_t, None)  # W_embed not needed
             else:
-                z, _ = self.model.blocks[t](x_1,x_2, z_t, None)  # W_embed not needed
+                z, _ = self.model.blocks[t](x_1 ,x_2, z_t, None)  # W_embed not needed
 
-            preds = self.model.regress(z)
+
             # Loss to clean target
-            loss_l2 = F.mse_loss(preds, y)
+            loss_l2 = F.mse_loss(z, y_embed)
+            
+            labels_energy = y
 
             # Weighted by SNR difference
             step_loss = 2.5 * self.model.eta * self.model.snr_diff[t] * loss_l2
@@ -476,28 +493,21 @@ class CTLearnPL(pl.LightningModule):
             # Final step: use regression head
             if t == self.model.T - 1:
 
-                labels_energy = y
-                energy_pred = self.model.regress(z)
+                energy_pred = F.tanh(self.model.regress(z))*4
                 
                 # labels_energy_tev = torch.pow(10,labels_energy)
                 # energy_pred_tev = torch.pow(10,energy_pred)
 
                 # loss_energy = self.criterion_energy_value(energy_pred_tev, labels_energy_tev)
 
-                # loss_energy = self.criterion_energy_value(energy_pred, labels_energy)
+                loss_energy = self.criterion_energy_value(energy_pred, labels_energy)
                 # loss_energy = F.mse_loss(energy_pred, labels_energy,reduction="sum")
-                loss_energy = self.criterion_energy_value_none(energy_pred, labels_energy)
-                energy_tev = torch.pow(10,labels_energy)
-     
-                k=0.6
-                e_thrs= -0.3
+                # loss_energy = self.criterion_energy_value_none(energy_pred, labels_energy)
+            
+                # energy_weight=k*torch.exp(1+(np.log10(1/k)*(energy_tev-e_thrs)))
+                # weight_loss = energy_weight * (loss_energy)
 
-                energy_weight=k*torch.exp(1+(np.log10(1/k)*(energy_tev-e_thrs)))
-                weight_loss = energy_weight * (loss_energy)
-
-                loss_energy=loss_energy.mean()
-
-                step_loss = step_loss + weight_loss.sum()
+                # step_loss = step_loss + weight_loss.mean()
                 
                 if training == False:
                     energy_pred = pow(10, energy_pred)
@@ -507,7 +517,7 @@ class CTLearnPL(pl.LightningModule):
                 else:
                     energy_diff = None
 
-                # step_loss = step_loss + loss_energy
+                step_loss = step_loss + loss_energy
 
             loss = loss + step_loss
 
@@ -518,6 +528,8 @@ class CTLearnPL(pl.LightningModule):
         loss = 0
         y = y.squeeze(-1)
         y_embed = self.model.target_embedder(y)
+        k=0.6
+        e_thrs= -0.3
 
         for t in range(self.model.T):
             # Add noise to target (landmarks)
@@ -578,8 +590,7 @@ class CTLearnPL(pl.LightningModule):
                 # energy_weight = k*(1/(1+torch.exp(-(1/k)*(energy-e_thrs))))
                 # weight_loss = energy_weight * (loss_dx_dy + loss_distance + loss_distance_dx_dy + loss_angular_diff)
    
-                k=0.6
-                e_thrs= -0.3
+
 
                 energy_weight=k*torch.exp(1+(np.log10(1/k)*(energy-e_thrs)))
                 # weight_loss = energy_weight * (loss_dx_dy + loss_distance + loss_distance_dx_dy + loss_angular_diff)
@@ -790,6 +801,7 @@ class CTLearnPL(pl.LightningModule):
             if self.task == Task.energy:
                 labels_energy_value = labels["energy"]
                 labels_energy_value = labels_energy_value.to(self.device)
+           
 
             if self.task == Task.cameradirection:
                 labels_direction = labels["direction"]
@@ -874,15 +886,15 @@ class CTLearnPL(pl.LightningModule):
 
                 if self.is_difussion:
                     if self.num_inputs == 1:
-                        loss, *_ = self.compute_energy_loss_diffusion(imgs,labels_energy_value,training=True,x_2=None)
+                        loss, *_ = self.compute_energy_loss_diffusion(imgs,labels_energy_value/1.0,training=True,x_2=None)
                     else:
                         peak_time = features["peak_time"]
-                        loss, *_ = self.compute_energy_loss_diffusion(imgs,labels_energy_value,training=True,x_2=peak_time)
+                        loss, *_ = self.compute_energy_loss_diffusion(imgs,labels_energy_value/1.0,training=True,x_2=peak_time)
                     
                 else:
 
                     loss, *_ = self.compute_energy_loss(
-                        energy_pred, labels_energy_value, test_val=False, training=False
+                        energy_pred, labels_energy_value, test_val=False, training=True
                     )
             # ---------------------------------------
 
@@ -1166,23 +1178,15 @@ class CTLearnPL(pl.LightningModule):
             # ---------------------------------------
             if self.task == Task.energy:
 
-                energy_pred_tev = torch.pow(10, energy_pred)
+                energy_pred_tev = torch.pow(10, energy_pred*1.0)
 
                 if dataloader_idx == 0:
 
-                    # if self.is_difussion:
-                    #     if self.num_inputs == 1:
-                    #         loss, energy_diff = self.compute_energy_loss_diffusion(imgs,labels_energy_value,training=False,x_2=None)
-                    #     else:
-                    #         peak_time = features["peak_time"]
-                    #         loss, energy_diff = self.compute_energy_loss_diffusion(imgs,labels_energy_value,training=False,x_2=peak_time)
-                        
-                    # else:
                     if len(energy_pred)==2:
                         energy_pred = energy_pred[0]
 
                     loss, energy_diff = self.compute_energy_loss(
-                        energy_pred, labels_energy_value, test_val=False, training=False
+                        energy_pred, labels_energy_value/1.0, test_val=False, training=False
                     )
 
                     self.val_energy_diff_list.extend(energy_diff)

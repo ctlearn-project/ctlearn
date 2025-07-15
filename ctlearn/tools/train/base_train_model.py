@@ -15,7 +15,6 @@ from ctapipe.core.traits import (
     Unicode,
 )
 from dl1_data_handler.reader import DLDataReader
-# from ctlearn.core.data_loader.loader import DLDataLoader
 
 class TrainCTLearnModel(Tool):
     """
