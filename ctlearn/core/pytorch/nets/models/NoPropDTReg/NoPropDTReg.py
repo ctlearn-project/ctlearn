@@ -2,7 +2,7 @@
 
 import torch
 from torch import nn
-
+import torch.nn.functional as F
 # from .denoiseBlock import DenoiseBlock
 from .denoiseBlockThinRestNet import DenoiseBlock, MemoryEfficientSwish
 
@@ -97,7 +97,7 @@ class NoPropDTReg(nn.Module):
         return torch.clamp(snr - snr_prev, min=1e-5)
 
     def forward_denoise(self, x, z_prev, t):
-        return self.blocks[t](x, z_prev, None)[0]
+        return self.blocks[t](x, z_prev, self.target_embedder)[0]
 
     def regress(self, z):
         return self.regressor(z)
@@ -118,4 +118,4 @@ class NoPropDTReg(nn.Module):
         if self.task=="direction":
             return None, None, self.inference(x)
         elif self.task=="energy":
-            return None, self.inference(x), None
+            return None, F.tanh(self.inference(x))*4, None

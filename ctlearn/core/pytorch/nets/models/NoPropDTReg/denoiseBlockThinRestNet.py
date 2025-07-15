@@ -60,7 +60,19 @@ class BasicBlock(nn.Module):
     def forward(self, x):
         out = F.relu((self.conv1(x)))
         out = (self.conv2(out))    
-        out += self.shortcut(x)
+
+        # print("out.shape", out.shape, "shortcut.shape", self.shortcut(x).shape)
+        # print("out.dtype", out.dtype, "shortcut.dtype", self.shortcut(x).dtype)
+        # print("out.device", out.device, "shortcut.device", self.shortcut(x).device)
+        # print("out.is_contiguous()", out.is_contiguous(), "shortcut.is_contiguous()", self.shortcut(x).is_contiguous())
+
+        # assert out.shape == self.shortcut(x).shape, f"Shape mismatch: {out.shape} vs {self.shortcut(x).shape}"
+        # assert out.dtype == self.shortcut(x).dtype, f"Dtype mismatch: {out.dtype} vs {self.shortcut(x).dtype}"
+        # assert out.device == self.shortcut(x).device, f"Device mismatch: {out.device} vs {self.shortcut(x).device}"
+
+        # out = out.contiguous()
+
+        out += self.shortcut(x).contiguous()
         out = F.relu(out)
         out = self.se(out)
         return out

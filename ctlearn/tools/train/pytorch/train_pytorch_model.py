@@ -165,6 +165,8 @@ class TrainPyTorchModel(TrainCTLearnModel):
         print(f"Using Devices: {self.devices}")
 
 
+        # all_log_energies = self.dl1dh_reader.data['log_true_energy'] 
+
         # Set up the data loaders for training and validation
         indices = list(range(self.dl1dh_reader._get_n_events()))
         # Shuffle the indices before the training/validation split
@@ -199,7 +201,7 @@ class TrainPyTorchModel(TrainCTLearnModel):
             sort_by_intensity=self.sort_by_intensity,
             stack_telescope_images=self.stack_telescope_images,
             parameters=self.parameters,
-            use_augmentation=True,
+            use_augmentation=self.parameters["augmentation"]["use_augmentation"],
         )
         
         self.validation_loader = DLDataLoader.create(
