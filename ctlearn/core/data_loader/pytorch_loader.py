@@ -19,10 +19,11 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         parameters,
         use_augmentation,
         T=1,
+        is_training=False,
         **kwargs,
     ):
 
-
+        self.is_training=is_training
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         self._next_batch_future = None
 
@@ -545,47 +546,47 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
 
 
                 
+        if self.is_training:
+            N = 4  # Repeating the number of high energies 
+            features_out["hillas"] = features["hillas"]
+            if self.use_augmentation:
+                energy_log = torch.pow(10,labels["energy"].squeeze(-1))  # shape [N]
+                high_energy_mask = energy_log > 1  # log10(E/TeV) > 0 => E > 1 TeV
 
-        N = 4  # Repeating the number of high energies 
+                idx_to_duplicate = torch.where(high_energy_mask)[0]
 
-        if self.use_augmentation:
-            energy_log = torch.pow(10,labels["energy"].squeeze(-1))  # shape [N]
-            high_energy_mask = energy_log > 1  # log10(E/TeV) > 0 => E > 1 TeV
+                if len(idx_to_duplicate) > 0:
+                    def duplicate_tensor(t,idx_to_duplicate):
+                        if isinstance(t, torch.Tensor):
+                            extra = torch.cat([t[idx_to_duplicate] for _ in range(N)], dim=0)
+                            return torch.cat([t, extra], dim=0).contiguous()
+                        elif isinstance(t, np.ndarray):
+                            # Si t es 1D, t[idx_to_duplicate] ya es de shape (M,), sólo hace falta stackear
+                            # extra = np.tile(t[idx_to_duplicate], N)
+                            # return np.concatenate([t, extra], axis=0)
+                            idx_to_duplicate = idx_to_duplicate.cpu().numpy() if hasattr(idx_to_duplicate, "cpu") else idx_to_duplicate
+                            # extra = np.tile(t[idx_to_duplicate], (N, 1, 1, 1))  # si shape es (n, x, y, z)
+                            # Mejor: stack y luego reshape
+                            extra = np.concatenate([t[idx_to_duplicate] for _ in range(N)], axis=0)
+                            # O si es 1D, puedes hacer
+                            # extra = np.tile(t[idx_to_duplicate], N)
+                            return np.concatenate([t, extra], axis=0)
+                                
+                        else:
+                            raise TypeError(f"Tipo de dato no soportado para duplicación: {type(t)}")
+                        
+                    # Duplica todas las features principales
+                    for key in features_out:
+                        if isinstance(features_out[key], dict):
+                            # Por ejemplo, hillas es un dict de tensores
+                            for k in features_out[key]:
+                                features_out[key][k] = duplicate_tensor(features_out[key][k],idx_to_duplicate)
+                        else:
+                            features_out[key] = duplicate_tensor(features_out[key],idx_to_duplicate)
 
-            idx_to_duplicate = torch.where(high_energy_mask)[0]
-
-            if len(idx_to_duplicate) > 0:
-                def duplicate_tensor(t,idx_to_duplicate):
-                    if isinstance(t, torch.Tensor):
-                        extra = torch.cat([t[idx_to_duplicate] for _ in range(N)], dim=0)
-                        return torch.cat([t, extra], dim=0).contiguous()
-                    elif isinstance(t, np.ndarray):
-                        # Si t es 1D, t[idx_to_duplicate] ya es de shape (M,), sólo hace falta stackear
-                        # extra = np.tile(t[idx_to_duplicate], N)
-                        # return np.concatenate([t, extra], axis=0)
-                        idx_to_duplicate = idx_to_duplicate.cpu().numpy() if hasattr(idx_to_duplicate, "cpu") else idx_to_duplicate
-                        # extra = np.tile(t[idx_to_duplicate], (N, 1, 1, 1))  # si shape es (n, x, y, z)
-                        # Mejor: stack y luego reshape
-                        extra = np.concatenate([t[idx_to_duplicate] for _ in range(N)], axis=0)
-                        # O si es 1D, puedes hacer
-                        # extra = np.tile(t[idx_to_duplicate], N)
-                        return np.concatenate([t, extra], axis=0)
-                            
-                    else:
-                        raise TypeError(f"Tipo de dato no soportado para duplicación: {type(t)}")
-                    
-                # Duplica todas las features principales
-                for key in features_out:
-                    if isinstance(features_out[key], dict):
-                        # Por ejemplo, hillas es un dict de tensores
-                        for k in features_out[key]:
-                            features_out[key][k] = duplicate_tensor(features_out[key][k],idx_to_duplicate)
-                    else:
-                        features_out[key] = duplicate_tensor(features_out[key],idx_to_duplicate)
-
-                # Duplica las labels
-                for key in labels:
-                    labels[key] = duplicate_tensor(labels[key],idx_to_duplicate)
+                    # Duplica las labels
+                    for key in labels:
+                        labels[key] = duplicate_tensor(labels[key],idx_to_duplicate)
 
 
         if self.use_augmentation:
@@ -603,27 +604,29 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
 
         features_out["image"] = torch.from_numpy(image.copy()).contiguous().float()
         features_out["peak_time"] = torch.from_numpy(peak_time.copy()).contiguous().float()
-
-
-        # Generate keep_idx as before
-        hillas = features["hillas"]
-        leakage = np.array(hillas["leakage_intensity_width_2"])
-        intensity = np.array(hillas["hillas_intensity"])
-        keep_idx = np.where((leakage < 0.2) & (intensity > 50))[0]
-
-
-        # Filter features_out
-        for key in features_out:
-            features_out[key] = features_out[key][keep_idx]
-
-        features_out["hillas"] = features["hillas"]
-
-        for key in features["hillas"]:
-            features_out["hillas"][key] = (features["hillas"][key])[keep_idx]
+        
+        # if self.is_training:
             
-        # Filter labels (since it's a dict too)
-        for key in labels:
-            labels[key] = labels[key][keep_idx]
+
+        if not self.is_training:
+            # Generate keep_idx as before
+            hillas = features["hillas"]
+            leakage = np.array(hillas["leakage_intensity_width_2"])
+            intensity = np.array(hillas["hillas_intensity"])
+            keep_idx = np.where((leakage < 0.2) & (intensity > 50))[0]
+
+            # Filter features_out
+            for key in features_out:
+                features_out[key] = features_out[key][keep_idx]
+            
+            features_out["hillas"] = features["hillas"]
+
+            for key in features["hillas"]:
+                features_out["hillas"][key] = (features["hillas"][key])[keep_idx]
+                
+            # Filter labels (since it's a dict too)
+            for key in labels:
+                labels[key] = labels[key][keep_idx]
        
         return features_out, labels
 
