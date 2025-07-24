@@ -1,7 +1,7 @@
 import importlib
 import logging
 import os
-import pkg_resources
+# import pkg_resources
 import sys
 import time
 import pickle
@@ -30,6 +30,13 @@ crab_nebula_config = {
 }
 from astropy.time import Time
 from ctapipe.coordinates import CameraFrame
+try:
+    # Python 3.8+
+    from importlib.metadata import version as get_version
+except ImportError:
+    # For Python <3.8, install backport: importlib-metadata
+    from importlib_metadata import version as get_version
+
 
 def clip_alt(alt):
     """
@@ -488,14 +495,53 @@ def decompress_data(compressed_data, data_shape, data_type=np.float16):
 
     return restored_array_reshaped
 #------------------------------------------------------------------------------------------------------------
-def setup_logging(config, log_dir, debug, log_to_file):
+# def setup_logging(config, log_dir, debug, log_to_file):
 
+#     # Log configuration to a text file in the log dir
+#     time_str = time.strftime("%Y%m%d_%H%M%S")
+#     config_filename = os.path.join(log_dir, time_str + "_config.yml")
+#     with open(config_filename, "w") as outfile:
+#         ctlearn_version = pkg_resources.get_distribution("ctlearn").version
+#         tensorflow_version = pkg_resources.get_distribution("tensorflow").version
+#         outfile.write(
+#             "# Training performed with "
+#             "CTLearn version {} and TensorFlow version {}.\n".format(
+#                 ctlearn_version, tensorflow_version
+#             )
+#         )
+#         yaml.dump(config, outfile, default_flow_style=False)
+
+#     # Set up logger
+#     logger = logging.getLogger()
+
+#     if debug:
+#         logger.setLevel(logging.DEBUG)
+#     else:
+#         logger.setLevel(logging.INFO)
+
+#     logger.handlers = []  # remove existing handlers from any previous runs
+#     if not log_to_file:
+#         handler = logging.StreamHandler()
+#     else:
+#         logging_filename = os.path.join(log_dir, time_str + "_logfile.log")
+#         handler = logging.FileHandler(logging_filename)
+#     handler.setFormatter(logging.Formatter("%(levelname)s:%(message)s"))
+#     logger.addHandler(handler)
+
+#     return logger
+def setup_logging(config, log_dir, debug, log_to_file):
     # Log configuration to a text file in the log dir
     time_str = time.strftime("%Y%m%d_%H%M%S")
     config_filename = os.path.join(log_dir, time_str + "_config.yml")
     with open(config_filename, "w") as outfile:
-        ctlearn_version = pkg_resources.get_distribution("ctlearn").version
-        tensorflow_version = pkg_resources.get_distribution("tensorflow").version
+        try:
+            ctlearn_version = get_version("ctlearn")
+        except Exception:
+            ctlearn_version = "unknown"
+        try:
+            tensorflow_version = get_version("tensorflow")
+        except Exception:
+            tensorflow_version = "unknown"
         outfile.write(
             "# Training performed with "
             "CTLearn version {} and TensorFlow version {}.\n".format(

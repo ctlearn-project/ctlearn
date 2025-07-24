@@ -493,7 +493,7 @@ class CTLearnPL(pl.LightningModule):
             # Final step: use regression head
             if t == self.model.T - 1:
 
-                energy_pred = F.tanh(self.model.regress(z))*4
+                energy_pred = self.model.regress(z)
                 
                 # labels_energy_tev = torch.pow(10,labels_energy)
                 # energy_pred_tev = torch.pow(10,energy_pred)
@@ -708,6 +708,15 @@ class CTLearnPL(pl.LightningModule):
 
         # return loss, loss_dx_dy, loss_distance, loss_distance_dx_dy, loss_angular_diff, angular_diff
     # ----------------------------------------------------------------------------------------------------------    
+    def compute_class_weights(self, y, n_classes):
+        # y: tensor de etiquetas, por ejemplo torch.tensor([0,0,1,1,1,2])
+        counts = torch.bincount(y, minlength=n_classes)
+        total = counts.sum()
+        # Evita división por cero:
+        counts = torch.clamp(counts, min=1)
+        weights = total / (counts * n_classes)
+        return weights    
+    # ----------------------------------------------------------------------------------------------------------        
     def compute_type_loss_diffusion(self, x,y, training=False):
 
         loss = 0
@@ -741,6 +750,9 @@ class CTLearnPL(pl.LightningModule):
             if t == self.model.T - 1:
                 # Get predictions from classifier
                 logits = self.model.classifier(z_pred)
+
+                # class_weights = self.compute_class_weights(y, n_classes=2).to(y.device)
+                # loss_ce = F.cross_entropy(logits, y, class_weights)
 
                 # Cross-entropy loss: how wrong the predicted class is
                 loss_ce = F.cross_entropy(logits, y)

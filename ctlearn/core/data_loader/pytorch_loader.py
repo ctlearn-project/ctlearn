@@ -549,6 +549,7 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         if self.is_training:
             N = 4  # Repeating the number of high energies 
             features_out["hillas"] = features["hillas"]
+            #-------------------------------------------------
             if self.use_augmentation:
                 energy_log = torch.pow(10,labels["energy"].squeeze(-1))  # shape [N]
                 high_energy_mask = energy_log > 1  # log10(E/TeV) > 0 => E > 1 TeV
@@ -573,7 +574,7 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
                             return np.concatenate([t, extra], axis=0)
                                 
                         else:
-                            raise TypeError(f"Tipo de dato no soportado para duplicación: {type(t)}")
+                            raise TypeError(f"Data type not supported: {type(t)}")
                         
                     # Duplica todas las features principales
                     for key in features_out:
@@ -591,10 +592,10 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
 
         if self.use_augmentation:
             
-            # if isinstance(features_out["image"], torch.Tensor):
-            #     features_out["image"] = features_out["image"].cpu().numpy()
-            # if isinstance(features_out["peak_time"], torch.Tensor):
-            #     features_out["peak_time"] = features_out["peak_time"].cpu().numpy()
+            if isinstance(features_out["image"], torch.Tensor):
+                features_out["image"] = features_out["image"].cpu().numpy()
+            if isinstance(features_out["peak_time"], torch.Tensor):
+                features_out["peak_time"] = features_out["peak_time"].cpu().numpy()
             
             image, peak_time = self.apply_augmentation(features_out["image"], features_out["peak_time"])
 
@@ -605,7 +606,7 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         features_out["image"] = torch.from_numpy(image.copy()).contiguous().float()
         features_out["peak_time"] = torch.from_numpy(peak_time.copy()).contiguous().float()
         
-        # if self.is_training:
+
             
 
         if not self.is_training:
@@ -614,6 +615,7 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
             leakage = np.array(hillas["leakage_intensity_width_2"])
             intensity = np.array(hillas["hillas_intensity"])
             keep_idx = np.where((leakage < 0.2) & (intensity > 50))[0]
+            # keep_idx = np.where((leakage > 0.8) & (intensity > 50))[0]
 
             # Filter features_out
             for key in features_out:

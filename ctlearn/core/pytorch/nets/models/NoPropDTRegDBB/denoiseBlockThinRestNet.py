@@ -85,12 +85,19 @@ class DenoiseBlock(nn.Module):
         self.in_channels = 64
         self.use_bn=use_bn
  
-        self.conv1 = nn.Conv2d(num_channels, 64, kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv1_x = nn.Conv2d(num_channels, 64, kernel_size=3, stride=1, padding=1, bias=False)
+        self.conv1_y = nn.Conv2d(num_channels, 64, kernel_size=3, stride=1, padding=1, bias=False)
 
         self.layer1_1 = self._make_layer(block, 32, num_blocks[0], stride=1)
         self.layer2_1 = self._make_layer(block, 64, num_blocks[1], stride=2)
         self.layer3_1 = self._make_layer(block, 128, num_blocks[2], stride=2)
         self.layer4_1 = self._make_layer(block, 256, num_blocks[3], stride=2)
+
+        self.layer1_2 = self._make_layer(block, 32, num_blocks[0], stride=1)
+        self.layer2_2 = self._make_layer(block, 64, num_blocks[1], stride=2)
+        self.layer3_2 = self._make_layer(block, 128, num_blocks[2], stride=2)
+        self.layer4_2 = self._make_layer(block, 256, num_blocks[3], stride=2)
+
         # Reducing the number of layers and filters to make it "thin"
         # self.fc_1 = nn.Linear(embedding_dim , embedding_dim)
         # self.fc_2 = nn.Linear(embedding_dim , 256)
@@ -121,17 +128,22 @@ class DenoiseBlock(nn.Module):
         self.act_f2 = nn.PReLU()
 
 
-    def forward(self, x, z_prev, _):
+    def forward(self, x, y, z_prev, _):
  
-        out_1 = F.relu(self.conv1(x)) 
+        out_1 = F.relu(self.conv1_x(x)) 
         out_1 = self.layer1_1(out_1)
         out_1 = self.layer2_1(out_1)
         out_1 = self.layer3_1(out_1)
         x_feat = self.layer4_1(out_1)
 
-        x_feat= self.adaptive_pool(x_feat)
-        x_feat = x_feat.view(x_feat.size(0), -1)
+        out_2 = F.relu(self.conv1_y(y)) 
+        out_2 = self.layer1_1(out_2)
+        out_2 = self.layer2_1(out_2)
+        out_2 = self.layer3_1(out_2)
+        y_feat = self.layer4_1(out_2)
 
+        x_feat= self.adaptive_pool(x_feat+y_feat)
+        x_feat = x_feat.view(x_feat.size(0), -1)
 
         # h1 = self.act1(self.bn_z1(self.fc_z1(z_prev)))
         # h2 = self.act2(self.bn_z2(self.fc_z2(h1)))

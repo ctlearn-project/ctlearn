@@ -202,6 +202,7 @@ class TrainPyTorchModel(TrainCTLearnModel):
             stack_telescope_images=self.stack_telescope_images,
             parameters=self.parameters,
             use_augmentation=self.parameters["augmentation"]["use_augmentation"],
+            is_training=True,
         )
         
         self.validation_loader = DLDataLoader.create(
@@ -215,6 +216,7 @@ class TrainPyTorchModel(TrainCTLearnModel):
             stack_telescope_images=self.stack_telescope_images,
             parameters=self.parameters,
             use_augmentation=False,
+            is_training=False,
         )
 
 
