@@ -12,16 +12,26 @@ ctlearn/_version.py
 *.png
 *.csv
 *~
+*.log
+.vscode/
 
+*.h5
+
+output_dir2/
+output_dir/
 # Compiled Python files
 __pycache__/
 *.py[cod]
 .DS_Store
 *.egg-info/
 dist
-
+.pytest_cache/
 # Sphinx documentation
 docs/build/
 
 # Default pytorch output
 run/
+test/
+*.se2
+*.jar
+*.puml
