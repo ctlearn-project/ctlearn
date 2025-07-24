@@ -35,3 +35,5 @@ test/
 *.se2
 *.jar
 *.puml
+mc_tjark/
+calibration/
