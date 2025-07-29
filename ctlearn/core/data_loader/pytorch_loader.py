@@ -493,8 +493,11 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
 
         features_out = {}
         features_out["image"] = image
-        features_out["peak_time"] = peak_time    
-    
+        features_out["peak_time"] = peak_time
+        
+        features_out["image"] = torch.from_numpy(image).float().permute(0, 3, 1, 2).contiguous()
+        features_out["peak_time"] = torch.from_numpy(peak_time).float().permute(0, 3, 1, 2).contiguous()
+        
         for key in labels.keys():
             labels[key] = torch.from_numpy(labels[key]).contiguous()
 
@@ -617,19 +620,19 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
             keep_idx = np.where((leakage < 0.2) & (intensity > 50))[0]
             # keep_idx = np.where((leakage > 0.8) & (intensity > 50))[0]
 
-            # Filter features_out
-            for key in features_out:
-                features_out[key] = features_out[key][keep_idx]
-            
-            features_out["hillas"] = features["hillas"]
+        # Filter features_out
+        for key in features_out:
+            features_out[key] = features_out[key][keep_idx]
+        
+        features_out["hillas"] = features["hillas"]
 
-            for key in features["hillas"]:
-                features_out["hillas"][key] = (features["hillas"][key])[keep_idx]
-                
-            # Filter labels (since it's a dict too)
-            for key in labels:
-                labels[key] = labels[key][keep_idx]
-       
+        for key in features["hillas"]:
+            features_out["hillas"][key] = (features["hillas"][key])[keep_idx]
+            
+        # Filter labels (since it's a dict too)
+        for key in labels:
+            labels[key] = labels[key][keep_idx]
+    
         return features_out, labels
 
     # TODO: Not adapted to pytorch

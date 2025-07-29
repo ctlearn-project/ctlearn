@@ -521,7 +521,7 @@ class CTLearnPL(pl.LightningModule):
 
             loss = loss + step_loss
 
-        return loss, energy_diff
+        return loss, energy_diff, energy_pred
     # ----------------------------------------------------------------------------------------------------------
     def compute_camera_direction_loss_diffusion(self, x_1, y, labels_energy_value, x_2 = None):
 
@@ -1094,15 +1094,14 @@ class CTLearnPL(pl.LightningModule):
             # ------------------------------------------------------------------
             # Predictions based on one backbone or two back bones
             # ------------------------------------------------------------------
-            # if not self.is_difussion:
-            if self.num_inputs == 2:
-                peak_time = features["peak_time"]
-                classification_pred, energy_pred, direction_pred = self.model(
-                    imgs, peak_time
-                )
-            else:
-                classification_pred, energy_pred, direction_pred = self.model(imgs)
-
+            if not self.is_difussion:
+                if self.num_inputs == 2:
+                    peak_time = features["peak_time"]
+                    classification_pred, energy_pred, direction_pred = self.model(
+                        imgs, peak_time
+                    )
+                else:
+                    classification_pred, energy_pred, direction_pred = self.model(imgs)                
             # ------------------------------------------------------------------
             # Compute Loss functions based on different tasks
             # ------------------------------------------------------------------
@@ -1110,27 +1109,27 @@ class CTLearnPL(pl.LightningModule):
             # ---------------------------------------
             if self.task == Task.type:
                 if self.is_difussion:
-                   classification_pred_ = classification_pred
+                    loss, accuracy, predicted, precision = self.compute_type_loss_diffusion(imgs,labels_class,training=False)
                 else:
-
                     classification_pred_ = classification_pred[0]
                     feature_vector = classification_pred[1]
                 # Log batch loss and accuracy on the progress bar
                 if dataloader_idx == 0:
-                    # if self.is_difussion:
-                        # loss, accuracy, predicted, precision =self.compute_type_loss_diffusion(
-                        # classification_pred_,
-                        # labels_class,
-                        # test_val=False,
-                        # training=False,
-                        # )
-
-                    loss, accuracy, predicted, precision = self.compute_type_loss(
+                    if self.is_difussion:
+                        loss, accuracy, predicted, precision =self.compute_type_loss_diffusion(
                         classification_pred_,
                         labels_class,
                         test_val=False,
                         training=False,
-                    )
+                        )
+                    else:
+                        loss, accuracy, predicted, precision = self.compute_type_loss(
+                            classification_pred_,
+                            labels_class,
+                            test_val=False,
+                            training=False,
+                        )
+                        
                     self.log(
                         "val_acc",
                         accuracy * 100,
@@ -1189,17 +1188,22 @@ class CTLearnPL(pl.LightningModule):
             # Energy
             # ---------------------------------------
             if self.task == Task.energy:
-
-                energy_pred_tev = torch.pow(10, energy_pred*1.0)
-
-                if dataloader_idx == 0:
-
+                if self.is_difussion:
+                    if self.num_inputs == 1:
+                        loss, energy_diff, energy_pred_tev = self.compute_energy_loss_diffusion(imgs,labels_energy_value/1.0,training=False,x_2=None)
+                    else:
+                        peak_time = features["peak_time"]
+                        loss, energy_diff, energy_pred_tev = self.compute_energy_loss_diffusion(imgs,labels_energy_value/1.0,training=False,x_2=peak_time)
+                else:
                     if len(energy_pred)==2:
                         energy_pred = energy_pred[0]
 
                     loss, energy_diff = self.compute_energy_loss(
                         energy_pred, labels_energy_value/1.0, test_val=False, training=False
                     )
+                    energy_pred_tev = torch.pow(10, energy_pred*1.0)
+
+                if dataloader_idx == 0:
 
                     self.val_energy_diff_list.extend(energy_diff)
                     self.val_energy_pred_list.extend(
