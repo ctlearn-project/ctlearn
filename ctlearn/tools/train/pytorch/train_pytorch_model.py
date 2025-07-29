@@ -1,16 +1,4 @@
-from ctapipe.core.traits import (
-    Bool,
-    CaselessStrEnum,
-    Path,
-    Float,
-    Int,
-    List,
-    Dict,
-    classes_with_traits,
-    ComponentName,
-    Unicode,
-)
-
+from ctapipe.core.traits import Path
 
 from ctlearn.tools.train.pytorch.CTLearnPL import CTLearnTrainer, CTLearnPL
 try:
@@ -161,9 +149,7 @@ class TrainPyTorchModel(TrainCTLearnModel):
         self.devices =  self.parameters["arch"]["devices"]
         self.save_k = self.parameters["hyp"]["save_k"]
 
-
         print(f"Using Devices: {self.devices}")
-
 
         # all_log_energies = self.dl1dh_reader.data['log_true_energy'] 
 

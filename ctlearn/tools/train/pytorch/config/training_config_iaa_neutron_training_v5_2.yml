@@ -20,12 +20,15 @@ data:
   # when you are training, validating or estimating the dl2 files
   training_reduce_factor: 0 #64 #4
   validation_reduce_factor: 0 #16 #8
-  validation_test_reduce_factor: 0 #16 #8
+  validation_test_reduce_factor: 0 #16 #8 
 
   # Check points
   type_checkpoint: ./run/run_type_training_14/exp_14_type_train/version_0/Epoch_6_type_train_acc_80.9682309627532959.pth
   # energy_checkpoint: ./run/run_energy_train_2/exp_2_energy_train/version_0/energy_train_loss_9.7920012821687248.pth
-  energy_checkpoint: ./ run/run_energy_training_15/exp_15_energy_train/version_14/Epoch_5_energy_train_loss_24.1305048130270734.pth #./run/run_energy_training_14/exp_14_energy_train/version_132/Epoch_29_energy_train_loss_14.7856697206217333.pth #./run/run_energy_training_14/exp_14_energy_train/version_124/Epoch_3_energy_train_loss_17.1835174628273428.pth #./run/run_energy_training_14/exp_14_energy_train/version_65/Epoch_15_energy_train_loss_14.7553199953101970.pth #./run/run_energy_training_14/exp_14_energy_train/version_59/Epoch_8_energy_train_loss_15.2044627211281718.pth #None #./run/run_energy_training_14/exp_14_energy_train/version_44/Epoch_14_energy_train_loss_14.3631456853812143.pth #./run/run_energy_training_14/exp_14_energy_train/version_26/error_resolution_validation_20_0.24182469136006124.png #./run/run_energy_training_14/exp_14_energy_train/version_13/Epoch_9_energy_train_loss_11.5885416405641433.pth
+  
+  energy_checkpoint: "/home/cpozogonzalez/pablo_home/projects/ctlearn_pytorch_integration/ctlearn/run/run_energy_training_15/exp_15_energy_train/version_34/Epoch_25_energy_train_loss_4.1468562749667113.pth"
+
+  #energy_checkpoint: ./run/run_energy_training_15/exp_15_energy_train/version_14/Epoch_5_energy_train_loss_24.1305048130270734.pth #./run/run_energy_training_14/exp_14_energy_train/version_132/Epoch_29_energy_train_loss_14.7856697206217333.pth #./run/run_energy_training_14/exp_14_energy_train/version_124/Epoch_3_energy_train_loss_17.1835174628273428.pth #./run/run_energy_training_14/exp_14_energy_train/version_65/Epoch_15_energy_train_loss_14.7553199953101970.pth #./run/run_energy_training_14/exp_14_energy_train/version_59/Epoch_8_energy_train_loss_15.2044627211281718.pth #None #./run/run_energy_training_14/exp_14_energy_train/version_44/Epoch_14_energy_train_loss_14.3631456853812143.pth #./run/run_energy_training_14/exp_14_energy_train/version_26/error_resolution_validation_20_0.24182469136006124.png #./run/run_energy_training_14/exp_14_energy_train/version_13/Epoch_9_energy_train_loss_11.5885416405641433.pth
   # direction_checkpoint: ./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_64/Epoch_1_cameradirection_train_loss_0.9215379215089677.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_57/Epoch_17_cameradirection_train_loss_273.2955710102489206.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_41/Epoch_16_cameradirection_train_loss_1.7467666558954063.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_28/Epoch_16_cameradirection_train_loss_0.8549746516163398.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_23/Epoch_41_cameradirection_train_loss_0.8230013581664681.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_26/Epoch_41_cameradirection_train_loss_1.2093983759278775.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_23/Epoch_41_cameradirection_train_loss_0.8230013581664681.pth # ./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_20/Epoch_21_cameradirection_train_loss_1.2520693633078133.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_0/Epoch_5_cameradirection_train_loss_2.3584697707690330.pth #/storage/ctlearn_data/check_points/v_0_3/Epoch_42_direction_train_loss_-2739.9621516285983489.pth #./run/run_direction_train_2/exp_2_direction_train/version_1/direction_train_loss_1.0721765518581907.pth 
   direction_checkpoint: ./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_78/Epoch_16_cameradirection_train_loss_0.4441796087449597.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_69/Epoch_16_cameradirection_train_loss_0.4575265348232287.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_68/Epoch_30_cameradirection_train_loss_0.5867161673996844.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_66/Epoch_31_cameradirection_train_loss_0.5885510200288251.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_57/Epoch_17_cameradirection_train_loss_273.2955710102489206.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_41/Epoch_16_cameradirection_train_loss_1.7467666558954063.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_28/Epoch_16_cameradirection_train_loss_0.8549746516163398.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_23/Epoch_41_cameradirection_train_loss_0.8230013581664681.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_26/Epoch_41_cameradirection_train_loss_1.2093983759278775.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_23/Epoch_41_cameradirection_train_loss_0.8230013581664681.pth # ./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_20/Epoch_21_cameradirection_train_loss_1.2520693633078133.pth #./run/run_cameradirection_training_14/exp_14_cameradirection_train/version_0/Epoch_5_cameradirection_train_loss_2.3584697707690330.pth #/storage/ctlearn_data/check_points/v_0_3/Epoch_42_direction_train_loss_-2739.9621516285983489.pth #./run/run_direction_train_2/exp_2_direction_train/version_1/direction_train_loss_1.0721765518581907.pth 
 
@@ -137,7 +140,7 @@ model:
 hyp: 
 
   epochs: 50
-  batches: 64 #128 #64
+  batches: 256 #128 #64
   dynamic_batches: True
   optimizer: Adamw
   momentum: 0.957 #Yolo 0.937 # Efficient-b3 0.757
@@ -185,6 +188,7 @@ normalization:
   energy_mu: 0.0
   # energy_sigma: 1000.0
   energy_sigma: 1000.0
+  
 dataset:
   num_workers: 1 # 
   pin_memory: True 
