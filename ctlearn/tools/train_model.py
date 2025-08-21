@@ -41,6 +41,7 @@ class TrainCTLearnModel(Tool):
     - Regression of the primary particle energy
     - Regression of the primary particle arrival direction based on the offsets in camera coordinates
     - Regression of the primary particle arrival direction based on the offsets in sky coordinates
+    - Regression of the primary particle core position on the ground
     """
 
     name = "ctlearn-train-model"
@@ -65,6 +66,17 @@ class TrainCTLearnModel(Tool):
         --pattern-signal "gamma_*_run10.dl1.h5" \\
         --output /path/to/your/energy/ \\
         --reco energy \\
+
+    To train a CTLearn model for the regression of the primary particle
+    core position on the ground:
+    > ctlearn-train-model \\
+        --signal /path/to/your/muons_dl1_dir/ \\
+        --pattern-signal "muon_*_run1.dl1.h5" \\
+        --pattern-signal "muon_*_run10.dl1.h5" \\
+        --DLImageReader.channels=cleaned_image \\
+        --DLImageReader.image_mapper_type=OversamplingMapper \\
+        --output /path/to/your/core/ \\
+        --reco core \\
 
     To train a CTLearn model for the regression of the primary particle
     arrival direction based on the offsets in camera coordinates:
@@ -150,7 +162,7 @@ class TrainCTLearnModel(Tool):
     ).tag(config=True)
 
     reco_tasks = List(
-        trait=CaselessStrEnum(["type", "energy", "cameradirection", "skydirection"]),
+        trait=CaselessStrEnum(["type", "energy", "cameradirection", "skydirection", "core"]),
         allow_none=False, 
         help=(
             "List of reconstruction tasks to perform. "
@@ -158,6 +170,7 @@ class TrainCTLearnModel(Tool):
             "'energy': regression of the primary particle energy "
             "'cameradirection': regression of the primary particle arrival direction in camera coordinates "
             "'skydirection': regression of the primary particle arrival direction in sky coordinates"
+            "'core': regression of the primary particle core position on the ground"
         )
     ).tag(config=True)
 
@@ -526,7 +539,12 @@ class TrainCTLearnModel(Tool):
             losses["cameradirection"] = keras.losses.MeanAbsoluteError(
                 reduction="sum_over_batch_size"
             )
-            metrics["cameradirection"] = keras.metrics.MeanAbsoluteError(name="mae_cameradirection")
+            metrics["cameradirection"] = keras.metrics.MeanAbsoluteError(name="mae_core")
+        if "core" in self.reco_tasks:
+            losses["core"] = keras.losses.MeanAbsoluteError(
+                reduction="sum_over_batch_size"
+            )
+            metrics["core"] = keras.metrics.MeanAbsoluteError(name="mae_core")
         if "skydirection" in self.reco_tasks:
             losses["skydirection"] = keras.losses.MeanAbsoluteError(
                 reduction="sum_over_batch_size"
