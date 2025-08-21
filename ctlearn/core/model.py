@@ -87,12 +87,12 @@ class CTLearnModel(Component):
             "energy": [512, 256, 1],
             "cameradirection": [512, 256, 2],
             "skydirection": [512, 256, 2],
-            "core": [512, 256, 2],
+            "impact": [512, 256, 2],
         },
         allow_none=False,
         help=(
             "Dictionary containing the number of neurons in the fully connected head for each "
-            "task ('type', 'energy', 'cameradirection', 'skydirection', 'core'). Note: The number of neurons in the last layer "
+            "task ('type', 'energy', 'cameradirection', 'skydirection', 'impact'). Note: The number of neurons in the last layer "
             "must match the number of classes or the number of reconstructed values."
         ),
     ).tag(config=True)
@@ -103,13 +103,13 @@ class CTLearnModel(Component):
             "energy": "relu",
             "cameradirection": "tanh",
             "skydirection": "tanh",
-            "core": "tanh",
+            "impact": "tanh",
         },
         allow_none=False,
         help=(
             "Dictionary containing the activation function for the fully connected head for each "
-            "task ('type', 'energy', 'cameradirection', 'skydirection', 'core'). Note: The default activation functions "
-            "are 'relu' for 'type' and 'energy' tasks, and 'tanh' for 'cameradirection', 'skydirection' and 'core' tasks. "
+            "task ('type', 'energy', 'cameradirection', 'skydirection', 'impact'). Note: The default activation functions "
+            "are 'relu' for 'type' and 'energy' tasks, and 'tanh' for 'cameradirection', 'skydirection' and 'impact' tasks. "
             "The 'type' task uses 'softmax' as the final activation function."
         ),
     ).tag(config=True)

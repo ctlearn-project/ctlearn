@@ -170,8 +170,8 @@ class DLDataLoader(Sequence):
                 )
         if "energy" in self.tasks:
             labels["energy"] = batch["log_true_energy"].data
-        if "core" in self.tasks:
-            labels["core"] = np.stack(
+        if "impact" in self.tasks:
+            labels["impact"] = np.stack(
                 (
                     batch["true_core_x"].data,
                     batch["true_core_y"].data,
@@ -269,7 +269,7 @@ class DLDataLoader(Sequence):
                 )
             if "energy" in self.tasks:
                 log_true_energy.append(group_element["log_true_energy"].data[0])
-            if "core" in self.tasks:
+            if "impact" in self.tasks:
                 core_x = group_element["true_core_x"].data[0]
                 core_y = group_element["true_core_y"].data[0]
             if "skydirection" in self.tasks:
@@ -297,8 +297,8 @@ class DLDataLoader(Sequence):
                 )
         if "energy" in self.tasks:
             labels["energy"] = np.array(log_true_energy)
-        if "core" in self.tasks:
-            labels["core"] = np.stack(
+        if "impact" in self.tasks:
+            labels["impact"] = np.stack(
                 (
                     np.array(core_x),
                     np.array(core_y),
