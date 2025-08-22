@@ -156,7 +156,7 @@ class PredictCTLearnModel(Tool):
         Create a table with NaNs for missing predictions.
     _store_pointing(all_identifiers)
         Store the telescope pointing table from to the output file.
-    _create_feature_vectors_table(example_identifiers, nonexample_identifiers, classification_feature_vectors, energy_feature_vectors, direction_feature_vectors)
+    _create_feature_vectors_table(example_identifiers, nonexample_identifiers, classification_feature_vectors, energy_feature_vectors, direction_feature_vectors, impact_feature_vectors)
         Create the table for the DL1 feature vectors.
     """
 
@@ -248,6 +248,18 @@ class PredictCTLearnModel(Tool):
         file_ok=True,
     ).tag(config=True)
 
+    load_impact_model_from = Path(
+        default_value=None,
+        help=(
+            "Path to a Keras model file (Keras3) or directory (Keras2) for the regression "
+            "of the primary particle impact point."
+        ),
+        allow_none=True,
+        exists=True,
+        directory_ok=True,
+        file_ok=True,
+    ).tag(config=True)
+
     load_cameradirection_model_from = Path(
         default_value=None,
         help=(
@@ -305,6 +317,7 @@ class PredictCTLearnModel(Tool):
         ("i", "input_url"): "PredictCTLearnModel.input_url",
         ("t", "type_model"): "PredictCTLearnModel.load_type_model_from",
         ("e", "energy_model"): "PredictCTLearnModel.load_energy_model_from",
+        ("p", "impact_model"): "PredictCTLearnModel.load_impact_model_from",
         (
             "d",
             "cameradirection_model",
@@ -603,6 +616,21 @@ class PredictCTLearnModel(Tool):
         energy_table = example_identifiers.copy()
         energy_table.add_column(reco_energy, name=f"{self.prefix}_tel_energy")
         return energy_table, feature_vectors
+    
+    def _predict_impact(self, example_identifiers):
+        """
+        Predict the impact point of the primary particle.
+        """
+        self.log.info("Predicting for the regression of the primary particle impact point...")
+        # Predict the data using the loaded impact_model
+        predict_data, feature_vectors = self._predict_with_model(
+            self.load_impact_model_from
+        )
+        # Create prediction table and add the predicted impact point
+        impact_table = example_identifiers.copy()
+        impact_table.add_column(predict_data["impact"].T[0], name=f"{self.prefix}_tel_impact_x")
+        impact_table.add_column(predict_data["impact"].T[1], name=f"{self.prefix}_tel_impact_y")
+        return impact_table, feature_vectors
 
     def _predict_cameradirection(self, example_identifiers):
         """
@@ -945,6 +973,7 @@ class PredictCTLearnModel(Tool):
         classification_feature_vectors=None,
         energy_feature_vectors=None,
         direction_feature_vectors=None,
+        impact_feature_vectors=None,
     ):
         """
         Create the table for the DL1 feature vectors.
@@ -965,6 +994,8 @@ class PredictCTLearnModel(Tool):
             Array containing the energy feature vectors.
         direction_feature_vectors : np.ndarray or None
             Array containing the direction feature vectors.
+        impact_feature_vectors : np.ndarray or None
+            Array containing the impact feature vectors.
 
         Returns:
         --------
@@ -1022,6 +1053,19 @@ class PredictCTLearnModel(Tool):
                         direction_feature_vectors.shape[1],
                     )
                 )
+        if impact_feature_vectors is not None:
+            is_valid_col = ~np.isnan(np.min(impact_feature_vectors, axis=1), dtype=bool)
+            feature_vector_table.add_column(
+                impact_feature_vectors, name=f"{self.prefix}_tel_impact_feature_vectors"
+            )
+            if nonexample_identifiers is not None:
+                columns_list.append(f"{self.prefix}_tel_impact_feature_vectors")
+                shapes_list.append(
+                    (
+                        len(nonexample_identifiers),
+                        impact_feature_vectors.shape[1],
+                    )
+                ) 
         # Produce output table with NaNs for missing predictions
         if nonexample_identifiers is not None:
             if len(nonexample_identifiers) > 0:
@@ -1141,7 +1185,7 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                 property=ReconstructionProperty.PARTICLE_TYPE,
                 parent=self,
             )
-            # Predict the energy of the primary particle
+            # Predict the particle type of the primary particle
             classification_table, classification_feature_vectors = (
                 super()._predict_classification(example_identifiers)
             )
@@ -1154,7 +1198,7 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                         shapes=[(len(nonexample_identifiers),)],
                     )
                     classification_table = vstack([classification_table, nan_table])
-                # Add is_valid column to the energy table
+                # Add is_valid column to the particle type table
                 classification_table.add_column(
                     ~np.isnan(
                         classification_table[f"{self.prefix}_tel_prediction"].data,
@@ -1328,6 +1372,52 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                     self.output_path,
                     f"{DL2_SUBARRAY_GROUP}/energy/{self.prefix}",
                 )
+
+        impact_feature_vectors = None
+        if self.load_impact_model_from is not None:
+            # Predict the impact of the primary particle
+            impact_table, impact_feature_vectors = super()._predict_impact(
+                example_identifiers
+            )
+            if self.dl2_telescope:
+                # Produce output table with NaNs for missing predictions
+                if len(nonexample_identifiers) > 0:
+                    nan_table = super()._create_nan_table(
+                        nonexample_identifiers,
+                        columns=[f"{self.prefix}_tel_impact"],
+                        shapes=[(len(nonexample_identifiers),)],
+                    )
+                    impact_table = vstack([impact_table, nan_table])
+                # Add is_valid column to the impact table
+                impact_table.add_column(
+                    ~np.isnan(
+                        impact_table[f"{self.prefix}_tel_impact"].data, dtype=bool
+                    ),
+                    name=f"{self.prefix}_tel_is_valid",
+                )
+                for tel_id in self.dl1dh_reader.selected_telescopes[
+                    self.dl1dh_reader.tel_type
+                ]:
+                    # Retrieve the example identifiers for the selected telescope
+                    telescope_mask = impact_table["tel_id"] == tel_id
+                    impact_tel_table = impact_table[telescope_mask]
+                    impact_tel_table.sort(TELESCOPE_EVENT_KEYS)
+                    # Save the prediction to the output file
+                    write_table(
+                        impact_tel_table,
+                        self.output_path,
+                        f"{DL2_TELESCOPE_GROUP}/impact/{self.prefix}/tel_{tel_id:03d}",
+                        overwrite=self.overwrite_tables,
+                    )
+                    self.log.info(
+                        "DL2 prediction data was stored in '%s' under '%s'",
+                        self.output_path,
+                        f"{DL2_TELESCOPE_GROUP}/impact/{self.prefix}/tel_{tel_id:03d}",
+                    )
+            
+            if self.dl2_subarray:
+                raise NotImplementedError("No impact reconstruction property in ctapipe defined. No stereo combiner available.")
+
         direction_feature_vectors = None
         if self.load_cameradirection_model_from is not None:
             self.geometry_stereo_combiner = StereoCombiner.from_name(
@@ -1459,6 +1549,7 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                 classification_feature_vectors,
                 energy_feature_vectors,
                 direction_feature_vectors,
+                impact_feature_vectors,
             )
             # Loop over the selected telescopes and store the feature vectors
             # for each telescope in the output file. The feature vectors are stored
@@ -1616,7 +1707,7 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
         self.log.info("Starting the prediction...")
         classification_feature_vectors = None
         if self.load_type_model_from is not None:
-            # Predict the energy of the primary particle
+            # Predict the particle type of the primary particle
             classification_table, classification_feature_vectors = (
                 super()._predict_classification(example_identifiers)
             )
@@ -1629,7 +1720,7 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                         shapes=[(len(nonexample_identifiers),)],
                     )
                     classification_table = vstack([classification_table, nan_table])
-                # Add is_valid column to the energy table
+                # Add is_valid column to the particle type table
                 classification_table.add_column(
                     ~np.isnan(
                         classification_table[f"{self.prefix}_tel_prediction"].data,
@@ -1711,6 +1802,48 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                     self.output_path,
                     f"{DL2_SUBARRAY_GROUP}/energy/{self.prefix}",
                 )
+        impact_feature_vectors = None
+        if self.load_impact_model_from is not None:
+            # Predict the impact of the primary particle
+            impact_table, impact_feature_vectors = super()._predict_impact(
+                example_identifiers
+            )
+            if self.dl2_subarray:
+                # Produce output table with NaNs for missing predictions
+                if len(nonexample_identifiers) > 0:
+                    nan_table = super()._create_nan_table(
+                        nonexample_identifiers,
+                        columns=[f"{self.prefix}_tel_impact"],
+                        shapes=[(len(nonexample_identifiers),)],
+                    )
+                    impact_table = vstack([impact_table, nan_table])
+                # Add is_valid column to the impact table
+                impact_table.add_column(
+                    ~np.isnan(
+                        impact_table[f"{self.prefix}_tel_impact"].data, dtype=bool
+                    ),
+                    name=f"{self.prefix}_tel_is_valid",
+                )
+                # Rename the columns for the stereo mode
+                impact_table.rename_column(
+                    f"{self.prefix}_tel_impact", f"{self.prefix}_impact"
+                )
+                impact_table.rename_column(
+                    f"{self.prefix}_tel_is_valid", f"{self.prefix}_is_valid"
+                )
+                impact_table.sort(SUBARRAY_EVENT_KEYS)
+                # Save the prediction to the output file
+                write_table(
+                    impact_table,
+                    self.output_path,
+                    f"{DL2_SUBARRAY_GROUP}/impact/{self.prefix}",
+                    overwrite=self.overwrite_tables,
+                )
+                self.log.info(
+                    "DL2 prediction data was stored in '%s' under '%s'",
+                    self.output_path,
+                    f"{DL2_SUBARRAY_GROUP}/impact/{self.prefix}",
+                )
         direction_feature_vectors = None
         if self.load_skydirection_model_from is not None:
             # Join the prediction table with the telescope pointing table
@@ -1773,6 +1906,7 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                 classification_feature_vectors,
                 energy_feature_vectors,
                 direction_feature_vectors,
+                impact_feature_vectors,
             )
             # Loop over the selected telescopes and store the feature vectors
             # for each telescope in the output file. The feature vectors are stored
@@ -1785,6 +1919,10 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
             feature_vector_table.rename_column(
                 f"{self.prefix}_tel_energy_feature_vectors",
                 f"{self.prefix}_energy_feature_vectors",
+            )
+            feature_vector_table.rename_column(
+                f"{self.prefix}_tel_impact_feature_vectors",
+                f"{self.prefix}_impact_feature_vectors",
             )
             feature_vector_table.rename_column(
                 f"{self.prefix}_tel_geometry_feature_vectors",
