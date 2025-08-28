@@ -15,6 +15,7 @@ from ctapipe.containers import (
     ReconstructedGeometryContainer,
     ReconstructedEnergyContainer,
 )
+from ctapipe.io import read_table, write_table
 from ctapipe.reco.utils import add_defaults_and_meta
 from dl1_data_handler.reader import ProcessType
 from ctlearn.tools.predict_model import PredictCTLearnModel
