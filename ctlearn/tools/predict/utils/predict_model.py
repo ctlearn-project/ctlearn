@@ -417,6 +417,12 @@ class PredictCTLearnModel(Tool):
                 self.tasks.append(Task.direction)
 
         # Check if the ctapipe HDF5Merger component is enabled
+        if os.path.exists(self.output_path):
+            self.log.warning(
+                "The output file '{self.output_path}' already exists. Disabling HDF5Merger the flag '--no-use-HDF5Merger' will be not use."
+            )
+            self.use_HDF5Merger = False
+            
         if self.use_HDF5Merger:
             if os.path.exists(self.output_path):
                 raise ToolConfigurationError(

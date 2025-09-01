@@ -191,7 +191,16 @@ def load_pytorch_model(self):
         model = ModelHelper.loadModel(
             model_net, "", check_point_path, Mode.observation, device_str=self.device_str
         )
-        
         model.eval()
+        if task == Task.type:
+            self.type_model = model
+        elif task == Task.energy:
+            self.energy_model = model
+        elif task == Task.cameradirection or task == Task.skydirection or task == Task.direction:
+            self.dirrection_model = model
+        else:
+            raise ValueError(
+                f"task:{task.name} is not supported. Task must be type, direction or energy"
+            )
         
     return model

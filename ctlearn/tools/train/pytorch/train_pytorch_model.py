@@ -190,6 +190,7 @@ class TrainPyTorchModel(TrainCTLearnModel):
             use_augmentation=self.parameters["augmentation"]["use_augmentation"],
             is_training=True,
         )
+        print(len(self.training_loader))
         
         self.validation_loader = DLDataLoader.create(
             framework=self.framework_type,
@@ -204,6 +205,8 @@ class TrainPyTorchModel(TrainCTLearnModel):
             use_augmentation=False,
             is_training=False,
         )
+        
+        print(len(self.validation_loader))
 
 
     def start(self):
