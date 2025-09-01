@@ -1113,22 +1113,29 @@ class CTLearnPL(pl.LightningModule):
                 else:
                     classification_pred_ = classification_pred[0]
                     feature_vector = classification_pred[1]
-                # Log batch loss and accuracy on the progress bar
-                if dataloader_idx == 0:
-                    if self.is_difussion:
-                        loss, accuracy, predicted, precision =self.compute_type_loss_diffusion(
-                        classification_pred_,
-                        labels_class,
-                        test_val=False,
-                        training=False,
-                        )
-                    else:
-                        loss, accuracy, predicted, precision = self.compute_type_loss(
+                    loss, accuracy, predicted, precision = self.compute_type_loss(
                             classification_pred_,
                             labels_class,
                             test_val=False,
                             training=False,
                         )
+                    
+                # Log batch loss and accuracy on the progress bar
+                # if dataloader_idx == 0:
+                #     if self.is_difussion:
+                #         loss, accuracy, predicted, precision =self.compute_type_loss_diffusion(
+                #         classification_pred_,
+                #         labels_class,
+                #         test_val=False,
+                #         training=False,
+                #         )
+                #     else:
+                #         loss, accuracy, predicted, precision = self.compute_type_loss(
+                #             classification_pred_,
+                #             labels_class,
+                #             test_val=False,
+                #             training=False,
+                #         )
                         
                     self.log(
                         "val_acc",

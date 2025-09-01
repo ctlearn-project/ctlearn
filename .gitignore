@@ -39,3 +39,5 @@ test/
 mc_tjark/
 calibration/
 test_local_cristian/
+
+test/prepare_file.py
