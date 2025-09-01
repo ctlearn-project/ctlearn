@@ -178,7 +178,8 @@ class CTLearnPL(pl.LightningModule):
             self.is_difussion=True
         else:
             self.is_difussion=False
-
+        print("Diffusion: ",self.is_difussion)
+        
         self.num_inputs = num_inputs
         self.train_loader = train_loader
         self.val_loader = val_loader
@@ -438,7 +439,6 @@ class CTLearnPL(pl.LightningModule):
 
         loss_energy = self.criterion_energy_value(energy_pred, labels_energy)
         loss = loss_energy
-
         #-----------------------------------------
         # k=0.6
         # e_thrs= -0.3
@@ -770,14 +770,12 @@ class CTLearnPL(pl.LightningModule):
                 predicted = predicted.argmax(dim=1)
                 
                 if training:
-
                     self.class_train_accuracy.update(predicted, y)
                     accuracy = self.class_train_accuracy.compute().item()
                     self.f1_score_train.update(predicted, y)
                     self.precision_train.update(predicted, y)
                     precision = self.precision_train.compute().item()
                 else:
-
                     self.class_val_accuracy.update(predicted, y)
                     accuracy = self.class_val_accuracy.compute().item()
                     self.confusion_matrix.update(predicted, y)
@@ -796,22 +794,19 @@ class CTLearnPL(pl.LightningModule):
              self.dummy_tensor = self.occupy_free_gpu_memory(self.device)
     # ----------------------------------------------------------------------------------------------------------
     def training_step(self, batch, batch_idx):
-
         # ------------------------------------------------------------------
         # Read inputs (features) and labels
         # ------------------------------------------------------------------
         features, labels, t = batch
         loss = 0
-
         if len(features) > 0:
             imgs = features["image"]
-
+                        
             if self.task == Task.type:
                 labels_class = labels["type"]
 
             labels_energy_value = labels["energy"]
             if self.task == Task.energy:
-                labels_energy_value = labels["energy"]
                 labels_energy_value = labels_energy_value.to(self.device)
            
 
@@ -904,7 +899,9 @@ class CTLearnPL(pl.LightningModule):
                         loss, *_ = self.compute_energy_loss_diffusion(imgs,labels_energy_value/1.0,training=True,x_2=peak_time)
                     
                 else:
-
+                    if len(energy_pred)==2:
+                        energy_pred = energy_pred[0]
+                        
                     loss, *_ = self.compute_energy_loss(
                         energy_pred, labels_energy_value, test_val=False, training=True
                     )
@@ -1168,24 +1165,26 @@ class CTLearnPL(pl.LightningModule):
                 # ------------------------------------------------------------------------
                 # Convert the offset to altitud and azimuth
                 # ------------------------------------------------------------------------
+                
                 if dataloader_idx == 0:
-
                     self.loss_val_distance += loss_distance.item()
                     self.loss_val_dx_dy +=  loss_dx_dy.item()
                     self.loss_val_angular_error += loss_angular_diff.item()
                     self.val_angular_diff_list.extend(angular_error)
-                       
-                    # -------------------------------------------------------
+                # -------------------------------------------------------
+                
                     pred_dx = direction_pred[:, 0].float().cpu().detach().numpy()
                     pred_dy = direction_pred[:, 1].float().cpu().detach().numpy()
                 
                     cam_x = pred_dx
                     cam_y = pred_dy
 
-                    pred_alt, pred_az = self.val_loader.cam_to_alt_az(labels["tel_ids"], labels["focal_length"], labels["pix_rotation"],labels["tel_az"],labels["tel_alt"], cam_x, cam_y)
+                    pred_alt, pred_az = self.val_loader.cam_to_alt_az(labels["tel_ids"].cpu().detach().numpy(), labels["focal_length"].cpu().detach().numpy(), labels["pix_rotation"].cpu().detach().numpy(),labels["tel_az"].cpu().detach().numpy(),labels["tel_alt"].cpu().detach().numpy(), cam_x, cam_y)
+                    
+                    labels_dx_dy = labels_direction[:, 0:2]
+                    
+                    true_alt, true_az = self.val_loader.cam_to_alt_az(labels["tel_ids"].cpu().detach().numpy(), labels["focal_length"].cpu().detach().numpy(), labels["pix_rotation"].cpu().detach().numpy(),labels["tel_az"].cpu().detach().numpy(),labels["tel_alt"].cpu().detach().numpy(), labels_dx_dy[:,0].float().cpu().detach().numpy(), labels_dx_dy[:,1].float().cpu().detach().numpy())
 
-                    true_alt = labels["true_alt"]
-                    true_az = labels["true_az"]
                     self.val_alt_pred_list.extend(np.radians(pred_alt))
                     self.val_az_pred_list.extend(np.radians(pred_az))
                     self.val_alt_label_list.extend(np.radians(true_alt))
@@ -1228,7 +1227,7 @@ class CTLearnPL(pl.LightningModule):
                     energy_label_tev[:, 0].float().cpu().detach().numpy().flatten().tolist()
                 )
                 self.val_hillas_intensity_list.extend(
-                    hillas_intensity.float().cpu().detach().numpy().flatten().tolist()
+                    hillas_intensity[:, 0].float().cpu().detach().numpy().flatten().tolist()
                 )
 
             # ---------------------------------------

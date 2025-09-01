@@ -59,9 +59,9 @@ class BasicBlock(nn.Module):
         return out
     
 class ThinResNet_DBB(nn.Module):
-    def __init__(self,task, block=BasicBlock, num_blocks=[2, 3, 3, 3], num_inputs=1, num_outputs=2,use_bn=False,dropout=0.0):
+    def __init__(self,task, block=BasicBlock, num_blocks=[2, 3, 3, 3], num_inputs=1, num_outputs=2,use_bn=False,dropout=0.0,extract_uncertenty=False):
         super(ThinResNet_DBB, self).__init__()
-
+        self.extract_uncertenty = extract_uncertenty
         # block = BasicBlock
         self.in_channels = 64
         self.use_bn=use_bn
@@ -159,7 +159,11 @@ class ThinResNet_DBB(nn.Module):
             energy = out
 
         if self.task == "direction":
-            direction = self.normal_inv(out)
+            if self.extract_uncertenty:
+                direction = self.normal_inv(out)
+            else:
+                direction = self.fc_2(out)
+
 
             # direction = [direction, out_feature]
             # if self.training:

@@ -223,6 +223,8 @@ class LST1PredictionTool(Tool):
         ("d", "cameradirection_model"): "LST1PredictionTool.load_cameradirection_model_from",
         ("o", "output"): "LST1PredictionTool.output_path",
         ("f", "framework"): "LST1PredictionTool.framework_type",
+        ("p", "pytorch_config_file"): "LST1PredictionTool.pytorch_config_file",
+
     }
 
     flags = {
