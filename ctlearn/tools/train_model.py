@@ -222,7 +222,7 @@ class TrainCTLearnModel(Tool):
         "{'ptq': {'quantization_type': 'float16'}}]."
     ),
     default_value=[],
-    ).tag(config=True) ### D
+    ).tag(config=True) 
     
 
     lr_reducing = Dict(
@@ -407,7 +407,7 @@ class TrainCTLearnModel(Tool):
         monitor_mode = "min"
         # Model checkpoint callback
         # Temp fix for supporting keras2 & keras3
-        ## D: Changed path to distinguish between Keras model and tflite model
+        # Changed path to distinguish between Keras model and tflite model
         if int(keras.__version__.split(".")[0]) >= 3:
             if self.tflite_conversion:
                 model_path = f"{self.output_dir}/keras_model/ctlearn_model.keras"
@@ -440,7 +440,7 @@ class TrainCTLearnModel(Tool):
         )
         
         # CSV logger callback
-        ## D: Path changed here too
+        # Path changed here too
         if self.tflite_conversion:
             csv_logger_callback = keras.callbacks.CSVLogger(
                 filename=f"{self.output_dir}/keras_model/training_log.csv", append=True
@@ -500,28 +500,13 @@ class TrainCTLearnModel(Tool):
             )
 
             self.original_model = fixed_model.model
-            print(f"TM_Loaded original model: {self.original_model}")
+            print(f"Loaded original model: {self.original_model}")
             print(self.original_model.summary())
 
             self.model = fixed_model.model_wrapped
-            print(f"TM_Loaded wrapped model: {self.model}")
+            print(f"Loaded wrapped model: {self.model}")
             print(self.model.summary())
             
-            """######## D
-            self.load_model_from = '/lhome/ext/ucm147/ucm1478/editing_code/models/baseline/cameradir/ctlearn_model.cpk/'
-            self.model = keras.saving.load_model(self.load_model_from)
-            #self.model.load_weights(self.load_model_from)
-            end_step = np.ceil(100000 / 64).astype(np.int32) * 3
-            end_step = 500
-            pruning_params = {'pruning_schedule': sparse_keras.pruning_schedule.ConstantSparsity(
-            target_sparsity =0.90,
-            begin_step = 1,
-            end_step = end_step,
-            frequency = 100
-            )}
-            self.model= tfmot.sparsity.keras.prune_low_magnitude(self.model, **pruning_params)
-            """####### D
-
 
             # Validate the optimizer parameters
             validate_trait_dict(self.optimizer, ["name", "base_learning_rate"])
@@ -530,7 +515,7 @@ class TrainCTLearnModel(Tool):
             # Set the epsilon for the Adam optimizer
             adam_epsilon = None
             if self.optimizer["name"] == "Adam":
-                self.log.info("Predefined Adam optimizer is selected.")###Daf
+                self.log.info("Predefined Adam optimizer is selected.")
                 # Validate the epsilon for the Adam optimizer
                 validate_trait_dict(self.optimizer, ["adam_epsilon"])
                 # Set the epsilon for the Adam optimizer
@@ -557,23 +542,16 @@ class TrainCTLearnModel(Tool):
             self.log.info("Compiling CTLearn model.")
             self.model.compile(optimizer=optimizer_fn(**optimizer_args), loss=losses, metrics=metrics)
             self.original_model.compile(optimizer=optimizer_fn(**optimizer_args), loss=losses, metrics=metrics)
-            #####D
+            
             if self.model.optimizer:
                 #self.log.info("Optimizer configuration: %s", self.model.optimizer.get_config())
-                #self.log.info("Optimizer weights: %s", self.model.get_weights())
                 for idx, var in enumerate(self.model.optimizer.variables()):
                     self.log.info(f"Variable {idx}: {var.name}, shape: {var.shape}")
-                    #self.log.info(var.numpy())
             else:
                 self.log.info("No optimizer is associated with the model.")
-            #### Esto sobra
-
-
-        print("epochs: ", self.n_epochs)
+            
         # Train and evaluate the model
         self.log.info("Training and evaluating...")
-        print(f"TM Callbacks: {self.callbacks}")
-        print(f"sparsity: {self.compression_techniques}")
         self.model.fit(
             self.training_loader,
             validation_data=self.validation_loader,
@@ -619,7 +597,7 @@ class TrainCTLearnModel(Tool):
     def finish(self):
 
         # Convert model to TFLite backend
-        ## D: TO DO add different post training quantization techniques 
+        # TO DO add different post training quantization techniques 
         if self.tflite_conversion:
             self.log.info("Converting Keras model to TFLite...")
             converter = tf.lite.TFLiteConverter.from_keras_model(self.model)
@@ -629,8 +607,7 @@ class TrainCTLearnModel(Tool):
             model_path = pathlib.Path(f"{self.output_dir}/tflite_model")
             model_path.mkdir(exist_ok=True, parents=True)
 
-            ## D: TFLite model name depending on task (needed for inference)
-            ## D: Next step: allow user to set preferred folder or filename (keeping task)
+            # TFLite model name depending on task (needed for inference)
             if "type" in self.reco_tasks:
                 quant_model_path = model_path/"type_model.tflite"
             if "energy" in self.reco_tasks:
