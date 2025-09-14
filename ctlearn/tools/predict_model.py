@@ -486,7 +486,7 @@ class PredictCTLearnModel(Tool):
         feature_vectors : np.ndarray
             None, kept for compatibility with Keras model.
         """
-        ## D: For now, batch_size is 1. Might be possible to simulate batch inference...
+        ## Temporary fix: Batch_size is 1. Simulating batch inference will be explored...
         data_loader = DLDataLoader(
             self.dl1dh_reader,
             self.indices,
@@ -505,10 +505,14 @@ class PredictCTLearnModel(Tool):
         input_index = input_details["index"]
         output_index = output_details["index"]
         predict_data = []
-       
+
+        # This calls the data loader once per image. It is very inefficient. 
+        # Loading the full data and then looping results in tremendous memory wastage
+        # but avoids calling __getitem__ for every image.
+        # None has worked. A combined approach might be a temporary fix but has not
+        # yet been tested.
+        
         for data_index in self.indices:
-            # Might be better to define input_data before looping and then loop over it? 
-            # Avoid calling __getitem__ so many times...
             input_data = data_loader.__getitem__(data_index)[0]["input"]
             interpreter.set_tensor(input_index, input_data)
             interpreter.invoke()
@@ -584,7 +588,6 @@ class PredictCTLearnModel(Tool):
         # batch generator for the remaining events.
         data_loader_last_batch = None
         if self.last_batch_size > 0:
-            print('hello good sir')
             last_batch_indices = self.indices[-self.last_batch_size :]
             data_loader_last_batch = DLDataLoader(
                 self.dl1dh_reader,
@@ -594,9 +597,8 @@ class PredictCTLearnModel(Tool):
                 sort_by_intensity=self.sort_by_intensity,
                 stack_telescope_images=self.stack_telescope_images,
             )
-        #self.indices = self.indices[0:100] ###
+        
         # Load the model from the specified path
-        ##model = keras.saving.load_model(model_path) #Original, check again later
         model = keras.models.load_model(model_path)
         prediction_colname = (
             #model.layers[-1].name if model.layers[-1].name != "softmax" else "type"
@@ -649,18 +651,14 @@ class PredictCTLearnModel(Tool):
                     ]
                 )
         else:
-            # Tensorboard callback
+            # Profiling implementation within Tensorboard callback
             log_path = Path(self.log_file)
             # Folder which contains it
-            self.log.info('I am here')
-            print('i am here')
-            print(PredictCTLearnModel.log_file)
             log_folder = log_path.parent
-            self.log.info('folder', PredictCTLearnModel.log_file)
-            self.log.info('folder', self.log_file)
-            self.log.info('folder', log_folder)
+            self.log.info("Setting up TensorBoard profiling")
+            self.log.info("Folder where logs are stored", log_folder)
             profiler_predict_dir =  log_folder / datetime.now().strftime("%Y%m%d-%H%M%S")
-            self.log.info(profiler_predict_dir)
+            self.log.info("Directory for profiler:", profiler_predict_dir)
             tensorboard_callback = keras.callbacks.TensorBoard(
                     log_dir=profiler_predict_dir, histogram_freq=1, write_graph=True, profile_batch= '500,502')
             # Predict the data using the loaded model
@@ -715,7 +713,6 @@ class PredictCTLearnModel(Tool):
         )
         # Create prediction table and add the predicted classification score ('gammaness')
         classification_table = example_identifiers.copy()
-        #classification_table = example_identifiers[0:100].copy() ###
         classification_table.add_column(
             predict_data["type"].T[1], name=f"{self.prefix}_tel_prediction"
         )
@@ -749,7 +746,6 @@ class PredictCTLearnModel(Tool):
         )
         # Create prediction table and add the reconstructed energy in TeV
         energy_table = example_identifiers.copy()
-        #energy_table = example_identifiers[0:100].copy()
         energy_table.add_column(reco_energy, name=f"{self.prefix}_tel_energy")
         return energy_table, feature_vectors
 
@@ -787,7 +783,6 @@ class PredictCTLearnModel(Tool):
         cam_coord_offset_y = u.Quantity(predict_data["cameradirection"].T[1], unit=u.m)
         # Create prediction table and add the reconstructed energy in TeV
         cameradirection_table = example_identifiers.copy()
-        #cameradirection_table = example_identifiers[0:100].copy()
         cameradirection_table.add_column(cam_coord_offset_x, name="cam_coord_offset_x")
         cameradirection_table.add_column(cam_coord_offset_y, name="cam_coord_offset_y")
         return cameradirection_table, feature_vectors
@@ -1123,7 +1118,6 @@ class PredictCTLearnModel(Tool):
         """
         # Create the feature vector table
         feature_vector_table = example_identifiers.copy()
-        #feature_vector_table = example_identifiers[0:100].copy() ###
         feature_vector_table.remove_columns(
             ["pointing_azimuth", "pointing_altitude", "time"]
         )
