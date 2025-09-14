@@ -951,20 +951,17 @@ class FixedPretrainedModel(CTLearnModel):
         self.log.info(f"Loading pretrained model from {self.load_model_from}")
         # Load the model from the specified path
         self.model = keras.saving.load_model(self.load_model_from)
-        #self.model.load_weights(self.load_model_from)
         self.log.info("Pretrained model loaded successfully.")
-        print(self.parent.apply_pruning)
-        print(self.parent.pruning_parameters)
-        # Apply pruning wrappers if enabled
+        
         if self.parent.apply_pruning and self.parent.pruning_parameters:
             print("Applying pruning wrappers to the model...")
             self.log.info("Applying pruning wrappers to the model...")
             
-            print("pruning params from model construction:", self.parent.pruning_parameters)
+            print("Pruning parameters from shedule construction:", self.parent.pruning_parameters)
             self.model_wrapped = keras.models.clone_model(self.model)
             self.model_wrapped = tfmot.sparsity.keras.prune_low_magnitude(self.model, **self.parent.pruning_parameters)
             print(f"M_Size of wrapped in model: {self.model_wrapped.count_params()}")
             
-            print(f"M_Size of original in model: {self.model.count_params()}")
+            print(f"Size of original in model: {self.model.count_params()}")
             
             self.log.info("Pruning wrappers applied successfully.")
