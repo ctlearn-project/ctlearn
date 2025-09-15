@@ -303,20 +303,21 @@ class TrainCTLearnModel(Tool):
         self.log.info(f'Class weight{self.dl1dh_reader.class_weight}')
         
         # Check if there are at least two classes in the reader for the particle classification
-        if self.dl1dh_reader.class_weight is None and "type" in self.reco_tasks:
-            raise ValueError(
-                "Classification task selected but less than two classes are present in the data."
-            )
-        if self.dl1dh_reader.class_weight[0]/self.dl1dh_reader.class_weight[1] > 1.1:
-            self.log.warning(
-                "The dataset seems to be imbalanced. "
-                f"Consider using more background events using class_weight in the optimizer.: {self.dl1dh_reader.class_weight}"
-            )
-        if self.dl1dh_reader.class_weight[0]/self.dl1dh_reader.class_weight[1] < 0.9:
-            self.log.warning(
-                "The dataset seems to be imbalanced. "
-                f"Consider using more signal events using class_weight in the optimizer.: {self.dl1dh_reader.class_weight}"
-            )
+        if "type" in self.reco_tasks:
+            if self.dl1dh_reader.class_weight is None and "type" in self.reco_tasks:
+                raise ValueError(
+                    "Classification task selected but less than two classes are present in the data."
+                )
+            if self.dl1dh_reader.class_weight[0]/self.dl1dh_reader.class_weight[1] > 1.1:
+                self.log.warning(
+                    "The dataset seems to be imbalanced. "
+                    f"Consider using more background events using class_weight in the optimizer.: {self.dl1dh_reader.class_weight}"
+                )
+            if self.dl1dh_reader.class_weight[0]/self.dl1dh_reader.class_weight[1] < 0.9:
+                self.log.warning(
+                    "The dataset seems to be imbalanced. "
+                    f"Consider using more signal events using class_weight in the optimizer.: {self.dl1dh_reader.class_weight}"
+                )
         # Check if stereo mode is selected for stacking telescope images
         if self.stack_telescope_images and self.dl1dh_reader.mode == "mono":
             raise ToolConfigurationError(
