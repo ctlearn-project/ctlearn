@@ -195,7 +195,7 @@ class CTLearnPL(pl.LightningModule):
 
         # Loss Function
         class_weights = (
-             torch.tensor([1.0, 1.3], dtype=torch.float32).to(self.device).contiguous()
+             torch.tensor([parameters['class_weight'][0],parameters['class_weight'][1]], dtype=torch.float32).to(self.device).contiguous()
         )  # [1.0, 1.3]
 
         self.criterion_class = nn.CrossEntropyLoss(
@@ -366,10 +366,9 @@ class CTLearnPL(pl.LightningModule):
         self, classification_pred, labels_class, test_val=False, training=False
     ):
         target = labels_class.to(torch.int64)
-        class_weights = torch.tensor([1.0, 1.0], dtype=torch.float).to(self.device)
 
         # Cálculo de la loss con F.cross_entropy
-        loss_class = F.cross_entropy(classification_pred, target, weight=class_weights, reduction='mean')
+        loss_class = F.cross_entropy(classification_pred, target, weight=self.class_weights, reduction='mean')
 
         # Calculate accuracy
         predicted = torch.softmax(classification_pred, dim=1)

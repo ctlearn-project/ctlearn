@@ -1,5 +1,4 @@
 data: 
-
   train_gamma_proton: ./data/gamma_proton_train_remix.dl1.pickle #gamma_proton_reduced_train.pickle #./data/gamma_proton_1910000_train.pickle 
   validation_gamma_proton: ./data/gamma_proton_212282_validation.pickle 
   # validation_gamma_proton: ./data/gamma_proton_1910000_train.pickle 

@@ -173,8 +173,15 @@ class TrainPyTorchModel(TrainCTLearnModel):
 
         # training_indices = training_indices[:max_training_samples]
         # validation_indices = validation_indices[:max_validation_samples]
-
-
+        
+        if not ("class_weight" in self.parameters):
+            self.parameters['class_weight'] = self.dl1dh_reader.class_weight
+            self.log.info(f"Class weights not provided. Using class weights from data reader: {self.parameters['class_weight']}")
+        elif len(self.parameters['class_weight']) != len(self.dl1dh_reader.class_names):
+            raise ValueError(f"Number of class weights provided ({len(self.parameters['class_weight'])}) does not match number of classes in data ({len(self.dl1dh_reader.class_names)}).")
+        else:
+            self.log.info(f"Using class weights from configuration file: {self.parameters['class_weight']}")
+            
         print("BASE TRAIN FRAMEWORK", self.framework_type)
         
         self.training_loader = DLDataLoader.create(
