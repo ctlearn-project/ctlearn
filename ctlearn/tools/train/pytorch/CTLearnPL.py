@@ -194,13 +194,14 @@ class CTLearnPL(pl.LightningModule):
         # self.class_weights = torch.tensor([1.0, 1.3], dtype=torch.float32).to(self.device).contiguous()
 
         # Loss Function
-        class_weights = (
-             torch.tensor([parameters['class_weight'][0],parameters['class_weight'][1]], dtype=torch.float32).to(self.device).contiguous()
-        )  # [1.0, 1.3]
+        if self.task == Task.type:
+            class_weights = (
+                torch.tensor([parameters['class_weight'][0],parameters['class_weight'][1]], dtype=torch.float32).to(self.device).contiguous()
+            )  # [1.0, 1.3]
 
-        self.criterion_class = nn.CrossEntropyLoss(
-            weight=class_weights, reduction="mean"
-        )
+            self.criterion_class = nn.CrossEntropyLoss(
+                weight=class_weights, reduction="mean"
+            )
 
 
         self.criterion_energy_value = torch.nn.L1Loss(reduction="sum")
