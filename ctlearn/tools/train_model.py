@@ -130,6 +130,7 @@ def main():
 
     # Parse all CLI args with the selected framework subclass
     tool.framework_instance.initialize(argv=sys.argv[1:])
+
     tool.run()
 
 
