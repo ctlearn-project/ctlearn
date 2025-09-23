@@ -315,6 +315,7 @@ class LST1PredictionTool(Tool):
         self.transforms["image_offset"] = 0
         self.transforms["peak_time_scale"] = 0.0
         self.transforms["peak_time_offset"] = 0
+        
         # Get the number of rows in the table
         with tables.open_file(self.input_url) as input_file:
             img_table_v_attrs = input_file.get_node(self.image_table_path)._v_attrs

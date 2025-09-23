@@ -95,25 +95,29 @@ def predictions(self):
         trigger_time.extend(dl1_table["time"].mjd)
 
         imgs = input_data['input'][:,:,:,0]
-        peak_time = input_data['input'][:,:,:,1]
+        if len(self.channels)==2:
+            peak_time = input_data['input'][:,:,:,1]
+            peak_time[peak_time < 0] = 0
+            peak_time[np.isnan(peak_time)] = 0
+            peak_time[np.isinf(peak_time)] = 0
+            
         imgs[imgs < 0] = 0
-        peak_time[peak_time < 0] = 0
         imgs[np.isnan(imgs)] = 0
         imgs[np.isinf(imgs)] = 0
-        peak_time[np.isnan(peak_time)] = 0
-        peak_time[np.isinf(peak_time)] = 0
-        
+
+        feture_vector = False
         for task in self.tasks:
             if task == Task.type:
                 imgs = (imgs - self.type_mu) / self.type_sigma
-                peak_time = (peak_time - self.type_mu) / self.type_sigma
                                 
                 if len(self.channels) == 2:
+                    peak_time = (peak_time - self.type_mu) / self.type_sigma
+
                     classification_pred, energy_pred, direction_pred = self.type_model(
                         torch.tensor(imgs).unsqueeze(1).to(self.device) , torch.tensor(peak_time).unsqueeze(1).to(self.device) 
                     )
                 else:
-                    classification_pred, energy_pred, direction_pred = self.type_model(input_data['input'][:,:,:,0])
+                    classification_pred, energy_pred, direction_pred = self.type_model(torch.tensor(imgs).unsqueeze(1).to(self.device))
                     
                 prediction.extend(torch.softmax(classification_pred[0],dim=1).cpu().detach().numpy()[:,0])
                 classification_fvs.extend(classification_pred[1].cpu().detach().numpy())
@@ -121,32 +125,40 @@ def predictions(self):
             elif task == Task.energy:
                 
                 imgs = (imgs - self.energy_mu) / self.energy_sigma
-                peak_time = (peak_time - self.energy_mu) / self.energy_sigma
                 
                 if len(self.channels) == 2:
+                    peak_time = (peak_time - self.energy_mu) / self.energy_sigma
                     classification_pred, energy_pred, direction_pred = self.energy_model(
                         torch.tensor(imgs).unsqueeze(1).to(self.device) , torch.tensor(peak_time).unsqueeze(1).to(self.device) 
                     )
                 else:
-                    classification_pred, energy_pred, direction_pred = self.energy_model(input_data['input'][:,:,:,0])
+                    classification_pred, energy_pred, direction_pred = self.energy_model(torch.tensor(imgs).unsqueeze(1).to(self.device))
                     
-                energy.extend(energy_pred[0].cpu().detach().numpy())
-                energy_fvs.extend(energy_pred[1].cpu().detach().numpy())
+                energy.extend(energy_pred[:,0].cpu().detach().numpy())
+                if feture_vector:
+                    energy_fvs.extend(energy_pred[:,1].cpu().detach().numpy())
+                else:
+                    energy_fvs.extend(np.array([[np.NaN]] * len(energy_pred[:, 0])))
+
             elif task == Task.cameradirection or task == Task.skydirection or task == Task.direction:
                 
                 imgs = (imgs - self.dir_mu) / self.dir_sigma
-                peak_time = (peak_time - self.dir_mu) / self.dir_sigma
                 
                 if len(self.channels) == 2:
+                    peak_time = (peak_time - self.dir_mu) / self.dir_sigma
                     classification_pred, energy_pred, direction_pred = self.dirrection_model(
                         torch.tensor(imgs).unsqueeze(1).to(self.device) , torch.tensor(peak_time).unsqueeze(1).to(self.device) 
                     )
                 else:
-                    classification_pred, energy_pred, direction_pred = self.dirrection_model(input_data['input'][:,:,:,0])
+                    classification_pred, energy_pred, direction_pred = self.dirrection_model(torch.tensor(imgs).unsqueeze(1).to(self.device))
                     
                 cam_coord_offset_x.extend(direction_pred[0][0][:,0].float().cpu().detach().numpy())
                 cam_coord_offset_y.extend(direction_pred[0][0][:,1].float().cpu().detach().numpy())
-                direction_fvs.extend(direction_pred[1].cpu().detach().numpy())
+                if feture_vector:
+                    direction_fvs.extend(direction_pred[1].cpu().detach().numpy())
+                else:
+                    direction_fvs.extend([[np.NaN]]*len(direction_pred[0][0][:,0].float().cpu().detach().numpy()))
+
             else:
                 raise ValueError(
                     f"task:{task.name} is not supported. Task must be type, direction or energy"
