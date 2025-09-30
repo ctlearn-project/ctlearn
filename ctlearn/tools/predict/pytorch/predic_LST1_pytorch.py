@@ -105,7 +105,7 @@ def predictions(self):
         imgs[np.isnan(imgs)] = 0
         imgs[np.isinf(imgs)] = 0
 
-        feture_vector = False
+        feture_vector = True
         for task in self.tasks:
             if task == Task.type:
                 imgs = (imgs - self.type_mu) / self.type_sigma
@@ -134,11 +134,11 @@ def predictions(self):
                 else:
                     classification_pred, energy_pred, direction_pred = self.energy_model(torch.tensor(imgs).unsqueeze(1).to(self.device))
                     
-                energy.extend(energy_pred[:,0].cpu().detach().numpy())
+                energy.extend(energy_pred[0].cpu().detach().numpy())
                 if feture_vector:
-                    energy_fvs.extend(energy_pred[:,1].cpu().detach().numpy())
+                    energy_fvs.extend(energy_pred[1].cpu().detach().numpy())
                 else:
-                    energy_fvs.extend(np.array([[np.NaN]] * len(energy_pred[:, 0])))
+                    energy_fvs.extend(np.array([[0]] * len(energy_pred[0])))
 
             elif task == Task.cameradirection or task == Task.skydirection or task == Task.direction:
                 
@@ -152,12 +152,12 @@ def predictions(self):
                 else:
                     classification_pred, energy_pred, direction_pred = self.dirrection_model(torch.tensor(imgs).unsqueeze(1).to(self.device))
                     
-                cam_coord_offset_x.extend(direction_pred[0][0][:,0].float().cpu().detach().numpy())
-                cam_coord_offset_y.extend(direction_pred[0][0][:,1].float().cpu().detach().numpy())
+                cam_coord_offset_x.extend(direction_pred[0][:,0].float().cpu().detach().numpy())
+                cam_coord_offset_y.extend(direction_pred[0][:,1].float().cpu().detach().numpy())
                 if feture_vector:
                     direction_fvs.extend(direction_pred[1].cpu().detach().numpy())
                 else:
-                    direction_fvs.extend([[np.NaN]]*len(direction_pred[0][0][:,0].float().cpu().detach().numpy()))
+                    direction_fvs.extend(np.array([[0]] * len(direction_pred[0])))
 
             else:
                 raise ValueError(
