@@ -2,10 +2,11 @@ import sys
 from ctapipe.core import Tool
 from ctapipe.core.traits import CaselessStrEnum
 from ctlearn.core.ctlearn_enum import FrameworkType
-# from ctlearn.tools.train.keras.train_keras_model import TrainKerasModel
-# from ctlearn.tools.train.pytorch.train_pytorch_model import (
-#     TrainPyTorchModel,
-# )
+from ctlearn.tools.train.keras.train_keras_model import TrainKerasModel
+from ctlearn.tools.train.pytorch.train_pytorch_model import (
+    TrainPyTorchModel,
+)
+
 class DLFrameWork(Tool):
     """
     Tool to select and run a specific deep learning training framework (Keras or PyTorch)
