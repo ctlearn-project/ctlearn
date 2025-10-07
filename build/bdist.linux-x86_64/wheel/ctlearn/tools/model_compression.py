@@ -10,9 +10,10 @@ import shutil
 import numpy as np
 
 from ctlearn.tools.train_model import TrainCTLearnModel
-from ctlearn.core.model import CTLearnModel 
+from ctlearn.core.model import CTLearnModel, FixedPretrainedModel 
 from dl1_data_handler.reader import DLDataReader
 import os
+import zipfile
 
 
 #from tensorflow_model_optimization.python.core.sparsity.keras import prune, prune_low_magnitude
@@ -22,7 +23,7 @@ import tensorflow_model_optimization.python.core.sparsity.keras as sparse_keras
 
 
 __all__ = [
-    "CompressCTLearnModel"
+    "CompressCTLearnModel",
 ]
 
 class CompressCTLearnModel(Tool):
@@ -62,59 +63,15 @@ class CompressCTLearnModel(Tool):
         CTLearnModel, default_value="ResNet", allow_none=True,
     ).tag(config=True)
 
-    load_type_model_from = Path(
-        default_value=None,
-        help=(
-            "Path to a Keras model file (Keras3) or directory (Keras2) for the classification "
-            "of the primary particle type."
-        ),
-        allow_none=True,
-        exists=True,
-        directory_ok=True,
-        file_ok=True,
-    ).tag(config=True)
-
-    load_energy_model_from = Path(
-        default_value=None,
-        help=(
-            "Path to a Keras model file (Keras3) or directory (Keras2) for the regression "
-            "of the primary particle energy."
-        ),
-        allow_none=True,
-        exists=True,
-        directory_ok=True,
-        file_ok=True,
-    ).tag(config=True)
+    
+    #train_tool_type = ComponentName(
+    #TrainCTLearnModel
+    #).tag(config=True)
 
     load_model_from = Path(
         default_value=None,
         help=(
-            "Path to a Keras model file (Keras3) or directory (Keras2) for the regression "
-            "of the primary particle arrival direction based on camera coordinate offsets."
-        ),
-        allow_none=True,
-        exists=True,
-        directory_ok=True,
-        file_ok=True,
-    ).tag(config=True)
-
-    load_cameradirection_model_from = Path(
-        default_value=None,
-        help=(
-            "Path to a Keras model file (Keras3) or directory (Keras2) for the regression "
-            "of the primary particle arrival direction based on camera coordinate offsets."
-        ),
-        allow_none=True,
-        exists=True,
-        directory_ok=True,
-        file_ok=True,
-    ).tag(config=True)
-
-    load_skydirection_model_from = Path(
-        default_value=None,
-        help=(
-            "Path to a Keras model file (Keras3) or directory (Keras2) for the regression "
-            "of the primary particle arrival direction based on spherical coordinate offsets."
+            "Path to a Keras model file (Keras3) or directory (Keras2)"
         ),
         allow_none=True,
         exists=True,
@@ -136,7 +93,8 @@ class CompressCTLearnModel(Tool):
         allow_none=True,
         directory_ok=True,
         file_ok = False,
-        help="Output directory for the pruning summaries.",
+        help="Output directory for the pruning summaries. Note: Must be different from output directory" \
+        "to avoid being overwritten.",
     ).tag(config=True)
 
     input_dir_signal = Path(
@@ -190,10 +148,7 @@ class CompressCTLearnModel(Tool):
         ),
     ).tag(config=True)
 
-    model_type = ComponentName(
-        CTLearnModel, default_value="ResNet"
-    ).tag(config=True)
-
+    
     reco_tasks = CaselessStrEnum(["type", "energy", "cameradirection", "skydirection"],
         allow_none=False, 
         help=(
@@ -205,6 +160,7 @@ class CompressCTLearnModel(Tool):
         ),
     ).tag(config=True)
 
+    
     n_epochs = Int(
         allow_none=True,
         help="Number of epochs to train the neural network.",
@@ -274,9 +230,10 @@ class CompressCTLearnModel(Tool):
     aliases = {
         "signal": "CompressCTLearnModel.input_dir_signal",
         "background": "CompressCTLearnModel.input_dir_background",
-        "pattern_signal": "CompressCTLearnModel.file_pattern_signal",
-        "pattern_background": "CompressCTLearnModel.file_pattern_background",
+        "pattern-signal": "CompressCTLearnModel.file_pattern_signal",
+        "pattern-background": "CompressCTLearnModel.file_pattern_background",
         "model_type": "CompressCTLearnModel.model_type",
+        "model_path": "CompressCTLearnModel.load_model_from",
         #("t", "type_model"): "CompressPredictCTLearnModel.load_type_model_from",
         #("e", "energy_model"): "CompressPredictCTLearnModel.load_energy_model_from",
         #("d", "cameradirection_model", ): "CompressCTLearnModel.load_cameradirection_model_from",
@@ -298,26 +255,34 @@ class CompressCTLearnModel(Tool):
     )
 
     def setup(self):
-        print("hiyaaa")
-        print(f"mcOutput directory: {self.output_dir}")
+        print("Parsed arguments:", self.config)
+        
+        print("original model path trial: ", FixedPretrainedModel.load_model_from)
+        print(f"Summaries directory: {self.summaries_dir}")
+        self.log.info("D: Setting up compression tool...")
+
+        print(f"D: Output directory: {self.output_dir}")
         # Check if the output directory exists and if it should be overwritten
         if self.output_dir.exists():
             if not self.overwrite:
-                print("mcoverwriting...")
+                print("D: overwriting...")
                 self.log.warning(
-                    f"mcOutput directory {self.output_dir} already exists. Proceeding without overwriting."
+                    f"D: Output directory {self.output_dir} already exists. Proceeding without overwriting."
                     )
                 raise ToolConfigurationError(
-                    f"mcOutput directory {self.output_dir} already exists. Use --overwrite to overwrite."
+                    f"D: Output directory {self.output_dir} already exists. Use --overwrite to overwrite."
                     )
                 
             else:
                 # Remove the output directory if it exists
-                print("mcremoving...")
-                self.log.info("mcRemoving existing output directory %s", self.output_dir)
+                print("D: removing...")
+                self.log.info("D: Removing existing output directory %s", self.output_dir)
                 shutil.rmtree(self.output_dir)
         self.log.info("mcOutput directory removed. Proceeding with compression...")
         print("mcOutput directory removed. Proceeding with compression...")
+        
+                
+        
         """try:
             cwd = os.getcwd()
         except FileNotFoundError:
@@ -327,28 +292,12 @@ class CompressCTLearnModel(Tool):
         """
         # Ensure the parent directory for the summaries file exists
         
-        if self.summaries_dir:
-            if not self.summaries_dir.exists():
-                self.log.info(f"mcCreating pruning summaries directory: {self.summaries_dir}")
-                self.summaries_dir.mkdir(parents=True, exist_ok=True)
-
-        """if self.summaries_dir is not None:
+        if self.summaries_dir is not None:
             if not self.summaries_dir.exists():
                 self.log.info(f"Creating pruning summaries directory: {self.summaries_dir}")
-                self.summaries_dir.mkdir(parents=True, exist_ok=True)"""
-            
-            # Create a MirroredStrategy.
-        self.strategy = tf.distribute.MirroredStrategy()
-        atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore
-        self.log.info("mcNumber of devices: %s", self.strategy.num_replicas_in_sync)
-        print("mcNumber of devices: %s", self.strategy.num_replicas_in_sync)
-
-        if int(keras.__version__.split(".")[0]) >= 3:
-            self.output_dir = f"{self.output_dir}/ctlearn_model.keras"
-        else:
-            self.output_dir = f"{self.output_dir}/ctlearn_model.cpk"
-
-        print("mcMirrored strategy ok")
+                self.summaries_dir.mkdir(parents=True, exist_ok=True)
+         
+         
         
         
     def start(self):
@@ -359,7 +308,7 @@ class CompressCTLearnModel(Tool):
         print("mcStarting")
         # Instantiate TrainCTLearnModel
         train_tool = TrainCTLearnModel()
-        
+        print("Output_dir: ", self.output_dir)
         # Pass variables from CompressCTLearnModel to TrainCTLearnModel
         train_tool.input_dir_signal = self.input_dir_signal
         train_tool.file_pattern_signal = self.file_pattern_signal
@@ -367,15 +316,16 @@ class CompressCTLearnModel(Tool):
         train_tool.file_pattern_background = self.file_pattern_background
         train_tool.output_dir = self.output_dir
         train_tool.reco_tasks = self.reco_tasks
-        #train_tool.n_epochs = self.n_epochs
-        train_tool.n_epochs = self.compression_techniques["pruning"].get("epochs")
+        train_tool.n_epochs = self.n_epochs
+        #train_tool.n_epochs = self.compression_techniques["pruning"].get("epochs")
         train_tool.batch_size = self.batch_size
         train_tool.validation_split = self.validation_split
         train_tool.optimizer = self.optimizer
         train_tool.lr_reducing = self.lr_reducing
         train_tool.early_stopping = self.early_stopping
         train_tool.log_file = self.log_file
-        
+        train_tool.summaries_dir = self.summaries_dir   
+        train_tool.compression_techniques = self.compression_techniques
 
         print(f"mcSignal directory: {train_tool.input_dir_signal}")
         print(f"mcSignal file pattern: {train_tool.file_pattern_signal}")
@@ -384,9 +334,9 @@ class CompressCTLearnModel(Tool):
 
 
 
-        self.log.info("mcLoading Keras model from %s", self.load_model_from)
+        #self.log.info("mcLoading Keras model from %s", self.load_model_from)
         
-        self.model = self.load_model2()
+        #self.model = self.load_model2()
         
         print("Organizing compression techniques...")
         self.log.info("Organizing model compression techniques...")
@@ -411,13 +361,18 @@ class CompressCTLearnModel(Tool):
                 elif key == "qat":
                     self.log.info("Applying Quantization-Aware Training...")
                 elif key == "pruning":
-                    self.log.info("Building pruning schedule...")
+                    print("pruning")
                     pruning_params = self.build_pruning_schedule(hyperparams)
-                    
-                    self.n_epochs = hyperparams.get("n_epochs", 3)
+                    self.n_epochs = hyperparams.get("epochs", 3)
+                    train_tool.n_epochs = self.n_epochs
+                    print("N epochs: ", train_tool.n_epochs)
                     self.batch_size = hyperparams.get("batch_size", 64)
+                    train_tool.batch_size = self.n_epochs
+                    print("Calling pruning...")
                     self.log.info("Calling pruning...")
-                    self.compressed_model = self.pruning(train_tool)
+                    self.compressed_model = self.pruning(train_tool, pruning_params)
+                    print("who knows", self.compressed_model)
+                    print("Applying pruning...")
                     self.log.info("Applying pruning...")
                 elif technique == "None":
                     self.log.info("No compression technique applied.")
@@ -488,10 +443,27 @@ class CompressCTLearnModel(Tool):
         Returns:
             tf.keras.Model: Pruned model.
         """
-        print("hello")
+        print("Building pruning schedule...")
+        self.log.info("D: Building pruning schedule...")
+        print(self.model_type)
+        print("FixedPretrainedModel:", FixedPretrainedModel)
+        print("FixedPretrainedModel.load_model_from:", FixedPretrainedModel.load_model_from)   
+        if self.model_type == "FixedPretrainedModel":
+            self.log.info("Fixed pretrained model detected...")
+            train_tool.model_type = self.model_type
+            print(FixedPretrainedModel.load_model_from)
+            #train_tool.load_model_from = self.load_model_from
+            train_tool.apply_pruning = True
+            print("Applying pruning to Fixed pretrained model...")
+               
+            train_tool.pruning_parameters = pruning_params
+        else:
+            self.log.warning("CHECK! Model path provided but model type is not FixedPretrainedModel")
+                    
+               
         #prune_low_magnitude = tfmot.sparsity.keras.prune_low_magnitude
-        prune_low_magnitude = tfmot.sparsity.keras.prune_low_magnitude
-        ##end_step = np.ceil(num_images / batch_size).astype(np.int32) * pruning_epochs
+        #prune_low_magnitude = tfmot.sparsity.keras.prune_low_magnitude
+        ##end_step = np.ceil(num_images / batch_size).astype(np.int32) * self.n_epochs
         
         """pruning_params = {'pruning_schedule': sparse_keras.pruning_schedule.ConstantSparsity(
             target_sparsity =0.50,
@@ -501,143 +473,166 @@ class CompressCTLearnModel(Tool):
             )}"""
         
 
-        self.pruned_model_stage1 = prune_low_magnitude(self.model, **pruning_params)
+        #self.pruned_model_stage1 = prune_low_magnitude(self.model, **pruning_params)
 
-        # It would be a good idea to load log_dir as Unicode and avoid Path and str conversion later.
-        pruning_callbacks = [tfmot.sparsity.keras.UpdatePruningStep(), tfmot.sparsity.keras.PruningSummaries(log_dir=str(self.summaries_dir))]
+        # It would be a good idea to load log_dir as Unicode and avoid Path and str conversion later. ## Use the same path as tensorboard...
+        pruning_callbacks = [tfmot.sparsity.keras.UpdatePruningStep(), tfmot.sparsity.keras.PruningSummaries(log_dir=str(self.summaries_dir), update_freq="epoch")]
+        
         print("callbacks added")
+        print(f"Pruning summaries will be logged to: {self.summaries_dir}")
         #train_tool = TrainCTLearnModel()
         #train_tool.setup()  # Call setup to initialize callbacks and other attributes
         print("extending next")
+        print("train tool callbacks: ", train_tool.callbacks)
         #train_tool.callbacks = train_tool.callbacks.extend(callbacks)
         train_tool.callbacks.extend(pruning_callbacks)
         print("Callbacks in train_tool:")
         for callback in train_tool.callbacks:
             print(type(callback), callback)
-        print("mmmmmccccccno, but in all seriousness")
-        train_tool.run()
-        """
-        pruned_model = prune_low_magnitude(self.model, **pruning_params)
-        # check
-
-        train_tool.input_dir_signal = self.input_dir_signal
-
-        model_for_pruning.compile(loss=tensorflow.keras.losses.categorical_crossentropy,
-              optimizer=tensorflow.keras.optimizers.Adam(),
-              metrics=['accuracy'])
-
-        # Model callbacks
-        callbacks = [tfmot.keras.UpdatePruningStep(), tfmot.keras.PruningSummaries()]
-
-        # Fitting data
-        model_for_pruning.fit(input_train, target_train,
-                      batch_size=batch_size,
-                      epochs=pruning_epochs,
-                      verbose=verbosity,
-                      callbacks=callbacks,
-                      validation_split=validation_split)
-        
-        #callbacks = [tfmot.sparsity.keras.UpdatePruningStep()]
-        
-        
-        pruning_params = {
-            "pruning_schedule": tfmot.sparsity.keras.PolynomialDecay(
-                initial_sparsity=0.2, final_sparsity=0.8, begin_step=0, end_step=1000
-            )
-        }
-        pruned_model = prune_low_magnitude(self.model, **pruning_params)
-
-        train_tool = TrainCTLearnModel()
-        train_tool.n_epochs = self.compression_techniques["pruning"].get("epochs")
-        train_tool.batch_size = self.compression_techniques["pruning"].get("batch_size", 1)
-        train_tool.callbacks = train_tool.callbacks.extend(self.compression_techniques["pruning"].get("callbacks", []))
-        """
-
-
-    def _representative_dataset_gen(self):
-        for _ in range(100):
-            yield [tf.random.normal([1, 224, 224, 3])]
-
-
-    def load_model(self):
-        if self.load_model_from:
-            self.log.info("Loading model from %s", self.load_model_from)
-            self.model = keras.models.load_model(self.load_model_from)
-            return self.model
+        print("model compression")
+        if os.path.exists(self.summaries_dir):
+            print(f"Directory {self.summaries_dir} exists. ")
         else:
-            self.log.info("Creating new model of type %s", self.model_type)
+            print(f"Directory {self.summaries_dir} does not exist. ")
+        train_tool.initialize()
+        train_tool.setup()
+        print("Set correctly")
+        train_tool.start()
+        print("Started correctly")
+        #train_tool.run() #### Entonces me lo cierra...Cre que debería llamar a cachos?
+        print("Training with pruning completed.")
 
+
+        def zip_saved_model(saved_model_dir, zip_path):
+            # Create a zip file from the SavedModel directory
+            with zipfile.ZipFile(zip_path, 'w', compression=zipfile.ZIP_DEFLATED) as zipf:
+                for root, _, files in os.walk(saved_model_dir):
+                    for file in files:
+                        file_path = os.path.join(root, file)
+                        arcname = os.path.relpath(file_path, saved_model_dir)  # Preserve directory structure
+                        zipf.write(file_path, arcname)
+            print(f"Stripped model zipped to: {zip_path}")
+
+        """     
+        def compute_total_model_sparsity(model):
+            total_zeros = 0
+            total_elements = 0
+            for layer in model.layers:
+                if isinstance(layer, keras.layers.Wrapper):
+                    weights = layer.trainable_weights
+                else:
+                    weights = layer.weights
+                for weight in weights:
+                    if "kernel" not in weight.name:
+                        continue
+                    weight_size = weight.numpy().size
+                    zero_num = np.count_nonzero(weight == 0)
+                print(
+                    f"{weight.name}: {zero_num/weight_size:.2%} sparsity ",
+                    f"({zero_num}/{weight_size})",
+                )    
+                total_elements += weight_size
+                total_zeros += zero_num
+            print(f"Total model sparsity: {100*total_zeros/total_elements:.2%}%")
+        """
+        def compute_total_model_sparsity(model):
+            tot_weight = 0
+            counter = 0
+            for layer in model.layers:
+                if isinstance(layer, keras.layers.Wrapper):  # For layers wrapped by pruning
+                    weights = layer.trainable_weights
+                else:
+                    weights = layer.weights
+                for weight in weights:
+                    weight_values = weight.numpy()
+
+                    tot_weight += np.sum(weight_values == 0)
+                    counter += weight_values.size
+            sparsity = (tot_weight/counter) * 100
+            print(f"Total sparsity is: {sparsity}" )
+
+
+        # Original
+        self.log.warning("Saving and zipping original")
+        original_model_path = FixedPretrainedModel.load_model_from
+        print("original model path: ", original_model_path)
+        original_model = keras.models.load_model(original_model_path, compile=True)
+        compute_total_model_sparsity(original_model)
+        print(f"MC_Size of original model: {original_model.count_params()}")
+        
+        #original_model = keras.models.load_model("/lhome/ext/ucm147/ucm1478/editing_code/models/baseline/cameradir/ctlearn_model.cpk/")
+        #print(f"MC_Size of original in compression loaded from baseline: {original_model.count_params()}")
+        
+        copy_original_model_path = pathlib.Path(f"{self.output_dir}/original_model/")
+        copy_original_zip_file = self.output_dir/"zip_original_model1.zip"
+        copy_original_model_path.mkdir(parents=True, exist_ok=True)
+        print(f"MC_Original model summary: {original_model.summary()}")
+
+        keras.models.save_model(original_model, copy_original_model_path, include_optimizer=True)
+        zip_saved_model(copy_original_model_path, copy_original_zip_file)
+
+        
+        # Pruning with wrappers
+        self.log.warning("Saving and zipping pruned model with wrapper")
+        
+        pruned_model_path = self.output_dir/"ctlearn_model.cpk/"
+        with tfmot.sparsity.keras.prune_scope():
+            pruned_model = keras.models.load_model(pruned_model_path, compile=True)
+            pruned_stripped_model = keras.models.clone_model(pruned_model)
+            pruned_stripped_model.compile(
+                optimizer=pruned_model.optimizer.__class__.from_config(
+                    pruned_model.optimizer.get_config()),
+                loss=pruned_model.loss,
+                metrics=[m.name if hasattr(m, 'name') else m for m in pruned_model.metrics]
+                )
+            pruned_stripped_model = tfmot.sparsity.keras.strip_pruning(pruned_stripped_model)
+        
+        print("Pruned model:")
+        pruned_model.summary()
+        print("\n")
+
+        pruned_model_path = pathlib.Path(f"{self.output_dir}/pruned_model_with_wrapper/")
+        self.log.warning("Stamp 1")
+        compute_total_model_sparsity(pruned_model)
+        
+        self.log.warning("Stamp 2")
+        
+        pruned_zip_file = self.output_dir/"zip_pruned_model_with_wrapper.zip"
+        
+        pruned_model_path.mkdir(parents=True, exist_ok=True)
+        keras.models.save_model(pruned_model, pruned_model_path, include_optimizer=True)
+        self.log.warning("Stamp 3")
+        
+        zip_saved_model(pruned_model_path, pruned_zip_file)
+
+        # Pruning without wrappers
+        self.log.warning("Saving and zipping pruned model without wrapper")
+        
+        print("Pruned and stripped model: ")
+        compute_total_model_sparsity(pruned_stripped_model)
+        
+        self.log.warning("Stamp 4")
+        pruned_stripped_model_path = pathlib.Path(f"{self.output_dir}/fully_pruned_model/")
+        pruned_stripped_zip_file = self.output_dir/"zip_fully_pruned_model.zip"
+        pruned_stripped_model_path.mkdir(parents=True, exist_ok=True)
+        
+        self.log.warning("Stamp 5")
+        print(f"MC_Fully pruned model summary: {pruned_stripped_model.summary()}")
+        self.log.warning("Stamp 6")
+        keras.models.save_model(pruned_stripped_model, pruned_stripped_model_path, include_optimizer=True)
+        zip_saved_model(pruned_stripped_model_path, pruned_stripped_zip_file)
+        self.log.warning("Stamp 5")
+
+        
+        #print("Size of gzipped original model: %.2f bytes" % os.path.getsize(copy_original_zip_file1))
+        #print("Size of gzipped pruned model before stripping wrappers: %.2f bytes" % os.path.getsize(pruned_zip_file1))
+        #print("Size of gzipped pruned model after stripping wrappers: %.2f bytes" % os.path.getsize(fully_pruned_zip_file))
+        
             
-
-        model_pretrained = [select_model for select_model in trained_model if select_model is not None]
         
-        if len(model_pretrained) > 1 or (len(model_pretrained) >= 1 and self.model_type is not None):
-            raise ToolConfigurationError(
-                "Multiple model paths provided. Please specify only one model path."
-            )
-        elif len(model_pretrained) == 1 and self.model_type is None:
-            chosen_model = keras.models.load_model(model_pretrained[0])
-        elif len(model_pretrained) == 0 and self.model_type is not None:
-            chosen_model = CTLearnModel.from_name(
-                self.model_type,
-                input_shape=self.training_loader.input_shape,
-                tasks=self.reco_tasks,
-                parent=self,
-            ).model
-        elif len(model_pretrained) == 0 and self.model_type is None:
-            raise ToolConfigurationError(
-                "No model path provided. Please specify a model path or a model type."
-            )
-        return chosen_model
-         #train_model in pretrained_models is None
-
-    def load_model2(self):
-        if self.model_type == "LoadedModel":
-                if self.load_model_from == None:
-                    raise ToolConfigurationError(
-                        "No model path provided. Please specify a model path."
-                    )
-                if self.overwrite_head or self.trainable.backbone is None:
-                    raise Warning("Backbone is trainable but head will not be overwritten")
-                
-                #model_reco = self.load_{self.reco}_model_from
-                print("specified model will be loaded")
-        elif self.model_type != "LoadedModel" and self.model_type is not None:
-            print("Untrained model will be used")
-        else:
-            print("Default ResNet model will be used")
-
-
-
-
-    def loadmodel3(self):
-        model_reco = (getattr(self, f"load_{self.reco_tasks}_model_from"))
-        ###try? self.load_{self.reco_tasks}_model_from = (getattr(self, f"load_{self.reco_tasks}_model_from"))
-        #model_reco2 = (self, f"load_{self.reco_tasks}_model_from")
-        print(f"Loading model from {model_reco}")
-        #self.model2 = keras.models.load_model(pathlib.Path(model_reco2))
-        print(f"load_{self.reco_tasks}_model_from", type(model_reco))
-        self.model = keras.models.load_model(model_reco)
-        print("ok")
-                
-        if (self.load_type_model_from or self.load_energy_model_from or self.load_cameradirection_model_from or self.load_skydirection_model_from) is None:
-            print("Loading new model")
-            with self.strategy.scope():
-            # Construct the model
-                self.log.info("Setting up the model.")
-                self.model = CTLearnModel.from_name(
-                self.model_type,
-                input_shape=self.training_loader.input_shape,
-                tasks=self.reco_tasks,
-                parent=self,
-            ).model
-                
-        return 
-        #if self.load_model_from is None:
-        #    chosen_model = self.model_type
-        #elif self.load_model_from is not None and self.load_model_from is in self.reco:
-        #    model_reco = "self.load_{self.reco}_model_from"
-        #    chosen_model = 
+        #print("original model1: ")
+        #compute_total_model_sparsity(original_model1)
+        
 
     def build_pruning_schedule(self, hyperparams):
         """
@@ -648,27 +643,44 @@ class CompressCTLearnModel(Tool):
             tfmot.sparsity.keras.PruningSchedule: Pruning schedule object.
         """
         schedule_type = hyperparams.get("schedule_type", "polynomial_decay")  # Default to polynomial decay
-        if schedule_type == "polynomial_decay":
+        ## add to to documentation.
+        print("reco tasks", self.reco_tasks)
+        if self.reco_tasks == "type":
+            print("Task recognised as type")
+            self.n_epochs = hyperparams.get("epochs", 3)
+            end_step = np.ceil(2082844 / self.batch_size).astype(np.int32) * self.n_epochs - 2000
+        elif self.reco_tasks == "energy" or self.reco_tasks == "cameradirection":
+            print("Task recognised as energy or cameradirection")
+            self.n_epochs = hyperparams.get("epochs", 3)
+            end_step = np.ceil(1039893 / self.batch_size).astype(np.int32) * self.n_epochs - 1000
+            #end_step = np.ceil(1039893 / self.batch_size).astype(np.int32) * self.n_epochs      
+        print("End step: ", end_step)
+        self.log.info("End step: %s", end_step)
+        print("Remember to check the number of data loaded. This end step is hardcoded")
+        self.log.warning("Remember to check the number of data loaded. This end step is hardcoded")
+        
+        if schedule_type == "polynomial decay":
             schedule_values = tfmot.sparsity.keras.PolynomialDecay(
                 initial_sparsity=hyperparams.get("initial sparsity", 0.2),
                 final_sparsity=hyperparams.get("final sparsity", 0.6),
-                begin_step=hyperparams.get("begin step", 0),
-                end_step=hyperparams.get("end step", -1),
+                begin_step=hyperparams.get("begin step", 1),
+                end_step=end_step,
             )
-        elif schedule_type == "constant_sparsity":
+        elif schedule_type == "constant decay":
             schedule_values = tfmot.sparsity.keras.ConstantSparsity(
-                target_sparsity=hyperparams.get("target sparsity", 0.5),
-                begin_step=hyperparams.get("begin step", 0),
-                end_step=hyperparams.get("end step", -1),
-                frequency=hyperparams.get("frequency", 100),
+                target_sparsity=hyperparams.get("target sparsity"),
+                begin_step=hyperparams.get("begin step"),
+                end_step=end_step,
+                frequency=hyperparams.get("frequency"),
             )
         else:
             raise ValueError(f"Unsupported pruning schedule type: {schedule_type}")
         
         pruning_params = {'pruning_schedule': schedule_values}
-        
+        print("Pruning parameters: ", hyperparams.get("target sparsity"))
         return pruning_params
-            
+
+
                 
 
 def main():

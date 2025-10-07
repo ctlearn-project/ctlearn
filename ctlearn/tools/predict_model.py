@@ -650,21 +650,21 @@ class PredictCTLearnModel(Tool):
                 )
         else:
             # Tensorboard callback
-            log_path = Path(self.log_file)
+            #log_path = Path(self.log_file)
             # Folder which contains it
             self.log.info('I am here')
-            print('i am here')
-            print(PredictCTLearnModel.log_file)
-            log_folder = log_path.parent
-            self.log.info('folder', PredictCTLearnModel.log_file)
-            self.log.info('folder', self.log_file)
-            self.log.info('folder', log_folder)
-            profiler_predict_dir =  log_folder / datetime.now().strftime("%Y%m%d-%H%M%S")
-            self.log.info(profiler_predict_dir)
-            tensorboard_callback = keras.callbacks.TensorBoard(
-                    log_dir=profiler_predict_dir, histogram_freq=1, write_graph=True, profile_batch= '500,502')
+            #print('i am here')
+            #print(PredictCTLearnModel.log_file)
+            #log_folder = log_path.parent
+            #self.log.info('folder', PredictCTLearnModel.log_file)
+            #self.log.info('folder', self.log_file)
+            #self.log.info('folder', log_folder)
+            #profiler_predict_dir =  log_folder / datetime.now().strftime("%Y%m%d-%H%M%S")
+            #self.log.info(profiler_predict_dir)
+            #tensorboard_callback = keras.callbacks.TensorBoard(
+            #        log_dir=profiler_predict_dir, histogram_freq=1, write_graph=True, profile_batch= '500,502')
             # Predict the data using the loaded model
-            predict_data = model.predict(data_loader, verbose=self.keras_verbose, callbacks = [tensorboard_callback])
+            predict_data = model.predict(data_loader, verbose=self.keras_verbose)
              # Create a astropy table with the prediction results
             # The classification task has a softmax layer as the last layer
             # which returns the probabilities for each class in an array, while
@@ -1268,7 +1268,10 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
         self.log.info("Processing the telescope pointings...")
         # Retrieve the IDs from the dl1dh for the prediction tables
         example_identifiers = self.dl1dh_reader.example_identifiers.copy()
-        example_identifiers.keep_columns(TELESCOPE_EVENT_KEYS)
+        if self.dl1dh_reader_type == "DLRawTriggerReader":
+            example_identifiers.keep_columns(TELESCOPE_EVENT_KEYS + ["patch_index", "cherenkov_pe", "patch_class", "low_trigger"])
+        else: 
+            example_identifiers.keep_columns(TELESCOPE_EVENT_KEYS)
         all_identifiers = self.dl1dh_reader.tel_trigger_table.copy()
         all_identifiers.keep_columns(TELESCOPE_EVENT_KEYS + ["time"])
         nonexample_identifiers = setdiff(

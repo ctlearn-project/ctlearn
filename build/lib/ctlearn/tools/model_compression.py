@@ -551,6 +551,7 @@ class CompressCTLearnModel(Tool):
             sparsity = (tot_weight/counter) * 100
             print(f"Total sparsity is: {sparsity}" )
 
+
         # Original
         self.log.warning("Saving and zipping original")
         original_model_path = FixedPretrainedModel.load_model_from
@@ -570,6 +571,7 @@ class CompressCTLearnModel(Tool):
         keras.models.save_model(original_model, copy_original_model_path, include_optimizer=True)
         zip_saved_model(copy_original_model_path, copy_original_zip_file)
 
+        
         # Pruning with wrappers
         self.log.warning("Saving and zipping pruned model with wrapper")
         
@@ -621,7 +623,7 @@ class CompressCTLearnModel(Tool):
         zip_saved_model(pruned_stripped_model_path, pruned_stripped_zip_file)
         self.log.warning("Stamp 5")
 
-
+        
         #print("Size of gzipped original model: %.2f bytes" % os.path.getsize(copy_original_zip_file1))
         #print("Size of gzipped pruned model before stripping wrappers: %.2f bytes" % os.path.getsize(pruned_zip_file1))
         #print("Size of gzipped pruned model after stripping wrappers: %.2f bytes" % os.path.getsize(fully_pruned_zip_file))
