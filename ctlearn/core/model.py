@@ -677,9 +677,9 @@ class IndexedResNet(CTLearnModel):
         # Apply initial convolutional layer if specified
         if self.init_layer is not None:
             # Prepare input by gathering neighbor features.
-            x_neighbors = self.neighbor_gather(x)
+            x_neighbors = self.neighbor_gather(network_input)
             # Apply convolution over the gathered neighbors depending on the use_3d_conv flag.
-            x = IndexedConvolutionLayer(
+            network_input = IndexedConvolutionLayer(
                     use_3d_conv=self.use_3d_conv, 
                     temporal_kernel_size=self.temporal_kernel_size, 
                     filters=self.init_layer["filters"], 
@@ -687,8 +687,8 @@ class IndexedResNet(CTLearnModel):
                 )(x_neighbors)
         # Apply max pooling if specified
         if self.init_max_pool is not None:
-            x_neighbors = self.neighbor_gather(x)
-            x = IndexedPoolingLayer(
+            x_neighbors = self.neighbor_gather(network_input)
+            network_input = IndexedPoolingLayer(
                 use_3d_conv=self.use_3d_conv,
                 pooling_type=self.pooling_type,
                 temporal_pool_size=self.temporal_pool_size,
