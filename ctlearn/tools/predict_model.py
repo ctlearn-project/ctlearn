@@ -1118,7 +1118,7 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
         # Retrieve the IDs from the dl1dh for the prediction tables
         example_identifiers = self.dl1dh_reader.example_identifiers.copy()
         if self.dl1dh_reader_type == "DLRawTriggerReader":
-            example_identifiers.keep_columns(TELESCOPE_EVENT_KEYS + ["patch_index", "cherenkov_pe", "patch_class"])
+            example_identifiers.keep_columns(TELESCOPE_EVENT_KEYS + ["patch_index", "cherenkov_pe", "patch_class", "low_trigger"])
         else:
             example_identifiers.keep_columns(TELESCOPE_EVENT_KEYS)
         all_identifiers = self.dl1dh_reader.tel_trigger_table.copy()

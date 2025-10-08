@@ -181,6 +181,12 @@ class TrainCTLearnModel(Tool):
         max=0.99,
     ).tag(config=True)
 
+    save_h5_model = Bool(
+        default_value=False,
+        allow_none=False,
+        help="Set to save additionally the model in h5 format.",
+    ).tag(config=True)
+
     save_best_validation_only = Bool(
         default_value=True,
         allow_none=False,
@@ -453,6 +459,10 @@ class TrainCTLearnModel(Tool):
                 self.model, input_signature=self.model.input_layer.input._type_spec, output_path=output_path
             )
             self.log.info("ONNX model saved in %s", self.output_dir)
+        if self.save_h5_model:
+            h5_output_path = f"{self.output_dir}/ctlearn_model.h5"
+            self.model.save(h5_output_path)
+            self.log.info("HDF5 model saved at %s", h5_output_path)
 
         # Plotting training history
         self.log.info("Plotting training history...")

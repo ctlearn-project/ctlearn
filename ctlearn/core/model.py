@@ -17,7 +17,7 @@ from ctlearn.core.attention import (
     triple_squeeze_excite_block_indexed3d,
 )
 from tensorflow.keras.layers import Conv1D, BatchNormalization, ReLU, GlobalAveragePooling1D, Conv3D, GlobalMaxPooling1D
-from ctlearn.core.indexed import NeighborGatherLayer3D, NeighborGatherLayer2D
+from ctlearn.core.indexed import NeighborGatherLayer, IndexedConvolutionLayer, IndexedPoolingLayer
 from ctlearn.utils import validate_trait_dict
 from traitlets.config import Config
 import numpy as np
@@ -160,68 +160,6 @@ class CTLearnModel(Component):
                 "mechanism": self.attention_mechanism,
                 "reduction_ratio": self.attention_reduction_ratio,
             }
-
-    def _indexed_convolution(self, x, filters, name):
-        """
-        Build the convolutional layers for the indexed flag.
-        """
-        if self.use_3d_conv:
-            x_conv = keras.layers.Conv3D(
-                        filters=filters,
-                        kernel_size=(1, 7, self.temporal_kernel_size),
-                        strides=(1, 1, 1),
-                        padding="valid",
-                        activation="relu",
-                        name=name,
-                    )(x)
-        else:
-            x_conv = keras.layers.Conv2D(
-                    filters=filters,
-                    kernel_size=(1, 7),
-                    strides=(1, 1),
-                    padding="valid",
-                    activation="relu",
-                    name=name,
-                )(x)
-
-        # Squeeze out the now 1dim neighbors dimension.
-        x = tf.squeeze(x_conv, axis=2)
-        return x
-
-    def _indexed_pooling(self,x, name):
-        if self.use_3d_conv:
-            if self.pooling_type.lower() == "max":
-                x_pool = keras.layers.MaxPool3D(
-                    pool_size=(1, 7, self.temporal_pool_size),
-                    strides=(1, 1, 1),
-                    padding='valid',
-                    name=name,
-                )(x)
-            else:  # average pooling
-                x_pool = keras.layers.AveragePooling3D(
-                    pool_size=(1, 7, self.temporal_pool_size),
-                    strides=(1, 1, 1),
-                    padding='valid',
-                    name=name,
-                )(x)
-        else:
-            if self.pooling_type.lower() == "max":
-                x_pool = keras.layers.MaxPool2D(
-                    pool_size=(1, 7),
-                    strides=(1, 1),
-                    padding='valid',
-                    name=name,
-                )(x)
-            else:  
-                x_pool = keras.layers.AveragePooling2D(
-                    pool_size=(1, 7),
-                    strides=(1, 1),
-                    padding='valid',
-                    name=name,
-                )(x)
-
-        x = tf.squeeze(x_pool, axis=2)
-        return x
 
 
 @abstractmethod
@@ -438,7 +376,7 @@ class SingleCNNIndexed(CTLearnModel):
     using the provided indices and then applies a sequence of 3D convolutions (over 
     pixels, neighbor dimension, and temporal dimension) and pooling operations.
     """
-    name = Unicode("SingleCNNIndexed3D", help="Name of the model backbone.").tag(config=True)
+    name = Unicode("SingleCNNIndexed", help="Name of the model backbone.").tag(config=True)
 
     architecture = List(
         trait=Dict(),
@@ -504,13 +442,9 @@ class SingleCNNIndexed(CTLearnModel):
 
         self.backbone_name = self.name + "_block"
 
-        # Create the 3D neighbor gathering layer.
+        # Create the neighbor gathering layer.
         # Preparing the mask and gathering neighbors.
-        if self.use_3d_conv == True:
-            self.neighbor_gather = NeighborGatherLayer3D(indices)
-        else:
-            self.neighbor_gather = NeighborGatherLayer2D(indices)
-
+        self.neighbor_gather = NeighborGatherLayer(indices, self.use_3d_conv)
 
         # Build the backbone model.
         self.backbone_model, self.input_layer = self._build_backbone(input_shape)
@@ -523,17 +457,6 @@ class SingleCNNIndexed(CTLearnModel):
         )
 
         self.model = keras.Model(self.input_layer, self.logits, name="CTLearn_model")
-
-    def _prepare_for_convolution(self, x):
-        """
-        Uses the NeighborGatherLayer to expand x so that each pixel now has its neighbor information.
-
-        x: Tensor of shape (batch, pixels_per_patch, seq_length, channels)
-
-        Returns:
-            neighbor_feats: Tensor of shape (batch, pixels_per_patch, 7, seq_length, channels)
-        """
-        return self.neighbor_gather(x)
 
     def _build_backbone(self, input_shape):
         """
@@ -551,17 +474,27 @@ class SingleCNNIndexed(CTLearnModel):
         for i, (filters, number) in enumerate(zip(filters_list, numbers_list)):
             for nr in range(number):
                 # Prepare input by gathering neighbor features.
-                x_neighbors = self._prepare_for_convolution(x)
+                x_neighbors = self.neighbor_gather(x)
                 # Apply convolution over the gathered neighbors depending on the use_3d_conv flag.
-                x = self._indexed_convolution(x_neighbors, filters, f"{self.backbone_name}_conv_{i+1}_{nr+1}")
+                x = IndexedConvolutionLayer(
+                    use_3d_conv=self.use_3d_conv, 
+                    temporal_kernel_size=self.temporal_kernel_size, 
+                    filters=filters, 
+                    name=f"{self.backbone_name}_conv_{i+1}_{nr+1}"
+                )(x_neighbors)
+
 
             if self.pooling_type is not None and i < total_layers - 1:
-                x_neighbors = self._prepare_for_convolution(x)
-                x = self._indexed_pooling(x_neighbors, f"{self.backbone_name}_pool_{i+1}")
+                x_neighbors = self.neighbor_gather(x)
+                x = IndexedPoolingLayer(
+                    use_3d_conv=self.use_3d_conv,
+                    pooling_type=self.pooling_type,
+                    temporal_pool_size=self.temporal_pool_size,
+                    name=f"{self.backbone_name}_pool_{i+1}"
+                )(x_neighbors)
 
             if self.batchnorm:
                 x = keras.layers.BatchNormalization(momentum=0.99)(x)
-                # x = keras.layers.GroupNormalization(groups=1)(x)#momentum=0.99
         # Optional bottleneck layer.
         if self.bottleneck_filters is not None:
             if self.use_3d_conv:
@@ -595,6 +528,7 @@ class SingleCNNIndexed(CTLearnModel):
 
         # Global average pooling.
         if self.use_3d_conv:
+            # network_output = keras.layers.Lambda(lambda t: tf.reduce_mean(t, axis=[2, 3]), name=self.backbone_name + "_pixelwise_avg")(x)
             network_output = keras.layers.GlobalAveragePooling2D(name=self.backbone_name + "_global_avgpool")(x)
         else:
             network_output = keras.layers.GlobalAveragePooling1D(name=self.backbone_name + "_global_avgpool")(x)
