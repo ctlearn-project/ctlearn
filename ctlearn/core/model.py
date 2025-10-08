@@ -636,10 +636,7 @@ class IndexedResNet(CTLearnModel):
 
         # Create the neighbor gathering layer.
         # Preparing the mask and gathering neighbors.
-        if self.use_3d_conv == True:
-            self.neighbor_gather = NeighborGatherLayer3D(indices)
-        else:
-            self.neighbor_gather = NeighborGatherLayer2D(indices)
+        self.neighbor_gather = NeighborGatherLayer(indices, self.use_3d_conv)
 
         # Build the ResNet model backbone
         self.backbone_model, self.input_layer = self._build_backbone(input_shape)
@@ -654,17 +651,6 @@ class IndexedResNet(CTLearnModel):
 
         self.model = keras.Model(self.input_layer, self.logits, name="CTLearn_model")
 
-
-    def _prepare_for_convolution(self, x):
-        """
-        Uses the NeighborGatherLayer to expand x so that each pixel now has its neighbor information.
-
-        x: Tensor of shape (batch, pixels_per_patch, seq_length, channels)
-
-        Returns:
-            neighbor_feats: Tensor of shape (batch, pixels_per_patch, 7, seq_length, channels)
-        """
-        return self.neighbor_gather(x)
 
     def _build_backbone(self, input_shape):
         """
@@ -691,14 +677,23 @@ class IndexedResNet(CTLearnModel):
         # Apply initial convolutional layer if specified
         if self.init_layer is not None:
             # Prepare input by gathering neighbor features.
-            x_neighbors = self._prepare_for_convolution(network_input)
+            x_neighbors = self.neighbor_gather(x)
             # Apply convolution over the gathered neighbors depending on the use_3d_conv flag.
-            network_input = self._indexed_convolution(x_neighbors, self.init_layer["filters"], self.backbone_name + "_conv1_conv")
-
+            x = IndexedConvolutionLayer(
+                    use_3d_conv=self.use_3d_conv, 
+                    temporal_kernel_size=self.temporal_kernel_size, 
+                    filters=self.init_layer["filters"], 
+                    name=f"{self.backbone_name}_conv_1_conv"
+                )(x_neighbors)
         # Apply max pooling if specified
         if self.init_max_pool is not None:
-            x_neighbors = self._prepare_for_convolution(network_input)
-            network_input = self._indexed_pooling(x_neighbors, self.backbone_name + "_pool1_pool")              
+            x_neighbors = self.neighbor_gather(x)
+            x = IndexedPoolingLayer(
+                use_3d_conv=self.use_3d_conv,
+                pooling_type=self.pooling_type,
+                temporal_pool_size=self.temporal_pool_size,
+                name=self.backbone_name + "_pool1_pool"
+            )(x_neighbors)            
         # Build the residual blocks
         engine_output = self._stacked_res_blocks(
             network_input,
@@ -900,15 +895,25 @@ class IndexedResNet(CTLearnModel):
         if self.use_3d_conv:
             # Pad in order to be able to have same padding in the temporal dimension
             inputs = keras.layers.ZeroPadding2D(padding=((0,0), (1,1)))(inputs)
-        x_neighbors = self._prepare_for_convolution(inputs)
-        x = self._indexed_convolution(x_neighbors, filters, name + "_1_conv")
-
+        x_neighbors = self.neighbor_gather(inputs)
+        # Apply convolution over the gathered neighbors depending on the use_3d_conv flag.
+        x = IndexedConvolutionLayer(
+                use_3d_conv=self.use_3d_conv, 
+                temporal_kernel_size=self.temporal_kernel_size, 
+                filters=filters, 
+                name= name + "_1_conv"
+            )(x_neighbors)
         if self.use_3d_conv:
             # Pad in order to be able to have same padding in the temporal dimension
             x = keras.layers.ZeroPadding2D(padding=((0,0), (1,1)))(x)
-        x_neighbors = self._prepare_for_convolution(x)
-        x = self._indexed_convolution(x_neighbors, filters, name + "_2_conv")
-
+        x_neighbors = self.neighbor_gather(inputs)
+        # Apply convolution over the gathered neighbors depending on the use_3d_conv flag.
+        x = IndexedConvolutionLayer(
+                use_3d_conv=self.use_3d_conv, 
+                temporal_kernel_size=self.temporal_kernel_size, 
+                filters=filters, 
+                name= name + "_2_conv"
+            )(x_neighbors)
         # Attention mechanism
         if attention is not None:
             if self.use_3d_conv:
@@ -1008,9 +1013,14 @@ class IndexedResNet(CTLearnModel):
         if self.use_3d_conv:
             # Pad in order to be able to have same padding in the temporal dimension
             x = keras.layers.ZeroPadding2D(padding=((0,0), (1,1)))(x)
-        x_neighbors = self._prepare_for_convolution(x)
-        x = self._indexed_convolution(x_neighbors, filters, name + "_2_conv")
-
+        x_neighbors = self.neighbor_gather(inputs)
+        # Apply convolution over the gathered neighbors depending on the use_3d_conv flag.
+        x = IndexedConvolutionLayer(
+                use_3d_conv=self.use_3d_conv, 
+                temporal_kernel_size=self.temporal_kernel_size, 
+                filters=filters, 
+                name= name + "_2_conv"
+            )(x_neighbors)
         if self.use_3d_conv:
             x = keras.layers.Conv2D(
                 filters=4 * filters, kernel_size=1, name=name + "_3_conv"
