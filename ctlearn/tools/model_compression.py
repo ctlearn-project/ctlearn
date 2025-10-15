@@ -371,7 +371,6 @@ class CompressCTLearnModel(Tool):
                     print("Calling pruning...")
                     self.log.info("Calling pruning...")
                     self.compressed_model = self.pruning(train_tool, pruning_params)
-                    print("who knows", self.compressed_model)
                     print("Applying pruning...")
                     self.log.info("Applying pruning...")
                 elif technique == "None":
