@@ -222,7 +222,8 @@ class TrainCTLearnModel(Tool):
         "{'ptq': {'quantization_type': 'float16'}}]."
     ),
     default_value=[],
-    ).tag(config=True) ### D
+    ).tag(config=True) 
+    
     
 
     lr_reducing = Dict(
@@ -407,7 +408,7 @@ class TrainCTLearnModel(Tool):
         monitor_mode = "min"
         # Model checkpoint callback
         # Temp fix for supporting keras2 & keras3
-        ## D: Changed path to distinguish between Keras model and tflite model
+        # Changed path to distinguish between Keras model and tflite model
         if int(keras.__version__.split(".")[0]) >= 3:
             if self.tflite_conversion:
                 model_path = f"{self.output_dir}/keras_model/ctlearn_model.keras"
@@ -425,13 +426,16 @@ class TrainCTLearnModel(Tool):
             tensorboard_path = self.summaries_dir
 
         self.log.info(f"Tensorboard callback path is {tensorboard_path}, type: {type(tensorboard_path)}")
-
-        model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
+        
+        model_checkpoint_callback = SparsityAwareCheckpoint(
+            parent=self,
+            compression_techniques=self.compression_techniques,
             filepath=model_path,
             monitor=monitor,
             verbose=1,
             mode=monitor_mode,
             save_best_only=self.save_best_validation_only,
+            epsilon=0.3,
         )
         tensorboard_profiler_callback_dir = tensorboard_path / datetime.now().strftime("%Y%m%d-%H%M%S")
         # Tensorboard callback
@@ -440,15 +444,21 @@ class TrainCTLearnModel(Tool):
         )
         
         # CSV logger callback
-        ## D: Path changed here too
+        # Path changed here too
         if self.tflite_conversion:
+            csv_path = pathlib.Path(self.output_dir) / "keras_model" / "training_log.csv"
             csv_logger_callback = keras.callbacks.CSVLogger(
-                filename=f"{self.output_dir}/keras_model/training_log.csv", append=True
+                filename=csv_path, append=True
             )
         else:
+            csv_path = pathlib.Path(self.output_dir) / "training_log.csv"
             csv_logger_callback = keras.callbacks.CSVLogger(
-                filename=f"{self.output_dir}/training_log.csv", append=True
+                filename=csv_path, append=True
             )
+        csv_path.parent.mkdir(parents=True, exist_ok=True)
+        if not csv_path.exists():
+            csv_path.touch()
+
         self.callbacks.extend([model_checkpoint_callback, tensorboard_callback, csv_logger_callback])
         
         if self.early_stopping is not None:
@@ -480,10 +490,10 @@ class TrainCTLearnModel(Tool):
                 print(f"Directory {self.summaries_dir} exists. ")
             else:
                 print(f"Directory {self.summaries_dir} does not exist. ")
-        
-
+                            
 	
     def start(self):
+
         print(self.callbacks)
         for callback in self.callbacks:
             print("Train model: callbacks: ", type(callback), callback)
@@ -500,28 +510,13 @@ class TrainCTLearnModel(Tool):
             )
 
             self.original_model = fixed_model.model
-            print(f"TM_Loaded original model: {self.original_model}")
+            print(f"Loaded original model: {self.original_model}")
             print(self.original_model.summary())
 
             self.model = fixed_model.model_wrapped
-            print(f"TM_Loaded wrapped model: {self.model}")
+            print(f"Loaded wrapped model: {self.model}")
             print(self.model.summary())
             
-            """######## D
-            self.load_model_from = '/lhome/ext/ucm147/ucm1478/editing_code/models/baseline/cameradir/ctlearn_model.cpk/'
-            self.model = keras.saving.load_model(self.load_model_from)
-            #self.model.load_weights(self.load_model_from)
-            end_step = np.ceil(100000 / 64).astype(np.int32) * 3
-            end_step = 500
-            pruning_params = {'pruning_schedule': sparse_keras.pruning_schedule.ConstantSparsity(
-            target_sparsity =0.90,
-            begin_step = 1,
-            end_step = end_step,
-            frequency = 100
-            )}
-            self.model= tfmot.sparsity.keras.prune_low_magnitude(self.model, **pruning_params)
-            """####### D
-
 
             # Validate the optimizer parameters
             validate_trait_dict(self.optimizer, ["name", "base_learning_rate"])
@@ -530,7 +525,7 @@ class TrainCTLearnModel(Tool):
             # Set the epsilon for the Adam optimizer
             adam_epsilon = None
             if self.optimizer["name"] == "Adam":
-                self.log.info("Predefined Adam optimizer is selected.")###Daf
+                self.log.info("Predefined Adam optimizer is selected.")
                 # Validate the epsilon for the Adam optimizer
                 validate_trait_dict(self.optimizer, ["adam_epsilon"])
                 # Set the epsilon for the Adam optimizer
@@ -557,23 +552,19 @@ class TrainCTLearnModel(Tool):
             self.log.info("Compiling CTLearn model.")
             self.model.compile(optimizer=optimizer_fn(**optimizer_args), loss=losses, metrics=metrics)
             self.original_model.compile(optimizer=optimizer_fn(**optimizer_args), loss=losses, metrics=metrics)
-            #####D
+           
             if self.model.optimizer:
                 #self.log.info("Optimizer configuration: %s", self.model.optimizer.get_config())
-                #self.log.info("Optimizer weights: %s", self.model.get_weights())
                 for idx, var in enumerate(self.model.optimizer.variables()):
                     self.log.info(f"Variable {idx}: {var.name}, shape: {var.shape}")
-                    #self.log.info(var.numpy())
+                    
             else:
                 self.log.info("No optimizer is associated with the model.")
-            #### Esto sobra
 
 
-        print("epochs: ", self.n_epochs)
+
         # Train and evaluate the model
         self.log.info("Training and evaluating...")
-        print(f"TM Callbacks: {self.callbacks}")
-        print(f"sparsity: {self.compression_techniques}")
         self.model.fit(
             self.training_loader,
             validation_data=self.validation_loader,
@@ -583,43 +574,92 @@ class TrainCTLearnModel(Tool):
             verbose=2,
         )
         self.log.info("Training and evaluating finished succesfully!")
-
-        def compute_total_model_sparsity(model):
-            total_zeros = 0
-            total_elements = 0
-            
-            # Check if model has any pruning wrappers
-            has_pruning_wrappers = any("PruneLowMagnitude" in layer.__class__.__name__ for layer in model.layers)
-    
-            for weight, layer in zip(model.get_weights(), model.layers):
-                if has_pruning_wrappers:
-                # Count weights from pruned layers
-                    if "PruneLowMagnitude" in layer.__class__.__name__:
-                        total_zeros += np.sum(weight == 0)
-                        total_elements += weight.size
-                        print(f"Model {model} has pruning wrappers, counting only pruned weights.")
-            
-                else:
-                # Count all trainable weights for un-pruned models
-                    if hasattr(layer, 'trainable') and len(layer.weights) > 0:
-                        total_zeros += np.sum(weight == 0)
-                        total_elements += weight.size
-            if total_elements == 0:
-                total_sparsity = 0.0
-                print(f"Total model {model} sparsity: No trainable parameters found")
-            else:
-                total_sparsity = total_zeros / total_elements
-                print(f"Total model {model} sparsity: {total_sparsity:.2%}")
-            return total_sparsity
-            
-        compute_total_model_sparsity(self.model)
-        compute_total_model_sparsity(self.original_model)
         print(f"Number of training steps: {len(self.training_loader) * self.n_epochs}")
+    
+        
+        
+    """def model_weights_sparsity(self):
+        # previously named: compute_total_model_sparsity
+        total_zeros = 0
+        total_elements = 0
+        
+        # Check if model has any pruning wrappers
+        has_pruning_wrappers = any("PruneLowMagnitude" in layer.__class__.__name__ for layer in self.model.layers)
+        
+        for weight, layer in zip(self.model.get_weights(), self.model.layers):
+            if has_pruning_wrappers:
+            # Count weights from pruned layers
+                if "PruneLowMagnitude" in layer.__class__.__name__:
+                    total_zeros += np.sum(weight == 0)
+                    total_elements += weight.size
+                    print(f"Model {self.model} has pruning wrappers, counting only pruned weights.")
+        
+            else:
+            # Count all trainable weights for un-pruned models
+                if hasattr(layer, 'trainable') and len(layer.weights) > 0:
+                    total_zeros += np.sum(weight == 0)
+                    total_elements += weight.size
+        if total_elements == 0:
+            total_sparsity = 0.0
+            print(f"Total model {self.model} sparsity: No trainable parameters found")
+        else:
+            total_sparsity = (total_zeros / total_elements) 
+            print(f"Total model {self.model} sparsity: {total_sparsity:.2%}")
+        return total_sparsity
+        """ 
+    #compute_total_model_sparsity(self.model)
+    #compute_total_model_sparsity(self.original_model)
+    #print(f"Number of training steps: {len(self.training_loader) * self.n_epochs}")
+    
+    """
+    def model_weights_sparsity(self):
+        tot_weight = 0
+        counter = 0
+        for layer in self.model.layers:
+            if isinstance(layer, keras.layers.Wrapper):  # For layers wrapped by pruning
+                weights = layer.trainable_weights
+            else:
+                weights = layer.weights
+            for weight in weights:
+                weight_values = weight.numpy()
+
+                tot_weight += np.sum(weight_values == 0)
+                counter += weight_values.size
+                #sparsity = np.mean(weight_values == 0) * 100
+                    
+                #print(f"Layer: {layer.name}, Weight: {weight.name}, Sparsity: {sparsity:.2f}%")
+        sparsity = (tot_weight/counter) * 100
+        self.log.info(f"Total sparsity is: {sparsity}" )
+        print(f"Total sparsity is: {sparsity}" )
+        return sparsity
+        """
+    
+    def model_weights_sparsity(self, model = None):
+        tot_weight = 0
+        counter = 0
+        for layer in model.layers:
+            if isinstance(layer, keras.layers.Wrapper):  # For layers wrapped by pruning
+                weights = layer.trainable_weights
+            else:
+                weights = layer.weights
+            for weight in weights:
+                weight_values = weight.numpy()
+
+                tot_weight += np.sum(weight_values == 0)
+                counter += weight_values.size
+                #sparsity = np.mean(weight_values == 0) * 100
+                    
+                #print(f"Layer: {layer.name}, Weight: {weight.name}, Sparsity: {sparsity:.2f}%")
+        sparsity = (tot_weight/counter) * 100
+        self.log.info(f"Total sparsity is: {sparsity}" )
+        print(f"Total sparsity is: {sparsity}" )
+        return sparsity
+    
 
     def finish(self):
 
         # Convert model to TFLite backend
-        ## D: TO DO add different post training quantization techniques 
+        ## Add different post training quantization techniques 
         if self.tflite_conversion:
             self.log.info("Converting Keras model to TFLite...")
             converter = tf.lite.TFLiteConverter.from_keras_model(self.model)
@@ -629,8 +669,8 @@ class TrainCTLearnModel(Tool):
             model_path = pathlib.Path(f"{self.output_dir}/tflite_model")
             model_path.mkdir(exist_ok=True, parents=True)
 
-            ## D: TFLite model name depending on task (needed for inference)
-            ## D: Next step: allow user to set preferred folder or filename (keeping task)
+            # TFLite model name depending on task (needed for inference)
+            # Next step: allow user to set preferred folder or filename (keeping task)
             if "type" in self.reco_tasks:
                 quant_model_path = model_path/"type_model.tflite"
             if "energy" in self.reco_tasks:
@@ -714,6 +754,89 @@ class TrainCTLearnModel(Tool):
             )
             metrics["skydirection"] = keras.metrics.MeanAbsoluteError(name="mae_skydirection")
         return losses, metrics
+
+
+
+class SparsityAwareCheckpoint(keras.callbacks.Callback):
+    def __init__(self, parent, compression_techniques, filepath, monitor='val_loss', mode='min',
+                 save_best_only=True, epsilon=0.3, verbose=1):
+        """
+        parent: class instance with 'model_weights_sparsity()'
+        compression_techniques: list of compression techniques and their parameters
+        filepath, monitor, mode, save_best_only, verbose: ModelCheckpoint variables
+        epsilon: tolerance around target sparsity
+        """
+        super().__init__()
+        self.parent = parent
+        self.compression_techniques = compression_techniques
+        self.epsilon = epsilon
+        self.verbose = verbose
+        self.objective_sparsity = None
+
+        # Default ModelCheckpoint
+        self.model_ckpt = keras.callbacks.ModelCheckpoint(
+            filepath=filepath,
+            monitor=monitor,
+            verbose=verbose,
+            mode=mode,
+            save_best_only=save_best_only,
+            verbose=verbose,
+        )
+        
+
+        # Check if pruning is performed and get target sparsity
+        if self.compression_techniques is not None:
+            for technique in self.compression_techniques:
+                if "pruning" in technique:# and len(technique) <= 1:
+                    self.objective_sparsity = technique["pruning"]["final sparsity"] * 100
+                    break
+
+        
+
+        if self.objective_sparsity is not None:
+            print(f"[SparsityAwareCheckpoint] Pruning active → "
+                  f"will save when sparsity ≥ {self.objective_sparsity:.2f} ")
+        else:
+            print("[SparsityAwareCheckpoint] No pruning detected → "
+                  "acting as a normal ModelCheckpoint.")
+
+    def on_train_begin(self, logs=None):
+        # forward initialization to internal ModelCheckpoint so it sets up its state
+        
+        if hasattr(self.model_ckpt, "on_train_begin"):
+            self.model_ckpt.set_model(self.parent.model)
+            self.model_ckpt.on_train_begin(logs)
+
+
+    def on_epoch_end(self, epoch, logs=None):
+        # If pruning not active, just behave like normal checkpoint
+        if self.objective_sparsity is None :
+            try:
+                print("Trying to save")
+                self.model_ckpt.set_model(self.parent.model)
+                self.model_ckpt.on_epoch_end(epoch, logs)
+            except:
+                print('No objective sparsity')
+            return
+
+        # Otherwise check sparsity first
+        sparsity = self.parent.model_weights_sparsity(self.parent.model)
+        print(f"Epoch: {epoch + 1}")
+        if sparsity >= (self.objective_sparsity - self.epsilon):
+            if self.verbose:
+                print(f"[SparsityAwareCheckpoint] Sparsity {sparsity:.2f} "
+                      f"≥ target {self.objective_sparsity:.2f} - {self.epsilon} → if {monitor} improved, checkpoint saved.")
+            self.model_ckpt.set_model(self.parent.model)
+            self.model_ckpt.on_epoch_end(epoch, logs)
+        elif epoch == self.parent.n_epochs - 1 and sparsity < (self.objective_sparsity - self.epsilon):
+            self.model_ckpt.set_model(self.parent.model)
+            self.model_ckpt.on_epoch_end(epoch, logs)
+            print(f"[SparsityAwareCheckpoint] Final epoch reached but sparsity objective not reached → saving checkpoint with sparsity {sparsity:.2f}.") 
+        else:
+            if self.verbose:
+                print(f"[SparsityAwareCheckpoint] Sparsity {sparsity:.2f} "
+                      f"< target {self.objective_sparsity:.2f} → not saving yet.")
+
 
 
 def main():

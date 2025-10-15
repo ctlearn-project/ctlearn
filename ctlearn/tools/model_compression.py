@@ -360,6 +360,7 @@ class CompressCTLearnModel(Tool):
                 ###### Needs to be filled up later
                 elif key == "qat":
                     self.log.info("Applying Quantization-Aware Training...")
+                    #apply_qat = True
                 elif key == "pruning":
                     print("pruning")
                     pruning_params = self.build_pruning_schedule(hyperparams)
@@ -371,7 +372,6 @@ class CompressCTLearnModel(Tool):
                     print("Calling pruning...")
                     self.log.info("Calling pruning...")
                     self.compressed_model = self.pruning(train_tool, pruning_params)
-                    print("who knows", self.compressed_model)
                     print("Applying pruning...")
                     self.log.info("Applying pruning...")
                 elif technique == "None":
@@ -649,11 +649,12 @@ class CompressCTLearnModel(Tool):
             print("Task recognised as type")
             self.n_epochs = hyperparams.get("epochs", 3)
             end_step = np.ceil(2082844 / self.batch_size).astype(np.int32) * self.n_epochs - 2000
+            #end_step = np.ceil(100 / self.batch_size).astype(np.int32) * self.n_epochs 
         elif self.reco_tasks == "energy" or self.reco_tasks == "cameradirection":
             print("Task recognised as energy or cameradirection")
             self.n_epochs = hyperparams.get("epochs", 3)
             end_step = np.ceil(1039893 / self.batch_size).astype(np.int32) * self.n_epochs - 1000
-            #end_step = np.ceil(1039893 / self.batch_size).astype(np.int32) * self.n_epochs      
+            #end_step = np.ceil(100 / self.batch_size).astype(np.int32) * self.n_epochs      
         print("End step: ", end_step)
         self.log.info("End step: %s", end_step)
         print("Remember to check the number of data loaded. This end step is hardcoded")
