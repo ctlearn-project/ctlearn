@@ -1,2 +1,0 @@
-"""ctlearn command line tools.
-"""
