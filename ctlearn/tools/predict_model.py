@@ -652,15 +652,16 @@ class PredictCTLearnModel(Tool):
                 )
         else:
             # Profiling implementation within Tensorboard callback
-            log_path = Path(self.log_file)
+            #log_path = Path(self.log_file)
             # Folder which contains it
-            log_folder = log_path.parent
-            self.log.info("Setting up TensorBoard profiling")
-            self.log.info("Folder where logs are stored", log_folder)
-            profiler_predict_dir =  log_folder / datetime.now().strftime("%Y%m%d-%H%M%S")
-            self.log.info("Directory for profiler:", profiler_predict_dir)
-            tensorboard_callback = keras.callbacks.TensorBoard(
-                    log_dir=profiler_predict_dir, histogram_freq=1, write_graph=True, profile_batch= '500,502')
+            #log_folder = log_path.parent
+            #self.log.info("Setting up TensorBoard profiling")
+            #self.log.info("Folder where logs are stored", log_folder)
+            #profiler_predict_dir =  log_folder / datetime.now().strftime("%Y%m%d-%H%M%S")
+            #self.log.info("Directory for profiler:", profiler_predict_dir)
+            #tensorboard_callback = keras.callbacks.TensorBoard(
+            #        log_dir=profiler_predict_dir, histogram_freq=1, write_graph=True, profile_batch= '500,502')
+            
             # Predict the data using the loaded model
             predict_data = model.predict(data_loader, verbose=self.keras_verbose)
              # Create a astropy table with the prediction results
