@@ -224,7 +224,7 @@ class TrainCTLearnModel(Tool):
     default_value=[],
     ).tag(config=True) 
     
-    
+
 
     lr_reducing = Dict(
         default_value={"factor": 0.5, "patience": 5, "min_delta": 0.01, "min_lr": 0.000001},
@@ -552,17 +552,14 @@ class TrainCTLearnModel(Tool):
             self.log.info("Compiling CTLearn model.")
             self.model.compile(optimizer=optimizer_fn(**optimizer_args), loss=losses, metrics=metrics)
             self.original_model.compile(optimizer=optimizer_fn(**optimizer_args), loss=losses, metrics=metrics)
-           
+            
             if self.model.optimizer:
                 #self.log.info("Optimizer configuration: %s", self.model.optimizer.get_config())
                 for idx, var in enumerate(self.model.optimizer.variables()):
                     self.log.info(f"Variable {idx}: {var.name}, shape: {var.shape}")
-                    
             else:
                 self.log.info("No optimizer is associated with the model.")
-
-
-
+            
         # Train and evaluate the model
         self.log.info("Training and evaluating...")
         self.model.fit(
@@ -659,7 +656,7 @@ class TrainCTLearnModel(Tool):
     def finish(self):
 
         # Convert model to TFLite backend
-        ## Add different post training quantization techniques 
+        # TO DO add different post training quantization techniques 
         if self.tflite_conversion:
             self.log.info("Converting Keras model to TFLite...")
             converter = tf.lite.TFLiteConverter.from_keras_model(self.model)
@@ -670,7 +667,6 @@ class TrainCTLearnModel(Tool):
             model_path.mkdir(exist_ok=True, parents=True)
 
             # TFLite model name depending on task (needed for inference)
-            # Next step: allow user to set preferred folder or filename (keeping task)
             if "type" in self.reco_tasks:
                 quant_model_path = model_path/"type_model.tflite"
             if "energy" in self.reco_tasks:
