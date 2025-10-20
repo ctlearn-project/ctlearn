@@ -21,7 +21,7 @@ def test_data_loader(dl1_tmp_path, dl1_gamma_file):
     dl1_loader = DLDataLoader(
         DLDataReader=dl1_reader,
         indices=[0],
-        tasks=["type", "energy", "cameradirection", "skydirection"],
+        tasks=["type", "energy", "cameradirection", "skydirection", "impact"],
         batch_size=1,
     )
     # Get the features and labels fgrom the data loader for one batch
@@ -32,6 +32,7 @@ def test_data_loader(dl1_tmp_path, dl1_gamma_file):
         and "energy" in labels
         and "cameradirection" in labels
         and "skydirection" in labels
+        and "impact" in labels
     )
     #  Check the shape of the features
     assert features["input"].shape == (1, 110, 110, 2)
