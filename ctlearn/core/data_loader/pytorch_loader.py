@@ -154,13 +154,14 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
                         # Vertical flip
                         image[id_batch] = np.expand_dims(cv2.flip(image[id_batch].astype(np.float32), 0), axis=-1)
                         peak_time[id_batch] = np.expand_dims(cv2.flip(peak_time[id_batch].astype(np.float32), 0), axis=-1)
-
+                        continue
                     random_aug_flip_hor = random.random()
                     if random_aug_flip_hor > self.flip_hor_prob:
                         # Horizontal
                         image[id_batch] = np.expand_dims(cv2.flip(image[id_batch].astype(np.float32), 1), axis=-1)
                         peak_time[id_batch] = np.expand_dims(cv2.flip(peak_time[id_batch].astype(np.float32), 1), axis=-1)
                     # Rotation
+                        continue
                     random_aug_rot = random.random()
                     if random_aug_rot > self.rot_prob:
                         (h, w) = image[id_batch].shape[:2]
@@ -178,6 +179,7 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
                         peak_time[id_batch] = np.expand_dims(cv2.warpAffine(
                             peak_time[id_batch].astype(np.float32), rotation_matrix, (w, h)
                         ), axis=-1)
+                        continue
                     # Translation
                     random_aug_trans = random.random()
                     if random_aug_trans > self.trans_prob:
@@ -193,6 +195,7 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
                         peak_time[id_batch] =  np.expand_dims(cv2.warpAffine(
                             peak_time[id_batch].astype(np.float32), translation_matrix, (w, h)
                         ), axis=-1)
+                        continue
                 else:
                     doNothing = True
 
@@ -494,9 +497,6 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         features_out = {}
         features_out["image"] = image
         features_out["peak_time"] = peak_time
-        
-        features_out["image"] = torch.from_numpy(image).float().permute(0, 3, 1, 2).contiguous()
-        features_out["peak_time"] = torch.from_numpy(peak_time).float().permute(0, 3, 1, 2).contiguous()
 
         for key in features["hillas"].keys():
             features["hillas"][key] = (
@@ -545,10 +545,10 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
                 
         if self.is_training:
             N = 4  # Repeating the number of high energies 
-            features_out["hillas"] = features["hillas"]
+            #features_out["hillas"] = features["hillas"]
             #-------------------------------------------------
             if self.use_augmentation:
-                energy_log = torch.pow(10,labels["energy"].squeeze(-1))  # shape [N]
+                energy_log = torch.pow(10,torch.tensor(labels["energy"].squeeze(-1)))  # shape [N]
                 high_energy_mask = energy_log > 1  # log10(E/TeV) > 0 => E > 1 TeV
 
                 idx_to_duplicate = torch.where(high_energy_mask)[0]
@@ -599,18 +599,20 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
             
         image = np.transpose(image, (0, 3, 1, 2))
         peak_time = np.transpose(peak_time, (0, 3, 1, 2))
-
+        # features_out["image"] = torch.from_numpy(image).float().permute(0, 3, 1, 2).contiguous()
+        # features_out["peak_time"] = torch.from_numpy(peak_time).float().permute(0, 3, 1, 2).contiguous()
+        
         features_out["image"] = torch.from_numpy(image.copy()).contiguous().float()
         features_out["peak_time"] = torch.from_numpy(peak_time.copy()).contiguous().float()
         
-
-            
+        #Create a dummy keep_idx that keeps all events
+        hillas = features["hillas"]
+        leakage = np.array(hillas["leakage_intensity_width_2"])
+        intensity = np.array(hillas["hillas_intensity"])
+        keep_idx = np.where((leakage <= 0.2) & (intensity >= 50))[0]
 
         if not self.is_training:
             # Generate keep_idx as before
-            hillas = features["hillas"]
-            leakage = np.array(hillas["leakage_intensity_width_2"])
-            intensity = np.array(hillas["hillas_intensity"])
             keep_idx = np.where((leakage < 0.2) & (intensity > 50))[0]
             # keep_idx = np.where((leakage > 0.8) & (intensity > 50))[0]
 
