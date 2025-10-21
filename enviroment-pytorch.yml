@@ -1,0 +1,34 @@
+name: ctlearn-pytorch
+channels:
+  - anaconda
+  - conda-forge
+dependencies:
+  - python=3.10
+  - astropy
+  - setuptools
+  - numpy
+  - pandas
+  - pytables
+  - tables
+  - c-blosc2=2.13
+  - pyyaml
+  - scikit-learn
+  - ctapipe
+  - pytest
+  - pip
+  - pip:
+      - torch==2.5.0
+      - torchvision==0.20.0
+      - torchmetrics>=1.4.0,<1.5.0
+      - pytorch_lightning==2.4.0
+      - deepspeed
+      - onnx
+      - onnxsim
+      - scikit-image
+      - ctaplot
+      - opencv-python
+      - seaborn
+      - dl1_data_handler>=0.14.1,<0.15
+      - tf2onnx
+      - pydot
+      - ctapipe_io_lst

@@ -2,15 +2,15 @@ name: CI
 
 on:
   push:
-    branches:
-      - "**"
-    tags:
-      - "**"
+    branches: ["**"]
+    tags: ["**"]
   pull_request:
   workflow_dispatch:
 
 jobs:
-  build:
+  pytorch-job:
+    name: PyTorch Job
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
         os: [ubuntu-22.04]
