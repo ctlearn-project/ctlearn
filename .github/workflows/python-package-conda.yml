@@ -1,4 +1,3 @@
-
 name: CI
 
 on:
@@ -20,34 +19,45 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python ${{ matrix.pyv }}
+
+    - name: Check initial disk space
+      run: df -h
+
+    - name: Set up Miniconda + Python
       run: |
-        # Install Miniconda
         wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
         bash miniconda.sh -b -p $HOME/miniconda
         echo "$HOME/miniconda/bin" >> $GITHUB_PATH
         source $HOME/miniconda/bin/activate
-        # Install Mamba via conda (since we don't have mamba yet)
-        $HOME/miniconda/bin/conda config --add channels conda-forge
-        $HOME/miniconda/bin/conda install -y mamba=2.0.8
-        mamba install -y python=${{ matrix.pyv }}
+        conda config --add channels conda-forge
+        conda install -y mamba=2.0.8 python=${{ matrix.pyv }}
+
     - name: Add MKL_THREADING_LAYER variable
       run: echo "MKL_THREADING_LAYER=GNU" >> $GITHUB_ENV
-    - name: Install dependencies with Mamba
+
+    - name: Install dependencies with Mamba (no pip yet)
       run: |
         source $HOME/miniconda/bin/activate
         mamba env update --file environment.yml --name base
+        mamba clean --all -y  # 🔹 libera espacio
+
+    - name: Install project in editable mode
+      run: |
+        source $HOME/miniconda/bin/activate
+        pip install --no-cache-dir -e .
+
     - name: Lint with flake8
       run: |
         source $HOME/miniconda/bin/activate
-        mamba install flake8
+        mamba install -y flake8
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: Install with pip
-      run: |
-        pip install -e .
+
     - name: Test with pytest
       run: |
         source $HOME/miniconda/bin/activate
-        mamba install pytest
+        mamba install -y pytest
         pytest
+
+    - name: Check final disk space
+      run: df -h

@@ -180,7 +180,7 @@ def str_list_to_enum_list(reco_tasks: List) -> List[Task]:
 
 
 # -------------------------------------------------------------------------------------------------------------------
-def get_absolute_config_path(config_file_str="./ctlearn/tools/train/pytorch/config/training_config_iaa_neutron_training.yml") -> str:
+def get_absolute_config_path(config_file_str="./ctlearn/tools/train/pytorch/config/default_config_file.yml") -> str:
     """
     Returns the absolute path of the configuration file.
 

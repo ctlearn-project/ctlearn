@@ -1,0 +1,152 @@
+data: 
+  train_gamma_proton: ./data/gamma_proton_train_remix.dl1.pickle 
+  validation_gamma_proton: ./data/gamma_proton_212282_validation.pickle 
+
+  train_gamma: ./data/gamma_955000_train.pickle 
+  validation_gamma: ./data/gamma_106141_validation.pickle 
+
+  test_gamma: ./data/gamma_1805522_test_gamma.pickle 
+  test_proton: ./data/proton_130811_test_proton.pickle 
+  test_electron: None
+  test_validation_gamma: ./data/gamma_180552_test_val_gamma.pickle 
+
+  test_validation_gamma_proton: ./data/gamma_proton_212282_validation.pickle 
+
+  observation: ./run_2931.dl1.pickle 
+  # Important: This is only for testing purpose. Set always to 0
+  # when you are training, validating or estimating the dl2 files
+  training_reduce_factor: 0 #64 #4
+  validation_reduce_factor: 0 #16 #8
+  validation_test_reduce_factor: 0 #16 #8
+
+  # Check points
+  type_checkpoint: ./run/run_type_training_14/exp_14_type_train/version_0/Epoch_6_type_train_acc_80.9682309627532959.pth
+  energy_checkpoint: /home/cpozogonzalez/ctlearn/run/run_energy_training_14/exp_14_energy_train/version_1/Epoch_13_energy_train_loss_30.2185532478501244.pth
+  direction_checkpoint: /lhome/ext/ucm147/ucm1477/data/check_points/v_5/Epoch_23_cameradirection_train_loss_7296.6534562211982120.pth 
+
+run_details:
+
+    mode: "observation" # The option are: "train", "results", "observation" and "validate"
+    task: "direction" # The option are: "all", "energy" "type" and "direction"
+    test_type: "gamma" # The option are: "gamma" "proton" or "electron" 
+    experiment_number: 14 # The experiment number. The experiment folder is saved into the "run" folder.
+
+
+cut-off:
+
+  leakage_intensity: 0.2 # bigger to this value, the event is removed 
+  intensity: 50 # below to this value, the event is removed 
+
+model:  
+
+  model_type: 
+    model_name: "DoubleBBEfficientNet"
+    parameters:
+      model_variant: "efficientnet-b3"
+      task: 'type'
+      num_outputs: 2
+      device_str: "cuda"
+      energy_bins: None
+
+  model_energy:
+    model_name: "ThinResNet"
+    parameters:
+      task: 'energy'
+      num_inputs: 1
+      num_outputs: 1
+      num_blocks: [3, 4, 6, 3] #[2, 3, 3, 3]
+      dropout: 0.1 
+      use_bn: False  
+
+  model_direction: 
+    model_name: "ThinResNet_DBB"
+    parameters:
+      task: 'direction'
+      num_inputs: 1
+      num_outputs: 3
+      num_blocks: [3, 4, 6, 3]
+      dropout: 0.1 
+      use_bn: False  
+
+  # model_direction: 
+  #   model_name: "DBBNoPropDTReg"
+  #   parameters:
+  #     task: 'direction'
+  #     num_outputs: 3
+  #     embedding_dim: 512
+  #     T: 3
+  #     eta: 0.1 #0.1    
+
+# Hyper-parameters
+hyp: 
+
+  epochs: 30
+  batches: 128 #128 #64
+  dynamic_batches: True
+  optimizer: Adamw
+  momentum: 0.957 #Yolo 0.937 # Efficient-b3 0.757
+  weight_decay: 0.0005 #0.004676 #0.0001 #0.00002 Efficient-b3 0.0005
+  learning_rate: 1e-4 #1e-5 #Efficient-b3 1e-5
+  lrf: 0.1
+  start_epoch: 0
+  steps_epoch: 100 # Computed online. Must be removed
+  l2_lambda: 1e-7 #1e-5 #1e-5 # L2 regularization (Set to 0.0 to skip the L2 Regularization)
+  adam_epsilon: 1.0e-08 #7.511309034256153e-05 #1.0e-08
+  gradient_clip_val: 3.0 # Avoid gradient explosion
+
+  save_k: 200 # Save as maximum k checkpoints.
+
+augmentation:
+  # probabilities for augmentation range = [0, 1.0] 
+  # prob = 0.0 -> Always apply the augmentation
+  # prob >= 1.0 -> Never apply the augmentation, i.e., Set bigger than 1.0 ( ex: 2.0) if you want disable it.
+  # Note: mask augmentation is always on even with flag use_augmentation = True
+  # To disable it, just set to 2.5 for example.
+
+  use_augmentation: True  # This apply only on training mode.
+  aug_prob: 0.5 # Probability of use Augmentation
+  rot_prob: 0.5 # Rotation probability
+  trans_prob: 0.5 # Translation probability
+  flip_hor_prob: 0.5 # Horizontal Flip probability
+  flip_ver_prob: 0.5 # Vertical Flip probability
+  mask_prob: 0.5 # Apply mask probability
+  mask_dvr_prob: 0.5 # Apply dvr mask probability
+  noise_prob: 0.5 # No implemented yet.
+  max_rot: 5 # Maximum rotation in augmentation
+  max_trans: 10 # Maximum translation in augmentation
+
+normalization: 
+
+  # Normalization: Im' = (Im-mu)/sigma
+  use_clean: True # Use the image with the applied mask (True), IOC the mask is not applied (False)
+  use_clean_dvr: False
+  type_mu: 0.0
+  type_sigma: 1000.0
+
+  dir_mu: 0.0
+  dir_sigma: 1000.0
+
+  energy_mu: 0.0
+  energy_sigma: 1000.0
+  
+dataset:
+  num_workers: 1 # 
+  pin_memory: True 
+  persistent_workers: True # 
+
+# Hardware Architecture and precision
+arch: 
+  # device: 'mps' # Apple Mx
+  device: 'cuda'
+  precision_type: "32-true" # Options: "64-true" "32-true" "16-true" "16-mixed" "bf16-mixed" "bf16-true" 
+  precision_energy: "32-true" #"32-true" # Options:  "64-true" "32-true" "16-true" "16-mixed" "bf16-mixed" "bf16-true" 
+  precision_direction: "32-true" # "bf16-mixed" # Options:  "64-true" "32-true" "16-true" "16-mixed" "bf16-mixed" "bf16-true" 
+                                    # (bf16 for GPU with Ampere or higher, it is better that 16 because is numerical more stability)
+  # devices: [0,1] # [0,1] For multiple GPUs
+  devices: [0,1]
+  # Note: Check the documentation for more information.
+  strategy: 'deepspeed_stage_2' # Options: auto, dpp, dpp_swap, fsdp, deepspeed, horovod, bagua, deepspeed_stage_2, deepspeed_stage_3, colossalai, hivemind, etc...
+
+Notes:
+  Note_1: Training with augmentation dvr using 1-3 dilatations
+  Note_2: Trainining b3 applying always the mask
