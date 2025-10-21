@@ -2,62 +2,96 @@ name: CI
 
 on:
   push:
-    branches:
-      - "**"
-    tags:
-      - "**"
+    branches: ["**"]
+    tags: ["**"]
   pull_request:
   workflow_dispatch:
 
 jobs:
-  build:
+  pytorch-job:
+    name: PyTorch Job
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
-        os: [ubuntu-22.04]
-        pyv: [ '3.10','3.11', '3.12', '3.13']
-      max-parallel: 5
-    runs-on: ${{ matrix.os }}
+        python-version: [3.10, 3.11, 3.12, 3.13]
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Check initial disk space
-      run: df -h
+      - name: Check initial disk space
+        run: df -h
 
-    - name: Set up Miniconda + Python
-      run: |
-        wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
-        bash miniconda.sh -b -p $HOME/miniconda
-        echo "$HOME/miniconda/bin" >> $GITHUB_PATH
-        source $HOME/miniconda/bin/activate
-        conda config --add channels conda-forge
-        conda install -y mamba=2.0.8 python=${{ matrix.pyv }}
+      - name: Set up Miniconda
+        run: |
+          wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+          bash miniconda.sh -b -p $HOME/miniconda
+          echo "$HOME/miniconda/bin" >> $GITHUB_PATH
+          source $HOME/miniconda/bin/activate
+          conda config --add channels conda-forge
+          conda install -y mamba=2.0.8
 
-    - name: Add MKL_THREADING_LAYER variable
-      run: echo "MKL_THREADING_LAYER=GNU" >> $GITHUB_ENV
+      - name: Create PyTorch environment
+        run: |
+          source $HOME/miniconda/bin/activate
+          mamba env create -f environment-pytorch.yml
+          mamba clean --all -y
 
-    - name: Install dependencies with Mamba (no pip yet)
-      run: |
-        source $HOME/miniconda/bin/activate
-        mamba env update --file environment.yml --name base
-        mamba clean --all -y  # 🔹 libera espacio
+      - name: Activate environment and run lint
+        run: |
+          source $HOME/miniconda/bin/activate
+          conda activate ctlearn-pytorch
+          pip install --no-cache-dir flake8
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-    - name: Install project in editable mode
-      run: |
-        source $HOME/miniconda/bin/activate
-        pip install --no-cache-dir -e .
+      - name: Run tests
+        run: |
+          source $HOME/miniconda/bin/activate
+          conda activate ctlearn-pytorch
+          pytest
 
-    - name: Lint with flake8
-      run: |
-        source $HOME/miniconda/bin/activate
-        mamba install -y flake8
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      - name: Check final disk space
+        run: df -h
 
-    - name: Test with pytest
-      run: |
-        source $HOME/miniconda/bin/activate
-        mamba install -y pytest
-        pytest
+  tensorflow-job:
+    name: TensorFlow Job
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        python-version: [3.10, 3.11, 3.12, 3.13]
+    steps:
+      - uses: actions/checkout@v4
 
-    - name: Check final disk space
-      run: df -h
+      - name: Check initial disk space
+        run: df -h
+
+      - name: Set up Miniconda
+        run: |
+          wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+          bash miniconda.sh -b -p $HOME/miniconda
+          echo "$HOME/miniconda/bin" >> $GITHUB_PATH
+          source $HOME/miniconda/bin/activate
+          conda config --add channels conda-forge
+          conda install -y mamba=2.0.8
+
+      - name: Create TensorFlow environment
+        run: |
+          source $HOME/miniconda/bin/activate
+          mamba env create -f environment-tensorflow.yml
+          mamba clean --all -y
+
+      - name: Activate environment and run lint
+        run: |
+          source $HOME/miniconda/bin/activate
+          conda activate ctlearn-tf
+          pip install --no-cache-dir flake8
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      - name: Run tests
+        run: |
+          source $HOME/miniconda/bin/activate
+          conda activate ctlearn-tf
+          pytest
+
+      - name: Check final disk space
+        run: df -h

@@ -1,0 +1,30 @@
+name: ctlearn-tf
+channels:
+  - anaconda
+  - conda-forge
+dependencies:
+  - python=3.10
+  - astropy
+  - setuptools
+  - numpy
+  - pandas
+  - pytables
+  - tables
+  - c-blosc2=2.13
+  - pyyaml
+  - scikit-learn
+  - ctapipe
+  - pytest
+  - pip
+  - pip:
+      - "tensorflow>=2.14,<2.15"
+      - tf2onnx
+      - dl1_data_handler>=0.14.1,<0.15
+      - pydot
+      - onnx
+      - onnxsim
+      - scikit-image
+      - ctaplot
+      - opencv-python
+      - seaborn
+      - ctapipe_io_lst
