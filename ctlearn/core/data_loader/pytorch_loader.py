@@ -548,7 +548,7 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
             #features_out["hillas"] = features["hillas"]
             #-------------------------------------------------
             if self.use_augmentation:
-                energy_log = torch.pow(10,torch.tensor(labels["energy"].squeeze(-1)))  # shape [N]
+                energy_log = torch.pow(10,torch.tensor(labels["energy"].reshape(-1)))  # shape [N]
                 high_energy_mask = energy_log > 1  # log10(E/TeV) > 0 => E > 1 TeV
 
                 idx_to_duplicate = torch.where(high_energy_mask)[0]
