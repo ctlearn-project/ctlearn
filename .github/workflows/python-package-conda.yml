@@ -43,6 +43,11 @@ jobs:
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
+      - name: Install ctlearn in editable mode
+        run: |
+          source $HOME/miniconda/bin/activate
+          conda activate ctlearn-pytorch   # o ctlearn-tf
+          pip install --no-cache-dir -e .
       - name: Run tests
         run: |
           source $HOME/miniconda/bin/activate
@@ -86,6 +91,12 @@ jobs:
           pip install --no-cache-dir flake8
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      - name: Install ctlearn in editable mode
+        run: |
+          source $HOME/miniconda/bin/activate
+          conda activate ctlearn-tf   # o ctlearn-pytorch
+          pip install --no-cache-dir -e .
 
       - name: Run tests
         run: |
