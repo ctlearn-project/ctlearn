@@ -16,10 +16,15 @@ jobs:
       matrix:
         os: [ubuntu-22.04]
         pyv: [ '3.10','3.11', '3.12', '3.13']
-      max-parallel: 5
+      max-parallel: 2
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
+    - name: Free disk space
+      run: |
+        sudo rm -rf /usr/share/dotnet /usr/local/lib/android /usr/local/share/boost /opt/ghc
+        sudo apt-get clean
+        df -h
     - name: Set up Python ${{ matrix.pyv }}
       run: |
         # Install Miniconda
@@ -31,12 +36,15 @@ jobs:
         $HOME/miniconda/bin/conda config --add channels conda-forge
         $HOME/miniconda/bin/conda install -y mamba=2.0.8
         mamba install -y python=${{ matrix.pyv }}
+        df -h
     - name: Add MKL_THREADING_LAYER variable
       run: echo "MKL_THREADING_LAYER=GNU" >> $GITHUB_ENV
     - name: Install dependencies with Mamba
       run: |
         source $HOME/miniconda/bin/activate
         mamba env update --file environment.yml --name base
+	mamba clean -a -y
+	df -h
     - name: Lint with flake8
       run: |
         source $HOME/miniconda/bin/activate
@@ -45,9 +53,10 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Install with pip
       run: |
-        pip install -e .
+        pip install --noo-cache-dir -e .
+	df -h
     - name: Test with pytest
       run: |
         source $HOME/miniconda/bin/activate
-        mamba install pytest
+        mamba install pytest -y
         pytest
