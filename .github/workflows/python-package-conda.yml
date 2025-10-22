@@ -53,7 +53,7 @@ jobs:
         flake8 ctlearn --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Install with pip
       run: |
-        pip install --noo-cache-dir -e .
+        pip install --no-cache-dir -e .
         df -h
     - name: Test with pytest
       run: |
