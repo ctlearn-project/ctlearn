@@ -43,8 +43,8 @@ jobs:
       run: |
         source $HOME/miniconda/bin/activate
         mamba env update --file environment.yml --name base
-	mamba clean -a -y
-	df -h
+        mamba clean -a -y
+        df -h
     - name: Lint with flake8
       run: |
         source $HOME/miniconda/bin/activate
@@ -54,7 +54,7 @@ jobs:
     - name: Install with pip
       run: |
         pip install --noo-cache-dir -e .
-	df -h
+        df -h
     - name: Test with pytest
       run: |
         source $HOME/miniconda/bin/activate
