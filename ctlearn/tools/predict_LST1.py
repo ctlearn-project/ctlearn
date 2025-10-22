@@ -556,8 +556,8 @@ class LST1PredictionTool(Tool):
         feature_vector_table = example_identifiers.copy()
         fvs_columns_list, fvs_shapes_list = [], []
         if self.load_type_model_from is not None:
-            classification_table = example_identifiers.copy()
-            classification_table.add_column(
+            classification_tel_table = example_identifiers.copy()
+            classification_tel_table.add_column(
                 prediction, name=f"{self.prefix}_tel_prediction"
             )
             # Produce output table with NaNs for missing predictions
@@ -567,16 +567,16 @@ class LST1PredictionTool(Tool):
                     columns=[f"{self.prefix}_tel_prediction"],
                     shapes=[(len(nonexample_identifiers),)],
                 )
-                classification_table = vstack([classification_table, nan_table])
-            classification_table.sort(TELESCOPE_EVENT_KEYS)
-            classification_is_valid = ~np.isnan(classification_table[f"{self.prefix}_tel_prediction"].data, dtype=bool)
-            classification_table.add_column(
+                classification_tel_table = vstack([classification_tel_table, nan_table])
+            classification_tel_table.sort(TELESCOPE_EVENT_KEYS)
+            classification_is_valid = ~np.isnan(classification_tel_table[f"{self.prefix}_tel_prediction"].data, dtype=bool)
+            classification_tel_table.add_column(
                 classification_is_valid,
                 name=f"{self.prefix}_tel_is_valid",
             )
             # Add the default values and meta data to the table
             add_defaults_and_meta(
-                classification_table,
+                classification_tel_table,
                 ParticleClassificationContainer,
                 prefix=self.prefix,
                 add_tel_prefix=True,
@@ -584,7 +584,7 @@ class LST1PredictionTool(Tool):
             # Save the prediction to the output file
             if self.dl2_telescope:
                 write_table(
-                    classification_table,
+                    classification_tel_table,
                     self.output_path,
                     f"{DL2_TELESCOPE_GROUP}/classification/{self.prefix}/tel_{self.tel_id:03d}",
                     overwrite=self.overwrite,
@@ -596,19 +596,19 @@ class LST1PredictionTool(Tool):
                 )
             # Write the mono telescope prediction to the subarray prediction table
             if self.dl2_subarray:
-                subarray_classification_table = classification_table.copy()
-                subarray_classification_table.remove_column("tel_id")
-                for colname in subarray_classification_table.colnames:
+                classification_subarray_table = classification_tel_table.copy()
+                classification_subarray_table.remove_column("tel_id")
+                for colname in classification_subarray_table.colnames:
                     if "_tel_" in colname:
-                        subarray_classification_table.rename_column(
+                        classification_subarray_table.rename_column(
                             colname, colname.replace("_tel", "")
                         )
-                subarray_classification_table.add_column(
+                classification_subarray_table.add_column(
                     classification_is_valid[np.newaxis], name=f"{self.prefix}_telescopes"
                 )
                 # Save the prediction to the output file
                 write_table(
-                    subarray_classification_table,
+                    classification_subarray_table,
                     self.output_path,
                     f"{DL2_SUBARRAY_GROUP}/classification/{self.prefix}",
                     overwrite=self.overwrite,
@@ -636,11 +636,11 @@ class LST1PredictionTool(Tool):
                         )
                     )
         if self.load_energy_model_from is not None:
-            energy_table = example_identifiers.copy()
+            energy_tel_table = example_identifiers.copy()
             # Convert the reconstructed energy from log10(TeV) to TeV
             reco_energy = u.Quantity(np.power(10, np.squeeze(energy)), unit=u.TeV)
             # Add the reconstructed energy to the prediction table
-            energy_table.add_column(reco_energy, name=f"{self.prefix}_tel_energy")
+            energy_tel_table.add_column(reco_energy, name=f"{self.prefix}_tel_energy")
             # Produce output table with NaNs for missing predictions
             if len(nonexample_identifiers) > 0:
                 nan_table = self._create_nan_table(
@@ -648,16 +648,16 @@ class LST1PredictionTool(Tool):
                     columns=[f"{self.prefix}_tel_energy"],
                     shapes=[(len(nonexample_identifiers),)],
                 )
-                energy_table = vstack([energy_table, nan_table])
-            energy_table.sort(TELESCOPE_EVENT_KEYS)
-            energy_is_valid = ~np.isnan(energy_table[f"{self.prefix}_tel_energy"].data, dtype=bool)
-            energy_table.add_column(
+                energy_tel_table = vstack([energy_tel_table, nan_table])
+            energy_tel_table.sort(TELESCOPE_EVENT_KEYS)
+            energy_is_valid = ~np.isnan(energy_tel_table[f"{self.prefix}_tel_energy"].data, dtype=bool)
+            energy_tel_table.add_column(
                 energy_is_valid,
                 name=f"{self.prefix}_tel_is_valid",
             )
             # Add the default values and meta data to the table
             add_defaults_and_meta(
-                energy_table,
+                energy_tel_table,
                 ReconstructedEnergyContainer,
                 prefix=self.prefix,
                 add_tel_prefix=True,
@@ -665,7 +665,7 @@ class LST1PredictionTool(Tool):
             # Save the prediction to the output file
             if self.dl2_telescope:
                 write_table(
-                    energy_table,
+                    energy_tel_table,
                     self.output_path,
                     f"{DL2_TELESCOPE_GROUP}/energy/{self.prefix}/tel_{self.tel_id:03d}",
                     overwrite=self.overwrite,
@@ -677,19 +677,19 @@ class LST1PredictionTool(Tool):
                 )
             # Write the mono telescope prediction to the subarray prediction table
             if self.dl2_subarray:
-                subarray_energy_table = energy_table.copy()
-                subarray_energy_table.remove_column("tel_id")
-                for colname in subarray_energy_table.colnames:
+                energy_subarray_table = energy_tel_table.copy()
+                energy_subarray_table.remove_column("tel_id")
+                for colname in energy_subarray_table.colnames:
                     if "_tel_" in colname:
-                        subarray_energy_table.rename_column(
+                        energy_subarray_table.rename_column(
                             colname, colname.replace("_tel", "")
                         )
-                subarray_energy_table.add_column(
+                energy_subarray_table.add_column(
                     energy_is_valid[np.newaxis], name=f"{self.prefix}_telescopes"
                 )
                 # Save the prediction to the output file
                 write_table(
-                    subarray_energy_table,
+                    energy_subarray_table,
                     self.output_path,
                     f"{DL2_SUBARRAY_GROUP}/energy/{self.prefix}",
                     overwrite=self.overwrite,
@@ -717,7 +717,7 @@ class LST1PredictionTool(Tool):
                         )
                     )
         if self.load_cameradirection_model_from is not None:
-            direction_table = example_identifiers.copy()
+            direction_tel_table = example_identifiers.copy()
             # Set the telescope position
             tel_ground_frame = self.subarray.tel_coords[
                 self.subarray.tel_ids_to_indices(self.tel_id)
@@ -749,10 +749,10 @@ class LST1PredictionTool(Tool):
             # Transform the true Alt/Az coordinates to camera coordinates
             reco_direction = cam_coord_offset.transform_to(altaz)
             # Add the reconstructed direction (az, alt) to the prediction table
-            direction_table.add_column(
+            direction_tel_table.add_column(
                 reco_direction.az.to(u.deg), name=f"{self.prefix}_tel_az"
             )
-            direction_table.add_column(
+            direction_tel_table.add_column(
                 reco_direction.alt.to(u.deg), name=f"{self.prefix}_tel_alt"
             )
             # Produce output table with NaNs for missing predictions
@@ -762,20 +762,20 @@ class LST1PredictionTool(Tool):
                     columns=[f"{self.prefix}_tel_az", f"{self.prefix}_tel_alt"],
                     shapes=[(len(nonexample_identifiers),), (len(nonexample_identifiers),)],
                 )
-                direction_table = vstack([direction_table, nan_table])
-            direction_table.keep_columns(
+                direction_tel_table = vstack([direction_tel_table, nan_table])
+            direction_tel_table.keep_columns(
                 TELESCOPE_EVENT_KEYS
                 + [f"{self.prefix}_tel_az", f"{self.prefix}_tel_alt"]
             )
-            direction_table.sort(TELESCOPE_EVENT_KEYS)
-            direction_is_valid = ~np.isnan(direction_table[f"{self.prefix}_tel_az"].data, dtype=bool)
-            direction_table.add_column(
+            direction_tel_table.sort(TELESCOPE_EVENT_KEYS)
+            direction_is_valid = ~np.isnan(direction_tel_table[f"{self.prefix}_tel_az"].data, dtype=bool)
+            direction_tel_table.add_column(
                 direction_is_valid,
                 name=f"{self.prefix}_tel_is_valid",
             )
             # Add the default values and meta data to the table
             add_defaults_and_meta(
-                direction_table,
+                direction_tel_table,
                 ReconstructedGeometryContainer,
                 prefix=self.prefix,
                 add_tel_prefix=True,
@@ -783,7 +783,7 @@ class LST1PredictionTool(Tool):
             # Save the prediction to the output file
             if self.dl2_telescope:
                 write_table(
-                    direction_table,
+                    direction_tel_table,
                     self.output_path,
                     f"{DL2_TELESCOPE_GROUP}/geometry/{self.prefix}/tel_{self.tel_id:03d}",
                     overwrite=self.overwrite,
@@ -795,19 +795,19 @@ class LST1PredictionTool(Tool):
                 )
             # Write the mono telescope prediction to the subarray prediction table
             if self.dl2_subarray:
-                subarray_direction_table = direction_table.copy()
-                subarray_direction_table.remove_column("tel_id")
-                for colname in subarray_direction_table.colnames:
+                direction_subarray_table = direction_tel_table.copy()
+                direction_subarray_table.remove_column("tel_id")
+                for colname in direction_subarray_table.colnames:
                     if "_tel_" in colname:
-                        subarray_direction_table.rename_column(
+                        direction_subarray_table.rename_column(
                             colname, colname.replace("_tel", "")
                         )
-                subarray_direction_table.add_column(
+                direction_subarray_table.add_column(
                     direction_is_valid[np.newaxis], name=f"{self.prefix}_telescopes"
                 )
                 # Save the prediction to the output file
                 write_table(
-                    subarray_direction_table,
+                    direction_subarray_table,
                     self.output_path,
                     f"{DL2_SUBARRAY_GROUP}/geometry/{self.prefix}",
                     overwrite=self.overwrite,
