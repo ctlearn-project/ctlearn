@@ -1,8 +1,8 @@
 # conda env create -f environment.yml
 name: ctlearn
 channels:
-    - anaconda
     - conda-forge
+channel_priority: strict
 dependencies:
     - python=3.10
     - astropy
@@ -16,8 +16,9 @@ dependencies:
     - pyyaml
     - scikit-learn
     - ctapipe
+    - numba
+    - tensorflow=2.14
+    - pydot
     - pip:
-        - numba
-        - tensorflow>=2.14,<2.15
         - dl1_data_handler>=0.14.5,<0.15
-        - pydot
+
