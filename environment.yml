@@ -16,9 +16,9 @@ dependencies:
     - pyyaml
     - scikit-learn
     - ctapipe
-    - numba
-    - pydot
     - pip:
+        - numba
+        - pydot
         - tensorflow>=2.14,<2.15
         - dl1_data_handler>=0.14.5,<0.15
 
