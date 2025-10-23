@@ -42,21 +42,21 @@ jobs:
     - name: Install dependencies with Mamba
       run: |
         source $HOME/miniconda/bin/activate
-        mamba env create -f environment.yml -n ctlearn
-        mamba clean -a -y
-        df -h
+        mamba env update --file environment.yml --name base
+        #mamba clean -a -y
+        #df -h
     - name: Lint with flake8
       run: |
-        source $HOME/miniconda/bin/activate ctlearn
+        source $HOME/miniconda/bin/activate
         mamba install flake8
-        flake8 ctlearn --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 ctlearn --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Install with pip
       run: |
         pip install --no-cache-dir -e .
         df -h
     - name: Test with pytest
       run: |
-        source $HOME/miniconda/bin/activate ctlearn
+        source $HOME/miniconda/bin/activate .
         mamba install pytest -y
         pytest
