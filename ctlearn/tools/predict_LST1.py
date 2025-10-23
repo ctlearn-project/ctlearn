@@ -604,7 +604,7 @@ class LST1PredictionTool(Tool):
                             colname, colname.replace("_tel", "")
                         )
                 classification_subarray_table.add_column(
-                    classification_is_valid, name=f"{self.prefix}_telescopes"
+                    [[val] for val in classification_is_valid], name=f"{self.prefix}_telescopes"
                 )
                 # Save the prediction to the output file
                 write_table(
@@ -685,7 +685,7 @@ class LST1PredictionTool(Tool):
                             colname, colname.replace("_tel", "")
                         )
                 energy_subarray_table.add_column(
-                    energy_is_valid, name=f"{self.prefix}_telescopes"
+                    [[val] for val in energy_is_valid], name=f"{self.prefix}_telescopes"
                 )
                 # Save the prediction to the output file
                 write_table(
@@ -803,7 +803,7 @@ class LST1PredictionTool(Tool):
                             colname, colname.replace("_tel", "")
                         )
                 direction_subarray_table.add_column(
-                    direction_is_valid, name=f"{self.prefix}_telescopes"
+                    [[val] for val in direction_is_valid], name=f"{self.prefix}_telescopes"
                 )
                 # Save the prediction to the output file
                 write_table(
