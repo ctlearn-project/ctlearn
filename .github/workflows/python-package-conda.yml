@@ -57,6 +57,6 @@ jobs:
         df -h
     - name: Test with pytest
       run: |
-        source $HOME/miniconda/bin/activate .
+        source $HOME/miniconda/bin/activate
         mamba install pytest -y
         pytest
