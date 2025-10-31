@@ -326,6 +326,7 @@ class PredictCTLearnModel(Tool):
         ("s", "skydirection_model"): "PredictCTLearnModel.load_skydirection_model_from",
         ("o", "output"): "PredictCTLearnModel.output_path",
         ("f", "framework"): "PredictCTLearnModel.framework_type",
+        ("p", "pytorch_config_file"): "PredictCTLearnModel.pytorch_config_file",
     }
 
     flags = {
@@ -565,6 +566,9 @@ class PredictCTLearnModel(Tool):
             np.power(10, np.squeeze(predict_data["energy"])),
             unit=u.TeV,
         )
+        print(reco_energy)
+        print(reco_energy.shape)
+        print(example_identifiers)
         # Create prediction table and add the reconstructed energy in TeV
         energy_table = example_identifiers.copy()
         energy_table.add_column(reco_energy, name=f"{self.prefix}_tel_energy")

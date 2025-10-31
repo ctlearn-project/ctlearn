@@ -50,6 +50,52 @@ class GPUStatsLogger(Callback):
         )
         
 def predictions(self):
+    if self.optim_batch_size:
+        bacht_size_finded = False
+        bacht = 256
+        step = 16
+        while bacht_size_finded == False:
+            from ctlearn.tools.predict.utils.optimaze_batch_size import test_batch
+
+            dl1_table = read_table(
+                self.input_url, self.image_table_path, start=0, stop=bacht
+            )
+            dl1_table = join(
+                left=dl1_table,
+                right=self.parameter_table,
+                keys=["event_id"],
+            )
+            dl1_table = join(
+                left=dl1_table,
+                right=self.trigger_table,
+                keys=["event_id"],
+            )
+
+            data = []
+            for event in dl1_table:
+                image = get_unmapped_image(dl1_table[0], self.channels, self.transforms)
+                data.append(self.image_mapper.map_image(image))
+                input_data = {"input": np.array(data)}
+            
+            imgs = input_data['input'][:,:,:,0]
+            if len(self.channels) == 2:
+                peak_time = input_data['input'][:,:,:,1]
+
+            for task in self.tasks:
+                if task == Task.type:
+                    bacht_size_finded = not test_batch(self.type_model,torch.tensor(imgs).unsqueeze(1).to(self.device) , torch.tensor(peak_time).unsqueeze(1).to(self.device) , self.device)
+
+                if task == Task.energy:
+                    bacht_size_finded = not test_batch(self.energy_model,torch.tensor(imgs).unsqueeze(1).to(self.device) , torch.tensor(peak_time).unsqueeze(1).to(self.device) , self.device)
+
+                if task in [Task.cameradirection, Task.skydirection, Task.direction]:
+                    bacht_size_finded = not test_batch(self.cameradirection_model, torch.tensor(imgs).unsqueeze(1).to(self.device) , torch.tensor(peak_time).unsqueeze(1).to(self.device) , self.device)
+            bacht += step
+            if bacht_size_finded == False:
+                self.log.info(f"Batch size: {bacht} OK")
+        self.batch_size = bacht - step
+        self.log.info(f"Optimized batch size: {self.batch_size}")
+        
     event_id, tel_azimuth, tel_altitude, trigger_time = [], [], [], []
     prediction, energy, cam_coord_offset_x, cam_coord_offset_y = [], [], [], []
     classification_fvs, energy_fvs, direction_fvs = [], [], []

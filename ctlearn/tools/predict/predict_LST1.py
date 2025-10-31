@@ -140,7 +140,7 @@ class LST1PredictionTool(Tool):
     ).tag(config=True)
 
     batch_size = Int(
-        default_value=64,
+        default_value=128,
         allow_none=False,
         help="Size of the batch to perform inference of the neural network.",
     ).tag(config=True)
@@ -257,7 +257,9 @@ class LST1PredictionTool(Tool):
             self.log.info(f"Using {self.pytorch_config_file} config file for pytorch framework")
             self.parameters = read_configuration(self.pytorch_config_file)
             sanity_check(self.parameters, expected_structure)
+            self.batch_size = self.parameters["hyp"]["batches"]
             self.device_str = self.parameters["arch"]["device"]
+            self.optim_batch_size = self.parameters["hyp"]["dynamic_batches"]
             self.device = torch.device(self.device_str)
             self.tasks = []
             self.type_mu = self.parameters["normalization"]["type_mu"]

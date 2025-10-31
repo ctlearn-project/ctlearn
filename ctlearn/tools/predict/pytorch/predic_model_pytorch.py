@@ -1,12 +1,5 @@
 from ctlearn.core.data_loader.loader import DLDataLoader
-import keras 
-from astropy.table import (
-    Table,
-    hstack,
-    vstack,
-    join,
-    setdiff,
-)
+import torch
 from tqdm import tqdm
 
 import numpy as np
@@ -77,23 +70,25 @@ def predict_with_model_pytorch(self, task):
     predict_data['energy'] = []
     predict_data["cameradirection"] = []
     
-    model.eval() 
-    for i, x in enumerate(tqdm(data_loader, desc="Processing", total=len(data_loader))):
-        if len(x[0]['image'])==0:
-            continue
-        if num_inputs == 2:
-            classification_pred, energy_pred, direction_pred = model(x[0]['image'].to(self.device) ,x[0]['peak_time'].to(self.device))
-        else:
-            classification_pred, energy_pred, direction_pred = model(x[0]['image'].to(self.device))
-        
-        if classification_pred is not None:
-            predict_data['type'].extend(classification_pred.cpu().detach().numpy())
-        if energy_pred is not None:
-            predict_data['energy'].extend(energy_pred.cpu().detach().numpy())
-        if direction_pred is not None:
-            predict_data["cameradirection"].extend(direction_pred.cpu().detach().numpy())
-        if i % 100 == 0:
-            self.log.info(f"Processed {i}/{len(data_loader)} events.")
+    model.eval()
+    with torch.no_grad():
+        for i, x in enumerate(tqdm(data_loader, desc="Processing", total=len(data_loader))):
+            if len(x[0]['image'])==0:
+                continue
+            if num_inputs == 2:
+                classification_pred, energy_pred, direction_pred = model(x[0]['image'].to(self.device) ,x[0]['peak_time'].to(self.device))
+            else:
+                classification_pred, energy_pred, direction_pred = model(x[0]['image'].to(self.device))
+            
+            if classification_pred[0] is not None:
+                gammaness = torch.softmax(classification_pred[0], dim=1).cpu().detach().numpy()[:,1]
+                predict_data['type'].extend(gammaness)
+            if energy_pred[0] is not None:
+                predict_data['energy'].extend(energy_pred[0].cpu().detach().numpy())
+            if direction_pred[0] is not None:
+                predict_data["cameradirection"].extend(direction_pred[0].cpu().detach().numpy())
+            if i % 100 == 0:
+                self.log.info(f"Processed {i}/{len(data_loader)} events.")
     self.log.info("Processing completed.")
         
     predict_data["cameradirection"] = np.array(predict_data["cameradirection"])

@@ -114,7 +114,7 @@ def read_configuration(config_file_str="./config/training_config.yml"):
             parameters = yaml.safe_load(config_file)
 
     else:
-        print("Configuration file not found.")
+        print(f"Configuration file not found. ({config_file_str})")
 
     return parameters
 
