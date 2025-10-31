@@ -42,3 +42,4 @@ test_local_cristian/
 
 test/prepare_file.py
 test_local_cristian/
+*.txt

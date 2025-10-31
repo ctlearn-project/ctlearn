@@ -148,9 +148,9 @@ class DoubleBBEfficientNet(nn.Module):
     
     def forward(self, x1, x2):
 
-        energy = None
-        classification = None
-        direction = None
+        energy = [None,None]
+        classification = [None,None]
+        direction = [None,None]
 
 
         fused_features = self.extract_feature_vector(x1, x2)

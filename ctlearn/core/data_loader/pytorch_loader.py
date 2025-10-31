@@ -613,9 +613,11 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
 
         if not self.is_training:
             # Generate keep_idx as before
-            keep_idx = np.where((leakage < 0.2) & (intensity > 50))[0]
+            #keep_idx = np.where((leakage < 0.2) & (intensity > 50))[0]
             # keep_idx = np.where((leakage > 0.8) & (intensity > 50))[0]
-
+            #Keep all events during evaluation for now
+            keep_idx = np.arange(len(intensity))
+            
         # Filter features_out
         for key in features_out:
             features_out[key] = features_out[key][keep_idx]
