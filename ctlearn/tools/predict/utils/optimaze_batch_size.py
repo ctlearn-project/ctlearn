@@ -1,11 +1,9 @@
 import torch
 
-import torch
-
 def test_batch(model, imgs, peak_time, device):
     """
-    Testea un batch ya preparado con imgs y peak_time.
-    Devuelve True si el modelo puede procesarlo sin errores, False si hay OOM.
+    Tests a batch already prepared with imgs and peak_time.
+    Returns True if the model can process it without errors, False if there is an OOM (Out of Memory) error.
     """
     model.to(device)
     model.eval()
@@ -48,17 +46,17 @@ def find_max_batch_size(self, model, imgs, peak_time, device, start_bs=8, step=8
     with torch.no_grad():
         while batch_size <= max_bs:
             try:
-                # Imágenes
+                # Images
                 batch_imgs = imgs[:1]
                 if batch_imgs.ndim == 3:
-                    batch_imgs = batch_imgs.unsqueeze(1)  # añadir canal
+                    batch_imgs = batch_imgs.unsqueeze(1)  # Add channel
                 batch_imgs = batch_imgs.repeat(batch_size, 1, 1, 1).to(device)
 
                 # peak_time
-                value = peak_time[:1, 0, 0]          # tomar valor representativo
-                batch_peaks = value.unsqueeze(1)     # shape [1,1]
+                value = peak_time[:1, 0, 0]          # Take representative value
+                batch_peaks = value.unsqueeze(1)     # Shape [1,1]
                 batch_peaks = batch_peaks.repeat(batch_size, 1)
-                batch_peaks = batch_peaks.unsqueeze(-1).unsqueeze(-1).to(device)  # shape [batch,1,1,1]
+                batch_peaks = batch_peaks.unsqueeze(-1).unsqueeze(-1).to(device)  # Shape [batch,1,1,1]
 
                 # Forward
                 _ = model(batch_imgs, batch_peaks)
@@ -75,7 +73,7 @@ def find_max_batch_size(self, model, imgs, peak_time, device, start_bs=8, step=8
                     torch.cuda.empty_cache()
                     return batch_size - step
                 else:
-                    print(f"❌ Error inesperado en batch size {batch_size}: {e}")
+                    print(f"❌ Unexpected error at batch size {batch_size}: {e}")
                     torch.cuda.empty_cache()
                     raise e
 
