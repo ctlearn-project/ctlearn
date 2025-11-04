@@ -1196,6 +1196,13 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                 # and modify it to subarray format
                 if len(self.dl1dh_reader.tel_ids) == 1:
                     classification_subarray_table = classification_table.copy()
+                    telescope_mask = (
+                        classification_subarray_table["tel_id"]
+                        == self.dl1dh_reader.tel_ids[0]
+                    )
+                    classification_subarray_table = classification_subarray_table[
+                        telescope_mask
+                    ]
                     classification_subarray_table.remove_column("tel_id")
                     for colname in classification_subarray_table.colnames:
                         if "_tel_" in colname:
@@ -1322,6 +1329,10 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                 # and modify it to subarray format
                 if len(self.dl1dh_reader.tel_ids) == 1:
                     energy_subarray_table = energy_table.copy()
+                    telescope_mask = (
+                        energy_subarray_table["tel_id"] == self.dl1dh_reader.tel_ids[0]
+                    )
+                    energy_subarray_table = energy_subarray_table[telescope_mask]
                     energy_subarray_table.remove_column("tel_id")
                     for colname in energy_subarray_table.colnames:
                         if "_tel_" in colname:
@@ -1468,7 +1479,12 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                 # If only one telescope is used, copy the classification table
                 # and modify it to subarray format
                 if len(self.dl1dh_reader.tel_ids) == 1:
-                    direction_subarray_table = energy_table.copy()
+                    direction_subarray_table = direction_tel_tables.copy()
+                    telescope_mask = (
+                        direction_subarray_table["tel_id"]
+                        == self.dl1dh_reader.tel_ids[0]
+                    )
+                    direction_subarray_table = direction_subarray_table[telescope_mask]
                     direction_subarray_table.remove_column("tel_id")
                     for colname in direction_subarray_table.colnames:
                         if "_tel_" in colname:
