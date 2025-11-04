@@ -471,7 +471,9 @@ class PredictCTLearnModel(Tool):
         # Load the model from the specified path
         model = keras.saving.load_model(model_path)
         prediction_colname = (
-            "type" if isinstance(model.layers[-1], keras.layers.Softmax) else model.layers[-1].name
+            "type"
+            if isinstance(model.layers[-1], keras.layers.Softmax)
+            else model.layers[-1].name
         )
         backbone_model, feature_vectors = None, None
         if self.dl1_features:
@@ -1190,38 +1192,60 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                     )
             if self.dl2_subarray:
                 self.log.info("Processing and storing the subarray type prediction...")
-                # Combine the telescope predictions to the subarray prediction using the stereo combiner
-                classification_subarray_table = self.type_stereo_combiner.predict_table(
-                    classification_table
-                )
-                # TODO: Remove temporary fix once the stereo combiner returns correct table
-                # Check if the table has to be converted to a boolean mask
-                if (
-                    classification_subarray_table[f"{self.prefix}_telescopes"].dtype
-                    != np.bool_
-                ):
-                    # Create boolean mask for telescopes that participate in the stereo reconstruction combination
-                    reco_telescopes = np.zeros(
-                        (
-                            len(classification_subarray_table),
-                            len(self.dl1dh_reader.tel_ids),
-                        ),
-                        dtype=bool,
+                # If only one telescope is used, copy the classification table
+                # and modify it to subarray format
+                if len(self.dl1dh_reader.tel_ids) == 1:
+                    classification_subarray_table = classification_table.copy()
+                    classification_subarray_table.remove_column("tel_id")
+                    for colname in classification_subarray_table.colnames:
+                        if "_tel_" in colname:
+                            classification_subarray_table.rename_column(
+                                colname, colname.replace("_tel", "")
+                            )
+                    classification_subarray_table.add_column(
+                        [
+                            [val]
+                            for val in classification_subarray_table[
+                                f"{self.prefix}_is_valid"
+                            ]
+                        ],
+                        name=f"{self.prefix}_telescopes",
                     )
-                    # Loop over the table and set the boolean mask for the telescopes
-                    for index, tel_id_mask in enumerate(
-                        classification_subarray_table[f"{self.prefix}_telescopes"]
+                else:
+                    # Combine the telescope predictions to the subarray prediction using the stereo combiner
+                    classification_subarray_table = (
+                        self.type_stereo_combiner.predict_table(classification_table)
+                    )
+                    # TODO: Remove temporary fix once the stereo combiner returns correct table
+                    # Check if the table has to be converted to a boolean mask
+                    if (
+                        classification_subarray_table[f"{self.prefix}_telescopes"].dtype
+                        != np.bool_
                     ):
-                        if not tel_id_mask:
-                            continue
-                        for tel_id in tel_id_mask:
-                            reco_telescopes[index][
-                                self.dl1dh_reader.subarray.tel_ids_to_indices(tel_id)
-                            ] = True
-                    # Overwrite the column with the boolean mask with fix length
-                    classification_subarray_table[f"{self.prefix}_telescopes"] = (
-                        reco_telescopes
-                    )
+                        # Create boolean mask for telescopes that participate in the stereo reconstruction combination
+                        reco_telescopes = np.zeros(
+                            (
+                                len(classification_subarray_table),
+                                len(self.dl1dh_reader.tel_ids),
+                            ),
+                            dtype=bool,
+                        )
+                        # Loop over the table and set the boolean mask for the telescopes
+                        for index, tel_id_mask in enumerate(
+                            classification_subarray_table[f"{self.prefix}_telescopes"]
+                        ):
+                            if not tel_id_mask:
+                                continue
+                            for tel_id in tel_id_mask:
+                                reco_telescopes[index][
+                                    self.dl1dh_reader.subarray.tel_ids_to_indices(
+                                        tel_id
+                                    )
+                                ] = True
+                        # Overwrite the column with the boolean mask with fix length
+                        classification_subarray_table[f"{self.prefix}_telescopes"] = (
+                            reco_telescopes
+                        )
                 # Sort the subarray classification table
                 classification_subarray_table.sort(SUBARRAY_EVENT_KEYS)
                 # Save the prediction to the output file
@@ -1294,30 +1318,58 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                 self.log.info(
                     "Processing and storing the subarray energy prediction..."
                 )
-                # Combine the telescope predictions to the subarray prediction using the stereo combiner
-                energy_subarray_table = self.energy_stereo_combiner.predict_table(
-                    energy_table
-                )
-                # TODO: Remove temporary fix once the stereo combiner returns correct table
-                # Check if the table has to be converted to a boolean mask
-                if energy_subarray_table[f"{self.prefix}_telescopes"].dtype != np.bool_:
-                    # Create boolean mask for telescopes that participate in the stereo reconstruction combination
-                    reco_telescopes = np.zeros(
-                        (len(energy_subarray_table), len(self.dl1dh_reader.tel_ids)),
-                        dtype=bool,
+                # If only one telescope is used, copy the classification table
+                # and modify it to subarray format
+                if len(self.dl1dh_reader.tel_ids) == 1:
+                    energy_subarray_table = energy_table.copy()
+                    energy_subarray_table.remove_column("tel_id")
+                    for colname in energy_subarray_table.colnames:
+                        if "_tel_" in colname:
+                            energy_subarray_table.rename_column(
+                                colname, colname.replace("_tel", "")
+                            )
+                    energy_subarray_table.add_column(
+                        [
+                            [val]
+                            for val in energy_subarray_table[f"{self.prefix}_is_valid"]
+                        ],
+                        name=f"{self.prefix}_telescopes",
                     )
-                    # Loop over the table and set the boolean mask for the telescopes
-                    for index, tel_id_mask in enumerate(
-                        energy_subarray_table[f"{self.prefix}_telescopes"]
+                else:
+                    # Combine the telescope predictions to the subarray prediction using the stereo combiner
+                    energy_subarray_table = self.energy_stereo_combiner.predict_table(
+                        energy_table
+                    )
+                    # TODO: Remove temporary fix once the stereo combiner returns correct table
+                    # Check if the table has to be converted to a boolean mask
+                    if (
+                        energy_subarray_table[f"{self.prefix}_telescopes"].dtype
+                        != np.bool_
                     ):
-                        if not tel_id_mask:
-                            continue
-                        for tel_id in tel_id_mask:
-                            reco_telescopes[index][
-                                self.dl1dh_reader.subarray.tel_ids_to_indices(tel_id)
-                            ] = True
-                    # Overwrite the column with the boolean mask with fix length
-                    energy_subarray_table[f"{self.prefix}_telescopes"] = reco_telescopes
+                        # Create boolean mask for telescopes that participate in the stereo reconstruction combination
+                        reco_telescopes = np.zeros(
+                            (
+                                len(energy_subarray_table),
+                                len(self.dl1dh_reader.tel_ids),
+                            ),
+                            dtype=bool,
+                        )
+                        # Loop over the table and set the boolean mask for the telescopes
+                        for index, tel_id_mask in enumerate(
+                            energy_subarray_table[f"{self.prefix}_telescopes"]
+                        ):
+                            if not tel_id_mask:
+                                continue
+                            for tel_id in tel_id_mask:
+                                reco_telescopes[index][
+                                    self.dl1dh_reader.subarray.tel_ids_to_indices(
+                                        tel_id
+                                    )
+                                ] = True
+                        # Overwrite the column with the boolean mask with fix length
+                        energy_subarray_table[f"{self.prefix}_telescopes"] = (
+                            reco_telescopes
+                        )
                 # Sort the subarray energy table
                 energy_subarray_table.sort(SUBARRAY_EVENT_KEYS)
                 # Save the prediction to the output file
@@ -1413,35 +1465,62 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                 direction_tel_tables = vstack(direction_tel_tables)
                 # Sort the table by the telescope event keys
                 direction_tel_tables.sort(TELESCOPE_EVENT_KEYS)
-                # Combine the telescope predictions to the subarray prediction using the stereo combiner
-                direction_subarray_table = self.geometry_stereo_combiner.predict_table(
-                    direction_tel_tables
-                )
-                # TODO: Remove temporary fix once the stereo combiner returns correct table
-                # Check if the table has to be converted to a boolean mask
-                if (
-                    direction_subarray_table[f"{self.prefix}_telescopes"].dtype
-                    != np.bool_
-                ):
-                    # Create boolean mask for telescopes that participate in the stereo reconstruction combination
-                    reco_telescopes = np.zeros(
-                        (len(direction_subarray_table), len(self.dl1dh_reader.tel_ids)),
-                        dtype=bool,
+                # If only one telescope is used, copy the classification table
+                # and modify it to subarray format
+                if len(self.dl1dh_reader.tel_ids) == 1:
+                    direction_subarray_table = energy_table.copy()
+                    direction_subarray_table.remove_column("tel_id")
+                    for colname in direction_subarray_table.colnames:
+                        if "_tel_" in colname:
+                            direction_subarray_table.rename_column(
+                                colname, colname.replace("_tel", "")
+                            )
+                    direction_subarray_table.add_column(
+                        [
+                            [val]
+                            for val in direction_subarray_table[
+                                f"{self.prefix}_is_valid"
+                            ]
+                        ],
+                        name=f"{self.prefix}_telescopes",
                     )
-                    # Loop over the table and set the boolean mask for the telescopes
-                    for index, tel_id_mask in enumerate(
-                        direction_subarray_table[f"{self.prefix}_telescopes"]
+                else:
+                    # Combine the telescope predictions to the subarray prediction using the stereo combiner
+                    direction_subarray_table = (
+                        self.geometry_stereo_combiner.predict_table(
+                            direction_tel_tables
+                        )
+                    )
+                    # TODO: Remove temporary fix once the stereo combiner returns correct table
+                    # Check if the table has to be converted to a boolean mask
+                    if (
+                        direction_subarray_table[f"{self.prefix}_telescopes"].dtype
+                        != np.bool_
                     ):
-                        if not tel_id_mask:
-                            continue
-                        for tel_id in tel_id_mask:
-                            reco_telescopes[index][
-                                self.dl1dh_reader.subarray.tel_ids_to_indices(tel_id)
-                            ] = True
-                    # Overwrite the column with the boolean mask with fix length
-                    direction_subarray_table[f"{self.prefix}_telescopes"] = (
-                        reco_telescopes
-                    )
+                        # Create boolean mask for telescopes that participate in the stereo reconstruction combination
+                        reco_telescopes = np.zeros(
+                            (
+                                len(direction_subarray_table),
+                                len(self.dl1dh_reader.tel_ids),
+                            ),
+                            dtype=bool,
+                        )
+                        # Loop over the table and set the boolean mask for the telescopes
+                        for index, tel_id_mask in enumerate(
+                            direction_subarray_table[f"{self.prefix}_telescopes"]
+                        ):
+                            if not tel_id_mask:
+                                continue
+                            for tel_id in tel_id_mask:
+                                reco_telescopes[index][
+                                    self.dl1dh_reader.subarray.tel_ids_to_indices(
+                                        tel_id
+                                    )
+                                ] = True
+                        # Overwrite the column with the boolean mask with fix length
+                        direction_subarray_table[f"{self.prefix}_telescopes"] = (
+                            reco_telescopes
+                        )
                 # Sort the subarray geometry table
                 direction_subarray_table.sort(SUBARRAY_EVENT_KEYS)
                 # Save the prediction to the output file
