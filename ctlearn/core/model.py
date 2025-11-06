@@ -5,8 +5,9 @@ This module defines the ``CTLearnModel`` classes, which holds the basic function
 from abc import abstractmethod
 import keras
 import numpy as np
-import tensorflow_model_optimization.python.core.sparsity.keras as sparse_keras
-
+#import tensorflow_model_optimization.python.core.sparsity.keras as sparse_keras
+#import tensorflow_model_optimization.python.core as tfmot
+import tensorflow_model_optimization as tfmot
 import tensorflow as tf
 #from tensorflow_model_optimization.python.core.sparsity.keras import prune, pruning_callbacks, pruning_schedule
 #from tensorflow_model_optimization.sparsity.keras import strip_pruning
@@ -18,6 +19,17 @@ from ctlearn.core.attention import (
     channel_squeeze_excite_block,
     spatial_squeeze_excite_block,
 )
+from ctlearn.core.attention import (
+    dual_squeeze_excite_block,
+    channel_squeeze_excite_block,
+    spatial_squeeze_excite_block,
+    temporal_attention_block,
+    dual_squeeze_excite_block_indexed2d,
+    triple_squeeze_excite_block_indexed3d,
+)
+#from tensorflow.keras.layers import Conv1D, BatchNormalization, ReLU, GlobalAveragePooling1D, Conv3D, GlobalMaxPooling1D
+from ctlearn.core.indexed import NeighborGatherLayer, IndexedConvolutionLayer, IndexedPoolingLayer
+
 from ctlearn.utils import validate_trait_dict
 import tensorflow_model_optimization as tfmot
 
@@ -26,6 +38,7 @@ __all__ = [
     "build_fully_connect_head",
     "CTLearnModel",
     "SingleCNN",
+    "SingleCNNIndexed",
     "ResNet",
     "LoadedModel",
     "FixedPretrainedModel", 
@@ -368,6 +381,175 @@ class SingleCNN(CTLearnModel):
             network_input, network_output, name=self.backbone_name
         )
         return backbone_model, network_input
+
+
+class SingleCNNIndexed(CTLearnModel):
+    """
+    SingleCNNIndexed3D is a 3D CNN model with an added neighbor-gathering mechanism.
+    The network first gathers neighbor information for every pixel (or patch element)
+    using the provided indices and then applies a sequence of 3D convolutions (over 
+    pixels, neighbor dimension, and temporal dimension) and pooling operations.
+    """
+    name = Unicode("SingleCNNIndexed", help="Name of the model backbone.").tag(config=True)
+
+    architecture = List(
+        trait=Dict(),
+        default_value=[
+            {"filters": 32, "number": 1},
+            {"filters": 32, "number": 1},
+            {"filters": 64, "number": 1},
+            {"filters": 128, "number": 1},
+        ],
+        allow_none=False,
+        help="List of layer parameters (number of filters and number of times to repeat).",
+    ).tag(config=True)
+
+    pooling_type = CaselessStrEnum(
+        ["max", "average"],
+        default_value="average",
+        allow_none=True,
+        help="Type of pooling to apply.",
+    ).tag(config=True)
+
+    batchnorm = Bool(
+        default_value=True,
+        allow_none=False,
+        help="Whether to apply batch normalization after each convolution plus pooling.",
+    ).tag(config=True)
+
+    init_batchnorm = Bool(
+        default_value=True,
+        allow_none=False,
+        help="Whether to apply batch normalization before the first convolution.",
+    ).tag(config=True)
+
+    bottleneck_filters = Int(
+        default_value=None,
+        allow_none=True,
+        help="Number of filters in the bottleneck layer, if any.",
+    ).tag(config=True)
+
+    temporal_kernel_size = Int(
+        default_value=3,
+        allow_none=True,
+        help="Kernel size along the temporal dimension in the convolution layers.",
+    ).tag(config=True)
+
+    temporal_pool_size = Int(
+        default_value=1,
+        allow_none=True,
+        help="Kernel size along the temporal dimension in the pooling layers.",
+    ).tag(config=True)
+
+    use_3d_conv = Bool(
+        default_value = False,
+        allow_none = False,
+        help="Whether to apply 3 dimensional kernel."
+    ).tag(config=True)
+
+    def __init__(self, input_shape, indices, tasks, config=None, parent=None, **kwargs):
+        super().__init__(config=config, parent=parent, **kwargs)
+
+        # Validate traits
+        for layer in self.architecture:
+            validate_trait_dict(layer, ["filters", "number"])
+
+        self.backbone_name = self.name + "_block"
+
+        # Create the neighbor gathering layer.
+        # Preparing the mask and gathering neighbors.
+        self.neighbor_gather = NeighborGatherLayer(indices, self.use_3d_conv)
+
+        # Build the backbone model.
+        self.backbone_model, self.input_layer = self._build_backbone(input_shape)
+        backbone_output = self.backbone_model(self.input_layer)
+
+        validate_trait_dict(self.head_layers, tasks)
+        validate_trait_dict(self.head_activation_function, tasks)
+        self.logits = build_fully_connect_head(
+            backbone_output, self.head_layers, self.head_activation_function, tasks
+        )
+
+        self.model = keras.Model(self.input_layer, self.logits, name="CTLearn_model")
+
+    def _build_backbone(self, input_shape):
+        """
+        Build the backbone of the SingleCNN model.
+        """
+        network_input = keras.Input(input_shape, name="input")
+        filters_list = [layer["filters"] for layer in self.architecture]
+        numbers_list = [layer["number"] for layer in self.architecture]
+        x = network_input  
+
+        if self.init_batchnorm:
+            x = keras.layers.BatchNormalization(momentum=0.99)(x)
+        total_layers = len(filters_list)
+
+        for i, (filters, number) in enumerate(zip(filters_list, numbers_list)):
+            for nr in range(number):
+                # Prepare input by gathering neighbor features.
+                x_neighbors = self.neighbor_gather(x)
+                # Apply convolution over the gathered neighbors depending on the use_3d_conv flag.
+                x = IndexedConvolutionLayer(
+                    use_3d_conv=self.use_3d_conv, 
+                    temporal_kernel_size=self.temporal_kernel_size, 
+                    filters=filters, 
+                    name=f"{self.backbone_name}_conv_{i+1}_{nr+1}"
+                )(x_neighbors)
+
+
+            if self.pooling_type is not None and i < total_layers - 1:
+                x_neighbors = self.neighbor_gather(x)
+                x = IndexedPoolingLayer(
+                    use_3d_conv=self.use_3d_conv,
+                    pooling_type=self.pooling_type,
+                    temporal_pool_size=self.temporal_pool_size,
+                    name=f"{self.backbone_name}_pool_{i+1}"
+                )(x_neighbors)
+
+            if self.batchnorm:
+                x = keras.layers.BatchNormalization(momentum=0.99)(x)
+        # Optional bottleneck layer.
+        if self.bottleneck_filters is not None:
+            if self.use_3d_conv:
+                x = keras.layers.Conv2D(
+                    filters=self.bottleneck_filters,
+                    kernel_size=1,
+                    padding="valid",
+                    activation="relu",
+                    name=f"{self.backbone_name}_bottleneck",
+                )(x)
+            else:
+                x = keras.layers.Conv1D(
+                    filters=self.bottleneck_filters,
+                    kernel_size=1,
+                    padding="valid",
+                    activation="relu",
+                    name=f"{self.backbone_name}_bottleneck",
+                )(x)
+            if self.batchnorm:
+                x = keras.layers.BatchNormalization(momentum=0.99)(x)
+        
+        if self.attention is not None:
+            if self.use_3d_conv:
+                x = triple_squeeze_excite_block_indexed3d(
+                    x, self.attention["reduction_ratio"], name=f"{self.backbone_name}_trse"
+                )
+            else:
+                x = dual_squeeze_excite_block_indexed2d(
+                    x, self.attention["reduction_ratio"], name=f"{self.backbone_name}_dse"
+                )
+
+        # Global average pooling.
+        if self.use_3d_conv:
+            # network_output = keras.layers.Lambda(lambda t: tf.reduce_mean(t, axis=[2, 3]), name=self.backbone_name + "_pixelwise_avg")(x)
+            network_output = keras.layers.GlobalAveragePooling2D(name=self.backbone_name + "_global_avgpool")(x)
+        else:
+            network_output = keras.layers.GlobalAveragePooling1D(name=self.backbone_name + "_global_avgpool")(x)
+        backbone_model = keras.Model(network_input, network_output, name=self.backbone_name)
+        return backbone_model, network_input
+
+    
 
 
 class ResNet(CTLearnModel):
@@ -934,34 +1116,269 @@ class FixedPretrainedModel(CTLearnModel):
 
     
     def __init__(
-        self,  input_shape, tasks,
+        self,  input_shape, tasks, indices, 
         config=None,
         parent=None,
         **kwargs,
+        
     ):
         super().__init__(
             config=config,
             parent=parent,
             **kwargs,
         )
-        print(self.load_model_from)
+
+    
+        print("HELLO", self.load_model_from)
         if not self.load_model_from:
                 raise ValueError("Path to the pretrained model must be specified.")
         print(f"Loading pretrained model from {self.load_model_from}")
         self.log.info(f"Loading pretrained model from {self.load_model_from}")
         # Load the model from the specified path
-        self.model = keras.saving.load_model(self.load_model_from)
+        self.model = keras.saving.load_model(self.load_model_from, safe_mode=False)
         self.log.info("Pretrained model loaded successfully.")
+        
+        # Add these debug calls:
+        print("\n=== CHECKING FOR SUBCLASSED MODELS ===")
+        check_for_subclassed_models(self.model)
+
+        print("\n=== ALL LAYERS IN ORIGINAL MODEL ===")
+        print_all_layers(self.model)
+
+        self.log.info("Pretrained model loaded successfully.")
+        self.model.summary()
+        keras.utils.plot_model(self.model, expand_nested=True, to_file='/lhome/ext/ucm147/ucm1478/pruning_experiment/L1_flowers_2155/constant_sparsity/30_sparsity/logs/train/model_plot_before.png', show_shapes=True, show_layer_names=True)
+        check_for_subclassed_models(self.model)
+        print("Applying pruning", self.parent.apply_pruning, "parameters:", self.parent.pruning_parameters)
         
         if self.parent.apply_pruning and self.parent.pruning_parameters:
             print("Applying pruning wrappers to the model...")
             self.log.info("Applying pruning wrappers to the model...")
-            
+            self.i = 0
             print("Pruning parameters from shedule construction:", self.parent.pruning_parameters)
-            self.model_wrapped = keras.models.clone_model(self.model)
-            self.model_wrapped = tfmot.sparsity.keras.prune_low_magnitude(self.model, **self.parent.pruning_parameters)
+            #self.model_wrapped = keras.models.clone_model(self.model)
+            print("Cloned")
+            #self.custom_layers = self.detect_prune_custom_layers()
+            self.model_wrapped = keras.models.clone_model(self.model, clone_function=self._pruning_wrapper, input_tensors=self.model.inputs)
+            weights = self.model.get_weights()
+            print(len(weights))
+            #self.model_wrapped.set_weights(weights)
+
+            print('okay')
+            keras.utils.plot_model(self.model_wrapped, expand_nested=True, to_file='/lhome/ext/ucm147/ucm1478/pruning_experiment/L1_flowers_2155/constant_sparsity/30_sparsity/logs/train/model_plot_after.png', show_shapes=True, show_layer_names=True)
+
+            #self.model_wrapped = tfmot.sparsity.keras.prune_low_magnitude(self.model, **self.parent.pruning_parameters)
             print(f"M_Size of wrapped in model: {self.model_wrapped.count_params()}")
-            
+                
             print(f"Size of original in model: {self.model.count_params()}")
-            
+                
             self.log.info("Pruning wrappers applied successfully.")
+
+    
+    def _pruning_wrapper(self, layer):
+        """
+        Recursively detects and applies pruning wrappers to all layers and sublayers.
+        """
+        recursive = self.i + 1
+        print(f"Recursion level: {recursive}")
+        print(f"Checking layer: {layer.name}, {layer.__class__.__name__}")
+        
+        # Define layers that should be skipped from pruning
+        skip_keywords = ['neighbor_gather', 'input', 'Input', 'inputlayer', 'batch', 'pooling']
+        custom_layer_classes = ['IndexedConvolutionLayer']
+        
+        # Skip individual layers based on keywords
+        if any(keyword in layer.name.lower() for keyword in skip_keywords):
+            print(f"Skipping layer with keyword: {layer.name}")
+            return layer
+        
+        # Handle Functional models - process ALL sublayers, don't return early
+        if hasattr(layer, 'layers') and len(layer.layers) > 0:
+            print(f"Processing Functional model with {len(layer.layers)} sublayers: {layer.name}")
+            # Use clone_model to recursively process each sublayer
+            self.i += 1
+            print(layer.input_shape)
+            return keras.models.clone_model(layer, clone_function=self._pruning_wrapper)
+        
+        if 'block' in layer.name.lower():
+            print(f"Processing block layer: {layer.name}")
+            if hasattr(layer, 'layers') and len(layer.layers) > 0:
+                print(f"Block detected with {len(layer.layers)} sublayers: {layer.name}")
+            
+
+        # Handle custom layers that need special pruning wrapper
+        if any(cls_name in layer.__class__.__name__ for cls_name in custom_layer_classes):
+            print(f"Wrapping custom layer for pruning: {layer.name}  ")
+            
+            return tfmot.sparsity.keras.prune_low_magnitude(CustomLayer(layer))
+            
+            
+        # Apply standard pruning to Dense and Conv layers
+        if isinstance(layer, (keras.layers.Dense, keras.layers.Conv2D, keras.layers.Conv1D)):
+            print(f"Applying standard pruning to: {layer.name}")
+            return tfmot.sparsity.keras.prune_low_magnitude(layer)
+        
+        # Return layer unchanged if no pruning is needed
+        print(f"No pruning applied to: {layer.name}")
+        return layer
+
+"""class CustomLayer(tfmot.sparsity.keras.PrunableLayer):
+
+    def __init__(self, layer, **kwargs):
+        if 'name' not in kwargs and hasattr(layer, 'name'):
+            kwargs['name'] = layer.name
+            print(f"CustomLayer initialized with name: {kwargs['name']}")
+        super().__init__(**kwargs)
+        self.layer = layer
+    
+    def call(self, inputs):
+        print(f"CustomLayer call invoked for layer: {self.layer.name} and layer shape: {self.layer.input_shape} and input shape: {inputs.shape}")
+        #self.layer =  self.get_prunable_weights(self.layer)
+        return self.layer(inputs, input_shape=self.layer.input_shape)
+
+    def get_prunable_weights(self):
+        if hasattr(self.layer, 'kernel'):
+            print(f"CustomLayer get_prunable_weights called for layer: {self.layer.name}")
+            # We don't prune bias because that usually affects model performance
+            return [self.layer.kernel]
+        else:
+            print(f"WARNING: Layer {self.layer.name} does not have 'kernel' attribute for pruning.")
+            return []
+            
+            
+        
+    def _pruning_wrapper2(self, layer):#, tfmot.sparsity.keras.PrunableLayer):
+        
+        Detects custom layers and assigns their respective pruning
+        wrappers to allow for pruning.
+        
+        # TO DO: Allow user to specify other custom layer name
+            
+
+        ctlearn_custom_layers = {
+            'SingleCNNIndexed_block'
+        }
+        custom_layers = []
+        for layer in self.model.layers:
+            print(f"Checking layer: {layer.name}, {(type(layer).__name__)}")
+            if type(layer).__name__ in ctlearn_custom_layers:
+                print(f"Found custom layer: {layer.name}, {(type(layer).__name__)}")
+                custom_layers.append(layer) 
+                continue
+            else:
+                print(f"Layer {layer.name} is not a custom layer.")
+                tfmot.sparsity.keras.prune_low_magnitude(layer)
+                print("okay") 
+        print(f"Checking layer: {layer.name}, {(type(layer).__name__)}")
+        if layer.name in ctlearn_custom_layers:
+            print(f"Found custom layer: {layer.name}")
+            if "Functional" == layer.__class__.__name__:
+                print("Model is Functional")
+                for custom_layer in layer.layers:
+                    print(f"Checking sub-layer: {custom_layer.name}")
+                    if any(keyword in custom_layer.name for keyword in ['neighbor_gather', 'input', 'batch', 'pooling']):
+                        print(f"Skipping pruning for custom layer: {custom_layer.name}")
+                        return layer
+                    else:
+                        print("checking if second block")
+                        print(f"Custom layer class name: {custom_layer.__class__.__name__}")
+                        print(f"Custom layer name: {custom_layer.name}")
+                        if "block" in custom_layer.name:
+                            print("Second block found")
+                            print(f"Custom layer name: {custom_layer.name}")
+                            if 'IndexedConvolutionLayer' in custom_layer.__class__.__name__:
+                                print('Custom Layer')
+                                print(f'Input shape: {custom_layer.input_shape}')
+                                return CustomLayer(custom_layer)
+                            print(f"Applying pruning wrapper to layer: {custom_layer.name}")
+                            return tfmot.sparsity.keras.prune_low_magnitude(custom_layer)
+                        else:
+                            print(f"Applying pruning wrapper to layer: {custom_layer.name}")
+                            return tfmot.sparsity.keras.prune_low_magnitude(custom_layer)
+
+        if isinstance(layer, keras.layers.Dense) or isinstance(layer, keras.layers.Conv2D):
+            print(f"Applying pruning wrapper to layer: {layer.name}, {(type(layer).__name__)}")
+            return tfmot.sparsity.keras.prune_low_magnitude(layer)
+        print("Continuing to next layer")
+        return layer
+    
+            """
+
+
+
+
+
+class CustomLayer(keras.layers.Layer, tfmot.sparsity.keras.PrunableLayer):
+
+    def __init__(self, layer, **kwargs):
+        #if 'name' not in kwargs and hasattr(layer, 'name'):
+        #    kwargs['name'] = layer.name
+        #    print(f"CustomLayer initialized with name: {kwargs['name']}")
+        super().__init__(**kwargs)
+        self.layer = layer
+
+    #def build(self, input_shape):
+    #    # Build the wrapped layer with the correct expected shape
+    #    print(f"Input shape in build: {input_shape}")
+    #    
+    #    self.layer.build(input_shape)
+    #    super().build(input_shape)
+    
+    def call(self, inputs, **kwargs):
+        print(f"CustomLayer call invoked for layer: {self.layer.name} and layer shape: {self.layer.input_shape} and input shape: {inputs.shape}")
+        #self.layer =  self.get_prunable_weights(self.layer)
+        return self.layer(inputs)
+
+    """def compute_output_shape(self, input_shape):
+        # Delegate to wrapped layer (helps Functional models)
+        return self.layer.compute_output_shape(input_shape)"""
+
+    def get_prunable_weights(self):
+        if hasattr(self.layer.conv, 'kernel'):
+            print(f"CustomLayer get_prunable_weights called for layer: {self.layer.name}")
+            # We don't prune bias because that usually affects model performance
+            print(self.layer.conv.kernel.shape)
+            return [self.layer.conv.kernel]
+        else:
+            print(f"WARNING: Layer {self.layer.name} does not have 'kernel' attribute for pruning.")
+            return []
+    
+        
+
+    #def compute_output_shape(self, input_shape):
+    #   # Delegate to wrapped layer (helps Functional models)
+    #    return self.layer.compute_output_shape(input_shape)
+
+    
+
+    
+        
+    
+
+
+def check_for_subclassed_models(model, level=0):
+    """Check if the model contains any subclassed models."""
+       
+    indent = "  " * level
+        
+    for layer in model.layers:
+        # Check if it's a subclassed model
+        if isinstance(layer, keras.Model) and not hasattr(layer, '_is_graph_network'):
+            print(f"{indent}*** SUBCLASSED MODEL FOUND: {layer.name} ({layer.__class__.__name__}) ***")
+            
+        # Check nested layers
+        if hasattr(layer, 'layers') and len(layer.layers) > 0:
+           check_for_subclassed_models(layer, level + 1)
+
+def print_all_layers(model, level=0):
+    """Print all layer names recursively."""
+    indent = "  " * level
+    print(f"{indent}=== MODEL: {model.name} ===")
+    
+    for i, layer in enumerate(model.layers):
+        print(f"{indent}{i}: {layer.name} | {layer.__class__.__name__}")
+        
+        # Check if layer has sublayers
+        if hasattr(layer, 'layers') and len(layer.layers) > 0:
+            print(f"{indent}  -> Has {len(layer.layers)} sublayers:")
+            print_all_layers(layer, level + 1)  

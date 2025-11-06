@@ -54,7 +54,7 @@ class DLDataLoader(Sequence):
         super().__init__(**kwargs)
         "Initialization"
         self.DLDataReader = DLDataReader
-        self.indices = indices
+        self.indices = indices#[0:500]
         self.tasks = tasks
         self.batch_size = batch_size
         self.random_seed = random_seed
@@ -123,6 +123,7 @@ class DLDataLoader(Sequence):
         tuple
             A tuple containing the input data as features and the corresponding labels.
         """
+        #self.indices = self.indices[0:100] ### Reducing the dataset for prediction
         # Generate indices of the batch
         batch_indices = self.indices[
             index * self.batch_size : (index + 1) * self.batch_size
@@ -157,17 +158,30 @@ class DLDataLoader(Sequence):
         labels = {}
         features = {"input": batch["features"].data}
         if "type" in self.tasks:
-            labels["type"] = to_categorical(
-                batch["true_shower_primary_class"].data,
-                num_classes=2,
-            )
-            # Temp fix till keras support class weights for multiple outputs or I wrote custom loss
-            # https://github.com/keras-team/keras/issues/11735
-            if len(self.tasks) == 1:
-                labels = to_categorical(
+            if self.DLDataReader.__class__.__name__ == "DLRawTriggerReader":
+                labels["type"] = to_categorical(
+                    batch["patch_class"].data,
+                    num_classes=2,
+                )
+                # Temp fix till keras support class weights for multiple outputs or I wrote custom loss
+                # https://github.com/keras-team/keras/issues/11735
+                if len(self.tasks) == 1:
+                    labels = to_categorical(
+                        batch["patch_class"].data,
+                        num_classes=2,
+                    )
+            else:
+                labels["type"] = to_categorical(
                     batch["true_shower_primary_class"].data,
                     num_classes=2,
                 )
+                # Temp fix till keras support class weights for multiple outputs or I wrote custom loss
+                # https://github.com/keras-team/keras/issues/11735
+                if len(self.tasks) == 1:
+                    labels = to_categorical(
+                        batch["true_shower_primary_class"].data,
+                        num_classes=2,
+                    )
         if "energy" in self.tasks:
             labels["energy"] = batch["log_true_energy"].data
         if "skydirection" in self.tasks:

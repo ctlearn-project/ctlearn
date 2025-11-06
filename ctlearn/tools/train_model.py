@@ -145,6 +145,10 @@ class TrainCTLearnModel(Tool):
         CTLearnModel, default_value="ResNet"
     ).tag(config=True)
 
+    base_model_type = ComponentName(
+        CTLearnModel, default_value="ResNet"
+    ).tag(config=True)
+
     output_dir = Path(
         exits=False,
         default_value=None,
@@ -384,6 +388,8 @@ class TrainCTLearnModel(Tool):
         n_validation_examples = int(self.validation_split * self.dl1dh_reader._get_n_events())
         training_indices = indices[n_validation_examples:]
         validation_indices = indices[:n_validation_examples]
+        
+        
         self.training_loader = DLDataLoader(
             self.dl1dh_reader,
             training_indices,
@@ -402,6 +408,14 @@ class TrainCTLearnModel(Tool):
             sort_by_intensity=self.sort_by_intensity,
             stack_telescope_images=self.stack_telescope_images,
         )
+
+        print(f"num replicas in sync: {self.strategy.num_replicas_in_sync}")
+        bs_train = max(1, min(self.batch_size, len(training_indices))) 
+        bs_val = max(1, min(self.batch_size, len(validation_indices))) 
+        
+        print(f"DEBUG: train split={ len(training_indices)}, val split={len(validation_indices)}, "
+              f"bs_train={bs_train}, bs_val={bs_val}, "
+              f"steps(train)={len(self.training_loader)}, steps(val)={len(self.validation_loader)}")
 
         # Set up the callbacks
         monitor = "val_loss"
@@ -501,10 +515,22 @@ class TrainCTLearnModel(Tool):
         with self.strategy.scope():
             # Construct the model
             self.log.info("Setting up the model.")
-            print("Model type: ", self.model_type)
+            #self.model_type = "SingleCNNIndexed"
+            #print("Model type: ", self.model_type)
+            #self.base_model_type = 'FixedPretrainedModel'
+            self.base_model_type = self.model_type
+            print(f"DEBUG: base_model_type = {self.base_model_type}")
+            print(f"DEBUG: model_type = {self.model_type}")
+            print(f"DEBUG: neighbor_array = {self.dl1dh_reader.neighbor_array}")
+            print(f"DEBUG: type = {type(self.dl1dh_reader.neighbor_array)}")
+            print(f"DEBUG: input_shape = {self.training_loader.input_shape}")
+            self.apply_pruning = False
+            print(f"DEBUG: apply_pruning = {self.apply_pruning}")
+
             fixed_model = CTLearnModel.from_name(
-                self.model_type,
+                self.base_model_type,
                 input_shape=self.training_loader.input_shape,
+                indices=self.dl1dh_reader.neighbor_array,
                 tasks=self.reco_tasks,
                 parent=self,
             )
@@ -512,11 +538,16 @@ class TrainCTLearnModel(Tool):
             self.original_model = fixed_model.model
             print(f"Loaded original model: {self.original_model}")
             print(self.original_model.summary())
-
-            self.model = fixed_model.model_wrapped
+            if self.apply_pruning:
+                self.model = fixed_model.model_wrapped
+            else:
+                self.model = fixed_model.model
+                print(f'DEBUG: training loader input shape = {self.training_loader.input_shape}')
             print(f"Loaded wrapped model: {self.model}")
             print(self.model.summary())
-            
+            print(f"Output shape of SingleCNNIndexed layer: {self.model.layers[1].output_shape}")
+            print(f"Input shape of first dense layer: {self.model.layers[2].input_shape}")
+            print(f"Output shape of first dense layer: {self.model.layers[2].output_shape}")
 
             # Validate the optimizer parameters
             validate_trait_dict(self.optimizer, ["name", "base_learning_rate"])
@@ -775,15 +806,15 @@ class SparsityAwareCheckpoint(keras.callbacks.Callback):
             monitor=monitor,
             verbose=verbose,
             mode=mode,
-            save_best_only=save_best_only,
-            verbose=verbose,
+            save_best_only=save_best_only
         )
         
 
         # Check if pruning is performed and get target sparsity
         if self.compression_techniques is not None:
+            print("DEBUG: SparsityAware: compression_techniques =", self.compression_techniques)
             for technique in self.compression_techniques:
-                if "pruning" in technique:# and len(technique) <= 1:
+                if "pruning" in technique and "schedule_type" == "polynomial decay":# and len(technique) <= 1:
                     self.objective_sparsity = technique["pruning"]["final sparsity"] * 100
                     break
 
@@ -793,7 +824,7 @@ class SparsityAwareCheckpoint(keras.callbacks.Callback):
             print(f"[SparsityAwareCheckpoint] Pruning active → "
                   f"will save when sparsity ≥ {self.objective_sparsity:.2f} ")
         else:
-            print("[SparsityAwareCheckpoint] No pruning detected → "
+            print("[SparsityAwareCheckpoint] No polynomial pruning detected → "
                   "acting as a normal ModelCheckpoint.")
 
     def on_train_begin(self, logs=None):

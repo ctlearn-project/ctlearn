@@ -6,6 +6,8 @@ import atexit
 import tensorflow_model_optimization as tfmot
 from ctapipe.core import Tool
 from ctapipe.core.tool import ToolConfigurationError
+from ctlearn.utils import validate_trait_dict
+
 import shutil
 import numpy as np
 
@@ -59,7 +61,7 @@ class CompressCTLearnModel(Tool):
     default_value=[],
     ).tag(config=True)
     
-    model_type = ComponentName(
+    base_model_type = ComponentName(
         CTLearnModel, default_value="ResNet", allow_none=True,
     ).tag(config=True)
 
@@ -232,7 +234,7 @@ class CompressCTLearnModel(Tool):
         "background": "CompressCTLearnModel.input_dir_background",
         "pattern-signal": "CompressCTLearnModel.file_pattern_signal",
         "pattern-background": "CompressCTLearnModel.file_pattern_background",
-        "model_type": "CompressCTLearnModel.model_type",
+        "base_model_type": "CompressCTLearnModel.base_model_type",
         "model_path": "CompressCTLearnModel.load_model_from",
         #("t", "type_model"): "CompressPredictCTLearnModel.load_type_model_from",
         #("e", "energy_model"): "CompressPredictCTLearnModel.load_energy_model_from",
@@ -249,13 +251,15 @@ class CompressCTLearnModel(Tool):
         [
             CTLearnModel,
             DLDataReader,
+            TrainCTLearnModel,
         ]
         + classes_with_traits(CTLearnModel)
         + classes_with_traits(DLDataReader)
+        + classes_with_traits(TrainCTLearnModel)
     )
 
     def setup(self):
-        print("Parsed arguments:", self.config)
+        print("arguments:", self.config)
         
         print("original model path trial: ", FixedPretrainedModel.load_model_from)
         print(f"Summaries directory: {self.summaries_dir}")
@@ -311,6 +315,7 @@ class CompressCTLearnModel(Tool):
         print("Output_dir: ", self.output_dir)
         # Pass variables from CompressCTLearnModel to TrainCTLearnModel
         train_tool.input_dir_signal = self.input_dir_signal
+        print("Input_dir_signal in compress tool: ", self.input_dir_signal)
         train_tool.file_pattern_signal = self.file_pattern_signal
         train_tool.input_dir_background = self.input_dir_background
         train_tool.file_pattern_background = self.file_pattern_background
@@ -326,7 +331,12 @@ class CompressCTLearnModel(Tool):
         train_tool.log_file = self.log_file
         train_tool.summaries_dir = self.summaries_dir   
         train_tool.compression_techniques = self.compression_techniques
-
+        train_tool.model_type = TrainCTLearnModel().model_type
+        train_tool.model_type = 'SingleCNNIndexed'
+        print("Train tool model type in compression tool: ", train_tool.model_type)
+        #self.reader = train_tool.dl1dh_reader
+        #self.indices = list(range(self.reader._get_n_events()))
+        
         print(f"mcSignal directory: {train_tool.input_dir_signal}")
         print(f"mcSignal file pattern: {train_tool.file_pattern_signal}")
         print(f"mcself Signal directory: {self.input_dir_signal}")
@@ -368,8 +378,8 @@ class CompressCTLearnModel(Tool):
                     train_tool.n_epochs = self.n_epochs
                     print("N epochs: ", train_tool.n_epochs)
                     self.batch_size = hyperparams.get("batch_size", 64)
-                    train_tool.batch_size = self.n_epochs
-                    print("Calling pruning...")
+                    train_tool.batch_size = self.batch_size # check
+                    print("Calling prunin_epochsng...")
                     self.log.info("Calling pruning...")
                     self.compressed_model = self.pruning(train_tool, pruning_params)
                     print("Applying pruning...")
@@ -445,16 +455,21 @@ class CompressCTLearnModel(Tool):
         """
         print("Building pruning schedule...")
         self.log.info("D: Building pruning schedule...")
-        print(self.model_type)
+        print(self.base_model_type)
         print("FixedPretrainedModel:", FixedPretrainedModel)
         print("FixedPretrainedModel.load_model_from:", FixedPretrainedModel.load_model_from)   
-        if self.model_type == "FixedPretrainedModel":
+        print("train tool model type", train_tool.model_type)
+        
+        print("self tool model type", self.base_model_type)
+            
+        if self.base_model_type == "FixedPretrainedModel":
+            #fixed_model = FixedPretrainedModel(load_model_from=self.load_model_from)
             self.log.info("Fixed pretrained model detected...")
-            train_tool.model_type = self.model_type
-            print(FixedPretrainedModel.load_model_from)
+            train_tool.base_model_type = self.base_model_type
+            print("train tool model type in loop", self.base_model_type)
             #train_tool.load_model_from = self.load_model_from
             train_tool.apply_pruning = True
-            print("Applying pruning to Fixed pretrained model...")
+            print("Applying pruning to Fixed pretrained model...", "Apply pruning?", train_tool.apply_pruning)
                
             train_tool.pruning_parameters = pruning_params
         else:
@@ -649,12 +664,13 @@ class CompressCTLearnModel(Tool):
             print("Task recognised as type")
             self.n_epochs = hyperparams.get("epochs", 3)
             end_step = np.ceil(2082844 / self.batch_size).astype(np.int32) * self.n_epochs - 2000
-            #end_step = np.ceil(100 / self.batch_size).astype(np.int32) * self.n_epochs 
+            end_step = np.ceil(100 / self.batch_size).astype(np.int32) * self.n_epochs 
+            #end_step = np.ceil(self.indices / self.batch_size).astype(np.int32) * self.n_epochs 
         elif self.reco_tasks == "energy" or self.reco_tasks == "cameradirection":
             print("Task recognised as energy or cameradirection")
             self.n_epochs = hyperparams.get("epochs", 3)
             end_step = np.ceil(1039893 / self.batch_size).astype(np.int32) * self.n_epochs - 1000
-            #end_step = np.ceil(100 / self.batch_size).astype(np.int32) * self.n_epochs      
+            #end_step = np.ceil(self.indices / self.batch_size).astype(np.int32) * self.n_epochs 
         print("End step: ", end_step)
         self.log.info("End step: %s", end_step)
         print("Remember to check the number of data loaded. This end step is hardcoded")
