@@ -1,8 +1,9 @@
 from astropy.table import vstack, join
 import numpy as np
+import os
 
-from ctapipe.io import read_table, write_table
-from ctapipe.core import Tool
+from ctapipe.io import read_table, write_table, HDF5Merger
+from ctapipe.core import Tool, ToolConfigurationError
 from ctapipe.core.traits import (
     ComponentName,
     Path,
@@ -11,8 +12,6 @@ from ctapipe.core.traits import (
     List,
 )
 from ctapipe.instrument import SubarrayDescription
-from ctapipe.reco.reconstructor import ReconstructionProperty
-from ctapipe.reco.stereo_combination import StereoCombiner
 
 DL2_SUBARRAY_GROUP = "/dl2/event/subarray"
 DL2_TELESCOPE_GROUP = "/dl2/event/telescope"
@@ -48,7 +47,8 @@ class EnforceSameEvents(Tool):
     name = "EnforceSameEvents"
     description = "Append a subarray table to the hdf5 file after the monoscopic predictions."
 
-    input_url = Path(
+    # is_valid_from
+    is_valid_from = Path(
         help="Input ctapipe HDF5 files including monoscopic predictions.",
         allow_none=False,
         exists=True,
@@ -56,10 +56,18 @@ class EnforceSameEvents(Tool):
         file_ok=True,
     ).tag(config=True)
 
-    output_url = Path(
-        help="Output ctapipe HDF5 files including monoscopic predictions.",
+    is_valid_to = Path(
+        help="Input ctapipe HDF5 files including monoscopic predictions.",
         allow_none=False,
         exists=True,
+        directory_ok=False,
+        file_ok=True,
+    ).tag(config=True)
+
+    output_path = Path(
+        help="Output ctapipe HDF5 files including monoscopic predictions.",
+        allow_none=False,
+        exists=False,
         directory_ok=False,
         file_ok=True,
     ).tag(config=True)
@@ -77,7 +85,7 @@ class EnforceSameEvents(Tool):
     ).tag(config=True)
 
     dl2_telescope= Bool(
-        default_value=True,
+        default_value=False,
         help="Whether to create dl2 telescope group if it does not exist.",
     ).tag(config=True)
 
@@ -87,8 +95,9 @@ class EnforceSameEvents(Tool):
     ).tag(config=True)
 
     aliases = {
-        ("i", "input"): "EnforceSameEvents.input_url",
-        ("o", "output"): "EnforceSameEvents.output_url",
+        ("f", "is_valid_from"): "EnforceSameEvents.is_valid_from",
+        ("t", "is_valid_to"): "EnforceSameEvents.is_valid_to",
+        ("o", "output"): "EnforceSameEvents.output_path",
         ("p", "prefix"): "EnforceSameEvents.prefix",
         ("r", "reco-tasks"): "EnforceSameEvents.reco_tasks",
         "dl2-telescope": "EnforceSameEvents.dl2_telescope",
@@ -96,14 +105,20 @@ class EnforceSameEvents(Tool):
     }
 
     def setup(self):
-        # Set up the reconstruction properties for the stereo combiner
-        self.reco_properties = {
-            "geometry": ReconstructionProperty.GEOMETRY,
-            "energy": ReconstructionProperty.ENERGY,
-            "classification": ReconstructionProperty.PARTICLE_TYPE,
-        }
+        # Check if the ctapipe HDF5Merger component is enabled
+        if os.path.exists(self.output_path):
+            raise ToolConfigurationError(
+                f"The output file '{self.output_path}' already exists. Please set "
+                "a different output path or manually remove the existing file."
+            )
+        else:
+            # Copy selected tables from the input file to the output file
+            self.log.info("Copying to output destination.")
+            with HDF5Merger(self.output_path, parent=self) as merger:
+                merger(self.is_valid_to)
+
         # Read the SubarrayDescription from the input file
-        self.subarray = SubarrayDescription.from_hdf(self.input_url)
+        self.subarray = SubarrayDescription.from_hdf(self.is_valid_to)
 
 
     def start(self):
@@ -112,27 +127,56 @@ class EnforceSameEvents(Tool):
             self.log.info("Processing %s...", reco_task)
         
             # Read the telescope tables from the input file
-            tel_tables = []
             if self.dl2_telescope:
                 for tel_id in self.subarray.tel_ids:
                     input_tel_table = read_table(
-                        self.input_url,
+                        self.is_valid_from,
                         f"{DL2_TELESCOPE_GROUP}/{reco_task}/{self.prefix}/tel_{tel_id:03}",
                     )
                     output_tel_table = read_table(
-                        self.output_url,
+                        self.is_valid_to,
                         f"{DL2_TELESCOPE_GROUP}/{reco_task}/{self.prefix}/tel_{tel_id:03}",
                     )
                     joined_table = join(
                         input_tel_table,
                         output_tel_table,
                         keys=TELESCOPE_EVENT_KEYS,
-                        join_type="inner",
+                        join_type="right",
                     )
                     self.log.info("Input table for telescope %03d has %d rows", tel_id, len(input_tel_table))
                     self.log.info("Output table for telescope %03d has %d rows", tel_id, len(output_tel_table))
                     self.log.info("Joined table for telescope %03d has %d rows", tel_id, len(joined_table))
                     self.log.info(joined_table.colnames)
+            if self.dl2_subarray:
+                is_valid_col = f"{self.prefix}_is_valid"
+                input_subarray_table = read_table(
+                    self.is_valid_from,
+                    f"{DL2_SUBARRAY_GROUP}/{reco_task}/{self.prefix}",
+                )
+                input_subarray_table.keep_columns(SUBARRAY_EVENT_KEYS + [is_valid_col])
+                output_subarray_table = read_table(
+                    self.is_valid_to,
+                    f"{DL2_SUBARRAY_GROUP}/{reco_task}/{self.prefix}",
+                )
+                output_subarray_table.remove_columns([is_valid_col])
+                if len(input_subarray_table) != len(output_subarray_table):
+                    self.log.warning(
+                        "Input and output subarray tables have different lengths: %d vs %d",
+                        len(input_subarray_table),
+                        len(output_subarray_table),
+                    )
+                joined_table = join(
+                    input_subarray_table[0],
+                    output_subarray_table,
+                    keys=SUBARRAY_EVENT_KEYS,
+                    join_type="right",
+                )
+                joined_table[is_valid_col] = joined_table[is_valid_col].filled(False)
+
+                print(joined_table.colnames)
+                print(joined_table[is_valid_col])
+
+                self.log.debug(joined_table.colnames)
             # Stack the telescope tables to a common table
             #tel_tables = vstack(tel_tables)
             # Sort the table by the telescope event keys
