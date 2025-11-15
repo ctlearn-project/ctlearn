@@ -157,7 +157,6 @@ class OverwriteIsValidFlag(Tool):
         # Loop over the reconstruction tasks and combine the telescope tables to a subarray table
         for reco_task in self.reco_tasks:
             self.log.info("Processing %s...", reco_task)
-        
             # Read the telescope tables from the input file
             if self.dl2_telescope:
                 is_valid_col = f"{self.prefix}_tel_is_valid"
