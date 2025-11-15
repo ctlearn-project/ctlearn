@@ -230,7 +230,7 @@ class OverwriteIsValidFlag(Tool):
                 )
                 # Fill missing values in the is_valid column with False if necessary
                 if isinstance(joined_subarray_table[is_valid_col], MaskedColumn):
-                    joined_subarray_table[is_valid_col] = joined_subarray_table[is_valid_col].filled(False)           
+                    joined_subarray_table[is_valid_col] = joined_subarray_table[is_valid_col].filled(False)
                 # Sort the table by the subarray event keys
                 joined_subarray_table.sort(SUBARRAY_EVENT_KEYS)
                 # Save the prediction to the file
