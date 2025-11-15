@@ -1,3 +1,7 @@
+"""
+Overwrite the is_valid flags in the hdf5 file.
+"""
+
 from astropy.table import join, MaskedColumn
 import numpy as np
 import os
@@ -27,30 +31,33 @@ __all__ = [
 
 class OverwriteIsValidFlag(Tool):
     """
-    Append a subarray table to the hdf5 file after the monoscopic predictions.
+    Overwrite the is_valid flags in the hdf5 file.
 
-    This tool reads the monoscopic predictions from the input hdf5 file and combines them
-    to a subarray table using the ctapipe stereo combiner. The subarray table is then written
-    to the hdf5 file.
+    This tool reads the is_valid flags from one ctapipe HDF5 file and overwrites
+    them in another ctapipe HDF5 file. The user can specify which reconstruction
+    tasks to consider for the overwrite, as well as the prefix used for the
+    reconstruction algorithm. The output file will contain the same data as the
+    input file to which the is_valid flags were written, but with the is_valid
+    flags replaced by those from the other input file.
 
     Parameters
     ----------
-    input_url : str
-        Input ctapipe HDF5 files including monoscopic predictions.
+    is_valid_from : str
+        Input ctapipe HDF5 files from which the is_valid flags will be taken.
+    is_valid_to : str
+        Input ctapipe HDF5 files to which the is_valid flags will be overwritten.
     prefix : str
         Name of the reconstruction algorithm used to generate the dl2 data.
     reco_tasks : list
-        List of reconstruction tasks to be used for the stereo combination.
-    stereo_combiner_cls : str
-        Which ctapipe stereo combination method to use after the monoscopic reconstruction.
-    overwrite_tables : bool
-        Overwrite the table in the hdf5 file if it exists.
+        List of reconstruction tasks to be used for the overwrite of the is_valid flag.
+    output_path : str
+        Output ctapipe HDF5 files including the overwritten is_valid flags.
     """
     name = "OverwriteIsValidFlag"
-    description = "Append a subarray table to the hdf5 file after the monoscopic predictions."
+    description = "Overwrite the is_valid flags in the hdf5 file."
 
     is_valid_from = Path(
-        help="Input ctapipe HDF5 files including monoscopic predictions.",
+        help="Input ctapipe HDF5 files from which the is_valid flags will be taken.",
         allow_none=False,
         exists=True,
         directory_ok=False,
@@ -58,7 +65,7 @@ class OverwriteIsValidFlag(Tool):
     ).tag(config=True)
 
     is_valid_to = Path(
-        help="Input ctapipe HDF5 files including monoscopic predictions.",
+        help="Input ctapipe HDF5 files to which the is_valid flags will be overwritten.",
         allow_none=False,
         exists=True,
         directory_ok=False,
@@ -66,7 +73,7 @@ class OverwriteIsValidFlag(Tool):
     ).tag(config=True)
 
     output_path = Path(
-        help="Output ctapipe HDF5 files including monoscopic predictions.",
+        help="Output ctapipe HDF5 files including the overwritten is_valid flags.",
         allow_none=False,
         exists=False,
         directory_ok=False,
@@ -79,8 +86,7 @@ class OverwriteIsValidFlag(Tool):
         allow_none=True,
         help=(
             "List of allowed tel_ids, others will be ignored. "
-            "If None, all telescopes in the input stream "
-            "will be included restricted by trait ``allowed_tel_types``"
+            "If None, all telescopes in the input stream will be included."
         ),
     ).tag(config=True)
 
@@ -93,17 +99,17 @@ class OverwriteIsValidFlag(Tool):
     reco_tasks = List(
         default_value=["classification", "energy", "geometry"],
         allow_none=False,
-        help="List of reconstruction tasks to be used for the stereo combination.",
+        help="List of reconstruction tasks to be used for the overwrite of the is_valid flag.",
     ).tag(config=True)
 
     dl2_telescope= Bool(
         default_value=True,
-        help="Whether to create dl2 telescope group if it does not exist.",
+        help="Whether to overwrite the is_valid flag in the dl2 telescope group.",
     ).tag(config=True)
 
     dl2_subarray = Bool(
         default_value=True,
-        help="Whether to create dl2 subarray group if it does not exist.",
+        help="Whether to overwrite the is_valid flag in the dl2 subarray group.",
     ).tag(config=True)
 
     aliases = {
