@@ -1,3 +1,6 @@
+"""
+Script to overwrite a table in a ctapipe hdf5 file with another table.
+"""
 import argparse
 from ctapipe.io import read_table, write_table
 

@@ -1,3 +1,7 @@
+"""
+Append a subarray table to the hdf5 file after the monoscopic predictions.
+"""
+
 from astropy.table import vstack
 import numpy as np
 
@@ -83,9 +87,9 @@ class AppendSubarrayTable(Tool):
     aliases = {
         ("i", "input_url"): "AppendSubarrayTable.input_url",
         ("p", "prefix"): "AppendSubarrayTable.prefix",
-        ("r", "reco_tasks"): "AppendSubarrayTable.reco_tasks",
-        ("o", "overwrite_tables"): "AppendSubarrayTable.overwrite_tables",
-        ("s", "stereo_combiner_cls"): "AppendSubarrayTable.stereo_combiner_cls",
+        ("r", "reco-tasks"): "AppendSubarrayTable.reco_tasks",
+        ("o", "overwrite-tables"): "AppendSubarrayTable.overwrite_tables",
+        ("s", "stereo-combiner-cls"): "AppendSubarrayTable.stereo_combiner_cls",
     }
 
     def setup(self):
