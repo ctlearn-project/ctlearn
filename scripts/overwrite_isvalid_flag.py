@@ -1,14 +1,16 @@
-from astropy.table import vstack, join
+from astropy.table import join, MaskedColumn
 import numpy as np
 import os
 
 from ctapipe.io import read_table, write_table, HDF5Merger
 from ctapipe.core import Tool, ToolConfigurationError
 from ctapipe.core.traits import (
-    ComponentName,
     Path,
     Unicode,
+    flag,
     Bool,
+    Set,
+    CInt,
     List,
 )
 from ctapipe.instrument import SubarrayDescription
@@ -19,11 +21,11 @@ SUBARRAY_EVENT_KEYS = ["obs_id", "event_id"]
 TELESCOPE_EVENT_KEYS = ["obs_id", "event_id", "tel_id"]
 
 __all__ = [
-    "EnforceSameEvents",
+    "OverwriteIsValidFlag",
 ]
 
 
-class EnforceSameEvents(Tool):
+class OverwriteIsValidFlag(Tool):
     """
     Append a subarray table to the hdf5 file after the monoscopic predictions.
 
@@ -44,10 +46,9 @@ class EnforceSameEvents(Tool):
     overwrite_tables : bool
         Overwrite the table in the hdf5 file if it exists.
     """
-    name = "EnforceSameEvents"
+    name = "OverwriteIsValidFlag"
     description = "Append a subarray table to the hdf5 file after the monoscopic predictions."
 
-    # is_valid_from
     is_valid_from = Path(
         help="Input ctapipe HDF5 files including monoscopic predictions.",
         allow_none=False,
@@ -72,6 +73,17 @@ class EnforceSameEvents(Tool):
         file_ok=True,
     ).tag(config=True)
 
+    allowed_tels = Set(
+        trait=CInt(),
+        default_value=None,
+        allow_none=True,
+        help=(
+            "List of allowed tel_ids, others will be ignored. "
+            "If None, all telescopes in the input stream "
+            "will be included restricted by trait ``allowed_tel_types``"
+        ),
+    ).tag(config=True)
+
     prefix = Unicode(
         default_value="CTLearn",
         allow_none=False,
@@ -85,7 +97,7 @@ class EnforceSameEvents(Tool):
     ).tag(config=True)
 
     dl2_telescope= Bool(
-        default_value=False,
+        default_value=True,
         help="Whether to create dl2 telescope group if it does not exist.",
     ).tag(config=True)
 
@@ -95,13 +107,26 @@ class EnforceSameEvents(Tool):
     ).tag(config=True)
 
     aliases = {
-        ("f", "is_valid_from"): "EnforceSameEvents.is_valid_from",
-        ("t", "is_valid_to"): "EnforceSameEvents.is_valid_to",
-        ("o", "output"): "EnforceSameEvents.output_path",
-        ("p", "prefix"): "EnforceSameEvents.prefix",
-        ("r", "reco-tasks"): "EnforceSameEvents.reco_tasks",
-        "dl2-telescope": "EnforceSameEvents.dl2_telescope",
-        "dl2-subarray": "EnforceSameEvents.dl2_subarray",
+        ("f", "is-valid-from"): "OverwriteIsValidFlag.is_valid_from",
+        ("t", "is-valid-to"): "OverwriteIsValidFlag.is_valid_to",
+        ("o", "output"): "OverwriteIsValidFlag.output_path",
+        ("p", "prefix"): "OverwriteIsValidFlag.prefix",
+        ("r", "reco-tasks"): "OverwriteIsValidFlag.reco_tasks",
+    }
+
+    flags = {
+        **flag(
+            "dl2-telescope",
+            "OverwriteIsValidFlag.dl2_telescope",
+            "Include overwrite dl2 telescope-event-wise data in the output file",
+            "Exclude overwrite dl2 telescope-event-wise data in the output file",
+        ),
+        **flag(
+            "dl2-subarray",
+            "OverwriteIsValidFlag.dl2_subarray",
+            "Include overwrite dl2 subarray-event-wise data in the output file",
+            "Exclude overwrite dl2 subarray-event-wise data in the output file",
+        ),
     }
 
     def setup(self):
@@ -119,7 +144,8 @@ class EnforceSameEvents(Tool):
 
         # Read the SubarrayDescription from the input file
         self.subarray = SubarrayDescription.from_hdf(self.is_valid_to)
-
+        if self.allowed_tels is not None:
+            self.subarray = self.subarray.select_subarray(self.allowed_tels)
 
     def start(self):
         # Loop over the reconstruction tasks and combine the telescope tables to a subarray table
@@ -128,26 +154,51 @@ class EnforceSameEvents(Tool):
         
             # Read the telescope tables from the input file
             if self.dl2_telescope:
+                is_valid_col = f"{self.prefix}_tel_is_valid"
                 for tel_id in self.subarray.tel_ids:
+                    self.log.info("Processing telescope '%03d' ...", tel_id)
                     input_tel_table = read_table(
                         self.is_valid_from,
                         f"{DL2_TELESCOPE_GROUP}/{reco_task}/{self.prefix}/tel_{tel_id:03}",
                     )
+                    input_tel_table.keep_columns(TELESCOPE_EVENT_KEYS + [is_valid_col])
                     output_tel_table = read_table(
                         self.is_valid_to,
                         f"{DL2_TELESCOPE_GROUP}/{reco_task}/{self.prefix}/tel_{tel_id:03}",
                     )
-                    joined_table = join(
+                    output_tel_table.remove_columns([is_valid_col])
+                    if len(input_tel_table) != len(output_tel_table):
+                        self.log.warning(
+                            "Input and output telescope tables (tel_id '%03d') have different lengths: %d vs %d",
+                            tel_id,
+                            len(input_tel_table),
+                            len(output_tel_table),
+                        )
+                    joined_tel_table = join(
                         input_tel_table,
                         output_tel_table,
                         keys=TELESCOPE_EVENT_KEYS,
                         join_type="right",
                     )
-                    self.log.info("Input table for telescope %03d has %d rows", tel_id, len(input_tel_table))
-                    self.log.info("Output table for telescope %03d has %d rows", tel_id, len(output_tel_table))
-                    self.log.info("Joined table for telescope %03d has %d rows", tel_id, len(joined_table))
-                    self.log.info(joined_table.colnames)
+                    # Fill missing values in the is_valid column with False if necessary
+                    if isinstance(joined_tel_table[is_valid_col], MaskedColumn):
+                        joined_tel_table[is_valid_col] = joined_tel_table[is_valid_col].filled(False) 
+                    # Sort the table by the telescope event keys
+                    joined_tel_table.sort(TELESCOPE_EVENT_KEYS)
+                    write_table(
+                        joined_tel_table,
+                        self.output_path,
+                        f"{DL2_TELESCOPE_GROUP}/{reco_task}/{self.prefix}/tel_{tel_id:03d}",
+                        overwrite=True,
+                    )
+                    self.log.info(
+                        "DL2 prediction data was stored in '%s' under '%s'",
+                        self.output_path,
+                        f"{DL2_TELESCOPE_GROUP}/{reco_task}/{self.prefix}/tel_{tel_id:03d}",
+                    )
+
             if self.dl2_subarray:
+                self.log.info("Processing subarray ...")
                 is_valid_col = f"{self.prefix}_is_valid"
                 input_subarray_table = read_table(
                     self.is_valid_from,
@@ -165,37 +216,29 @@ class EnforceSameEvents(Tool):
                         len(input_subarray_table),
                         len(output_subarray_table),
                     )
-                joined_table = join(
-                    input_subarray_table[0],
+                joined_subarray_table = join(
+                    input_subarray_table,
                     output_subarray_table,
                     keys=SUBARRAY_EVENT_KEYS,
                     join_type="right",
                 )
-                joined_table[is_valid_col] = joined_table[is_valid_col].filled(False)
-
-                print(joined_table.colnames)
-                print(joined_table[is_valid_col])
-
-                self.log.debug(joined_table.colnames)
-            # Stack the telescope tables to a common table
-            #tel_tables = vstack(tel_tables)
-            # Sort the table by the telescope event keys
-            #tel_tables.sort(TELESCOPE_EVENT_KEYS)
-           
-            # Sort the table by the subarray event keys
-            #subarray_table.sort(SUBARRAY_EVENT_KEYS)
-            # Save the prediction to the file
-            #write_table(
-            #    subarray_table,
-            #    self.input_url,
-            #    f"{DL2_SUBARRAY_GROUP}/{reco_task}/{self.prefix}",
-            #    overwrite=self.overwrite_tables,
-            #)
-            #self.log.info(
-            #    "DL2 prediction data was stored in '%s' under '%s'",
-            #    self.input_url,
-            #    f"{DL2_SUBARRAY_GROUP}/{reco_task}/{self.prefix}",
-            #)
+                # Fill missing values in the is_valid column with False if necessary
+                if isinstance(joined_subarray_table[is_valid_col], MaskedColumn):
+                    joined_subarray_table[is_valid_col] = joined_subarray_table[is_valid_col].filled(False)           
+                # Sort the table by the subarray event keys
+                joined_subarray_table.sort(SUBARRAY_EVENT_KEYS)
+                # Save the prediction to the file
+                write_table(
+                    joined_subarray_table,
+                    self.output_path,
+                    f"{DL2_SUBARRAY_GROUP}/{reco_task}/{self.prefix}",
+                    overwrite=True,
+                )
+                self.log.info(
+                    "DL2 prediction data was stored in '%s' under '%s'",
+                    self.output_path,
+                    f"{DL2_SUBARRAY_GROUP}/{reco_task}/{self.prefix}",
+                )
 
     def finish(self):
         # Shutting down the tool
@@ -203,7 +246,7 @@ class EnforceSameEvents(Tool):
 
 def main():
     # Run the tool
-    tool = EnforceSameEvents()
+    tool = OverwriteIsValidFlag()
     tool.run()
 
 
