@@ -136,7 +136,7 @@ class OverwriteIsValidFlag(Tool):
     }
 
     def setup(self):
-        # Check if the ctapipe HDF5Merger component is enabled
+        # Check if output file already exists
         if os.path.exists(self.output_path):
             raise ToolConfigurationError(
                 f"The output file '{self.output_path}' already exists. Please set "
