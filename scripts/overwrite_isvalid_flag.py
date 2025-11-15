@@ -3,7 +3,6 @@ Overwrite the is_valid flags in the hdf5 file.
 """
 
 from astropy.table import join, MaskedColumn
-import numpy as np
 import os
 
 from ctapipe.io import read_table, write_table, HDF5Merger
