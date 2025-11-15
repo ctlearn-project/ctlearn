@@ -165,12 +165,12 @@ class OverwriteIsValidFlag(Tool):
                     self.log.info("Processing telescope '%03d' ...", tel_id)
                     input_tel_table = read_table(
                         self.is_valid_from,
-                        f"{DL2_TELESCOPE_GROUP}/{reco_task}/{self.prefix}/tel_{tel_id:03}",
+                        f"{DL2_TELESCOPE_GROUP}/{reco_task}/{self.prefix}/tel_{tel_id:03d}",
                     )
                     input_tel_table.keep_columns(TELESCOPE_EVENT_KEYS + [is_valid_col])
                     output_tel_table = read_table(
                         self.is_valid_to,
-                        f"{DL2_TELESCOPE_GROUP}/{reco_task}/{self.prefix}/tel_{tel_id:03}",
+                        f"{DL2_TELESCOPE_GROUP}/{reco_task}/{self.prefix}/tel_{tel_id:03d}",
                     )
                     output_tel_table.remove_columns([is_valid_col])
                     if len(input_tel_table) != len(output_tel_table):
