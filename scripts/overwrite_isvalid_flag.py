@@ -188,7 +188,7 @@ class OverwriteIsValidFlag(Tool):
                     )
                     # Fill missing values in the is_valid column with False if necessary
                     if isinstance(joined_tel_table[is_valid_col], MaskedColumn):
-                        joined_tel_table[is_valid_col] = joined_tel_table[is_valid_col].filled(False) 
+                        joined_tel_table[is_valid_col] = joined_tel_table[is_valid_col].filled(False)
                     # Sort the table by the telescope event keys
                     joined_tel_table.sort(TELESCOPE_EVENT_KEYS)
                     write_table(
