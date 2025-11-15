@@ -102,7 +102,7 @@ class OverwriteIsValidFlag(Tool):
         help="List of reconstruction tasks to be used for the overwrite of the is_valid flag.",
     ).tag(config=True)
 
-    dl2_telescope= Bool(
+    dl2_telescope = Bool(
         default_value=True,
         help="Whether to overwrite the is_valid flag in the dl2 telescope group.",
     ).tag(config=True)
