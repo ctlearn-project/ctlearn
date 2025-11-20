@@ -43,7 +43,11 @@ class CompressCTLearnModel(Tool):
     name = "ctlearn-compress-model"
     description = __doc__
 
-    
+    apply_compression = Bool(
+        default_value=False,
+        help="Whether to apply model compression techniques.",
+    ).tag(config=True)
+
     compression_techniques = List(
     trait=Dict(
         key_trait=Unicode(help="Compression technique name. " \
@@ -58,7 +62,7 @@ class CompressCTLearnModel(Tool):
         "For example: [{'qat': {'epochs': 10}}, {'pruning': {'initial_sparsity': 0.2, 'final_sparsity': 0.8}}, "
         "{'ptq': {'quantization_type': 'float16'}}]."
     ),
-    default_value=[],
+    default_value=None,
     ).tag(config=True)
     
     base_model_type = ComponentName(
@@ -330,11 +334,16 @@ class CompressCTLearnModel(Tool):
         train_tool.early_stopping = self.early_stopping
         train_tool.log_file = self.log_file
         train_tool.summaries_dir = self.summaries_dir   
+        train_tool.apply_compression = self.apply_compression
         train_tool.compression_techniques = self.compression_techniques
-        train_tool.model_type = TrainCTLearnModel().model_type
-        train_tool.model_type = 'SingleCNNIndexed'
-        print("Train tool model type in compression tool: ", train_tool.model_type)
-        #self.reader = train_tool.dl1dh_reader
+        #train_tool.base_model_type = TrainCTLearnModel().model_type
+        train_tool.base_model_type = self.base_model_type
+        #print("Train tool model type in compression tool: ", train_tool.model_type)
+        print("Train tool model type in compression tool: ", train_tool.base_model_type)
+        print(f"Reader type: {self.dl1dh_reader_type}")
+        #self.dl1dh_reader_type = train_tool.dl1dh_reader_type
+        train_tool.dl1dh_reader_type = self.dl1dh_reader_type
+        print("DEBUG: Reader type after assignment: ", train_tool.dl1dh_reader_type)
         #self.indices = list(range(self.reader._get_n_events()))
         
         print(f"mcSignal directory: {train_tool.input_dir_signal}")
@@ -362,30 +371,37 @@ class CompressCTLearnModel(Tool):
         self.log.debug("mcCompression techniques to be applied: %s", self.compression_techniques)
         print("Compression techniques to be applied: %s", self.compression_techniques)
 
-        for technique in self.compression_techniques:
-            for key, hyperparams in technique.items():
-                print("Technique: ", key)
-                if key == "ptq":
-                    self.log.info("Applying post-training quantization...")
-                ###### Needs to be filled up later
-                elif key == "qat":
-                    self.log.info("Applying Quantization-Aware Training...")
-                    #apply_qat = True
-                elif key == "pruning":
-                    print("pruning")
-                    pruning_params = self.build_pruning_schedule(hyperparams)
-                    self.n_epochs = hyperparams.get("epochs", 3)
-                    train_tool.n_epochs = self.n_epochs
-                    print("N epochs: ", train_tool.n_epochs)
-                    self.batch_size = hyperparams.get("batch_size", 64)
-                    train_tool.batch_size = self.batch_size # check
-                    print("Calling prunin_epochsng...")
-                    self.log.info("Calling pruning...")
-                    self.compressed_model = self.pruning(train_tool, pruning_params)
-                    print("Applying pruning...")
-                    self.log.info("Applying pruning...")
-                elif technique == "None":
-                    self.log.info("No compression technique applied.")
+        print(f"COMPRESSION TECHNIQUES: {self.compression_techniques}, {self.apply_compression}")
+        if self.apply_compression is False:
+            self.log.info("No compression technique applied.")
+            print("No compression technique applied.")
+            self.no_compression(train_tool)
+        else:
+            for technique in self.compression_techniques:
+                print("Technique to apply: ", technique)
+                for key, hyperparams in technique.items():
+                    print("Technique: ", key)
+                    if key == "ptq":
+                        self.log.info("Applying post-training quantization...")
+                    ###### Needs to be filled up later
+                    elif key == "qat":
+                        self.log.info("Applying Quantization-Aware Training...")
+                        #apply_qat = True
+                    elif key == "pruning":
+                        print("pruning")
+                        pruning_params = self.build_pruning_schedule(hyperparams)
+                        self.n_epochs = hyperparams.get("epochs", 3)
+                        train_tool.n_epochs = self.n_epochs
+                        print("N epochs: ", train_tool.n_epochs)
+                        self.batch_size = hyperparams.get("batch_size", 64)
+                        train_tool.batch_size = self.batch_size # check
+                        print("Calling prunin_epochs...")
+                        self.log.info("Calling pruning...")
+                        self.compressed_model = self.pruning(train_tool, pruning_params)
+                        print("Applying pruning...")
+                        self.log.info("Applying pruning...")
+                    elif technique == "None":
+                        self.log.info("No compression technique applied.")
 
 
 
@@ -458,7 +474,7 @@ class CompressCTLearnModel(Tool):
         print(self.base_model_type)
         print("FixedPretrainedModel:", FixedPretrainedModel)
         print("FixedPretrainedModel.load_model_from:", FixedPretrainedModel.load_model_from)   
-        print("train tool model type", train_tool.model_type)
+        #print("train tool model type", train_tool.model_type)
         
         print("self tool model type", self.base_model_type)
             
@@ -664,12 +680,14 @@ class CompressCTLearnModel(Tool):
             print("Task recognised as type")
             self.n_epochs = hyperparams.get("epochs", 3)
             end_step = np.ceil(2082844 / self.batch_size).astype(np.int32) * self.n_epochs - 2000
-            end_step = np.ceil(100 / self.batch_size).astype(np.int32) * self.n_epochs 
+            end_step = np.ceil(100 / self.batch_size).astype(np.int32) * self.n_epochs - 1
+            #end_step = np.ceil(2082844 / self.batch_size).astype(np.int32) * self.n_epochs - 200
             #end_step = np.ceil(self.indices / self.batch_size).astype(np.int32) * self.n_epochs 
         elif self.reco_tasks == "energy" or self.reco_tasks == "cameradirection":
             print("Task recognised as energy or cameradirection")
             self.n_epochs = hyperparams.get("epochs", 3)
             end_step = np.ceil(1039893 / self.batch_size).astype(np.int32) * self.n_epochs - 1000
+            end_step = np.ceil(1039893 / self.batch_size).astype(np.int32) * self.n_epochs - 100
             #end_step = np.ceil(self.indices / self.batch_size).astype(np.int32) * self.n_epochs 
         print("End step: ", end_step)
         self.log.info("End step: %s", end_step)
@@ -698,7 +716,36 @@ class CompressCTLearnModel(Tool):
         return pruning_params
 
 
-                
+    def no_compression(self, train_tool):
+        """
+        No compression applied to the model.
+        """
+        if self.base_model_type == "FixedPretrainedModel":
+            #fixed_model = FixedPretrainedModel(load_model_from=self.load_model_from)
+            self.log.info("Fixed pretrained model detected...")
+            train_tool.base_model_type = self.base_model_type
+            print("train tool model type in loop", self.base_model_type)
+            #train_tool.load_model_from = self.load_model_from
+            train_tool.apply_pruning = False
+            
+        else:
+            self.log.warning("CHECK! Model path provided but model type is not FixedPretrainedModel")
+
+        print("train tool callbacks: ", train_tool.callbacks)
+        print("no compression")
+        if os.path.exists(self.summaries_dir):
+            print(f"Directory {self.summaries_dir} exists. ")
+        else:
+            print(f"Directory {self.summaries_dir} does not exist. ")
+        train_tool.initialize()
+        train_tool.setup()
+        print("Set correctly")
+        train_tool.start()
+        print("Started correctly")
+        #train_tool.run() #### Entonces me lo cierra...Cre que debería llamar a cachos?
+        print("Training completed.")
+              
+
 
 def main():
     # Run the tool

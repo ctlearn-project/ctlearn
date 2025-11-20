@@ -597,7 +597,8 @@ class PredictCTLearnModel(Tool):
                 sort_by_intensity=self.sort_by_intensity,
                 stack_telescope_images=self.stack_telescope_images,
             )
-        
+        #self.indices = self.indices[0:100] ###
+
         # Load the model from the specified path
         model = keras.models.load_model(model_path)
         prediction_colname = (
@@ -714,6 +715,7 @@ class PredictCTLearnModel(Tool):
         )
         # Create prediction table and add the predicted classification score ('gammaness')
         classification_table = example_identifiers.copy()
+        #classification_table = example_identifiers[0:100].copy() ###
         classification_table.add_column(
             predict_data["type"].T[1], name=f"{self.prefix}_tel_prediction"
         )
@@ -747,6 +749,7 @@ class PredictCTLearnModel(Tool):
         )
         # Create prediction table and add the reconstructed energy in TeV
         energy_table = example_identifiers.copy()
+        #energy_table = example_identifiers[0:100].copy()
         energy_table.add_column(reco_energy, name=f"{self.prefix}_tel_energy")
         return energy_table, feature_vectors
 
@@ -784,6 +787,7 @@ class PredictCTLearnModel(Tool):
         cam_coord_offset_y = u.Quantity(predict_data["cameradirection"].T[1], unit=u.m)
         # Create prediction table and add the reconstructed energy in TeV
         cameradirection_table = example_identifiers.copy()
+        #cameradirection_table = example_identifiers[0:100].copy()
         cameradirection_table.add_column(cam_coord_offset_x, name="cam_coord_offset_x")
         cameradirection_table.add_column(cam_coord_offset_y, name="cam_coord_offset_y")
         return cameradirection_table, feature_vectors
@@ -1119,6 +1123,7 @@ class PredictCTLearnModel(Tool):
         """
         # Create the feature vector table
         feature_vector_table = example_identifiers.copy()
+        #feature_vector_table = example_identifiers[0:100].copy() ###
         feature_vector_table.remove_columns(
             ["pointing_azimuth", "pointing_altitude", "time"]
         )

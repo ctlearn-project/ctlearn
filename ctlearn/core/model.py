@@ -29,7 +29,6 @@ from ctlearn.core.attention import (
 )
 #from tensorflow.keras.layers import Conv1D, BatchNormalization, ReLU, GlobalAveragePooling1D, Conv3D, GlobalMaxPooling1D
 from ctlearn.core.indexed import NeighborGatherLayer, IndexedConvolutionLayer, IndexedPoolingLayer
-
 from ctlearn.utils import validate_trait_dict
 import tensorflow_model_optimization as tfmot
 
@@ -450,6 +449,7 @@ class SingleCNNIndexed(CTLearnModel):
     def __init__(self, input_shape, indices, tasks, config=None, parent=None, **kwargs):
         super().__init__(config=config, parent=parent, **kwargs)
 
+        print("D: SingleCNNIndexed has been called")
         # Validate traits
         for layer in self.architecture:
             validate_trait_dict(layer, ["filters", "number"])
@@ -459,6 +459,7 @@ class SingleCNNIndexed(CTLearnModel):
         # Create the neighbor gathering layer.
         # Preparing the mask and gathering neighbors.
         self.neighbor_gather = NeighborGatherLayer(indices, self.use_3d_conv)
+        #print('D: Neighbor gather layer input shape:', self.neighbor_gather.input_shape, ' output shape:', self.neighbor_gather.output_shape)
 
         # Build the backbone model.
         self.backbone_model, self.input_layer = self._build_backbone(input_shape)
@@ -490,6 +491,7 @@ class SingleCNNIndexed(CTLearnModel):
                 # Prepare input by gathering neighbor features.
                 x_neighbors = self.neighbor_gather(x)
                 # Apply convolution over the gathered neighbors depending on the use_3d_conv flag.
+                #D: print('I am calling:')
                 x = IndexedConvolutionLayer(
                     use_3d_conv=self.use_3d_conv, 
                     temporal_kernel_size=self.temporal_kernel_size, 
@@ -1024,6 +1026,7 @@ Loaded
         self,
         input_shape,
         tasks,
+        indices,
         config=None,
         parent=None,
         **kwargs,
@@ -1033,7 +1036,7 @@ Loaded
             parent=parent,
             **kwargs,
         )
-
+        
         # Load the model from the specified path
         self.model = keras.saving.load_model(self.load_model_from)
         # Build the ResNet model backbone
@@ -1074,7 +1077,7 @@ Loaded
         network_input = keras.Input(shape=input_shape, name="input")
         # Set the backbone model to be trainable or not
         for layer in self.model.layers:
-            if layer.name.endswith("_block"):
+            if layer.name.endswith("_block") or 'block' in layer.name:
                 backbone_layer = self.model.get_layer(layer.name)
                 self.backbone_name = backbone_layer.name
                 backbone_layer.trainable = self.trainable_backbone
@@ -1086,6 +1089,9 @@ Loaded
         return backbone_model, network_input
 
  
+  
+
+
 
 
 class FixedPretrainedModel(CTLearnModel):
@@ -1101,6 +1107,12 @@ class FixedPretrainedModel(CTLearnModel):
         directory_ok=True,
         file_ok=True,
     ).tag(config=True)
+    ########
+    target_model_type = Unicode(
+        default_value="SingleCNNIndexed",
+        help="Type of model architecture to rebuild (e.g., 'SingleCNNIndexed', 'ResNet')"
+    ).tag(config=True)
+    ########
 
     apply_pruning = Bool(
         default_value=False,
@@ -1116,7 +1128,7 @@ class FixedPretrainedModel(CTLearnModel):
 
     
     def __init__(
-        self,  input_shape, tasks, indices, 
+        self,  input_shape, tasks, indices, subclassed_model=False,
         config=None,
         parent=None,
         **kwargs,
@@ -1129,29 +1141,103 @@ class FixedPretrainedModel(CTLearnModel):
         )
 
     
-        print("HELLO", self.load_model_from)
         if not self.load_model_from:
+                print("No pretrained model path specified.")
+                fixed_model = CTLearnModel.from_name(
+                    'SingleCNNIndexed',
+                    input_shape=input_shape,
+                    indices=indices,
+                    tasks=tasks,
+                    parent=self,
+                )
+
                 raise ValueError("Path to the pretrained model must be specified.")
         print(f"Loading pretrained model from {self.load_model_from}")
+        ######################################
+        custom_obj = {"NeighborGatherLayer": NeighborGatherLayer, "IndexedConvolutionLayer": IndexedConvolutionLayer, "IndexedPoolingLayer": IndexedPoolingLayer}
+        temp_model = keras.saving.load_model(self.load_model_from, custom_objects=custom_obj)
+        weights = temp_model.get_weights()
+        import sys
+        import numpy
+        numpy.set_printoptions(threshold=sys.maxsize)
+        print(f"Input shape: {input_shape}, indices: {indices}, tasks: {tasks}, parent: {self}")
+        self.model = CTLearnModel.from_name(
+                    'SingleCNNIndexed',
+                    input_shape=input_shape,
+                    indices=indices,
+                    tasks=tasks,
+                    parent=self,
+                ).model
+        self.model.set_weights(weights)
+
+                    
+        ######################################
         self.log.info(f"Loading pretrained model from {self.load_model_from}")
         # Load the model from the specified path
-        self.model = keras.saving.load_model(self.load_model_from, safe_mode=False)
+        """try:
+            custom_obj = {"NeighborGatherLayer": NeighborGatherLayer, "IndexedConvolutionLayer": IndexedConvolutionLayer, "IndexedPoolingLayer": IndexedPoolingLayer}
+            self.model = keras.saving.load_model(self.load_model_from, custom_objects=custom_obj)
+            print('Loaded custom objects')        
+        except:
+            self.log.info("Failed to load model in safe mode, trying unsafe mode...")
+            print("Failed to load model in safe mode, trying unsafe mode...")
+            custom_obj = {"NeighborGatherLayer": NeighborGatherLayer, "IndexedConvolutionLayer": IndexedConvolutionLayer, "IndexedPoolingLayer": IndexedPoolingLayer}
+            self.model = keras.saving.load_model(self.load_model_from, safe_mode=False, custom_objects=custom_obj)
+        
+        loaded_model_instance = LoadedModel(
+            load_model_from=self.load_model_from,
+            input_shape=input_shape,
+            tasks=tasks,
+            indices=indices,
+            config=config,
+            parent=self,  # Pass self as parent so LoadedModel can access load_model_from
+        )
+        print("loaded model instance correct")
+        self.model = loaded_model_instance.model"""
         self.log.info("Pretrained model loaded successfully.")
         
+        print("\n=== CHECKING K DIMENSIONS ===")
+        print(f"Current indices shape: {getattr(indices, 'shape', 'No indices provided')}")
+
+        # Check what K the model expects by looking at layer shapes
+        for layer in self.model.layers:
+            if hasattr(layer, 'input_shape') and layer.input_shape:
+                print(f"Layer {layer.name}: input_shape = {layer.input_shape}")
+                # Look for the K dimension (neighbor count, typically in range 25-35)
+                if isinstance(layer.input_shape, (list, tuple)):
+                    for i, dim in enumerate(layer.input_shape):
+                        if dim and isinstance(dim, int) and 25 <= dim <= 35:
+                            print(f"  *** FOUND LIKELY K DIMENSION: {dim} at position {i} ***")
+
+        # Check if your current data K matches what the model expects
+        print(indices.shape)
+        print("=============")
+        if hasattr(indices, 'shape'):
+            current_K = None
+            for dim in indices.shape:
+                print('dim', dim)
+                if isinstance(dim, int) and 25 <= dim <= 35:
+                    current_K = dim
+                    break
+            print(f"Your current data K: {current_K}")
+        ###########################
+
+
+
         # Add these debug calls:
         print("\n=== CHECKING FOR SUBCLASSED MODELS ===")
-        check_for_subclassed_models(self.model)
+        is_subclassed = check_for_subclassed_models(self.model)
 
         print("\n=== ALL LAYERS IN ORIGINAL MODEL ===")
         print_all_layers(self.model)
 
         self.log.info("Pretrained model loaded successfully.")
         self.model.summary()
-        keras.utils.plot_model(self.model, expand_nested=True, to_file='/lhome/ext/ucm147/ucm1478/pruning_experiment/L1_flowers_2155/constant_sparsity/30_sparsity/logs/train/model_plot_before.png', show_shapes=True, show_layer_names=True)
-        check_for_subclassed_models(self.model)
-        print("Applying pruning", self.parent.apply_pruning, "parameters:", self.parent.pruning_parameters)
+        keras.utils.plot_model(self.model, expand_nested=True, to_file='/lhome/ext/ucm147/ucm1478/pruning_experiment/L1_flowers_2155/constant_sparsity/0_sparsity/logs/train/model_plot_before.png', show_shapes=True, show_layer_names=True)
+        #check_for_subclassed_models(self.model)
         
         if self.parent.apply_pruning and self.parent.pruning_parameters:
+            print("Applying pruning", self.parent.apply_pruning, "parameters:", self.parent.pruning_parameters)
             print("Applying pruning wrappers to the model...")
             self.log.info("Applying pruning wrappers to the model...")
             self.i = 0
@@ -1159,19 +1245,26 @@ class FixedPretrainedModel(CTLearnModel):
             #self.model_wrapped = keras.models.clone_model(self.model)
             print("Cloned")
             #self.custom_layers = self.detect_prune_custom_layers()
-            self.model_wrapped = keras.models.clone_model(self.model, clone_function=self._pruning_wrapper, input_tensors=self.model.inputs)
-            weights = self.model.get_weights()
+            if is_subclassed:
+                print("Model contains subclassed layers")
+                print(f"Model inputs shape {self.model.inputs}")
+                self.model_wrapped = keras.models.clone_model(self.model, clone_function=self._pruning_wrapper, input_tensors=self.model.inputs)
+                weights = self.model.get_weights()
+                ## CHECK
+                #self.model_wrapped.set_weights(weights)
+            else:
+                print("Model does not contain subclassed layers")
+                self.model_wrapped = keras.models.clone_model(self.model)
+                self.model_wrapped = tfmot.sparsity.keras.prune_low_magnitude(self.model, **self.parent.pruning_parameters)
             print(len(weights))
-            #self.model_wrapped.set_weights(weights)
-
+            
             print('okay')
-            keras.utils.plot_model(self.model_wrapped, expand_nested=True, to_file='/lhome/ext/ucm147/ucm1478/pruning_experiment/L1_flowers_2155/constant_sparsity/30_sparsity/logs/train/model_plot_after.png', show_shapes=True, show_layer_names=True)
+            keras.utils.plot_model(self.model_wrapped, expand_nested=True, to_file='/lhome/ext/ucm147/ucm1478/pruning_experiment/L1_flowers_2155/constant_sparsity/0_sparsity/logs/train/model_plot_after.png', show_shapes=True, show_layer_names=True)
 
             #self.model_wrapped = tfmot.sparsity.keras.prune_low_magnitude(self.model, **self.parent.pruning_parameters)
             print(f"M_Size of wrapped in model: {self.model_wrapped.count_params()}")
                 
-            print(f"Size of original in model: {self.model.count_params()}")
-                
+            print(f"Size of original in model: {self.model.count_params()}") 
             self.log.info("Pruning wrappers applied successfully.")
 
     
@@ -1184,12 +1277,18 @@ class FixedPretrainedModel(CTLearnModel):
         print(f"Checking layer: {layer.name}, {layer.__class__.__name__}")
         
         # Define layers that should be skipped from pruning
-        skip_keywords = ['neighbor_gather', 'input', 'Input', 'inputlayer', 'batch', 'pooling']
+        skip_keywords = ['neighbor_gather', 'input', 'Input', 'inputlayer', 'batch', 'pool', 'pixelwise']#, 'IndexedConvolution']
         custom_layer_classes = ['IndexedConvolutionLayer']
-        
+        #custom_layer_classes = []
         # Skip individual layers based on keywords
         if any(keyword in layer.name.lower() for keyword in skip_keywords):
             print(f"Skipping layer with keyword: {layer.name}")
+            return layer
+        
+        if 'neighbor' in layer.__class__.__name__.lower():
+            print('I have detected neighbor gather layer')
+            if hasattr(layer, 'use_3d_conv'):
+                print(f"neighbor gather Layer use_3d_conv: {layer.use_3d_conv}")
             return layer
         
         # Handle Functional models - process ALL sublayers, don't return early
@@ -1198,19 +1297,13 @@ class FixedPretrainedModel(CTLearnModel):
             # Use clone_model to recursively process each sublayer
             self.i += 1
             print(layer.input_shape)
-            return keras.models.clone_model(layer, clone_function=self._pruning_wrapper)
+            return keras.models.clone_model(layer, clone_function=self._pruning_wrapper, input_tensors=layer.inputs)
         
-        if 'block' in layer.name.lower():
-            print(f"Processing block layer: {layer.name}")
-            if hasattr(layer, 'layers') and len(layer.layers) > 0:
-                print(f"Block detected with {len(layer.layers)} sublayers: {layer.name}")
-            
-
         # Handle custom layers that need special pruning wrapper
         if any(cls_name in layer.__class__.__name__ for cls_name in custom_layer_classes):
             print(f"Wrapping custom layer for pruning: {layer.name}  ")
-            
-            return tfmot.sparsity.keras.prune_low_magnitude(CustomLayer(layer))
+            #return tfmot.sparsity.keras.prune_low_magnitude(layer)
+            return tfmot.sparsity.keras.prune_low_magnitude(CustomLayer(layer), input_shape=layer.input_shape)#, use_3d_conv=layer.use_3d_conv, temporal_kernel_size=layer.temporal_kernel_size, filters=layer.filters
             
             
         # Apply standard pruning to Dense and Conv layers
@@ -1222,6 +1315,7 @@ class FixedPretrainedModel(CTLearnModel):
         print(f"No pruning applied to: {layer.name}")
         return layer
 
+    
 """class CustomLayer(tfmot.sparsity.keras.PrunableLayer):
 
     def __init__(self, layer, **kwargs):
@@ -1311,11 +1405,21 @@ class FixedPretrainedModel(CTLearnModel):
 class CustomLayer(keras.layers.Layer, tfmot.sparsity.keras.PrunableLayer):
 
     def __init__(self, layer, **kwargs):
+    #def __init__(self, layer, use_3d_conv, temporal_kernel_size, filters, **kwargs):
         #if 'name' not in kwargs and hasattr(layer, 'name'):
         #    kwargs['name'] = layer.name
         #    print(f"CustomLayer initialized with name: {kwargs['name']}")
         super().__init__(**kwargs)
         self.layer = layer
+        if hasattr(layer, 'use_3d_conv'):
+            print(' D: I have 3d conv attribute')
+            self.use_3d_conv = layer.use_3d_conv
+            self.temporal_kernel_size = layer.temporal_kernel_size  
+            self.filters = layer.filters
+        #self.neighbor_indices = neighbor_indices
+        #self.use_3d_conv = use_3d_conv
+        #self.temporal_kernel_size = temporal_kernel_size
+        #self.filters = filters
 
     #def build(self, input_shape):
     #    # Build the wrapped layer with the correct expected shape
@@ -1324,10 +1428,12 @@ class CustomLayer(keras.layers.Layer, tfmot.sparsity.keras.PrunableLayer):
     #    self.layer.build(input_shape)
     #    super().build(input_shape)
     
-    def call(self, inputs, **kwargs):
-        print(f"CustomLayer call invoked for layer: {self.layer.name} and layer shape: {self.layer.input_shape} and input shape: {inputs.shape}")
+    def call(self, inputs, training = True, **kwargs):
+        print(f"CustomLayer call invoked for layer: {self.layer.name} and layer shape: {self.layer.input_shape} and input shape: {inputs.shape} output layer shape: {self.layer.output_shape} and outputs shape: {self.layer(inputs).shape}")
         #self.layer =  self.get_prunable_weights(self.layer)
-        return self.layer(inputs)
+        return self.layer(inputs, training=training, **kwargs) # Esto es importante para que aoarezca el shape en el error
+        #return self.layer(inputs, training=training, **kwargs)
+
 
     """def compute_output_shape(self, input_shape):
         # Delegate to wrapped layer (helps Functional models)
@@ -1342,13 +1448,20 @@ class CustomLayer(keras.layers.Layer, tfmot.sparsity.keras.PrunableLayer):
         else:
             print(f"WARNING: Layer {self.layer.name} does not have 'kernel' attribute for pruning.")
             return []
-    
         
+    def get_config(self):
+        #print('Getting config for CustomLayer')
+        config = super().get_config().copy()
+        config.update({
+            #"neighbor_indices": self.neighbor_indices,  # Add this line
+            "use_3d_conv": self.use_3d_conv,
+            "temporal_kernel_size": self.temporal_kernel_size,
+            "filters": self.filters,
+        })
+       
+        return config
 
-    #def compute_output_shape(self, input_shape):
-    #   # Delegate to wrapped layer (helps Functional models)
-    #    return self.layer.compute_output_shape(input_shape)
-
+ 
     
 
     
@@ -1360,15 +1473,17 @@ def check_for_subclassed_models(model, level=0):
     """Check if the model contains any subclassed models."""
        
     indent = "  " * level
-        
+    subclassed_model = False
     for layer in model.layers:
         # Check if it's a subclassed model
         if isinstance(layer, keras.Model) and not hasattr(layer, '_is_graph_network'):
             print(f"{indent}*** SUBCLASSED MODEL FOUND: {layer.name} ({layer.__class__.__name__}) ***")
-            
+            subclassed_model = True
         # Check nested layers
         if hasattr(layer, 'layers') and len(layer.layers) > 0:
            check_for_subclassed_models(layer, level + 1)
+           subclassed_model = True
+    return subclassed_model
 
 def print_all_layers(model, level=0):
     """Print all layer names recursively."""
@@ -1382,3 +1497,71 @@ def print_all_layers(model, level=0):
         if hasattr(layer, 'layers') and len(layer.layers) > 0:
             print(f"{indent}  -> Has {len(layer.layers)} sublayers:")
             print_all_layers(layer, level + 1)  
+    
+
+
+"""
+Limpieza de código para después:
+
+class FixedPretrainedModel(CTLearnModel):
+    # ... your existing traits ...
+    
+    def __init__(self, input_shape, tasks, indices, subclassed_model=False,
+                 config=None, parent=None, **kwargs):
+        super().__init__(config=config, parent=parent, **kwargs)
+
+        if not self.load_model_from:
+            raise ValueError("Path to the pretrained model must be specified.")
+        
+        print(f"Loading pretrained model from {self.load_model_from}")
+        self.log.info(f"Loading pretrained model from {self.load_model_from}")
+        
+        # Use LoadedModel to properly load the model
+        loaded_model_instance = LoadedModel(
+            input_shape=input_shape,
+            tasks=tasks,
+            indices=indices,
+            config=config,
+            parent=self,  # Pass self as parent so LoadedModel can access load_model_from
+        )
+        
+        # Extract the loaded model
+        self.model = loaded_model_instance.model
+        
+        self.log.info("Pretrained model loaded successfully.")
+        
+        # Your debugging code
+        print("\n=== CHECKING K DIMENSIONS ===")
+        # ... rest of your debug code ...
+        
+        # Apply pruning if requested
+        if self.parent.apply_pruning and self.parent.pruning_parameters:
+            self._apply_pruning()
+
+    def _apply_pruning(self):
+        print("Applying pruning", self.parent.apply_pruning, "parameters:", self.parent.pruning_parameters)
+        print("Applying pruning wrappers to the model...")
+        self.log.info("Applying pruning wrappers to the model...")
+        
+        is_subclassed = check_for_subclassed_models(self.model)
+        
+        if is_subclassed:
+            print("Model contains subclassed layers")
+            self.model_wrapped = keras.models.clone_model(
+                self.model, 
+                clone_function=self._pruning_wrapper
+            )
+        else:
+            print("Model does not contain subclassed layers")
+            self.model_wrapped = tfmot.sparsity.keras.prune_low_magnitude(
+                self.model, 
+                **self.parent.pruning_parameters
+            )
+        
+        print(f"Size of wrapped model: {self.model_wrapped.count_params()}")
+        print(f"Size of original model: {self.model.count_params()}")
+        self.log.info("Pruning wrappers applied successfully.")
+
+   
+
+"""

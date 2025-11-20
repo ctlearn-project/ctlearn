@@ -27,6 +27,9 @@ class NeighborGatherLayer(tf.keras.layers.Layer):
         Returns:
           Tensor of shape (batch, L, K, channels) with gathered neighbor features.
         """
+
+        #print('D: I am in neighbor gather layer')
+
         batch_size = tf.shape(inputs)[0]
         # Expand indices to have a batch dimension.
         tiled_indices = tf.expand_dims(self.indices, axis=0)  # (1, L, K)
@@ -60,13 +63,14 @@ class IndexedConvolutionLayer(tf.keras.layers.Layer):
     Layer to perform the hexagonal convolutions using the output of the Gather Layers.
     """
     def __init__(self, use_3d_conv, temporal_kernel_size, filters, name, **kwargs):
-      super().__init__(name=name, **kwargs)
+        super().__init__(name=name, **kwargs)
 
-      self.use_3d_conv = use_3d_conv
-      self.temporal_kernel_size = temporal_kernel_size
-      self.filters = filters
+        self.use_3d_conv = use_3d_conv
+        self.temporal_kernel_size = temporal_kernel_size
+        self.filters = filters
 
-      if use_3d_conv:
+        #print('D: I am in indexed convolution layer')
+        if use_3d_conv:
           self.conv = tf.keras.layers.Conv3D(
               filters=filters,
               kernel_size=(1, 7, temporal_kernel_size),
@@ -75,8 +79,8 @@ class IndexedConvolutionLayer(tf.keras.layers.Layer):
               activation="relu",
               name=name
           )
-      else:
-          self.conv = tf.keras.layers.Conv2D(
+        else:
+            self.conv = tf.keras.layers.Conv2D(
               filters=filters,
               kernel_size=(1, 7),
               strides=(1, 1),
@@ -84,6 +88,17 @@ class IndexedConvolutionLayer(tf.keras.layers.Layer):
               activation="relu",
               name=name
           )
+
+    """def get_prunable_weights(self):
+        print("D: Calling prunable directly from layer")
+        if hasattr(self.conv, 'kernel'):
+            print(f"CustomLayer get_prunable_weights called for layer: {self.name}")
+            # We don't prune bias because that usually affects model performance
+            print(self.conv.kernel.shape)
+            return [self.conv.kernel]
+        else:
+            print(f"WARNING: Layer {self.name} does not have 'kernel' attribute for pruning.")
+            return []"""
 
     def call(self, x):
       x = self.conv(x)
@@ -104,41 +119,42 @@ class IndexedPoolingLayer(tf.keras.layers.Layer):
     Layer to perform the hexagonal poolings using the output of the Gather Layers.
     """
     def __init__(self, use_3d_conv, pooling_type, temporal_pool_size, name, **kwargs):
-      super().__init__(name=name, **kwargs)
-      self.use_3d_conv = use_3d_conv
-      self.pooling_type = pooling_type.lower()
-      self.temporal_pool_size = temporal_pool_size
-
-      if self.use_3d_conv:
-        if self.pooling_type.lower() == "max":
-            self.pool = tf.keras.layers.MaxPool3D(
-                pool_size=(1, 7, self.temporal_pool_size),
-                strides=(1, 1, 1),
-                padding='valid',
-                name=name
-            )
+        super().__init__(name=name, **kwargs)
+        self.use_3d_conv = use_3d_conv
+        self.pooling_type = pooling_type.lower()
+        self.temporal_pool_size = temporal_pool_size
+        
+        #print('D: I am in indexed pooling layer')
+        if self.use_3d_conv:
+            if self.pooling_type.lower() == "max":
+                self.pool = tf.keras.layers.MaxPool3D(
+                    pool_size=(1, 7, self.temporal_pool_size),
+                    strides=(1, 1, 1),
+                    padding='valid',
+                    name=name
+                )
+            else:
+                self.pool = tf.keras.layers.AveragePooling3D(
+                    pool_size=(1, 7, self.temporal_pool_size),
+                    strides=(1, 1, 1),
+                    padding='valid',
+                    name=name
+                )
         else:
-            self.pool = tf.keras.layers.AveragePooling3D(
-                pool_size=(1, 7, self.temporal_pool_size),
-                strides=(1, 1, 1),
-                padding='valid',
-                name=name
-            )
-      else:
-        if self.pooling_type.lower() == "max":
-            self.pool = tf.keras.layers.MaxPool2D(
-                pool_size=(1, 7),
-                strides=(1, 1),
-                padding='valid',
-                name=name
-            )
-        else:
-            self.pool = tf.keras.layers.AveragePooling2D(
-                pool_size=(1, 7),
-                strides=(1, 1),
-                padding='valid',
-                name=name
-            )
+            if self.pooling_type.lower() == "max":
+                self.pool = tf.keras.layers.MaxPool2D(
+                    pool_size=(1, 7),
+                    strides=(1, 1),
+                    padding='valid',
+                    name=name
+                )
+            else:
+                self.pool = tf.keras.layers.AveragePooling2D(
+                    pool_size=(1, 7),
+                    strides=(1, 1),
+                    padding='valid',
+                    name=name
+                )
 
     def call(self, x):
         x = self.pool(x)

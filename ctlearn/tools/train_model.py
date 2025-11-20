@@ -89,6 +89,20 @@ class TrainCTLearnModel(Tool):
         --output /path/to/your/direction/ \\
         --reco skydirection \\
     """
+    # D: eliminate after trials
+    load_model_from = Path(
+        default_value=None,
+        help="Path to a Keras model file (Keras3) or directory Keras2)",
+        allow_none=True,
+        exists=True,
+        directory_ok=True,
+        file_ok=True,
+    ).tag(config=True)
+
+    apply_compression = Bool(
+        default_value=False,
+        help="Whether to apply model compression techniques.",
+    ).tag(config=True)
 
     input_dir_signal = Path(
         help="Input directory for signal events",
@@ -141,9 +155,9 @@ class TrainCTLearnModel(Tool):
         ),
     ).tag(config=True)
 
-    model_type = ComponentName(
+    '''model_type = ComponentName(
         CTLearnModel, default_value="ResNet"
-    ).tag(config=True)
+    ).tag(config=True)'''
 
     base_model_type = ComponentName(
         CTLearnModel, default_value="ResNet"
@@ -306,6 +320,7 @@ class TrainCTLearnModel(Tool):
     )
 
     def setup(self):
+        print(f"Reader type in train: {self.dl1dh_reader_type}")
         # Check if the output directory exists and if it should be overwritten
         if self.output_dir.exists():
             if not self.overwrite:
@@ -518,27 +533,41 @@ class TrainCTLearnModel(Tool):
             #self.model_type = "SingleCNNIndexed"
             #print("Model type: ", self.model_type)
             #self.base_model_type = 'FixedPretrainedModel'
-            self.base_model_type = self.model_type
+            #self.base_model_type = self.model_type
             print(f"DEBUG: base_model_type = {self.base_model_type}")
-            print(f"DEBUG: model_type = {self.model_type}")
+            #print(f"DEBUG: model_type = {self.model_type}")
             print(f"DEBUG: neighbor_array = {self.dl1dh_reader.neighbor_array}")
             print(f"DEBUG: type = {type(self.dl1dh_reader.neighbor_array)}")
             print(f"DEBUG: input_shape = {self.training_loader.input_shape}")
-            self.apply_pruning = False
-            print(f"DEBUG: apply_pruning = {self.apply_pruning}")
+            #self.apply_compression= False
+            print(f"DEBUG: apply_compression = {self.apply_compression}")
 
-            fixed_model = CTLearnModel.from_name(
-                self.base_model_type,
-                input_shape=self.training_loader.input_shape,
-                indices=self.dl1dh_reader.neighbor_array,
-                tasks=self.reco_tasks,
-                parent=self,
-            )
+            print("D: Temp DEBUG fix")
+            if self.base_model_type == "LoadedModelmm":
+                temp_model = keras.saving.load_model(self.load_model_from)
+                weights = temp_model.get_weights()
+                fixed_model = CTLearnModel.from_name(
+                    'SingleCNNIndexed',
+                    input_shape=self.training_loader.input_shape,
+                    indices=self.dl1dh_reader.neighbor_array,
+                    tasks=self.reco_tasks,
+                    parent=self,
+                )
+                fixed_model.model.set_weights(weights)
+            
+            else:
+                fixed_model = CTLearnModel.from_name(
+                    self.base_model_type,
+                    input_shape=self.training_loader.input_shape,
+                    indices=self.dl1dh_reader.neighbor_array,
+                    tasks=self.reco_tasks,
+                    parent=self,
+                )
 
             self.original_model = fixed_model.model
             print(f"Loaded original model: {self.original_model}")
             print(self.original_model.summary())
-            if self.apply_pruning:
+            if self.apply_compression:
                 self.model = fixed_model.model_wrapped
             else:
                 self.model = fixed_model.model
@@ -593,6 +622,8 @@ class TrainCTLearnModel(Tool):
             
         # Train and evaluate the model
         self.log.info("Training and evaluating...")
+        print('Data size:', self.training_loader.input_shape)
+        print('Data validation:', self.validation_loader.input_shape)
         self.model.fit(
             self.training_loader,
             validation_data=self.validation_loader,
