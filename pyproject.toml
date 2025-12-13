@@ -27,7 +27,7 @@ classifiers = [
 
 ]
 
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     "dl1_data_handler>=0.14.5, <0.15",
     "astropy",
@@ -37,10 +37,10 @@ dependencies = [
     "pyyaml",
     "scikit-learn",
     "numba",
-    "tensorflow>=2.14,<2.15",
+    "tensorflow>=2.19,<2.21",
     "pydot",
     "setuptools",
-    "ctapipe>=0.22.0, <0.26",
+    "ctapipe>=0.28.0",
 ]
 
 dynamic = ["version"]
