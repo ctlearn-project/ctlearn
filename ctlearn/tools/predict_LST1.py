@@ -120,7 +120,7 @@ class LST1PredictionTool(Tool):
     load_type_model_from = Path(
         default_value=None,
         help=(
-            "Path to a Keras model file (Keras3) or directory (Keras2) "
+            "Path to a Keras model file (Keras3) "
             "for the classification of the primary particle type."
         ),
         allow_none=True,
@@ -132,7 +132,7 @@ class LST1PredictionTool(Tool):
     load_energy_model_from = Path(
         default_value=None,
         help=(
-            "Path to a Keras model file (Keras3) or directory (Keras2) "
+            "Path to a Keras model file (Keras3) "
             "for the regression of the primary particle energy."
         ),
         allow_none=True,
@@ -144,7 +144,7 @@ class LST1PredictionTool(Tool):
     load_cameradirection_model_from = Path(
         default_value=None,
         help=(
-            "Path to a Keras model file (Keras3) or directory (Keras2) "
+            "Path to a Keras model file (Keras3) "
             "for the regression of the primary particle arrival direction "
             "based on the camera coordinate offsets."
         ),
@@ -514,9 +514,6 @@ class LST1PredictionTool(Tool):
                 image = get_unmapped_image(event, self.channels, self.transforms)
                 data.append(self.image_mapper.map_image(image))
             input_data = {"input": np.array(data)}
-            # Temp fix for supporting keras2 & keras3
-            if int(keras.__version__.split(".")[0]) >= 3:
-                input_data = input_data["input"]
 
             event_id.extend(dl1_table["event_id"].data)
             tel_azimuth.extend(dl1_table["tel_az"].data)

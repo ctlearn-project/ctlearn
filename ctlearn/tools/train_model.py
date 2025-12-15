@@ -335,11 +335,7 @@ class TrainCTLearnModel(Tool):
         monitor = "val_loss"
         monitor_mode = "min"
         # Model checkpoint callback
-        # Temp fix for supporting keras2 & keras3
-        if int(keras.__version__.split(".")[0]) >= 3:
-            model_path = f"{self.output_dir}/ctlearn_model.keras"
-        else:
-            model_path = f"{self.output_dir}/ctlearn_model.cpk"
+        model_path = f"{self.output_dir}/ctlearn_model.keras"
         model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
             filepath=model_path,
             monitor=monitor,

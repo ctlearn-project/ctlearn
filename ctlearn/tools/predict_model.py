@@ -107,14 +107,14 @@ class PredictCTLearnModel(Tool):
     prefix : str
         Name of the reconstruction algorithm used to generate the dl2 data.
     load_type_model_from : pathlib.Path
-        Path to a Keras model file (Keras3) or directory (Keras2) for the classification of the primary particle type.
+        Path to a Keras model file (Keras3) for the classification of the primary particle type.
     load_energy_model_from : pathlib.Path
-        Path to a Keras model file (Keras3) or directory (Keras2) for the regression of the primary particle energy.
+        Path to a Keras model file (Keras3) for the regression of the primary particle energy.
     load_cameradirection_model_from : pathlib.Path
-        Path to a Keras model file (Keras3) or directory (Keras2) for the regression
+        Path to a Keras model file (Keras3) for the regression
         of the primary particle arrival direction based on camera coordinate offsets.
     load_skydirection_model_from : pathlib.Path
-        Path to a Keras model file (Keras3) or directory (Keras2) for the regression
+        Path to a Keras model file (Keras3) for the regression
         of the primary particle arrival direction based on spherical coordinate offsets.
     output_path : pathlib.Path
         Output path to save the dl2 prediction results.
@@ -228,7 +228,7 @@ class PredictCTLearnModel(Tool):
     load_type_model_from = Path(
         default_value=None,
         help=(
-            "Path to a Keras model file (Keras3) or directory (Keras2) for the classification "
+            "Path to a Keras model file (Keras3) for the classification "
             "of the primary particle type."
         ),
         allow_none=True,
@@ -240,7 +240,7 @@ class PredictCTLearnModel(Tool):
     load_energy_model_from = Path(
         default_value=None,
         help=(
-            "Path to a Keras model file (Keras3) or directory (Keras2) for the regression "
+            "Path to a Keras model file (Keras3) for the regression "
             "of the primary particle energy."
         ),
         allow_none=True,
@@ -252,7 +252,7 @@ class PredictCTLearnModel(Tool):
     load_cameradirection_model_from = Path(
         default_value=None,
         help=(
-            "Path to a Keras model file (Keras3) or directory (Keras2) for the regression "
+            "Path to a Keras model file (Keras3) for the regression "
             "of the primary particle arrival direction based on camera coordinate offsets."
         ),
         allow_none=True,
@@ -264,7 +264,7 @@ class PredictCTLearnModel(Tool):
     load_skydirection_model_from = Path(
         default_value=None,
         help=(
-            "Path to a Keras model file (Keras3) or directory (Keras2) for the regression "
+            "Path to a Keras model file (Keras3) for the regression "
             "of the primary particle arrival direction based on spherical coordinate offsets."
         ),
         allow_none=True,
@@ -435,7 +435,7 @@ class PredictCTLearnModel(Tool):
         Parameters
         ----------
         model_path : str
-            Path to a Keras model file (Keras3) or directory (Keras2).
+            Path to a Keras model file (Keras3).
 
         Returns
         -------
