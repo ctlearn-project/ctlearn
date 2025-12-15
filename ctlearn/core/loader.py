@@ -186,9 +186,6 @@ class DLDataLoader(Sequence):
                 ),
                 axis=1,
             )
-        # Temp fix for supporting keras2 & keras3
-        if int(keras.__version__.split(".")[0]) >= 3:
-            features = features["input"]
         return features, labels
 
     def _get_stereo_item(self, batch):
@@ -309,7 +306,4 @@ class DLDataLoader(Sequence):
             features = {"input": np.array(mono_feature_vectors)}
         if "stereo_feature_vectors" in batch.colnames:
             features = {"input": np.array(stereo_feature_vectors)}
-        # Temp fix for supporting keras2 & keras3
-        if int(keras.__version__.split(".")[0]) >= 3:
-            features = features["input"]
         return features, labels
