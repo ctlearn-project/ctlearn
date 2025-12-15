@@ -15,10 +15,10 @@ jobs:
       matrix:
         os: [ubuntu-22.04]
         python-version: ['3.12', '3.13', '3.14']
-        ctlearn-version: ['latest', 'nightly']
+        dl1dh-version: ['latest', 'nightly']
       max-parallel: 6
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.ctlearn-version == 'nightly' || matrix.python-version == '3.14' }}
+    continue-on-error: ${{ matrix.dl1dh-version == 'nightly' || matrix.python-version == '3.14' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -45,7 +45,7 @@ jobs:
           sudo apt-get install -y git
           pip install --upgrade pip
           pip install pylint pylint-exit anybadge eventio pytest flake8
-          if [ "${{ matrix.ctlearn-version }}" = "nightly" ]; then
+          if [ "${{ matrix.dl1dh-version }}" = "nightly" ]; then
             pip install git+https://github.com/cta-observatory/dl1-data-handler.git
           else
             pip install dl1-data-handler

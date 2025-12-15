@@ -22,6 +22,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 
 ]
 
@@ -35,7 +36,7 @@ dependencies = [
     "pyyaml",
     "scikit-learn",
     "numba",
-    "tensorflow>=2.20",
+    "tensorflow>=2.16",
     "pydot",
     "setuptools",
     "ctapipe[all]>=0.28",
