@@ -30,6 +30,7 @@ jobs:
           source $HOME/miniconda/etc/profile.d/conda.sh
           conda config --add channels conda-forge
           conda install -y mamba
+          eval "$(mamba shell hook --shell bash)"
 
       - name: Create Python environment
         run: |
