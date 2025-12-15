@@ -30,18 +30,17 @@ jobs:
           source $HOME/miniconda/etc/profile.d/conda.sh
           conda config --add channels conda-forge
           conda install -y mamba
-          eval "$(mamba shell hook --shell bash)"
 
       - name: Create Python environment
         run: |
           source $HOME/miniconda/etc/profile.d/conda.sh
           mamba create -y -n ctlearn python==${{ matrix.python-version }} -c conda-forge
-          mamba activate ctlearn
+          conda activate ctlearn
 
       - name: Install dependencies
         run: |
           source $HOME/miniconda/etc/profile.d/conda.sh
-          mamba activate ctlearn
+          conda activate ctlearn
           sudo apt-get update
           sudo apt-get install -y git
           pip install --upgrade pip
@@ -58,18 +57,18 @@ jobs:
       - name: Lint with flake8
         run: |
           source $HOME/miniconda/etc/profile.d/conda.sh
-          mamba activate ctlearn
+          conda activate ctlearn
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
       - name: Install package with pip
         run: |
           source $HOME/miniconda/etc/profile.d/conda.sh
-          mamba activate ctlearn
+          conda activate ctlearn
           pip install -e .
 
       - name: Run pytest
         run: |
           source $HOME/miniconda/etc/profile.d/conda.sh
-          mamba activate ctlearn
+          conda activate ctlearn
           pytest
