@@ -20,8 +20,6 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Astronomy",
     "Topic :: Scientific/Engineering :: Physics",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
 
@@ -29,7 +27,7 @@ classifiers = [
 
 requires-python = ">=3.12"
 dependencies = [
-    "dl1_data_handler>=0.14.5, <0.15",
+    "dl1_data_handler>=0.14.5",
     "astropy",
     "numpy",
     "pandas",
@@ -37,10 +35,10 @@ dependencies = [
     "pyyaml",
     "scikit-learn",
     "numba",
-    "tensorflow>=2.19,<2.21",
+    "tensorflow>=2.20",
     "pydot",
     "setuptools",
-    "ctapipe>=0.28.0",
+    "ctapipe[all]>=0.28",
 ]
 
 dynamic = ["version"]

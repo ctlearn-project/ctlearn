@@ -1,4 +1,3 @@
-
 name: CI
 
 on:
@@ -15,39 +14,61 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-22.04]
-        pyv: [ '3.12', '3.13', '3.14']
-      max-parallel: 5
+        python-version: ['3.12', '3.13', '3.14']
+        ctlearn-version: ['latest', 'nightly']
+      max-parallel: 6
     runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.ctlearn-version == 'nightly' || matrix.python-version == '3.14' }}
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python ${{ matrix.pyv }}
-      run: |
-        # Install Miniconda
-        wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
-        bash miniconda.sh -b -p $HOME/miniconda
-        echo "$HOME/miniconda/bin" >> $GITHUB_PATH
-        source $HOME/miniconda/bin/activate
-        # Install Mamba via conda (since we don't have mamba yet)
-        $HOME/miniconda/bin/conda config --add channels conda-forge
-        $HOME/miniconda/bin/conda install -y mamba=2.0.8
-        mamba install -y python=${{ matrix.pyv }}
-    - name: Add MKL_THREADING_LAYER variable
-      run: echo "MKL_THREADING_LAYER=GNU" >> $GITHUB_ENV
-    - name: Install dependencies with Mamba
-      run: |
-        source $HOME/miniconda/bin/activate
-        mamba env update --file environment.yml --name base
-    - name: Lint with flake8
-      run: |
-        source $HOME/miniconda/bin/activate
-        mamba install flake8
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: Install with pip
-      run: |
-        pip install -e .
-    - name: Test with pytest
-      run: |
-        source $HOME/miniconda/bin/activate
-        mamba install pytest
-        pytest
+      - uses: actions/checkout@v4
+
+      - name: Set up Miniconda
+        run: |
+          wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+          bash miniconda.sh -b -p $HOME/miniconda
+          echo "$HOME/miniconda/bin" >> $GITHUB_PATH
+          source $HOME/miniconda/etc/profile.d/conda.sh
+          conda config --add channels conda-forge
+          conda install -y mamba
+
+      - name: Create Python environment
+        run: |
+          source $HOME/miniconda/etc/profile.d/conda.sh
+          mamba create -y -n ctlearn python==${{ matrix.python-version }} -c conda-forge
+          mamba activate ctlearn
+
+      - name: Install dependencies
+        run: |
+          source $HOME/miniconda/etc/profile.d/conda.sh
+          mamba activate ctlearn
+          sudo apt-get update
+          sudo apt-get install -y git
+          pip install --upgrade pip
+          pip install pylint pylint-exit anybadge eventio pytest flake8
+          if [ "${{ matrix.ctlearn-version }}" = "nightly" ]; then
+            pip install git+https://github.com/cta-observatory/dl1-data-handler.git
+          else
+            pip install dl1-data-handler
+          fi
+
+      - name: Add MKL_THREADING_LAYER variable
+        run: echo "MKL_THREADING_LAYER=GNU" >> $GITHUB_ENV
+
+      - name: Lint with flake8
+        run: |
+          source $HOME/miniconda/etc/profile.d/conda.sh
+          mamba activate ctlearn
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+      - name: Install package with pip
+        run: |
+          source $HOME/miniconda/etc/profile.d/conda.sh
+          mamba activate ctlearn
+          pip install -e .
+
+      - name: Run pytest
+        run: |
+          source $HOME/miniconda/etc/profile.d/conda.sh
+          mamba activate ctlearn
+          pytest
