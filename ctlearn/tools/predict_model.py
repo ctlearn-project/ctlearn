@@ -65,12 +65,6 @@ DL2_TELESCOPE_GROUP = "/dl2/event/telescope"
 SUBARRAY_EVENT_KEYS = ["obs_id", "event_id"]
 TELESCOPE_EVENT_KEYS = ["obs_id", "event_id", "tel_id"]
 
-__all__ = [
-    "PredictCTLearnModel",
-    "MonoPredictCTLearnModel",
-    "StereoPredictCTLearnModel",
-]
-
 
 class PredictCTLearnModel(Tool):
     """

@@ -1,16 +1,14 @@
 """
 common pytest fixtures for tests in ctlearn.
-Credits to ctapipe for the original code.
 """
 
 import pytest
-
 from ctapipe.core import run_tool
 from ctapipe.utils import get_dataset_path
 
 @pytest.fixture(scope="session")
-def prod5_gamma_simtel_path():
-    return get_dataset_path("gamma_prod5.simtel.zst")
+def gamma_simtel_path():
+    return get_dataset_path("gamma_test_large.simtel.gz")
 
 @pytest.fixture(scope="session")
 def dl1_tmp_path(tmp_path_factory):
@@ -23,7 +21,7 @@ def r1_tmp_path(tmp_path_factory):
     return tmp_path_factory.mktemp("r1_")
 
 @pytest.fixture(scope="session")
-def dl1_gamma_file(dl1_tmp_path, prod5_gamma_simtel_path):
+def dl1_gamma_file(dl1_tmp_path, gamma_simtel_path):
     """
     DL1 file containing both images and parameters from a gamma simulation set.
     """
@@ -32,16 +30,16 @@ def dl1_gamma_file(dl1_tmp_path, prod5_gamma_simtel_path):
     output = dl1_tmp_path / "gamma.dl1.h5"
 
     argv = [
-        f"--input={prod5_gamma_simtel_path}",
+        f"--input={gamma_simtel_path}",
         f"--output={output}",
         "--write-images",
-        "--DataWriter.Contact.name=αℓℓ the äüöß",
+        "--SimTelEventSource.focal_length_choice=EQUIVALENT",
     ]
     assert run_tool(ProcessorTool(), argv=argv, cwd=dl1_tmp_path) == 0
     return output
 
 @pytest.fixture(scope="session")
-def r1_gamma_file(r1_tmp_path, prod5_gamma_simtel_path):
+def r1_gamma_file(r1_tmp_path, gamma_simtel_path):
     """
     R1 file containing both waveforms and parameters from a gamma simulation set.
     """
@@ -50,10 +48,10 @@ def r1_gamma_file(r1_tmp_path, prod5_gamma_simtel_path):
     output = r1_tmp_path / "gamma.r1.h5"
 
     argv = [
-        f"--input={prod5_gamma_simtel_path}",
+        f"--input={gamma_simtel_path}",
         f"--output={output}",
         f"--DataWriter.write_r1_waveforms=True",
-        "--DataWriter.Contact.name=αℓℓ the äüöß",
+        "--SimTelEventSource.focal_length_choice=EQUIVALENT",
     ]
     assert run_tool(ProcessorTool(), argv=argv, cwd=r1_tmp_path) == 0
     return output
