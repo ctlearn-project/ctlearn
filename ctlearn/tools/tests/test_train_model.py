@@ -39,15 +39,11 @@ def test_train_ctlearn_model(reco_task, dl1_gamma_file, dl1_proton_file, tmp_pat
 
     # Include background only for classification task
     if reco_task == "type":
-        allowed_tels = {7, 13, 15, 16, 17, 19}
         argv.extend([
             f"--background={background_dir}",
             "--pattern-background=*.dl1.h5",
-            f"--DLImageReader.allowed_tels={allowed_tels}",
             "--DLImageReader.enforce_subarray_equality=False",
         ])
-    else:
-        argv.extend(["--DLImageReader.allowed_tel_types=LST_LST_LSTCam"])
 
     # Run training
     assert run_tool(TrainCTLearnModel(), argv=argv, cwd=tmp_path) == 0
