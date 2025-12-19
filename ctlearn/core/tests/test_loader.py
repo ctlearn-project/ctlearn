@@ -1,17 +1,17 @@
-import pytest
 from traitlets.config.loader import Config
 
 from dl1_data_handler.reader import DLImageReader
 from ctlearn.core.loader import DLDataLoader
 
 
-def test_data_loader(dl1_tmp_path, dl1_gamma_file):
+def test_data_loader(dl1_gamma_file):
     """check"""
     # Create a configuration suitable for the test
     config = Config(
         {
             "DLImageReader": {
                 "allowed_tels": [4],
+                "focal_length_choice": "EQUIVALENT",
             },
         }
     )
@@ -34,4 +34,4 @@ def test_data_loader(dl1_tmp_path, dl1_gamma_file):
         and "skydirection" in labels
     )
     #  Check the shape of the features
-    assert features["input"].shape == (1, 110, 110, 2)
+    assert features.shape == (1, 110, 110, 2)

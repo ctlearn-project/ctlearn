@@ -28,22 +28,22 @@ CTLearn is a package under active development to run deep learning models to ana
 Installation for users
 ----------------------
 
-Download and install `Anaconda <https://www.anaconda.com/download/>`_\ , or, for a minimal installation, `Miniconda <https://conda.io/miniconda.html>`_.
 
-The following command will set up a conda virtual environment, add the
-necessary package channels, and install CTLearn specified version and its dependencies:
+Installation
+------------
+
+First, create and activate a fresh conda environment:
 
 .. code-block:: bash
 
-   CTLEARN_VER=0.10.3
-   wget https://raw.githubusercontent.com/ctlearn-project/ctlearn/v$CTLEARN_VER/environment.yml
-   conda env create -n [ENVIRONMENT_NAME] -f environment.yml
-   conda activate [ENVIRONMENT_NAME]
-   pip install ctlearn==$CTLEARN_VER
-   ctlearn -h
+   mamba create -n ctlearn -c conda-forge python==3.12 llvmlite
+   mamba activate ctlearn
 
+The lastest version fo this package can be installed as a pip package:
 
-This should automatically install all dependencies (NOTE: this may take some time, as by default MKL is included as a dependency of NumPy and it is very large).
+.. code-block:: bash
+
+   pip install ctlearn
 
 See the documentation for further information like `installation instructions for developers <https://ctlearn.readthedocs.io/en/latest/installation.html#installing-with-pip-setuptools-from-source-for-development>`_, `package usage <https://ctlearn.readthedocs.io/en/stable/usage.html>`_, and `dependencies <https://ctlearn.readthedocs.io/en/stable/installation.html#dependencies>`_ among other topics.
 
