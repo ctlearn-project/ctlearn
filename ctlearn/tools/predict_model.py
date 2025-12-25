@@ -330,8 +330,8 @@ class PredictCTLearnModel(Tool):
         **flag(
             "dl2-subarray",
             "PredictCTLearnModel.dl2_subarray",
-            "Include dl2 telescope-event-wise data in the output file",
-            "Exclude dl2 telescope-event-wise data in the output file",
+            "Include dl2 subarray-event-wise data in the output file",
+            "Exclude dl2 subarray-event-wise data in the output file",
         ),
         **flag(
             "use-HDF5Merger",
