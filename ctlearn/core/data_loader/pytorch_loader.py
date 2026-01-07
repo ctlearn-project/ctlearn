@@ -8,11 +8,39 @@ from astropy import units as u
 import random
 import cv2
 
-import concurrent.futures
+#import concurrent.futures
 
+from astropy.time import Time
+from astropy.coordinates import AltAz, SkyCoord
+from ctapipe.coordinates import CameraFrame
+from astropy import units as u
+
+LST_EPOCH = Time("2018-10-01T00:00:00", scale="utc")
 
 class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
- 
+    """
+    PyTorch data loader for Cherenkov telescope data.
+    
+    This class implements the PyTorch Dataset interface to provide efficient
+    data loading with support for data augmentation, normalization, and asynchronous
+    prefetching. It handles both monoscopic and stereoscopic observation modes.
+    
+    Inherits from:
+        Dataset: PyTorch Dataset for data loading
+        BaseDLDataLoader: Base class providing common data loading functionality
+    
+    Attributes:
+        is_training (bool): Whether the loader is used for training
+        executor: ThreadPoolExecutor for asynchronous batch prefetching
+        use_augmentation (bool): Whether to apply data augmentation
+        use_clean (bool): Whether to use clean events filtering
+        use_clean_dvr (bool): Whether to use DVR-based event filtering
+        task (Task): The task type (classification, energy, direction)
+        Various augmentation probability parameters
+        Various normalization parameters (mean and std)
+        hillas_names (list): List of Hillas parameter names to extract
+    """
+
     def __init__(
         self,
         tasks,
@@ -24,9 +52,12 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
     ):
 
         self.is_training=is_training
-        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-        self._next_batch_future = None
-
+        # self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)  
+        # self.max_prefetch = 8
+        # self.prefetch_queue = []
+        # self._next_batch_idx = 0     
+        # self._next_batch_future = None
+        
         self.parameter = parameters
         self.use_augmentation = use_augmentation
         self.use_clean = parameters["normalization"]["use_clean"]
@@ -214,25 +245,52 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
             features, labels = self._get_stereo_item(batch)
         return features, labels
     
+    def _fill_prefetch_queue(self):
+        while (
+            len(self.prefetch_queue) < self.max_prefetch
+            and self._next_batch_idx < len(self)
+        ):
+            future = self.executor.submit(
+                self._fetch_batch, self._next_batch_idx
+            )
+            self.prefetch_queue.append(future)
+            self._next_batch_idx += 1
+    
     # Fetching batches
     def __getitem__(self, index):
-   
-        data_idx = index
-        # data_idx = index % int((self.total_len/self.T)/self.batch_size)
-        t = index // int(np.ceil(len(self.indices)/self.T/self.batch_size))
-   
-        # If this is the first call, fetch synchronously, and schedule the next
-        if self._next_batch_future is None:
-            features, labels = self._fetch_batch(data_idx)
-        else:
-            features, labels = self._next_batch_future.result()  # Wait for the prefetch to finish
+        """
+        Returns a prefetched batch for faster data loading.
 
-        # Schedule the next batch prefetch
-        if data_idx + 1 < len(self):
-            self._next_batch_future = self.executor.submit(self._fetch_batch, data_idx + 1)
-        else:
-            self._next_batch_future = None  # No more batches
+        Parameters
+        ----------
+        index : int
+            Index of the batch.
 
+        Returns
+        -------
+        features : dict
+            Dictionary containing input tensors.
+        labels : dict
+            Dictionary containing labels for each task.
+        t : int
+            Virtual batch index for tracking.
+        """
+
+        # Virtual batch index
+        t = index // int(np.ceil(len(self.indices) / self.T / self.batch_size))
+
+        # # --- 1️⃣ Ensure prefetch queue is filled ---
+        # if len(self.prefetch_queue) == 0:
+        #     self._fill_prefetch_queue()
+
+        # # --- 2️⃣ Pop the next ready batch ---
+        # future = self.prefetch_queue.pop(0)
+        # features, labels = future.result()  # blocks only if needed
+
+        # # --- 3️⃣ Refill queue to keep 4 prefetched ---
+        # self._fill_prefetch_queue()
+        
+        features, labels = self._fetch_batch(index)
         return features, labels, t
 
     # def __getitem__(self, index):
@@ -359,13 +417,6 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
 
     #     return sky_coords_alt, sky_coords_az
     def cam_to_alt_az(self, tel_id, focal_length, pix_rotation, tel_az, tel_alt, cam_x, cam_y):
-
-        from astropy.time import Time
-        from astropy.coordinates import AltAz, SkyCoord
-        from ctapipe.coordinates import CameraFrame
-        from astropy import units as u
-
-        LST_EPOCH = Time("2018-10-01T00:00:00", scale="utc")
         sky_coords_alt = []
         sky_coords_az = []
 
@@ -639,27 +690,38 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
                 
         return features_out, labels
 
-    # TODO: Not adapted to pytorch
     def _get_stereo_item(self, batch):
         """
-        Retrieve the features and labels for one batch of stereoscopic data.
+        Retrieve features and labels for one batch of stereoscopic data.
 
-        This method is called to retrieve the features and labels for one batch of
-        stereoscopic data. The original batch is grouped to retrieve the telescope
-        data for each event and then the telescope images or waveforms are stored
-        by the hillas intensity or stacked if required. Feature vectors can also
-        be retrieved if available for ``telescope``- and ``subarray``level. The
-        labels are set up based on the tasks specified.
+        This method processes multi-telescope events, grouping telescope data
+        by event, optionally sorting by intensity, and stacking images if requested.
+        It also handles both telescope-level and subarray-level feature vectors.
 
-        Parameters:
-        -----------
-        batch : astropy.table.Table
-            A table containing the data for the batch.
+        Args:
+            batch (astropy.table.Table): Table containing stereoscopic event data
+                Expected columns include all mono columns plus:
+                - obs_id: Observation run identifier
+                - event_id: Event identifier within observation
+                - tel_type_id: Telescope type identifier
+                - hillas_intensity: For sorting (if sort_by_intensity=True)
+                - mono_feature_vectors: Telescope-level features (optional)
+                - stereo_feature_vectors: Subarray-level features (optional)
 
         Returns:
-        --------
-        tuple
-            A tuple containing the input data as features and the corresponding labels.
+            tuple: (features_out, labels) where:
+                - features_out (dict): Contains 'image' and 'peak_time' tensors
+                - labels (dict): Contains task-specific labels
+                
+        Note:
+            Events are grouped by (obs_id, event_id, tel_type_id, true_shower_primary_class)
+            for simulations, or by (obs_id, event_id, tel_type_id) for observations.
+            Labels are extracted from the first telescope in each group since they
+            are event-level quantities (same for all telescopes in an event).
+            
+        TODO:
+            This method needs full adaptation for PyTorch tensors and proper
+            handling of stereoscopic image stacking similar to _get_mono_item.
         """
         labels = {}
         if self.DLDataReader.process_type == ProcessType.Simulation:
@@ -761,5 +823,3 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         features_out["image"] = image
         features_out["peak_time"] = peak_time
         return features_out, labels
-
-    # Include _get_mono_item and _get_stereo_item as needed

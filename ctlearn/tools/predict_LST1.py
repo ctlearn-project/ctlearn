@@ -187,7 +187,7 @@ class LST1PredictionTool(Tool):
                 "cleaned_image",
                 "peak_time",
                 "relative_peak_time",
-                "cleaned_peak_time",
+                "cleaned_peak_time", 
                 "cleaned_relative_peak_time",
             ]
         ),

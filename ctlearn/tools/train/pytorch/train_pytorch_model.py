@@ -1,5 +1,5 @@
 from ctapipe.core.traits import Path
-
+from torch.utils.data import DataLoader
 from ctlearn.tools.train.pytorch.CTLearnPL import CTLearnTrainer, CTLearnPL
 try:
     import torch
@@ -164,6 +164,7 @@ class TrainPyTorchModel(TrainCTLearnModel):
         training_indices = indices[n_validation_examples:]
         validation_indices = indices[:n_validation_examples]
 
+        self.dl1dh_reader.channels = ["cleaned_image", "cleaned_peak_time"]
         # --------------------------------------------------------------------
         # Reduce for testing 
         # --------------------------------------------------------------------
@@ -183,8 +184,8 @@ class TrainPyTorchModel(TrainCTLearnModel):
             self.log.info(f"Using class weights from configuration file: {self.parameters['class_weight']}")
             
         print("BASE TRAIN FRAMEWORK", self.framework_type)
-        
-        self.training_loader = DLDataLoader.create(
+
+        self.train_dataset = DLDataLoader.create(
             framework=self.framework_type,
             DLDataReader=self.dl1dh_reader,
             indices=training_indices,
@@ -197,9 +198,19 @@ class TrainPyTorchModel(TrainCTLearnModel):
             use_augmentation=self.parameters["augmentation"]["use_augmentation"],
             is_training=True,
         )
+        self.training_loader = DataLoader(
+            dataset=self.train_dataset,
+            batch_size=None,
+            batch_sampler=None,
+            num_workers=4,       
+            pin_memory=True, 
+            prefetch_factor=4,    
+            persistent_workers=True
+        )
+        
         print(len(self.training_loader))
         
-        self.validation_loader = DLDataLoader.create(
+        self.validation_dataset = DLDataLoader.create(
             framework=self.framework_type,
             DLDataReader=self.dl1dh_reader,
             indices=validation_indices,
@@ -212,8 +223,17 @@ class TrainPyTorchModel(TrainCTLearnModel):
             use_augmentation=False,
             is_training=False,
         )
+        self.validation_loader = DataLoader(
+            dataset=self.validation_dataset,
+            batch_size=None,
+            batch_sampler=None,
+            num_workers=4,       
+            pin_memory=True, 
+            prefetch_factor=4,    
+            persistent_workers=True
+        )
         
-        print(len(self.validation_loader))
+        print(len(self.validation_dataset))
 
 
     def start(self):
@@ -308,6 +328,8 @@ class TrainPyTorchModel(TrainCTLearnModel):
                 k=self.save_k,
                 train_loader= self.training_loader,
                 val_loader= self.validation_loader,
+                train_dataset=self.train_dataset,
+                val_dataset=self.validation_dataset
             )
             
             if trainer_pl.is_global_zero:

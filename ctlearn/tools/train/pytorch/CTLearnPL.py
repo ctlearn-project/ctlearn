@@ -143,7 +143,9 @@ class CTLearnPL(pl.LightningModule):
         parameters,
         train_loader=None,
         val_loader=None,
-        test_val_loader=None,        
+        test_val_loader=None,
+        train_dataset=None,
+        val_dataset=None,        
         num_inputs=1,
         k=3,
   
@@ -183,9 +185,12 @@ class CTLearnPL(pl.LightningModule):
         self.num_inputs = num_inputs
         self.train_loader = train_loader
         self.val_loader = val_loader
+        self.train_dataset = train_dataset
+        self.val_dataset = val_dataset
         self.test_val_loader = test_val_loader
         self.class_names = ["gamma", "proton"]
-
+        self.val_protoness = []
+        self.val_gammaness = []
         # Hyperparameters
         self.set_hyperparameters(parameters)
 
@@ -790,8 +795,10 @@ class CTLearnPL(pl.LightningModule):
     #      self.dummy_tensor = self.occupy_free_gpu_memory(self.device)
     # ----------------------------------------------------------------------------------------------------------
     def on_train_batch_start(self, batch, batch_idx):
-        if batch_idx == 5 and not hasattr(self, "dummy_tensor"):
-             self.dummy_tensor = self.occupy_free_gpu_memory(self.device)
+        if self.device != torch.device("cpu"):
+            if batch_idx == 5 and not hasattr(self, "dummy_tensor"):
+                self.dummy_tensor = self.occupy_free_gpu_memory(self.device)
+
     # ----------------------------------------------------------------------------------------------------------
     def training_step(self, batch, batch_idx):
         # ------------------------------------------------------------------
@@ -1116,7 +1123,24 @@ class CTLearnPL(pl.LightningModule):
                             test_val=False,
                             training=False,
                         )
-                    
+                self.val_protoness.extend(
+                    torch.softmax(classification_pred_, dim=1)[:, 0]
+                    .float()
+                    .cpu()
+                    .detach()
+                    .numpy()
+                    .flatten()
+                    .tolist()
+                )
+                self.val_gammaness.extend(
+                    torch.softmax(classification_pred_, dim=1)[:, 1]
+                    .float()
+                    .cpu()
+                    .detach()
+                    .numpy()
+                    .flatten()
+                    .tolist()
+                )
                 # Log batch loss and accuracy on the progress bar
                 # if dataloader_idx == 0:
                 #     if self.is_difussion:
@@ -1134,24 +1158,24 @@ class CTLearnPL(pl.LightningModule):
                 #             training=False,
                 #         )
                         
-                    self.log(
-                        "val_acc",
-                        accuracy * 100,
-                        on_step=True,
-                        on_epoch=False,
-                        prog_bar=True,
-                        logger=False,
-                        batch_size=batch_size,
-                    )
-                    self.log(
-                        "val_prec",
-                        precision*100,
-                        on_step=True,
-                        on_epoch=False,
-                        prog_bar=True,
-                        logger=False,
-                        batch_size=batch_size,
-                    )                    
+                self.log(
+                    "val_acc",
+                    accuracy * 100,
+                    on_step=True,
+                    on_epoch=False,
+                    prog_bar=True,
+                    logger=False,
+                    batch_size=batch_size,
+                )
+                self.log(
+                    "val_prec",
+                    precision*100,
+                    on_step=True,
+                    on_epoch=False,
+                    prog_bar=True,
+                    logger=False,
+                    batch_size=batch_size,
+                )                    
             # ---------------------------------------
             # Direction
             # ---------------------------------------
@@ -1179,11 +1203,11 @@ class CTLearnPL(pl.LightningModule):
                     cam_x = pred_dx
                     cam_y = pred_dy
 
-                    pred_alt, pred_az = self.val_loader.cam_to_alt_az(labels["tel_ids"].cpu().detach().numpy(), labels["focal_length"].cpu().detach().numpy(), labels["pix_rotation"].cpu().detach().numpy(),labels["tel_az"].cpu().detach().numpy(),labels["tel_alt"].cpu().detach().numpy(), cam_x, cam_y)
+                    pred_alt, pred_az = self.val_dataset.cam_to_alt_az(labels["tel_ids"].cpu().detach().numpy(), labels["focal_length"].cpu().detach().numpy(), labels["pix_rotation"].cpu().detach().numpy(),labels["tel_az"].cpu().detach().numpy(),labels["tel_alt"].cpu().detach().numpy(), cam_x, cam_y)
                     
                     labels_dx_dy = labels_direction[:, 0:2]
                     
-                    true_alt, true_az = self.val_loader.cam_to_alt_az(labels["tel_ids"].cpu().detach().numpy(), labels["focal_length"].cpu().detach().numpy(), labels["pix_rotation"].cpu().detach().numpy(),labels["tel_az"].cpu().detach().numpy(),labels["tel_alt"].cpu().detach().numpy(), labels_dx_dy[:,0].float().cpu().detach().numpy(), labels_dx_dy[:,1].float().cpu().detach().numpy())
+                    true_alt, true_az = self.val_dataset.cam_to_alt_az(labels["tel_ids"].cpu().detach().numpy(), labels["focal_length"].cpu().detach().numpy(), labels["pix_rotation"].cpu().detach().numpy(),labels["tel_az"].cpu().detach().numpy(),labels["tel_alt"].cpu().detach().numpy(), labels_dx_dy[:,0].float().cpu().detach().numpy(), labels_dx_dy[:,1].float().cpu().detach().numpy())
 
                     self.val_alt_pred_list.extend(np.radians(pred_alt))
                     self.val_az_pred_list.extend(np.radians(pred_az))
@@ -1338,6 +1362,40 @@ class CTLearnPL(pl.LightningModule):
                     },
                     self.current_epoch,
                 )
+            # Add the protonness and gammaness histogramns
+            self.val_protoness = np.array(self.val_protoness)
+            self.val_gammaness = np.array(self.val_gammaness)
+            if self.trainer.is_global_zero:
+                fig, ax = plt.subplots(figsize=(8, 6))
+                ax.hist(
+                    self.val_protoness,
+                    bins=50,
+                    alpha=0.7,
+                    label="Protonness",
+                    color="blue",
+                    density=True,
+                )
+                ax.hist(
+                    self.val_gammaness,
+                    bins=50,
+                    alpha=0.7,
+                    label="Gammaness",
+                    color="orange",
+                    density=True,
+                )
+                ax.set_xlabel("Score")
+                ax.set_ylabel("Density")
+                ax.set_title("Protonness and Gammaness Distribution - Validation")
+                ax.legend()
+                self.logger.experiment.add_figure(
+                    "Protonness and Gammaness Distribution/Validation",
+                    fig,
+                    self.current_epoch,
+                )
+                plt.close(fig)
+            # Clear lists
+            self.val_protoness = []
+            self.val_gammaness = []
                 # return 0
         # ---------------------------------------
         # Direction

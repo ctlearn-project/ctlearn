@@ -156,7 +156,7 @@ class LST1PredictionTool(Tool):
                 "cleaned_relative_peak_time",
             ]
         ),
-        default_value=["image", "peak_time"],
+        default_value=["cleaned_image", "cleaned_peak_time"],
         allow_none=False,
         help=(
             "Set the input channels to be loaded from the DL1 event data. "
@@ -395,18 +395,19 @@ class LST1PredictionTool(Tool):
             np.ones((len(self.trigger_table), 1), dtype=bool), name="tel_with_trigger"
         )
         self.trigger_table.add_column(event_type, name="event_type")
+        
         # Save the dl1 subrray trigger table to the output file
-        write_table(
-            self.trigger_table,
-            self.output_path,
-            "/dl1/event/subarray/trigger",
-            overwrite=self.overwrite,
-        )
-        self.log.info(
-            "DL1 subarray trigger table was stored in '%s' under '%s'",
-            self.output_path,
-            "/dl1/event/subarray/trigger",
-        )
+        # write_table(
+        #     self.trigger_table,
+        #     self.output_path,
+        #     "/dl1/event/subarray/trigger",
+        #     overwrite=self.overwrite,
+        # )
+        # self.log.info(
+        #     "DL1 subarray trigger table was stored in '%s' under '%s'",
+        #     self.output_path,
+        #     "/dl1/event/subarray/trigger",
+        # )
         # Create the dl1 parameters table
         self.parameter_table.rename_column("intensity", "hillas_intensity")
         self.parameter_table.rename_column("x", "hillas_x")
@@ -666,6 +667,12 @@ class LST1PredictionTool(Tool):
                 rotation=self.pix_rotation,
                 telescope_pointing=tel_pointing,
             )
+            ## Remove (save the cam_coord_offset_x, cam_coord_offset_y) predicted by the model in a pickel file
+            
+            # with open('/lhome/ext/ucm147/ucm1477/ctlearn/test_local_cristian/cam_coord_offset_test.pkl', 'wb') as f:
+            #     import pickle
+            #     pickle.dump((cam_coord_offset_x, cam_coord_offset_y), f)
+            #     print('Pickell camera_coordinates saved')
             # Set the camera coordinate offset
             cam_coord_offset = SkyCoord(
                 x=u.Quantity(cam_coord_offset_x, unit=u.m),

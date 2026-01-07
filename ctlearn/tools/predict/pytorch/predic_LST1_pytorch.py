@@ -1,27 +1,35 @@
+"""
+PyTorch prediction module for LST1 telescope data.
+This module provides functionality to load trained models and perform predictions
+on DL1 level data for particle type classification, energy estimation, and direction reconstruction.
+"""
+
 from ctlearn.core.pytorch.net_utils import create_model, ModelHelper
-from ctlearn.tools.train.pytorch.utils import (
-    str_list_to_enum_list,
-    sanity_check,
-    read_configuration,
-    create_experiment_folder,
-    expected_structure,
-)
 import torch
 from ctlearn.core.ctlearn_enum import Task, Mode
 from ctapipe.io import read_table
 from astropy.table import join
-from dl1_data_handler.reader import (
-    get_unmapped_image
-)
+from dl1_data_handler.reader import get_unmapped_image
 import numpy as np
 from tqdm import tqdm
-
 from pytorch_lightning.callbacks import Callback
 
-from ctlearn.tools.train.pytorch.CTLearnPL import CTLearnTrainer
-
 class GPUStatsLogger(Callback):
+    """
+    PyTorch Lightning callback to log GPU memory statistics during training.
+    
+    This callback tracks GPU memory allocation and reservation at the end of each training epoch
+    and logs the statistics to TensorBoard.
+    """
+    
     def on_train_epoch_end(self, trainer, pl_module):
+        """
+        Called at the end of each training epoch to log GPU memory statistics.
+        
+        Args:
+            trainer: PyTorch Lightning trainer instance
+            pl_module: The LightningModule being trained
+        """
         mem_allocated = torch.cuda.memory_allocated()
         mem_reserved = torch.cuda.memory_reserved()
         
@@ -31,176 +39,190 @@ class GPUStatsLogger(Callback):
         trainer.logger.experiment.add_scalar(
             "gpu_mem_reserved", mem_reserved, global_step=trainer.current_epoch
         )
-        
 
-from pytorch_lightning.callbacks import Callback
 
-from ctlearn.tools.train.pytorch.CTLearnPL import CTLearnTrainer
-
-class GPUStatsLogger(Callback):
-    def on_train_epoch_end(self, trainer, pl_module):
-        mem_allocated = torch.cuda.memory_allocated()
-        mem_reserved = torch.cuda.memory_reserved()
-        
-        trainer.logger.experiment.add_scalar(
-            "gpu_mem_allocated", mem_allocated, global_step=trainer.current_epoch
-        )
-        trainer.logger.experiment.add_scalar(
-            "gpu_mem_reserved", mem_reserved, global_step=trainer.current_epoch
-        )
-        
 def predictions(self):
+    """
+    Perform predictions on input DL1 data using trained models.
+    
+    This function processes the input file in batches, applies quality cuts,
+    and generates predictions for particle type, energy, and/or direction
+    depending on the configured tasks.
+    
+    Returns:
+        tuple: Contains the following arrays:
+            - event_id: Event identifiers
+            - tel_azimuth: Telescope azimuth angles
+            - tel_altitude: Telescope altitude angles
+            - trigger_time: Event trigger times
+            - prediction: Particle type classification scores
+            - energy: Reconstructed energy values
+            - cam_coord_offset_x: Camera coordinate offset in x
+            - cam_coord_offset_y: Camera coordinate offset in y
+            - classification_fvs: Classification feature vectors
+            - energy_fvs: Energy estimation feature vectors
+            - direction_fvs: Direction reconstruction feature vectors
+    """
+    # Optimize batch size if requested
     if self.optim_batch_size:
-        bacht_size_finded = False
-        bacht = 256
+        batch_size_found = False
+        batch = 256
         step = 16
-        while bacht_size_finded == False:
+        
+        while not batch_size_found:
             from ctlearn.tools.predict.utils.optimaze_batch_size import test_batch
 
+            # Load a test batch to find optimal batch size
             dl1_table = read_table(
-                self.input_url, self.image_table_path, start=0, stop=bacht
+                self.input_url, self.image_table_path, start=0, stop=batch
             )
-            dl1_table = join(
-                left=dl1_table,
-                right=self.parameter_table,
-                keys=["event_id"],
-            )
-            dl1_table = join(
-                left=dl1_table,
-                right=self.trigger_table,
-                keys=["event_id"],
-            )
+            dl1_table = join(left=dl1_table, right=self.parameter_table, keys=["event_id"])
+            dl1_table = join(left=dl1_table, right=self.trigger_table, keys=["event_id"])
 
+            # Prepare test data
             data = []
             for event in dl1_table:
                 image = get_unmapped_image(dl1_table[0], self.channels, self.transforms)
                 data.append(self.image_mapper.map_image(image))
-                input_data = {"input": np.array(data)}
+            input_data = {"input": np.array(data)}
             
-            imgs = input_data['input'][:,:,:,0]
+            imgs = input_data['input'][:, :, :, 0]
             if len(self.channels) == 2:
-                peak_time = input_data['input'][:,:,:,1]
+                peak_time = input_data['input'][:, :, :, 1]
 
+            # Test batch size for each configured task
             for task in self.tasks:
                 if task == Task.type:
-                    bacht_size_finded = not test_batch(self.type_model,torch.tensor(imgs).unsqueeze(1).to(self.device) , torch.tensor(peak_time).unsqueeze(1).to(self.device) , self.device)
-
+                    batch_size_found = not test_batch(
+                        self.type_model,
+                        torch.tensor(imgs).unsqueeze(1).to(self.device),
+                        torch.tensor(peak_time).unsqueeze(1).to(self.device),
+                        self.device
+                    )
                 if task == Task.energy:
-                    bacht_size_finded = not test_batch(self.energy_model,torch.tensor(imgs).unsqueeze(1).to(self.device) , torch.tensor(peak_time).unsqueeze(1).to(self.device) , self.device)
-
+                    batch_size_found = not test_batch(
+                        self.energy_model,
+                        torch.tensor(imgs).unsqueeze(1).to(self.device),
+                        torch.tensor(peak_time).unsqueeze(1).to(self.device),
+                        self.device
+                    )
                 if task in [Task.cameradirection, Task.skydirection, Task.direction]:
-                    bacht_size_finded = not test_batch(self.cameradirection_model, torch.tensor(imgs).unsqueeze(1).to(self.device) , torch.tensor(peak_time).unsqueeze(1).to(self.device) , self.device)
-            bacht += step
-            if bacht_size_finded == False:
-                self.log.info(f"Batch size: {bacht} OK")
-        self.batch_size = bacht - step
-        self.log.info(f"Optimized batch size: {self.batch_size}")
+                    batch_size_found = not test_batch(
+                        self.cameradirection_model,
+                        torch.tensor(imgs).unsqueeze(1).to(self.device),
+                        torch.tensor(peak_time).unsqueeze(1).to(self.device),
+                        self.device
+                    )
+            
+            batch += step
+            if not batch_size_found:
+                self.log.info(f"Batch size: {batch} OK")
         
+        self.batch_size = batch - step
+        self.log.info(f"Optimized batch size: {self.batch_size}")
+    
+    # Initialize output arrays
     event_id, tel_azimuth, tel_altitude, trigger_time = [], [], [], []
     prediction, energy, cam_coord_offset_x, cam_coord_offset_y = [], [], [], []
     classification_fvs, energy_fvs, direction_fvs = [], [], []
     
-    for start in tqdm(range(0, self.table_length, self.batch_size), desc="Procesing input file"):
+    # Process input file in batches
+    for start in tqdm(range(0, self.table_length, self.batch_size), desc="Processing input file"):
         stop = min(start + self.batch_size, self.table_length)
         self.log.debug("Processing chunk from '%d' to '%d'.", start, stop - 1)
-        # Read the data
-        dl1_table = read_table(
-            self.input_url, self.image_table_path, start=start, stop=stop
-        )
-        # Join the dl1 table with the parameter table to perform quality selection
-        dl1_table = join(
-            left=dl1_table,
-            right=self.parameter_table,
-            keys=["event_id"],
-        )
-        dl1_table = join(
-            left=dl1_table,
-            right=self.trigger_table,
-            keys=["event_id"],
-        )
-        # Initialize a boolean mask to True for all events in the sliced dl1 table
+        
+        # Read and join tables
+        dl1_table = read_table(self.input_url, self.image_table_path, start=start, stop=stop)
+        dl1_table = join(left=dl1_table, right=self.parameter_table, keys=["event_id"])
+        dl1_table = join(left=dl1_table, right=self.trigger_table, keys=["event_id"])
+        
+        # Apply quality selection
         passes_quality_checks = np.ones(len(dl1_table), dtype=bool)
-        # Quality selection based on the dl1b parameter
         if self.quality_query:
             passes_quality_checks = self.quality_query.get_table_mask(dl1_table)
-        # Apply the mask to filter events that are not fufilling the quality criteria
         dl1_table = dl1_table[passes_quality_checks]
+        
         if len(dl1_table) == 0:
             self.log.debug("No events passed the quality selection.")
             continue
+        
+        # Prepare input data
         data = []
         for event in dl1_table:
-            # Get the unmapped image
             image = get_unmapped_image(event, self.channels, self.transforms)
             data.append(self.image_mapper.map_image(image))
         input_data = {"input": np.array(data)}
         
+        # Store metadata
         event_id.extend(dl1_table["event_id"].data)
         tel_azimuth.extend(dl1_table["tel_az"].data)
         tel_altitude.extend(dl1_table["tel_alt"].data)
         trigger_time.extend(dl1_table["time"].mjd)
 
-        imgs = input_data['input'][:,:,:,0]
-        if len(self.channels)==2:
-            peak_time = input_data['input'][:,:,:,1]
+        # Extract and clean image data
+        imgs = input_data['input'][:, :, :, 0]
+        if len(self.channels) == 2:
+            peak_time = input_data['input'][:, :, :, 1]
             peak_time[peak_time < 0] = 0
             peak_time[np.isnan(peak_time)] = 0
             peak_time[np.isinf(peak_time)] = 0
-            
+        
         imgs[imgs < 0] = 0
         imgs[np.isnan(imgs)] = 0
         imgs[np.isinf(imgs)] = 0
 
-        feture_vector = True
+        feature_vector = True
+        
+        # Run predictions for each configured task
         for task in self.tasks:
             if task == Task.type:
-                imgs = (imgs - self.type_mu) / self.type_sigma
-                                
+                # Particle type classification
                 if len(self.channels) == 2:
-                    peak_time = (peak_time - self.type_mu) / self.type_sigma
-
                     classification_pred, energy_pred, direction_pred = self.type_model(
-                        torch.tensor(imgs).unsqueeze(1).to(self.device) , torch.tensor(peak_time).unsqueeze(1).to(self.device) 
+                        torch.tensor(imgs).unsqueeze(1).to(self.device),
+                        torch.tensor(peak_time).unsqueeze(1).to(self.device)
                     )
                 else:
-                    classification_pred, energy_pred, direction_pred = self.type_model(torch.tensor(imgs).unsqueeze(1).to(self.device))
-                    
-                prediction.extend(torch.softmax(classification_pred[0],dim=1).cpu().detach().numpy()[:,0])
+                    classification_pred, energy_pred, direction_pred = self.type_model(
+                        torch.tensor(imgs).unsqueeze(1).to(self.device)
+                    )
+                
+                prediction.extend(torch.softmax(classification_pred[0], dim=1).cpu().detach().numpy()[:, 1])
                 classification_fvs.extend(classification_pred[1].cpu().detach().numpy())
                 
             elif task == Task.energy:
-                
-                imgs = (imgs - self.energy_mu) / self.energy_sigma
-                
+                # Energy estimation
                 if len(self.channels) == 2:
-                    peak_time = (peak_time - self.energy_mu) / self.energy_sigma
                     classification_pred, energy_pred, direction_pred = self.energy_model(
-                        torch.tensor(imgs).unsqueeze(1).to(self.device) , torch.tensor(peak_time).unsqueeze(1).to(self.device) 
+                        torch.tensor(imgs).unsqueeze(1).to(self.device),
+                        torch.tensor(peak_time).unsqueeze(1).to(self.device)
                     )
                 else:
-                    classification_pred, energy_pred, direction_pred = self.energy_model(torch.tensor(imgs).unsqueeze(1).to(self.device))
-                    
+                    classification_pred, energy_pred, direction_pred = self.energy_model(
+                        torch.tensor(imgs).unsqueeze(1).to(self.device)
+                    )
+                
                 energy.extend(energy_pred[0].cpu().detach().numpy())
-                if feture_vector:
+                if feature_vector:
                     energy_fvs.extend(energy_pred[1].cpu().detach().numpy())
                 else:
                     energy_fvs.extend(np.array([[0]] * len(energy_pred[0])))
 
-            elif task == Task.cameradirection or task == Task.skydirection or task == Task.direction:
-                
-                imgs = (imgs - self.dir_mu) / self.dir_sigma
-                
+            elif task in [Task.cameradirection, Task.skydirection, Task.direction]:
+                # Direction reconstruction
                 if len(self.channels) == 2:
-                    peak_time = (peak_time - self.dir_mu) / self.dir_sigma
                     classification_pred, energy_pred, direction_pred = self.dirrection_model(
-                        torch.tensor(imgs).unsqueeze(1).to(self.device) , torch.tensor(peak_time).unsqueeze(1).to(self.device) 
+                        torch.tensor(imgs).unsqueeze(1).to(self.device),
+                        torch.tensor(peak_time).unsqueeze(1).to(self.device)
                     )
                 else:
-                    classification_pred, energy_pred, direction_pred = self.dirrection_model(torch.tensor(imgs).unsqueeze(1).to(self.device))
-                    
-                cam_coord_offset_x.extend(direction_pred[0][:,0].float().cpu().detach().numpy())
-                cam_coord_offset_y.extend(direction_pred[0][:,1].float().cpu().detach().numpy())
-                if feture_vector:
+                    classification_pred, energy_pred, direction_pred = self.dirrection_model(
+                        torch.tensor(imgs).unsqueeze(1).to(self.device)
+                    )
+                
+                cam_coord_offset_x.extend(direction_pred[0][:, 0].float().cpu().detach().numpy())
+                cam_coord_offset_y.extend(direction_pred[0][:, 1].float().cpu().detach().numpy())
+                if feature_vector:
                     direction_fvs.extend(direction_pred[1].cpu().detach().numpy())
                 else:
                     direction_fvs.extend(np.array([[0]] * len(direction_pred[0])))
@@ -209,56 +231,59 @@ def predictions(self):
                 raise ValueError(
                     f"task:{task.name} is not supported. Task must be type, direction or energy"
                 )
-    return event_id, tel_azimuth, tel_altitude, trigger_time, prediction, energy, cam_coord_offset_x, cam_coord_offset_y, classification_fvs, energy_fvs, direction_fvs
+    
+    return (event_id, tel_azimuth, tel_altitude, trigger_time, prediction, energy,
+            cam_coord_offset_x, cam_coord_offset_y, classification_fvs, energy_fvs, direction_fvs)
+
 
 def load_pytorch_model(self):
+    """
+    Load PyTorch models from checkpoints for the configured tasks.
+    
+    This function creates and loads models for particle type classification,
+    energy estimation, and/or direction reconstruction based on the tasks
+    specified in the configuration.
+    
+    Returns:
+        torch.nn.Module: The last loaded model (for compatibility)
+    """
+    model = None
+    
     for task in self.tasks:
+        # Create model based on task type
         if task == Task.type:
             model_net = create_model(self.parameters["model"]["model_type"])
+            check_point_path = self.parameters["data"]["type_checkpoint"]
             
         elif task == Task.energy:
             model_net = create_model(self.parameters["model"]["model_energy"])
-
-        elif task == Task.cameradirection or task == Task.skydirection or task == Task.direction:
-            model_net = create_model(self.parameters["model"]["model_direction"])
-
-        else:
-            raise ValueError(
-                f"task:{task.name} is not supported. Task must be type, direction or energy"
-            )
-
-        # ------------------------------------------------------------------------------
-        # Load Checkpoints
-        # ------------------------------------------------------------------------------
-        
-        if task == Task.type:
-            check_point_path = self.parameters["data"]["type_checkpoint"]
-
-        elif task == Task.energy:
             check_point_path = self.parameters["data"]["energy_checkpoint"]
 
-        elif task == Task.cameradirection or task == Task.skydirection or task == Task.direction:
+        elif task in [Task.cameradirection, Task.skydirection, Task.direction]:
+            model_net = create_model(self.parameters["model"]["model_direction"])
             check_point_path = self.parameters["data"]["direction_checkpoint"]
 
         else:
             raise ValueError(
                 f"task:{task.name} is not supported. Task must be type, direction or energy"
             )
-        # Load the checkpoint
-        
+
+        # Load the model from checkpoint
         model = ModelHelper.loadModel(
             model_net, "", check_point_path, Mode.observation, device_str=self.device_str
         )
         model.eval()
+        
+        # Assign model to appropriate attribute
         if task == Task.type:
             self.type_model = model
         elif task == Task.energy:
             self.energy_model = model
-        elif task == Task.cameradirection or task == Task.skydirection or task == Task.direction:
+        elif task in [Task.cameradirection, Task.skydirection, Task.direction]:
             self.dirrection_model = model
         else:
             raise ValueError(
                 f"task:{task.name} is not supported. Task must be type, direction or energy"
             )
-        
+    
     return model
