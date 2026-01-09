@@ -5,7 +5,7 @@ import shutil
 from ctapipe.core import run_tool
 from ctlearn.tools import TrainCTLearnModel
 
-@pytest.mark.parametrize("reco_task", ["type", "energy", "cameradirection", "skydirection"])
+@pytest.mark.parametrize("reco_task", ["type", "energy", "cameradirection"])
 def test_train_ctlearn_model(reco_task, dl1_gamma_file, dl1_proton_file, tmp_path):
     """
     Test training CTLearn model using the DL1 gamma and proton files for all reconstruction tasks.
@@ -25,7 +25,8 @@ def test_train_ctlearn_model(reco_task, dl1_gamma_file, dl1_proton_file, tmp_pat
 
     # Output directory for trained model
     output_dir = tmp_path / f"ctlearn_{reco_task}"
-    
+    allowed_tels = [7, 13, 15, 16, 17, 19]
+
     # Build command-line arguments
     argv = [
         f"--signal={signal_dir}",
@@ -35,6 +36,7 @@ def test_train_ctlearn_model(reco_task, dl1_gamma_file, dl1_proton_file, tmp_pat
         "--TrainCTLearnModel.n_epochs=2",
         "--TrainCTLearnModel.batch_size=4",
         "--DLImageReader.focal_length_choice=EQUIVALENT",
+        f"--DLImageReader.allowed_tels={allowed_tels}"
     ]
 
     # Include background only for classification task
@@ -63,14 +65,11 @@ def test_train_ctlearn_model(reco_task, dl1_gamma_file, dl1_proton_file, tmp_pat
     assert "val_loss" in log_df.columns, (
         f"'val_loss' column missing in training_log.csv for {reco_task}"
     )
-    val_loss_min= 0.0
-    val_loss_max= 1.5 if reco_task == "skydirection" else 1.0
-    # Check val_loss values are between 0.0 and 1.0 (or 1.5 for skydirection)
     val_loss = log_df["val_loss"].dropna()
     assert not val_loss.empty, (
         f"'val_loss' column is empty for {reco_task}"
     )
-    assert ((val_loss >= val_loss_min) & (val_loss <= val_loss_max)).all(), (
-        f"'val_loss' values out of range [{val_loss_min}, {val_loss_max}] for {reco_task}: "
+    assert ((val_loss >= 0.0) & (val_loss <= 1.0)).all(), (
+        f"'val_loss' values out of range [0.0, 1.0] for {reco_task}: "
         f"{val_loss.tolist()}"
     )

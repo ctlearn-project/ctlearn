@@ -36,14 +36,12 @@ def dl1_gamma_file(dl1_tmp_path, gamma_simtel_path):
     """
     from ctapipe.tools.process import ProcessorTool
 
-    allowed_tels = {7, 13, 15, 16, 17, 19}
     output = dl1_tmp_path / "gamma.dl1.h5"
     argv = [
         f"--input={gamma_simtel_path}",
         f"--output={output}",
         "--write-images",
         "--SimTelEventSource.focal_length_choice=EQUIVALENT",
-        f"--SimTelEventSource.allowed_tels={allowed_tels}",
     ]
     assert run_tool(ProcessorTool(), argv=argv, cwd=dl1_tmp_path) == 0
     return output
@@ -55,14 +53,12 @@ def dl1_proton_file(dl1_tmp_path, proton_simtel_path):
     """
     from ctapipe.tools.process import ProcessorTool
 
-    allowed_tels = {7, 13, 15, 16, 17, 19}
     output = dl1_tmp_path / "proton.dl1.h5"
     argv = [
         f"--input={proton_simtel_path}",
         f"--output={output}",
         "--write-images",
         "--SimTelEventSource.focal_length_choice=EQUIVALENT",
-        f"--SimTelEventSource.allowed_tels={allowed_tels}",
     ]
     assert run_tool(ProcessorTool(), argv=argv, cwd=dl1_tmp_path) == 0
     return output
@@ -111,6 +107,7 @@ def ctlearn_trained_dl1_models(dl1_gamma_file, dl1_proton_file, tmp_path_factory
         output_dir = tmp_path / f"ctlearn_{reco_task}"
         
         # Build command-line arguments
+        allowed_tels = [7, 13, 15, 16, 17, 19]
         argv = [
             f"--signal={signal_dir}",
             "--pattern-signal=*.dl1.h5",
@@ -119,6 +116,7 @@ def ctlearn_trained_dl1_models(dl1_gamma_file, dl1_proton_file, tmp_path_factory
             "--TrainCTLearnModel.n_epochs=1",
             "--TrainCTLearnModel.batch_size=2",
             "--DLImageReader.focal_length_choice=EQUIVALENT",
+            f"--DLImageReader.allowed_tels={allowed_tels}",
         ]
 
         # Include background only for classification task
