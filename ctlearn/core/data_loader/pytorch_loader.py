@@ -57,7 +57,7 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         # self.prefetch_queue = []
         # self._next_batch_idx = 0     
         # self._next_batch_future = None
-        
+        self.apply_log_scaling = parameters["normalization"]["apply_log_scaling"]
         self.parameter = parameters
         self.use_augmentation = use_augmentation
         self.use_clean = parameters["normalization"]["use_clean"]
@@ -245,17 +245,6 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
             features, labels = self._get_stereo_item(batch)
         return features, labels
     
-    def _fill_prefetch_queue(self):
-        while (
-            len(self.prefetch_queue) < self.max_prefetch
-            and self._next_batch_idx < len(self)
-        ):
-            future = self.executor.submit(
-                self._fetch_batch, self._next_batch_idx
-            )
-            self.prefetch_queue.append(future)
-            self._next_batch_idx += 1
-    
     # Fetching batches
     def __getitem__(self, index):
         """
@@ -278,17 +267,6 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
 
         # Virtual batch index
         t = index // int(np.ceil(len(self.indices) / self.T / self.batch_size))
-
-        # # --- 1️⃣ Ensure prefetch queue is filled ---
-        # if len(self.prefetch_queue) == 0:
-        #     self._fill_prefetch_queue()
-
-        # # --- 2️⃣ Pop the next ready batch ---
-        # future = self.prefetch_queue.pop(0)
-        # features, labels = future.result()  # blocks only if needed
-
-        # # --- 3️⃣ Refill queue to keep 4 prefetched ---
-        # self._fill_prefetch_queue()
         
         features, labels = self._fetch_batch(index)
         return features, labels, t
@@ -647,7 +625,16 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
             
             image, peak_time = self.apply_augmentation(features_out["image"], features_out["peak_time"])
 
-            
+        # Apply log scaling
+        if self.apply_log_scaling[0]:
+            image = image.astype(np.float32)
+            image = np.log10(image + 1.0)
+
+        if self.apply_log_scaling[1]:
+            peak_time = peak_time.astype(np.float32)
+            peak_time = np.log10(peak_time + 1.0)
+        # Change to channel first
+        
         image = np.transpose(image, (0, 3, 1, 2))
         peak_time = np.transpose(peak_time, (0, 3, 1, 2))
         # features_out["image"] = torch.from_numpy(image).float().permute(0, 3, 1, 2).contiguous()
@@ -668,7 +655,7 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
             # keep_idx = np.where((leakage > 0.8) & (intensity > 50))[0]
             #Keep all events during evaluation for now
             keep_idx = np.arange(len(intensity))
-            
+
         # Filter features_out
         for key in features_out:
             features_out[key] = features_out[key][keep_idx]

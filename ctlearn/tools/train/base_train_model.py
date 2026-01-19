@@ -14,7 +14,7 @@ from ctapipe.core.traits import (
     ComponentName,
     Unicode,
 )
-from dl1_data_handler.reader import DLDataReader
+from dl1_data_handler.reader import DLDataReader, TableQualityQuery
 
 class TrainCTLearnModel(Tool):
     """
@@ -276,14 +276,21 @@ class TrainCTLearnModel(Tool):
                 "'DLFeatureVectorReader' is not supported in CTLearn yet. "
                 "Missing stereo CTLearnModel implementation."
             )
+        self.quality_query = TableQualityQuery(quality_criteria=[('> 50 phe', 'hillas_intensity > 50')])
+        self.channels = ["cleaned_image", "cleaned_peak_time"]
+        self.config.TableQualityQuery.quality_criteria = self.quality_query.quality_criteria
+        self.config.DLDataReader.channels = self.channels
         
         print(f"self.dl1dh_reader_type: {self.dl1dh_reader_type}")
         self.dl1dh_reader = DLDataReader.from_name(
             self.dl1dh_reader_type,
             input_url_signal=sorted(self.input_url_signal),
             input_url_background=sorted(self.input_url_background),
-            parent=self,
+            parent=self
         )
+        
+        # self.dl1dh_reader.channels = ["cleaned_image", "cleaned_peak_time"]
+        # self.dl1dh_reader.quality_query.quality_criteria = [('> 50 phe', 'hillas_intensity > 1000')]
         
         self.log.info("Number of events loaded: %s", self.dl1dh_reader._get_n_events())
         if "type" in self.reco_tasks:

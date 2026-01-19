@@ -191,7 +191,7 @@ class LST1PredictionTool(Tool):
                 "cleaned_relative_peak_time",
             ]
         ),
-        default_value=["cleaned_image", "cleaned_relative_peak_time"],
+        default_value=["cleaned_image", "cleaned_peak_time"],
         allow_none=False,
         help=(
             "Set the input channels to be loaded from the DL1 event data. "

@@ -189,8 +189,8 @@ class CTLearnPL(pl.LightningModule):
         self.val_dataset = val_dataset
         self.test_val_loader = test_val_loader
         self.class_names = ["gamma", "proton"]
-        self.val_protoness = []
-        self.val_gammaness = []
+        self.val_proton_gammanes = []
+        self.val_gamma_gammanes = []
         # Hyperparameters
         self.set_hyperparameters(parameters)
 
@@ -200,10 +200,10 @@ class CTLearnPL(pl.LightningModule):
 
         # Loss Function
         if self.task == Task.type:
-            self.class_weights = (
+            weights = (
                 torch.tensor([parameters['class_weight'][0],parameters['class_weight'][1]], dtype=torch.float32).to(self.device).contiguous()
             )  # [1.0, 1.3]
-
+            self.register_buffer('class_weights', weights)
             self.criterion_class = nn.CrossEntropyLoss(
                 weight=self.class_weights, reduction="mean"
             )
@@ -374,7 +374,7 @@ class CTLearnPL(pl.LightningModule):
         target = labels_class.to(torch.int64)
 
         # Cálculo de la loss con F.cross_entropy
-        loss_class = F.cross_entropy(classification_pred, target, weight=self.class_weights, reduction='mean')
+        loss_class = F.cross_entropy(classification_pred, target, weight=self.class_weights.to(classification_pred.device), reduction='mean')
 
         # Calculate accuracy
         predicted = torch.softmax(classification_pred, dim=1)
@@ -1123,8 +1123,8 @@ class CTLearnPL(pl.LightningModule):
                             test_val=False,
                             training=False,
                         )
-                self.val_protoness.extend(
-                    torch.softmax(classification_pred_, dim=1)[:, 0]
+                self.val_proton_gammanes.extend(
+                    torch.softmax(classification_pred_, dim=1)[:, 1][labels_class == 0]
                     .float()
                     .cpu()
                     .detach()
@@ -1132,8 +1132,8 @@ class CTLearnPL(pl.LightningModule):
                     .flatten()
                     .tolist()
                 )
-                self.val_gammaness.extend(
-                    torch.softmax(classification_pred_, dim=1)[:, 1]
+                self.val_gamma_gammanes.extend(
+                    torch.softmax(classification_pred_, dim=1)[:, 1][labels_class == 1]
                     .float()
                     .cpu()
                     .detach()
@@ -1363,39 +1363,49 @@ class CTLearnPL(pl.LightningModule):
                     self.current_epoch,
                 )
             # Add the protonness and gammaness histogramns
-            self.val_protoness = np.array(self.val_protoness)
-            self.val_gammaness = np.array(self.val_gammaness)
+            self.val_proton_gammanes = np.array(self.val_proton_gammanes)
+            self.val_gamma_gammanes = np.array(self.val_gamma_gammanes)
             if self.trainer.is_global_zero:
                 fig, ax = plt.subplots(figsize=(8, 6))
                 ax.hist(
-                    self.val_protoness,
+                    self.val_proton_gammanes,
                     bins=50,
                     alpha=0.7,
-                    label="Protonness",
+                    label="Proton",
                     color="blue",
                     density=True,
                 )
                 ax.hist(
-                    self.val_gammaness,
+                    self.val_gamma_gammanes,
                     bins=50,
                     alpha=0.7,
-                    label="Gammaness",
+                    label="Gammas",
                     color="orange",
                     density=True,
                 )
                 ax.set_xlabel("Score")
                 ax.set_ylabel("Density")
-                ax.set_title("Protonness and Gammaness Distribution - Validation")
+                ax.set_title("Protons and Gammas Gammanes Distribution - Validation")
                 ax.legend()
+                save_path = os.path.join(
+                    self.logger.log_dir,
+                    f"proton_gammaness_validation_{self.current_epoch}_{global_loss_val}.png"
+                )
+                fig.savefig(save_path, format="png") # <--- Usa fig.savefig, no plt.savefig
+
+                # 2. Luego envíala al logger
                 self.logger.experiment.add_figure(
-                    "Protonness and Gammaness Distribution/Validation",
+                    "Protons and Gammas Gammanes Distribution - Validation",
                     fig,
                     self.current_epoch,
                 )
+
+                # 3. Finalmente cierra la figura
                 plt.close(fig)
+        
             # Clear lists
-            self.val_protoness = []
-            self.val_gammaness = []
+            self.val_proton_gammanes = []
+            self.val_gamma_gammanes = []
                 # return 0
         # ---------------------------------------
         # Direction

@@ -1,6 +1,9 @@
 from ctapipe.core.traits import Path
 from torch.utils.data import DataLoader
 from ctlearn.tools.train.pytorch.CTLearnPL import CTLearnTrainer, CTLearnPL
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress TensorFlow logging
+
 try:
     import torch
     
@@ -8,7 +11,6 @@ except ImportError:
     raise ImportError("pytorch is not installed in your environment!")
 
 try:
-    import pytorch_lightning
     from pytorch_lightning.loggers import TensorBoardLogger
 except ImportError:
     raise ImportError("pytorch_lightning is not installed in your environment!")
@@ -164,7 +166,7 @@ class TrainPyTorchModel(TrainCTLearnModel):
         training_indices = indices[n_validation_examples:]
         validation_indices = indices[:n_validation_examples]
 
-        self.dl1dh_reader.channels = ["cleaned_image", "cleaned_peak_time"]
+
         # --------------------------------------------------------------------
         # Reduce for testing 
         # --------------------------------------------------------------------

@@ -172,6 +172,12 @@ def predictions(self):
         imgs[np.isinf(imgs)] = 0
 
         feature_vector = True
+        if self.parameters["normalization"]["apply_log_scaling"][0] == True:
+            imgs = imgs.astype(np.float32)
+            imgs = np.log10(imgs + 1.0)
+        if self.parameters["normalization"]["apply_log_scaling"][1] == True and len(self.channels) == 2:
+            peak_time = peak_time.astype(np.float32)
+            peak_time = np.log10(peak_time + 1.0)
         
         # Run predictions for each configured task
         for task in self.tasks:

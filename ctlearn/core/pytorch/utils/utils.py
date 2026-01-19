@@ -279,7 +279,8 @@ expected_structure = {
         "dir_mu": None,
         "dir_sigma": None,
         "energy_mu": None,
-        "energy_sigma": None
+        "energy_sigma": None,
+        "apply_log_scaling": [None, None]
     },
     "dataset": {
         "num_workers": None,

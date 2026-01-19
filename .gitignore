@@ -14,7 +14,7 @@ output_dir2/
 *~
 *.log
 .vscode/
-
+launcher_workspace/
 *.h5
 
 output_dir2/
