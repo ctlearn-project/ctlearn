@@ -4,6 +4,7 @@ common pytest fixtures for tests in ctlearn.
 
 import pytest
 import shutil
+from traitlets.config.loader import Config
 
 from ctapipe.core import run_tool
 from ctapipe.utils import get_dataset_path
@@ -101,36 +102,60 @@ def ctlearn_trained_dl1_models(dl1_gamma_file, dl1_proton_file, tmp_path_factory
     # Hardcopy DL1 proton file to the background directory
     shutil.copy(dl1_proton_file, background_dir)
 
+    # Configuration to disable quality cuts to increase
+    # training statistics mainly needed for LSTs.
+    config = Config(
+        {
+            "TableQualityQuery": {
+                "quality_criteria": [],
+            },
+        },
+    )
+
+    # Define telescope types and their allowed telescopes
+    telescope_types = {
+        "LST": [1, 2],
+        "MST": [7, 13, 15, 16, 17, 19],
+        #"SST": [30, 37, 43, 44, 53],
+    }
+    image_mapper_types = {
+        "LST": "BilinearMapper",
+        "MST": "OversamplingMapper",
+        #"SST": "SquareMapper",
+    }
+    # Loop over telescope types and reconstruction tasks
+    # and train models for each combination
     ctlearn_trained_dl1_models = {}
-    for reco_task in ["type", "energy", "cameradirection"]:
-        # Output directory for trained model
-        output_dir = tmp_path / f"ctlearn_{reco_task}"
-        
-        # Build command-line arguments
-        allowed_tels = [7, 13, 15, 16, 17, 19]
-        argv = [
-            f"--signal={signal_dir}",
-            "--pattern-signal=*.dl1.h5",
-            f"--output={output_dir}",
-            f"--reco={reco_task}",
-            "--TrainCTLearnModel.n_epochs=1",
-            "--TrainCTLearnModel.batch_size=2",
-            "--DLImageReader.focal_length_choice=EQUIVALENT",
-            f"--DLImageReader.allowed_tels={allowed_tels}",
-        ]
+    for telescope_type, allowed_tels in telescope_types.items():
+        for reco_task in ["type", "energy", "cameradirection"]:
+            # Output directory for trained model
+            output_dir = tmp_path / f"ctlearn_{telescope_type}_{reco_task}"
+            
+            # Build command-line arguments
+            argv = [
+                f"--signal={signal_dir}",
+                "--pattern-signal=*.dl1.h5",
+                f"--output={output_dir}",
+                f"--reco={reco_task}",
+                "--TrainCTLearnModel.n_epochs=1",
+                "--TrainCTLearnModel.batch_size=2",
+                "--DLImageReader.focal_length_choice=EQUIVALENT",
+                f"--DLImageReader.allowed_tels={allowed_tels}",
+            ]
 
-        # Include background only for classification task
-        if reco_task == "type":
-            argv.extend([
-                f"--background={background_dir}",
-                "--pattern-background=*.dl1.h5",
-                "--DLImageReader.enforce_subarray_equality=False",
-            ])
+            # Include background only for classification task
+            if reco_task == "type":
+                argv.extend([
+                    f"--background={background_dir}",
+                    "--pattern-background=*.dl1.h5",
+                    "--DLImageReader.enforce_subarray_equality=False",
+                    f"--DLImageReader.image_mapper_type={image_mapper_types[telescope_type]}",
+                ])
 
-        # Run training
-        assert run_tool(TrainCTLearnModel(), argv=argv, cwd=tmp_path) == 0
+            # Run training
+            assert run_tool(TrainCTLearnModel(config=config), argv=argv, cwd=tmp_path) == 0
 
-        ctlearn_trained_dl1_models[reco_task] = output_dir / "ctlearn_model.keras"
-        # Check that the trained model exists
-        assert ctlearn_trained_dl1_models[reco_task].exists()
+            ctlearn_trained_dl1_models[f"{telescope_type}_{reco_task}"] = output_dir / "ctlearn_model.keras"
+            # Check that the trained model exists
+            assert ctlearn_trained_dl1_models[f"{telescope_type}_{reco_task}"].exists()
     return ctlearn_trained_dl1_models

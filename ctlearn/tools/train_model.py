@@ -24,6 +24,7 @@ from ctapipe.core.traits import (
     Unicode,
 )
 from dl1_data_handler.reader import DLDataReader
+from ctlearn import __version__ as ctlearn_version
 from ctlearn.core.loader import DLDataLoader
 from ctlearn.core.model import CTLearnModel
 from ctlearn.utils import validate_trait_dict
@@ -154,10 +155,10 @@ class TrainCTLearnModel(Tool):
         allow_none=False, 
         help=(
             "List of reconstruction tasks to perform. "
-            "'type': classification of the primary particle type "
-            "'energy': regression of the primary particle energy "
-            "'cameradirection': regression of the primary particle arrival direction in camera coordinates "
-            "'skydirection': regression of the primary particle arrival direction in sky coordinates"
+            "'type': classification of the primary particle type; "
+            "'energy': regression of the primary particle energy; "
+            "'cameradirection': reconstruction of the primary particle arrival direction in camera coordinates; "
+            "'skydirection': reconstruction of the primary particle arrival direction in sky coordinates."
         )
     ).tag(config=True)
 
@@ -240,6 +241,7 @@ class TrainCTLearnModel(Tool):
     classes = classes_with_traits(CTLearnModel) + classes_with_traits(DLDataReader)
 
     def setup(self):
+        self.log.info("ctlearn version %s", ctlearn_version)
         # Check if the output directory exists
         if self.output_dir.exists():
             raise ToolConfigurationError(

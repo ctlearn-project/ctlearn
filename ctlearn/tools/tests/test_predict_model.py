@@ -10,16 +10,27 @@ from ctlearn.tools import MonoPredictCTLearnModel
 REQUIRED_COLUMNS = [
     "event_id",
     "obs_id",
-    "CTLearn_alt",
+    "CTLearnCameraReconstructor_tel_alt",
+    "CTLearnCameraReconstructor_alt",
     "true_alt",
-    "CTLearn_az",
+    "CTLearnCameraReconstructor_tel_az",
+    "CTLearnCameraReconstructor_az",
     "true_az",
-    "CTLearn_prediction",
+    "CTLearnClassifier_tel_prediction",
+    "CTLearnClassifier_prediction",
     "true_shower_primary_id",
-    "CTLearn_energy",
+    "CTLearnRegressor_tel_energy",
+    "CTLearnRegressor_energy",
     "true_energy",
-    "CTLearn_is_valid",
-    "CTLearn_telescopes",
+    "CTLearnCameraReconstructor_tel_is_valid",
+    "CTLearnCameraReconstructor_is_valid",
+    "CTLearnClassifier_tel_is_valid",
+    "CTLearnClassifier_is_valid",
+    "CTLearnRegressor_tel_is_valid",
+    "CTLearnRegressor_is_valid",
+    "CTLearnCameraReconstructor_telescopes",
+    "CTLearnClassifier_telescopes",
+    "CTLearnRegressor_telescopes",
     "tels_with_trigger"
 ]
 
@@ -36,35 +47,45 @@ def test_predict_model(tmp_path, ctlearn_trained_dl1_models, dl1_gamma_file, dl2
 
     dl2_dir = tmp_path / "dl2_output"
     dl2_dir.mkdir(parents=True, exist_ok=True)
-
+    # Define telescope types and their allowed telescopes
+    telescope_types = {
+        "LST": [2],
+        "MST": [7, 13, 15, 16, 17, 19],
+        #"SST": [30, 37, 43, 44, 53],
+    }
+    image_mapper_types = {
+        "LST": "BilinearMapper",
+        "MST": "OversamplingMapper",
+        #"SST": "SquareMapper",
+    }
     # Hardcopy the trained models to the model directory
-    for reco_task in ["type", "energy", "cameradirection"]:
-        shutil.copy(ctlearn_trained_dl1_models[f"{reco_task}"], model_dir / f"ctlearn_model_{reco_task}.keras")
-        model_file = model_dir / f"ctlearn_model_{reco_task}.keras"
-        assert model_file.exists(), f"Trained model file not found for {reco_task}"
-
+    for telescope_type in telescope_types.keys():
+        for reco_task in ["type", "energy", "cameradirection"]:
+            key = f"{telescope_type}_{reco_task}"
+            shutil.copy(ctlearn_trained_dl1_models[key], model_dir / f"ctlearn_model_{key}.keras")
+            model_file = model_dir / f"ctlearn_model_{key}.keras"
+            assert model_file.exists(), f"Trained model file not found for {key}"
     # Build command-line arguments
     argv = [
         f"--input_url={dl1_gamma_file}",
-        "--PredictCTLearnModel.batch_size=4",
+        "--PredictCTLearnModel.batch_size=2",
         "--DLImageReader.focal_length_choice=EQUIVALENT",
-        f"--PredictCTLearnModel.load_type_model_from={model_dir}/ctlearn_model_type.keras",
-        f"--PredictCTLearnModel.load_energy_model_from={model_dir}/ctlearn_model_energy.keras",
-        f"--PredictCTLearnModel.load_cameradirection_model_from={model_dir}/ctlearn_model_cameradirection.keras",
         "--no-dl1-images",
         "--no-true-images",
         f"--{dl2_tel_flag}",
     ]
-    # Test with different allowed telescope lists (single and multiple telescope IDs)
-    allowed_tels_dict = {"single_tel_id" : [7], "multiple_tel_ids": [7, 13, 15, 16, 17, 19]}
-    for name, allowed_tels in allowed_tels_dict.items():
-        output_file = dl2_dir / f"gamma_{dl2_tel_flag}_{name}.dl2.h5"
+    for telescope_type, allowed_tels in telescope_types.items():
+        output_file = dl2_dir / f"gamma_{dl2_tel_flag}_{telescope_type}.dl2.h5"
         # Run Prediction tool
         assert run_tool(
             MonoPredictCTLearnModel(),
             argv = argv + [
                 f"--output={output_file}",
                 f"--DLImageReader.allowed_tels={allowed_tels}",
+                f"--DLImageReader.image_mapper_type={image_mapper_types[telescope_type]}",
+                f"--PredictCTLearnModel.load_type_model_from={model_dir}/ctlearn_model_{telescope_type}_type.keras",
+                f"--PredictCTLearnModel.load_energy_model_from={model_dir}/ctlearn_model_{telescope_type}_energy.keras",
+                f"--PredictCTLearnModel.load_cameradirection_model_from={model_dir}/ctlearn_model_{telescope_type}_cameradirection.keras",
             ],
             cwd=tmp_path
         ) == 0
@@ -84,11 +105,15 @@ def test_predict_model(tmp_path, ctlearn_trained_dl1_models, dl1_gamma_file, dl2
                     "telescope_pointing_azimuth",
                     "telescope_pointing_altitude",
                 ]:
+                    if dl2_tel_flag == "no-dl2-telescope" and "_tel_" in col:
+                        continue
                     assert col in tel_events[tel_id].colnames, f"{col} missing in DL2 file {output_file.name}"
                     assert tel_events[tel_id][col][0] is not np.nan, f"{col} has NaN values in DL2 file {output_file.name}"
             # Check subarray-wise data
             subarray_events = loader.read_subarray_events(start=0, stop=2, dl2=True)
             assert len(subarray_events) > 0
             for col in REQUIRED_COLUMNS:
+                if "_tel_" in col:
+                    continue
                 assert col in subarray_events.colnames, f"{col} missing in DL2 file {output_file.name}"
                 assert subarray_events[col][0] is not np.nan, f"{col} has NaN values in DL2 file {output_file.name}"
