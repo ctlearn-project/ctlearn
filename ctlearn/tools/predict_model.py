@@ -44,6 +44,7 @@ from ctapipe.core.traits import (
 from ctapipe.monitoring.interpolation import PointingInterpolator
 from ctapipe.instrument import SubarrayDescription
 from ctapipe.io import read_table, write_table, HDF5Merger
+from ctapipe.io.datalevels import DataLevel
 from ctapipe.io.hdf5dataformat import (
     DL0_TEL_POINTING_GROUP,
     DL1_SUBARRAY_GROUP,
@@ -71,6 +72,7 @@ from ctapipe.io.hdf5dataformat import (
     DL2_TEL_PARTICLETYPE_GROUP,
     DL2_TEL_ENERGY_GROUP,
     DL2_TEL_GEOMETRY_GROUP,
+    DL2_SUBARRAY_GROUP,
     DL2_SUBARRAY_PARTICLETYPE_GROUP,
     DL2_SUBARRAY_ENERGY_GROUP,
     DL2_SUBARRAY_GEOMETRY_GROUP,
@@ -110,6 +112,14 @@ TEL_ITER_GROUPS = [
     SIMULATION_IMPACT_GROUP,
     SIMULATION_PARAMETERS_GROUP,
 ]
+DATALEVEL_TO_GROUP = {
+    DataLevel.R0: R0_TEL_GROUP,
+    DataLevel.R1: R1_TEL_GROUP,
+    DataLevel.DL1_IMAGES: DL1_TEL_IMAGES_GROUP,
+    DataLevel.DL1_PARAMETERS: DL1_TEL_PARAMETERS_GROUP,
+    DataLevel.DL1_MUON: DL1_TEL_MUON_GROUP,
+    DataLevel.DL2: DL2_SUBARRAY_GROUP,
+}
 
 
 class CannotPredict(OSError):
@@ -460,6 +470,7 @@ class PredictCTLearnModel(Tool):
     
     def _overwrite_meta(self):
         """Overwrite CTAO metadata in the output file."""
+        # TODO: Upgrade to new CTAO metatdata standard when available
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", tables.NaturalNameWarning)
             with tables.open_file(self.output_path, mode="r+") as h5_file:
@@ -471,10 +482,19 @@ class PredictCTLearnModel(Tool):
                 h5_file.root._v_attrs["CTA ACTIVITY START TIME"] = self.activity_start_time.iso
                 h5_file.root._v_attrs["CTA ACTIVITY STOP TIME"] = Time.now().iso
                 # Update CTA Product metadata
-                #TODO: Overwrite CTA PRODUCT DATA LEVELS': 'DL1_IMAGES,DL1_PARAMETERS' also
+                h5_file.root._v_attrs["CTA PRODUCT DATA LEVELS"] = self._get_data_levels(h5_file)
                 h5_file.root._v_attrs["CTA PRODUCT CREATION TIME"] = self.activity_start_time.iso
                 h5_file.root._v_attrs["CTA PRODUCT ID"] = str(uuid.uuid4())
                 h5_file.flush()
+
+    def _get_data_levels(self, h5file):
+        """Get the data levels present in the HDF5 file."""
+        data_levels = {
+            level.name
+            for level, group in DATALEVEL_TO_GROUP.items()
+            if hasattr(h5file.root, group)
+        }
+        return ",".join(sorted(data_levels))
 
     def _ensure_subarray_consistency(self):
         """
