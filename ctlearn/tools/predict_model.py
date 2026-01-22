@@ -953,7 +953,7 @@ class PredictCTLearnModel(Tool):
         # from the telescope pointing.
         fov_lon = u.Quantity(predict_data["skydirection"].T[0], unit=u.deg)
         fov_lat = u.Quantity(predict_data["skydirection"].T[1], unit=u.deg)
-        # Create prediction table and add the reconstructed energy in TeV
+        # Create prediction table and add the reconstructed fov_lon and fov_lat
         skydirection_table = example_identifiers.copy()
         skydirection_table.add_column(fov_lon, name="fov_lon")
         skydirection_table.add_column(fov_lat, name="fov_lat")
@@ -1979,6 +1979,8 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
             DL1_TEL_TRIGGER_TABLE,
         )
         all_identifiers.keep_columns(SUBARRAY_EVENT_KEYS + ["time"])
+        # Unique example identifiers by events
+        all_identifiers = unique(all_identifiers, keys=SUBARRAY_EVENT_KEYS)
         nonexample_identifiers = setdiff(
             all_identifiers, example_identifiers, keys=SUBARRAY_EVENT_KEYS
         )
@@ -2013,6 +2015,9 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                 super()._predict_particletype(example_identifiers)
             )
             if self.dl2_subarray:
+                particletype_table.rename_column(
+                    f"{self.prefixes['all']}_telescopes", f"{self.prefixes['type']}_telescopes"
+                )
                 # Produce output table with NaNs for missing predictions
                 if len(nonexample_identifiers) > 0:
                     nan_table = super()._create_nan_table(
@@ -2028,17 +2033,11 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                         particletype_table[f"{self.prefixes['type']}_tel_prediction"].data,
                         dtype=bool,
                     ),
-                    name=f"{self.prefixes['type']}_tel_is_valid",
+                    name=f"{self.prefixes['type']}_is_valid",
                 )
                 # Rename the columns for the stereo mode
                 particletype_table.rename_column(
                     f"{self.prefixes['type']}_tel_prediction", f"{self.prefixes['type']}_prediction"
-                )
-                particletype_table.rename_column(
-                    f"{self.prefixes['type']}_tel_is_valid", f"{self.prefixes['type']}_is_valid"
-                )
-                particletype_table.rename_column(
-                    f"{self.prefixes['all']}_telescopes", f"{self.prefixes['type']}_telescopes"
                 )
                 # Deduplicate the subarray particletype table to have only one entry per event
                 particletype_table = super().deduplicate_first_valid(
@@ -2058,7 +2057,6 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                     particletype_table,
                     self.output_path,
                     f"{DL2_SUBARRAY_PARTICLETYPE_GROUP}/{self.prefixes['type']}",
-                    overwrite=self.overwrite_tables,
                 )
                 self.log.info(
                     "DL2 prediction data was stored in '%s' under '%s'",
@@ -2084,6 +2082,9 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                 example_identifiers
             )
             if self.dl2_subarray:
+                energy_table.rename_column(
+                    f"{self.prefixes['all']}_telescopes", f"{self.prefixes['energy']}_telescopes"
+                )
                 # Produce output table with NaNs for missing predictions
                 if len(nonexample_identifiers) > 0:
                     nan_table = super()._create_nan_table(
@@ -2098,17 +2099,11 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                     ~np.isnan(
                         energy_table[f"{self.prefixes['energy']}_tel_energy"].data, dtype=bool
                     ),
-                    name=f"{self.prefixes['energy']}_tel_is_valid",
+                    name=f"{self.prefixes['energy']}_is_valid",
                 )
                 # Rename the columns for the stereo mode
                 energy_table.rename_column(
                     f"{self.prefixes['energy']}_tel_energy", f"{self.prefixes['energy']}_energy"
-                )
-                energy_table.rename_column(
-                    f"{self.prefixes['energy']}_tel_is_valid", f"{self.prefixes['energy']}_is_valid"
-                )
-                energy_table.rename_column(
-                    f"{self.prefixes['all']}_telescopes", f"{self.prefixes['energy']}_telescopes"
                 )
                 # Deduplicate the subarray energy table to have only one entry per event
                 energy_table = super().deduplicate_first_valid(
@@ -2159,6 +2154,9 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                 example_identifiers
             )
             if self.dl2_subarray:
+                direction_table.rename_column(
+                    f"{self.prefixes['all']}_telescopes", f"{self.prefixes['skydirection']}_telescopes"
+                )
                 # Transform the spherical coordinate offsets to sky coordinates
                 direction_table = super()._transform_spher_coord_offsets_to_sky(
                     direction_table
@@ -2179,9 +2177,6 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                 direction_table.add_column(
                     ~np.isnan(direction_table[f"{self.prefixes['skydirection']}_alt"].data, dtype=bool),
                     name=f"{self.prefixes['skydirection']}_is_valid",
-                )
-                direction_table.rename_column(
-                    f"{self.prefixes['all']}_telescopes", f"{self.prefixes['skydirection']}_telescopes"
                 )
                 # Deduplicate the subarray direction table to have only one entry per event
                 direction_table = super().deduplicate_first_valid(

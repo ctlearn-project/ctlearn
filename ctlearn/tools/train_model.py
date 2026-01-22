@@ -6,7 +6,6 @@ import atexit
 import keras
 import pandas as pd
 import numpy as np
-import shutil
 import tensorflow as tf
 
 from ctapipe.core import Tool
