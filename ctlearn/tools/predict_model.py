@@ -125,6 +125,7 @@ DATALEVEL_TO_GROUP = {
 class CannotPredict(OSError):
     """Raised when trying to predict an incompatible file"""
 
+
 class PredictCTLearnModel(Tool):
     """
     Base tool to predict the gammaness, energy and arrival direction from R1/DL1 data using CTLearn models.
@@ -270,7 +271,7 @@ class PredictCTLearnModel(Tool):
         help=(
             "Name of the reconstruction algorithm used "
             "to generate the dl2 data for each task."
-        )
+        ),
     ).tag(config=True)
 
     load_type_model_from = Path(
@@ -358,7 +359,7 @@ class PredictCTLearnModel(Tool):
 
     flags = {
         **flag(
-            "overwrite" ,
+            "overwrite",
             "HDF5Merger.overwrite",
             "Overwrite the output file if it exists",
             "Do not overwrite the output file if it exists",
@@ -378,8 +379,8 @@ class PredictCTLearnModel(Tool):
         **flag(
             "dl2-subarray",
             "PredictCTLearnModel.dl2_subarray",
-            "Include dl2 telescope-event-wise data in the output file",
-            "Exclude dl2 telescope-event-wise data in the output file",
+            "Include dl2 subarray-event-wise data in the output file",
+            "Exclude dl2 subarray-event-wise data in the output file",
         ),
         **flag(
             "r0-waveforms",
@@ -425,14 +426,13 @@ class PredictCTLearnModel(Tool):
         self.activity_start_time = Time.now()
         self.log.info("ctlearn version %s", ctlearn_version)
         # Validate the prefixes trait dictionary
-        validate_trait_dict(self.prefixes, ["type", "energy", "cameradirection", "skydirection", "all"])
+        validate_trait_dict(
+            self.prefixes, ["type", "energy", "cameradirection", "skydirection", "all"]
+        )
         # Copy selected tables from the input file to the output file
         self.log.info("Copying to output destination.")
         with HDF5Merger(
-            self.output_path,
-            dl2_subarray=False,
-            dl2_telescope=False,
-            parent=self
+            self.output_path, dl2_subarray=False, dl2_telescope=False, parent=self
         ) as merger:
             merger(self.input_url)
         # Create a MirroredStrategy.
@@ -467,7 +467,7 @@ class PredictCTLearnModel(Tool):
         # Overwrite CTAO reference metadata to the output file
         self._overwrite_meta()
         self.log.info("Tool is shutting down")
-    
+
     def _overwrite_meta(self):
         """Overwrite CTAO metadata in the output file."""
         # TODO: Upgrade to new CTAO metatdata standard when available
@@ -479,11 +479,17 @@ class PredictCTLearnModel(Tool):
                 h5_file.root._v_attrs["CTA ACTIVITY NAME"] = self.name
                 h5_file.root._v_attrs["CTA ACTIVITY SOFTWARE NAME"] = "ctlearn"
                 h5_file.root._v_attrs["CTA ACTIVITY SOFTWARE VERSION"] = ctlearn_version
-                h5_file.root._v_attrs["CTA ACTIVITY START TIME"] = self.activity_start_time.iso
+                h5_file.root._v_attrs["CTA ACTIVITY START TIME"] = (
+                    self.activity_start_time.iso
+                )
                 h5_file.root._v_attrs["CTA ACTIVITY STOP TIME"] = Time.now().iso
                 # Update CTA Product metadata
-                h5_file.root._v_attrs["CTA PRODUCT DATA LEVELS"] = self._get_data_levels(h5_file)
-                h5_file.root._v_attrs["CTA PRODUCT CREATION TIME"] = self.activity_start_time.iso
+                h5_file.root._v_attrs["CTA PRODUCT DATA LEVELS"] = (
+                    self._get_data_levels(h5_file)
+                )
+                h5_file.root._v_attrs["CTA PRODUCT CREATION TIME"] = (
+                    self.activity_start_time.iso
+                )
                 h5_file.root._v_attrs["CTA PRODUCT ID"] = str(uuid.uuid4())
                 h5_file.flush()
 
@@ -542,13 +548,9 @@ class PredictCTLearnModel(Tool):
         tel_trigger_groups = tel_trigger_table.group_by(SUBARRAY_EVENT_KEYS)
         tel_with_trigger = []
         for tel_trigger in tel_trigger_groups.groups:
-            tel_with_trigger_mask = np.zeros(
-                len(self.dl1dh_reader.tel_ids), dtype=bool
-            )
+            tel_with_trigger_mask = np.zeros(len(self.dl1dh_reader.tel_ids), dtype=bool)
             tel_with_trigger_mask[
-                self.dl1dh_reader.subarray.tel_ids_to_indices(
-                    tel_trigger["tel_id"]
-                )
+                self.dl1dh_reader.subarray.tel_ids_to_indices(tel_trigger["tel_id"])
             ] = True
             tel_with_trigger.append(tel_with_trigger_mask)
 
@@ -572,7 +574,7 @@ class PredictCTLearnModel(Tool):
             sim_shower_table,
             subarray_trigger_table,
             keys=SUBARRAY_EVENT_KEYS,
-            join_type="right"
+            join_type="right",
         )
         sim_shower_table.sort(SUBARRAY_EVENT_KEYS)
         write_table(
@@ -609,7 +611,7 @@ class PredictCTLearnModel(Tool):
                 if group is not None:
                     prune_group(group, tel_ids)
 
-            #Camera configuration tables
+            # Camera configuration tables
             layout_node = getattr(h5_file.root, CONFIG_INSTRUMENT_SUBARRAY_LAYOUT, None)
             camera_group = getattr(h5_file.root, CONFIG_INSTRUMENT_TEL_CAMERA, None)
             if not (layout_node and camera_group):
@@ -622,7 +624,7 @@ class PredictCTLearnModel(Tool):
             )
             camera_indices = set(layout_table.col("camera_index"))
             prune_group(camera_group, camera_indices)
-        
+
     def _create_nan_table(self, nonexample_identifiers, columns, shapes, reco_task):
         """
         Create a table with NaNs for missing predictions.
@@ -664,8 +666,8 @@ class PredictCTLearnModel(Tool):
     def deduplicate_first_valid(
         self,
         table: Table,
-        keys=('obs_id', 'event_id'),
-        valid_col='CTLearn_is_valid',
+        keys=("obs_id", "event_id"),
+        valid_col="CTLearn_is_valid",
     ):
         """
         Return a deduplicated Astropy Table.
@@ -676,12 +678,9 @@ class PredictCTLearnModel(Tool):
 
         t = table.copy()
 
-        t.sort(
-            list(keys) + [valid_col],
-            reverse=[False] * len(keys) + [True]
-        )
+        t.sort(list(keys) + [valid_col], reverse=[False] * len(keys) + [True])
 
-        return unique(t, keys=list(keys), keep='first')
+        return unique(t, keys=list(keys), keep="first")
 
     def _predict_with_model(self, model_path):
         """
@@ -880,7 +879,9 @@ class PredictCTLearnModel(Tool):
         )
         # Create prediction table and add the reconstructed energy in TeV
         energy_table = example_identifiers.copy()
-        energy_table.add_column(reco_energy, name=f"{self.prefixes['energy']}_tel_energy")
+        energy_table.add_column(
+            reco_energy, name=f"{self.prefixes['energy']}_tel_energy"
+        )
         return energy_table, feature_vectors
 
     def _predict_cameradirection(self, example_identifiers):
@@ -1017,8 +1018,14 @@ class PredictCTLearnModel(Tool):
         # Transform the true Alt/Az coordinates to camera coordinates
         reco_direction = cam_coord_offset.transform_to(altaz)
         # Add the reconstructed direction (az, alt) to the prediction table
-        table.add_column(reco_direction.az.to(u.deg), name=f"{self.prefixes['cameradirection']}_tel_az")
-        table.add_column(reco_direction.alt.to(u.deg), name=f"{self.prefixes['cameradirection']}_tel_alt")
+        table.add_column(
+            reco_direction.az.to(u.deg),
+            name=f"{self.prefixes['cameradirection']}_tel_az",
+        )
+        table.add_column(
+            reco_direction.alt.to(u.deg),
+            name=f"{self.prefixes['cameradirection']}_tel_alt",
+        )
         # Remove unnecessary columns from the table that do not the ctapipe DL2 data format
         table.remove_columns(
             [
@@ -1081,8 +1088,12 @@ class PredictCTLearnModel(Tool):
         # Transform the reco direction from nominal frame to the AltAz frame
         sky_coord = reco_direction.transform_to(altaz)
         # Add the reconstructed direction (az, alt) to the prediction table
-        table.add_column(sky_coord.az.to(u.deg), name=f"{self.prefixes['skydirection']}_az")
-        table.add_column(sky_coord.alt.to(u.deg), name=f"{self.prefixes['skydirection']}_alt")
+        table.add_column(
+            sky_coord.az.to(u.deg), name=f"{self.prefixes['skydirection']}_az"
+        )
+        table.add_column(
+            sky_coord.alt.to(u.deg), name=f"{self.prefixes['skydirection']}_alt"
+        )
         # Remove unnecessary columns from the table that do not the ctapipe DL2 data format
         table.remove_columns(
             [
@@ -1224,7 +1235,9 @@ class PredictCTLearnModel(Tool):
                 name=f"{self.prefixes['all']}_tel_particletype_feature_vectors",
             )
             if nonexample_identifiers is not None:
-                columns_list.append(f"{self.prefixes['all']}_tel_particletype_feature_vectors")
+                columns_list.append(
+                    f"{self.prefixes['all']}_tel_particletype_feature_vectors"
+                )
                 shapes_list.append(
                     (
                         len(nonexample_identifiers),
@@ -1234,10 +1247,13 @@ class PredictCTLearnModel(Tool):
         if energy_feature_vectors is not None:
             is_valid_col = ~np.isnan(np.min(energy_feature_vectors, axis=1), dtype=bool)
             feature_vector_table.add_column(
-                energy_feature_vectors, name=f"{self.prefixes['all']}_tel_energy_feature_vectors"
+                energy_feature_vectors,
+                name=f"{self.prefixes['all']}_tel_energy_feature_vectors",
             )
             if nonexample_identifiers is not None:
-                columns_list.append(f"{self.prefixes['all']}_tel_energy_feature_vectors")
+                columns_list.append(
+                    f"{self.prefixes['all']}_tel_energy_feature_vectors"
+                )
                 shapes_list.append(
                     (
                         len(nonexample_identifiers),
@@ -1256,7 +1272,9 @@ class PredictCTLearnModel(Tool):
                 name=f"{self.prefixes['all']}_tel_geometry_feature_vectors",
             )
             if nonexample_identifiers is not None:
-                columns_list.append(f"{self.prefixes['all']}_tel_geometry_feature_vectors")
+                columns_list.append(
+                    f"{self.prefixes['all']}_tel_geometry_feature_vectors"
+                )
                 shapes_list.append(
                     (
                         len(nonexample_identifiers),
@@ -1401,7 +1419,7 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
             add_defaults_and_meta(
                 particletype_table,
                 ParticleClassificationContainer,
-                prefix=self.prefixes['type'],
+                prefix=self.prefixes["type"],
                 add_tel_prefix=True,
             )
             if self.dl2_telescope:
@@ -1423,7 +1441,7 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                         self.output_path,
                         f"{DL2_TEL_PARTICLETYPE_GROUP}/{self.prefixes['type']}/tel_{tel_id:03d}",
                     )
-                
+
             if self.dl2_subarray:
                 self.log.info("Processing and storing the subarray type prediction...")
                 # If only one telescope is used, copy the particletype table
@@ -1455,7 +1473,7 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                 else:
                     self.type_stereo_combiner = StereoCombiner.from_name(
                         self.stereo_combiner_cls,
-                        prefix=self.prefixes['type'],
+                        prefix=self.prefixes["type"],
                         property=ReconstructionProperty.PARTICLE_TYPE,
                         parent=self,
                     )
@@ -1466,7 +1484,9 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                     # TODO: Remove temporary fix once the stereo combiner returns correct table
                     # Check if the table has to be converted to a boolean mask
                     if (
-                        particletype_subarray_table[f"{self.prefixes['type']}_telescopes"].dtype
+                        particletype_subarray_table[
+                            f"{self.prefixes['type']}_telescopes"
+                        ].dtype
                         != np.bool_
                     ):
                         # Create boolean mask for telescopes that participate in the stereo reconstruction combination
@@ -1479,7 +1499,9 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                         )
                         # Loop over the table and set the boolean mask for the telescopes
                         for index, tel_id_mask in enumerate(
-                            particletype_subarray_table[f"{self.prefixes['type']}_telescopes"]
+                            particletype_subarray_table[
+                                f"{self.prefixes['type']}_telescopes"
+                            ]
                         ):
                             if not tel_id_mask:
                                 continue
@@ -1490,15 +1512,15 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                                     )
                                 ] = True
                         # Overwrite the column with the boolean mask with fix length
-                        particletype_subarray_table[f"{self.prefixes['type']}_telescopes"] = (
-                            reco_telescopes
-                        )
+                        particletype_subarray_table[
+                            f"{self.prefixes['type']}_telescopes"
+                        ] = reco_telescopes
                 # Deduplicate the subarray particletype table to have only one entry per event
                 particletype_subarray_table = super().deduplicate_first_valid(
                     table=particletype_subarray_table,
                     keys=SUBARRAY_EVENT_KEYS,
                     valid_col=f"{self.prefixes['type']}_is_valid",
-                    )
+                )
                 # Sort the subarray particletype table
                 particletype_subarray_table.sort(SUBARRAY_EVENT_KEYS)
                 # Save the prediction to the output file
@@ -1542,7 +1564,8 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
             # Add is_valid column to the energy table
             energy_table.add_column(
                 ~np.isnan(
-                    energy_table[f"{self.prefixes['energy']}_tel_energy"].data, dtype=bool
+                    energy_table[f"{self.prefixes['energy']}_tel_energy"].data,
+                    dtype=bool,
                 ),
                 name=f"{self.prefixes['energy']}_tel_is_valid",
             )
@@ -1550,7 +1573,7 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
             add_defaults_and_meta(
                 energy_table,
                 ReconstructedEnergyContainer,
-                prefix=self.prefixes['energy'],
+                prefix=self.prefixes["energy"],
                 add_tel_prefix=True,
             )
             if self.dl2_telescope:
@@ -1593,14 +1616,16 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                     energy_subarray_table.add_column(
                         [
                             [val]
-                            for val in energy_subarray_table[f"{self.prefixes['energy']}_is_valid"]
+                            for val in energy_subarray_table[
+                                f"{self.prefixes['energy']}_is_valid"
+                            ]
                         ],
                         name=f"{self.prefixes['energy']}_telescopes",
                     )
                 else:
                     self.energy_stereo_combiner = StereoCombiner.from_name(
                         self.stereo_combiner_cls,
-                        prefix=self.prefixes['energy'],
+                        prefix=self.prefixes["energy"],
                         property=ReconstructionProperty.ENERGY,
                         parent=self,
                     )
@@ -1611,7 +1636,9 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                     # TODO: Remove temporary fix once the stereo combiner returns correct table
                     # Check if the table has to be converted to a boolean mask
                     if (
-                        energy_subarray_table[f"{self.prefixes['energy']}_telescopes"].dtype
+                        energy_subarray_table[
+                            f"{self.prefixes['energy']}_telescopes"
+                        ].dtype
                         != np.bool_
                     ):
                         # Create boolean mask for telescopes that participate in the stereo reconstruction combination
@@ -1624,7 +1651,9 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                         )
                         # Loop over the table and set the boolean mask for the telescopes
                         for index, tel_id_mask in enumerate(
-                            energy_subarray_table[f"{self.prefixes['energy']}_telescopes"]
+                            energy_subarray_table[
+                                f"{self.prefixes['energy']}_telescopes"
+                            ]
                         ):
                             if not tel_id_mask:
                                 continue
@@ -1635,15 +1664,15 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                                     )
                                 ] = True
                         # Overwrite the column with the boolean mask with fix length
-                        energy_subarray_table[f"{self.prefixes['energy']}_telescopes"] = (
-                            reco_telescopes
-                        )
+                        energy_subarray_table[
+                            f"{self.prefixes['energy']}_telescopes"
+                        ] = reco_telescopes
                 # Deduplicate the subarray energy table to have only one entry per event
                 energy_subarray_table = super().deduplicate_first_valid(
                     table=energy_subarray_table,
                     keys=SUBARRAY_EVENT_KEYS,
                     valid_col=f"{self.prefixes['energy']}_is_valid",
-                    )
+                )
                 # Sort the subarray energy table
                 energy_subarray_table.sort(SUBARRAY_EVENT_KEYS)
                 # Save the prediction to the output file
@@ -1693,13 +1722,14 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                 )
                 # Produce output table with NaNs for missing predictions
                 nan_telescope_mask = nonexample_identifiers["tel_id"] == tel_id
-                nonexample_identifiers_tel = nonexample_identifiers[
-                    nan_telescope_mask
-                ]
+                nonexample_identifiers_tel = nonexample_identifiers[nan_telescope_mask]
                 if len(nonexample_identifiers_tel) > 0:
                     nan_table = super()._create_nan_table(
                         nonexample_identifiers_tel,
-                        columns=[f"{self.prefixes['cameradirection']}_tel_alt", f"{self.prefixes['cameradirection']}_tel_az"],
+                        columns=[
+                            f"{self.prefixes['cameradirection']}_tel_alt",
+                            f"{self.prefixes['cameradirection']}_tel_az",
+                        ],
                         shapes=[
                             (len(nonexample_identifiers_tel),),
                             (len(nonexample_identifiers_tel),),
@@ -1711,7 +1741,9 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                 # Add is_valid column to the direction table
                 direction_tel_table.add_column(
                     ~np.isnan(
-                        direction_tel_table[f"{self.prefixes['cameradirection']}_tel_alt"].data,
+                        direction_tel_table[
+                            f"{self.prefixes['cameradirection']}_tel_alt"
+                        ].data,
                         dtype=bool,
                     ),
                     name=f"{self.prefixes['cameradirection']}_tel_is_valid",
@@ -1720,7 +1752,7 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                 add_defaults_and_meta(
                     direction_tel_table,
                     ReconstructedGeometryContainer,
-                    prefix=self.prefixes['cameradirection'],
+                    prefix=self.prefixes["cameradirection"],
                     add_tel_prefix=True,
                 )
                 direction_tel_tables.append(direction_tel_table)
@@ -1771,7 +1803,7 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                 else:
                     self.geometry_stereo_combiner = StereoCombiner.from_name(
                         self.stereo_combiner_cls,
-                        prefix=self.prefixes['cameradirection'],
+                        prefix=self.prefixes["cameradirection"],
                         property=ReconstructionProperty.GEOMETRY,
                         parent=self,
                     )
@@ -1784,7 +1816,9 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                     # TODO: Remove temporary fix once the stereo combiner returns correct table
                     # Check if the table has to be converted to a boolean mask
                     if (
-                        direction_subarray_table[f"{self.prefixes['cameradirection']}_telescopes"].dtype
+                        direction_subarray_table[
+                            f"{self.prefixes['cameradirection']}_telescopes"
+                        ].dtype
                         != np.bool_
                     ):
                         # Create boolean mask for telescopes that participate in the stereo reconstruction combination
@@ -1797,7 +1831,9 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                         )
                         # Loop over the table and set the boolean mask for the telescopes
                         for index, tel_id_mask in enumerate(
-                            direction_subarray_table[f"{self.prefixes['cameradirection']}_telescopes"]
+                            direction_subarray_table[
+                                f"{self.prefixes['cameradirection']}_telescopes"
+                            ]
                         ):
                             if not tel_id_mask:
                                 continue
@@ -1808,15 +1844,15 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                                     )
                                 ] = True
                         # Overwrite the column with the boolean mask with fix length
-                        direction_subarray_table[f"{self.prefixes['cameradirection']}_telescopes"] = (
-                            reco_telescopes
-                        )
+                        direction_subarray_table[
+                            f"{self.prefixes['cameradirection']}_telescopes"
+                        ] = reco_telescopes
                 # Deduplicate the subarray direction table to have only one entry per event
                 direction_subarray_table = super().deduplicate_first_valid(
                     table=direction_subarray_table,
                     keys=SUBARRAY_EVENT_KEYS,
                     valid_col=f"{self.prefixes['cameradirection']}_is_valid",
-                    )
+                )
                 # Sort the subarray geometry table
                 direction_subarray_table.sort(SUBARRAY_EVENT_KEYS)
                 # Save the prediction to the output file
@@ -2016,7 +2052,8 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
             )
             if self.dl2_subarray:
                 particletype_table.rename_column(
-                    f"{self.prefixes['all']}_telescopes", f"{self.prefixes['type']}_telescopes"
+                    f"{self.prefixes['all']}_telescopes",
+                    f"{self.prefixes['type']}_telescopes",
                 )
                 # Produce output table with NaNs for missing predictions
                 if len(nonexample_identifiers) > 0:
@@ -2030,14 +2067,17 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                 # Add is_valid column to the particletype table
                 particletype_table.add_column(
                     ~np.isnan(
-                        particletype_table[f"{self.prefixes['type']}_tel_prediction"].data,
+                        particletype_table[
+                            f"{self.prefixes['type']}_tel_prediction"
+                        ].data,
                         dtype=bool,
                     ),
                     name=f"{self.prefixes['type']}_is_valid",
                 )
                 # Rename the columns for the stereo mode
                 particletype_table.rename_column(
-                    f"{self.prefixes['type']}_tel_prediction", f"{self.prefixes['type']}_prediction"
+                    f"{self.prefixes['type']}_tel_prediction",
+                    f"{self.prefixes['type']}_prediction",
                 )
                 # Deduplicate the subarray particletype table to have only one entry per event
                 particletype_table = super().deduplicate_first_valid(
@@ -2050,7 +2090,7 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                 add_defaults_and_meta(
                     particletype_table,
                     ParticleClassificationContainer,
-                    prefix=self.prefixes['type'],
+                    prefix=self.prefixes["type"],
                 )
                 # Save the prediction to the output file
                 write_table(
@@ -2083,7 +2123,8 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
             )
             if self.dl2_subarray:
                 energy_table.rename_column(
-                    f"{self.prefixes['all']}_telescopes", f"{self.prefixes['energy']}_telescopes"
+                    f"{self.prefixes['all']}_telescopes",
+                    f"{self.prefixes['energy']}_telescopes",
                 )
                 # Produce output table with NaNs for missing predictions
                 if len(nonexample_identifiers) > 0:
@@ -2097,13 +2138,15 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                 # Add is_valid column to the energy table
                 energy_table.add_column(
                     ~np.isnan(
-                        energy_table[f"{self.prefixes['energy']}_tel_energy"].data, dtype=bool
+                        energy_table[f"{self.prefixes['energy']}_tel_energy"].data,
+                        dtype=bool,
                     ),
                     name=f"{self.prefixes['energy']}_is_valid",
                 )
                 # Rename the columns for the stereo mode
                 energy_table.rename_column(
-                    f"{self.prefixes['energy']}_tel_energy", f"{self.prefixes['energy']}_energy"
+                    f"{self.prefixes['energy']}_tel_energy",
+                    f"{self.prefixes['energy']}_energy",
                 )
                 # Deduplicate the subarray energy table to have only one entry per event
                 energy_table = super().deduplicate_first_valid(
@@ -2116,7 +2159,7 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                 add_defaults_and_meta(
                     energy_table,
                     ReconstructedEnergyContainer,
-                    prefix=self.prefixes['energy'],
+                    prefix=self.prefixes["energy"],
                 )
                 # Save the prediction to the output file
                 write_table(
@@ -2155,7 +2198,8 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
             )
             if self.dl2_subarray:
                 direction_table.rename_column(
-                    f"{self.prefixes['all']}_telescopes", f"{self.prefixes['skydirection']}_telescopes"
+                    f"{self.prefixes['all']}_telescopes",
+                    f"{self.prefixes['skydirection']}_telescopes",
                 )
                 # Transform the spherical coordinate offsets to sky coordinates
                 direction_table = super()._transform_spher_coord_offsets_to_sky(
@@ -2165,7 +2209,10 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                 if len(nonexample_identifiers) > 0:
                     nan_table = super()._create_nan_table(
                         nonexample_identifiers,
-                        columns=[f"{self.prefixes['skydirection']}_alt", f"{self.prefixes['skydirection']}_az"],
+                        columns=[
+                            f"{self.prefixes['skydirection']}_alt",
+                            f"{self.prefixes['skydirection']}_az",
+                        ],
                         shapes=[
                             (len(nonexample_identifiers),),
                             (len(nonexample_identifiers),),
@@ -2175,7 +2222,10 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                     direction_table = vstack([direction_table, nan_table])
                 # Add is_valid column to the direction table
                 direction_table.add_column(
-                    ~np.isnan(direction_table[f"{self.prefixes['skydirection']}_alt"].data, dtype=bool),
+                    ~np.isnan(
+                        direction_table[f"{self.prefixes['skydirection']}_alt"].data,
+                        dtype=bool,
+                    ),
                     name=f"{self.prefixes['skydirection']}_is_valid",
                 )
                 # Deduplicate the subarray direction table to have only one entry per event
@@ -2189,7 +2239,7 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                 add_defaults_and_meta(
                     direction_table,
                     ReconstructedGeometryContainer,
-                    prefix=self.prefixes['skydirection'],
+                    prefix=self.prefixes["skydirection"],
                 )
                 # Save the prediction to the output file
                 write_table(
@@ -2241,7 +2291,8 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
                 f"{self.prefixes['all']}_geometry_feature_vectors",
             )
             feature_vector_table.rename_column(
-                f"{self.prefixes['all']}_tel_is_valid", f"{self.prefixes['all']}_is_valid"
+                f"{self.prefixes['all']}_tel_is_valid",
+                f"{self.prefixes['all']}_is_valid",
             )
             feature_vector_table.sort(SUBARRAY_EVENT_KEYS)
             # Save the prediction to the output file
