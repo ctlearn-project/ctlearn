@@ -73,17 +73,107 @@ def r1_gamma_file(r1_tmp_path, gamma_simtel_path):
 
     output = r1_tmp_path / "gamma.r1.h5"
 
+    allowed_tels = [1,2]  
     argv = [
         f"--input={gamma_simtel_path}",
         f"--output={output}",
         f"--DataWriter.write_r1_waveforms=True",
         "--SimTelEventSource.focal_length_choice=EQUIVALENT",
+        f"--SimTelEventSource.allowed_tels={allowed_tels}",
     ]
     assert run_tool(ProcessorTool(), argv=argv, cwd=r1_tmp_path) == 0
     return output
 
 @pytest.fixture(scope="session")
-def ctlearn_trained_dl1_models(dl1_gamma_file, dl1_proton_file, tmp_path_factory):
+def r1_proton_file(r1_tmp_path, proton_simtel_path):
+    """
+    R1 file containing both waveforms and parameters from a proton simulation set.
+    """
+    from ctapipe.tools.process import ProcessorTool
+
+    # Restrict to two LSTs for R1 tests to reduce computational load
+    allowed_tels = [1,2]  
+    output = r1_tmp_path / "proton.r1.h5"
+    argv = [
+        f"--input={proton_simtel_path}",
+        f"--output={output}",
+        f"--DataWriter.write_r1_waveforms=True",
+        "--SimTelEventSource.focal_length_choice=EQUIVALENT",
+        f"--SimTelEventSource.allowed_tels={allowed_tels}",
+
+    ]
+    assert run_tool(ProcessorTool(), argv=argv, cwd=r1_tmp_path) == 0
+    return output
+
+@pytest.fixture(scope="session")
+def ctlearn_trained_r1_mono_models(r1_gamma_file, r1_proton_file, tmp_path_factory):
+    """
+    Test training CTLearn model using the R1 gamma and proton files for all reconstruction tasks.
+    Each test run gets its own isolated temp directories.
+    """
+    tmp_path = tmp_path_factory.mktemp("ctlearn_models")
+
+    # Temporary directories for signal and background
+    signal_dir = tmp_path / "gamma_r1"
+    signal_dir.mkdir(parents=True, exist_ok=True)
+
+    background_dir = tmp_path / "proton_r1"
+    background_dir.mkdir(parents=True, exist_ok=True)
+
+    # Hardcopy R1 gamma file to the signal directory
+    shutil.copy(r1_gamma_file, signal_dir)
+    # Hardcopy R1 proton file to the background directory
+    shutil.copy(r1_proton_file, background_dir)
+
+    # Configuration to disable quality cuts to increase
+    # training statistics mainly needed for LSTs.
+    config = Config(
+        {
+            "TableQualityQuery": {
+                "quality_criteria": [],
+            },
+        },
+    )
+
+    # Restrict to two LSTs for R1 tests to reduce computational load
+    telescope_type = "LST"
+    # Loop over reconstruction tasks and train models for each combination
+    ctlearn_trained_r1_mono_models = {}
+    for reco_task in ["type", "energy", "cameradirection"]:
+        # Output directory for trained model
+        output_dir = tmp_path / f"ctlearn_{telescope_type}_{reco_task}"
+        
+        # Build command-line arguments
+        argv = [
+            f"--signal={signal_dir}",
+            "--pattern-signal=*.r1.h5",
+            f"--output={output_dir}",
+            f"--reco={reco_task}",
+            "--TrainCTLearnModel.n_epochs=1",
+            "--TrainCTLearnModel.batch_size=2",
+            "--TrainCTLearnModel.dl1dh_reader_type=DLWaveformReader",
+            "--DLWaveformReader.sequence_length=5",
+            "--DLWaveformReader.focal_length_choice=EQUIVALENT",
+        ]
+
+        # Include background only for classification task
+        if reco_task == "type":
+            argv.extend([
+                f"--background={background_dir}",
+                "--pattern-background=*.r1.h5",
+                "--DLWaveformReader.enforce_subarray_equality=False",
+            ])
+
+        # Run training
+        assert run_tool(TrainCTLearnModel(config=config), argv=argv, cwd=tmp_path) == 0
+
+        ctlearn_trained_r1_mono_models[f"{telescope_type}_{reco_task}"] = output_dir / "ctlearn_model.keras"
+        # Check that the trained model exists
+        assert ctlearn_trained_r1_mono_models[f"{telescope_type}_{reco_task}"].exists()
+    return ctlearn_trained_r1_mono_models
+
+@pytest.fixture(scope="session")
+def ctlearn_trained_dl1_mono_models(dl1_gamma_file, dl1_proton_file, tmp_path_factory):
     """
     Test training CTLearn model using the DL1 gamma and proton files for all reconstruction tasks.
     Each test run gets its own isolated temp directories.
@@ -125,7 +215,7 @@ def ctlearn_trained_dl1_models(dl1_gamma_file, dl1_proton_file, tmp_path_factory
     }
     # Loop over telescope types and reconstruction tasks
     # and train models for each combination
-    ctlearn_trained_dl1_models = {}
+    ctlearn_trained_dl1_mono_models = {}
     for telescope_type, allowed_tels in telescope_types.items():
         for reco_task in ["type", "energy", "cameradirection"]:
             # Output directory for trained model
@@ -155,7 +245,7 @@ def ctlearn_trained_dl1_models(dl1_gamma_file, dl1_proton_file, tmp_path_factory
             # Run training
             assert run_tool(TrainCTLearnModel(config=config), argv=argv, cwd=tmp_path) == 0
 
-            ctlearn_trained_dl1_models[f"{telescope_type}_{reco_task}"] = output_dir / "ctlearn_model.keras"
+            ctlearn_trained_dl1_mono_models[f"{telescope_type}_{reco_task}"] = output_dir / "ctlearn_model.keras"
             # Check that the trained model exists
-            assert ctlearn_trained_dl1_models[f"{telescope_type}_{reco_task}"].exists()
-    return ctlearn_trained_dl1_models
+            assert ctlearn_trained_dl1_mono_models[f"{telescope_type}_{reco_task}"].exists()
+    return ctlearn_trained_dl1_mono_models
