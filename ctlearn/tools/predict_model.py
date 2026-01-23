@@ -739,7 +739,7 @@ class PredictCTLearnModel(Tool):
             backbone_model = model.get_layer(index=1)
             # Create a new head model with the same layers as the original model.
             # The output of the backbone model is the input of the head model.
-            backbone_output_shape = keras.Input(model.layers[2].input_shape[1:])
+            backbone_output_shape = keras.Input(model.layers[2].input.shape[1:])
             x = backbone_output_shape
             for layer in model.layers[2:]:
                 x = layer(x)
