@@ -2,13 +2,20 @@
 common pytest fixtures for tests in ctlearn.
 """
 
+from pathlib import Path
+
+import numpy as np
 import pytest
 import shutil
+from astropy import units as u
+from astropy.table import Column, Table
 from traitlets.config.loader import Config
 
 from ctapipe.core import run_tool
+from ctapipe.io import write_table
 from ctapipe.utils import get_dataset_path
 from ctlearn.tools import TrainCTLearnModel
+from ctlearn.utils import get_lst1_subarray_description
 
 
 @pytest.fixture(scope="session")
@@ -33,6 +40,92 @@ def dl1_tmp_path(tmp_path_factory):
 def r1_tmp_path(tmp_path_factory):
     """Temporary directory for global r1 test data"""
     return tmp_path_factory.mktemp("r1_")
+
+
+def _create_mock_lst1_dl1_file(
+    output_path: str | Path,
+    n_events: int = 4,
+    random_seed: int | None = 0,
+) -> Path:
+    """Write a minimal DL1 file with fake data compatible with the LST1PredictionTool."""
+
+    rng = np.random.default_rng(random_seed)
+    output_path = Path(output_path)
+
+    subarray = get_lst1_subarray_description()
+    tel_id = 1
+    n_pixels = subarray.tel[tel_id].camera.geometry.n_pixels
+
+    obs_id = 1
+    event_ids = np.arange(1, n_events + 1, dtype=np.int64)
+
+    # Fake per-pixel data
+    image = rng.uniform(80, 150, size=(n_events, n_pixels)).astype(np.float32)
+    image_mask = rng.integers(0, 2, size=(n_events, n_pixels), dtype=bool)
+    peak_time = rng.normal(5.0, 0.5, size=(n_events, n_pixels)).astype(np.float32)
+
+    image_table = Table()
+    image_table["obs_id"] = np.full(n_events, obs_id, dtype=np.int64)
+    image_table["event_id"] = event_ids
+    image_table["tel_id"] = np.full(n_events, tel_id, dtype=np.int16)
+    image_table.add_column(
+        Column(image, name="image", dtype=np.float32, shape=(n_pixels,))
+    )
+    image_table.add_column(
+        Column(image_mask, name="image_mask", dtype=bool, shape=(n_pixels,))
+    )
+    image_table.add_column(
+        Column(peak_time, name="peak_time", dtype=np.float32, shape=(n_pixels,))
+    )
+
+    # DL1 parameter columns required by LST1PredictionTool
+    parameter_table = Table()
+    parameter_table["obs_id"] = np.full(n_events, obs_id, dtype=np.int64)
+    parameter_table["event_id"] = event_ids
+    parameter_table["tel_id"] = np.full(n_events, tel_id, dtype=np.int16)
+    parameter_table["intensity"] = rng.uniform(90, 140, size=n_events)
+    parameter_table["x"] = rng.normal(0.0, 0.05, size=n_events)
+    parameter_table["y"] = rng.normal(0.0, 0.05, size=n_events)
+    parameter_table["phi"] = rng.uniform(-np.pi, np.pi, size=n_events)
+    parameter_table["psi"] = rng.uniform(-np.pi, np.pi, size=n_events)
+    parameter_table["length"] = rng.uniform(0.05, 0.15, size=n_events)
+    parameter_table["length_uncertainty"] = rng.uniform(0.001, 0.003, size=n_events)
+    parameter_table["width"] = rng.uniform(0.02, 0.08, size=n_events)
+    parameter_table["width_uncertainty"] = rng.uniform(0.001, 0.003, size=n_events)
+    parameter_table["skewness"] = rng.normal(0.0, 0.2, size=n_events)
+    parameter_table["kurtosis"] = rng.normal(0.0, 0.2, size=n_events)
+    parameter_table["time_gradient"] = rng.normal(0.0, 0.01, size=n_events)
+    parameter_table["intercept"] = rng.normal(0.0, 0.01, size=n_events)
+    parameter_table["n_pixels"] = np.full(n_events, n_pixels, dtype=np.int16)
+    parameter_table["n_islands"] = np.zeros(n_events, dtype=np.int16)
+    parameter_table["event_type"] = np.full(n_events, 32, dtype=np.int16)
+    parameter_table["az_tel"] = np.full(n_events, 1.0)
+    parameter_table["alt_tel"] = np.full(n_events, 1.2)
+    parameter_table["dragon_time"] = np.linspace(1_700_000_000, 1_700_000_300, n_events)
+
+    # Write to DL1 file the subarray description, image and parameter tables
+    subarray.to_hdf(output_path, overwrite=True)
+    write_table(
+        image_table,
+        output_path,
+        "/dl1/event/telescope/image/LST_LSTCam",
+        overwrite=True,
+    )
+    write_table(
+        parameter_table,
+        output_path,
+        "/dl1/event/telescope/parameters/LST_LSTCam",
+        overwrite=True,
+    )
+    return output_path
+
+
+@pytest.fixture(scope="session")
+def mock_lst1_dl1_file(tmp_path_factory):
+    """Path to a session-scoped mock LST-1 DL1 HDF5 file for tests."""
+
+    output = tmp_path_factory.mktemp("mock_lst1") / "mock_lst1_dl1.h5"
+    return _create_mock_lst1_dl1_file(output)
 
 
 @pytest.fixture(scope="session")
