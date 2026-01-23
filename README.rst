@@ -37,7 +37,7 @@ First, create and activate a fresh conda environment:
 .. code-block:: bash
 
    mamba create -n ctlearn -c conda-forge python==3.12 llvmlite
-   mamba activate ctlearn
+   conda activate ctlearn
 
 The lastest version fo this package can be installed as a pip package:
 
@@ -45,7 +45,7 @@ The lastest version fo this package can be installed as a pip package:
 
    pip install ctlearn
 
-See the documentation for further information like `installation instructions for developers <https://ctlearn.readthedocs.io/en/latest/installation.html#installing-with-pip-setuptools-from-source-for-development>`_, `package usage <https://ctlearn.readthedocs.io/en/stable/usage.html>`_, and `dependencies <https://ctlearn.readthedocs.io/en/stable/installation.html#dependencies>`_ among other topics.
+See the documentation for further information like `installation instructions for the IT-cluster <https://ctlearn.readthedocs.io/en/latest/installation.html#install-a-released-version>`_, `installation instructions for developers <https://ctlearn.readthedocs.io/en/latest/installation.html#installing-with-pip-setuptools-from-source-for-development>`_, `package usage <https://ctlearn.readthedocs.io/en/stable/usage.html>`_, and `dependencies <https://ctlearn.readthedocs.io/en/stable/installation.html#dependencies>`_ among other topics.
 
 Citing this software
 --------------------

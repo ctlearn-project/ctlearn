@@ -11,63 +11,47 @@ The following command will set up a conda virtual environment, add the
 necessary package channels, and install CTLearn specified version and its dependencies:
 
 .. code-block:: bash
+   mamba create -n ctlearn -c conda-forge python==3.12 llvmlite
+   conda activate ctlearn
+   pip install ctlearn
 
-   CTLEARN_VER=0.10.3
-   wget https://raw.githubusercontent.com/ctlearn-project/ctlearn/v$CTLEARN_VER/environment.yml
-   conda env create -n [ENVIRONMENT_NAME] -f environment.yml
-   conda activate [ENVIRONMENT_NAME]
-   pip install ctlearn==$CTLEARN_VER
-   ctlearn -h
+For working on the IT-cluster:
 
+.. code-block:: bash
+   mamba create -n ctlearn-it-cluster -c conda-forge python==3.12 h5py scipy llvmlite gcc_linux-64 gxx_linux-64 openblas gfortran_linux-64
+   conda activate ctlearn-it-cluster
+   export CC=$(which x86_64-conda-linux-gnu-gcc)
+   export CXX=$(which x86_64-conda-linux-gnu-g++)
+   export FC=$(which x86_64-conda-linux-gnu-gfortran)
+   pip install ctlearn
 
-This should automatically install all dependencies (NOTE: this may take some time, as by default MKL is included as a dependency of NumPy and it is very large).
+Please do not forget to update your LD_LIBRARY_PATH to include the necessary paths. For example, you can add the following line to your .bashrc file:
+export LD_LIBRARY_PATH=/to/your/.conda/envs/ctlearn-it-cluster/lib:/fefs/aswg/workspace/tjark.miener/cudnn-linux-x86_64-8.9.7.29_cuda12-archive/lib:$LD_LIBRARY_PATH
+Note: You would need to replace the /to/your/.conda/envs/ctlearn-it-cluster/lib with the path to your conda environment where ctlearn is installed. cudnn-linux-x86_64-8.9.7.29_cuda12-archive is the path to the cuDNN libraries for CUDA 12.
 
-For working on the IT-cluster, please do not forget to update your LD_LIBRARY_PATH to include the necessary paths. For example, you can add the following line to your .bashrc file:
-export LD_LIBRARY_PATH=/to/your/.conda/envs/ctlearn/lib:/fefs/aswg/workspace/tjark.miener/cudnn-linux-x86_64-8.9.2.26_cuda11-archive/lib:/fefs/aswg/workspace/tjark.miener/cudnn-linux-x86_64-8.9.7.29_cuda12-archive/lib:$LD_LIBRARY_PATH
-Note: You would need to replace the /to/your/.conda/envs/ctlearn/lib with the path to your conda environment where ctlearn is installed. cudnn-linux-x86_64-8.9.2.26_cuda11-archive and cudnn-linux-x86_64-8.9.7.29_cuda12-archive are the paths to the cuDNN libraries for CUDA 11 and CUDA 12, respectively.
 
 Installing with pip/setuptools from source for development
 ----------------------------------------------------------
 
-Clone the CTLearn repository:
+First, install Anaconda by following the instructions above. Create a new conda environment that includes all the dependencies for CTLearn. Then, clone the CTLearn repository and install CTLearn into the new conda environment with pip from source:
 
 .. code-block:: bash
 
+   mamba create -n ctlearn -c conda-forge python==3.12 llvmlite
+   conda activate ctlearn
    cd </ctlearn/installation/path>
    git clone https://github.com/ctlearn-project/ctlearn.git
+   pip install -e .
 
-First, install Anaconda by following the instructions above. Create a new conda environment that includes all the dependencies for CTLearn:
-
-.. code-block:: bash
-
-   conda env create -f </installation/path>/ctlearn/environment.yml
-
-Finally, install CTLearn into the new conda environment via pypi:
-
-.. code-block:: bash
-
-   conda activate ctlearn
-   pip install ctlearn==0.10.3
-
-or with pip from source:
-
-.. code-block:: bash
-
-   conda activate ctlearn
-
-   cd <ctlearn/installation/path>/ctlearn
-   pip install .
-
-NOTE for developers: If you wish to fork/clone the repository and edit the code, install with ``pip -e``.
 
 Dependencies
 ------------
 
-* Python>=3.10
-* TensorFlow>=2.14,<2.15
-* ctapipe>=0.22.0,<0.26
+* Python>=3.12
+* TensorFlow>=2.16
+* ctapipe>=0.29.0
 * ctaplot
-* DL1DataHandler>=0.14.5,<0.15
+* DL1DataHandler>=0.14.8
 * numba
 * NumPy
 * Pandas
