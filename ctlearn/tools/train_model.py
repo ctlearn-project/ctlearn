@@ -6,7 +6,6 @@ import atexit
 import keras
 import pandas as pd
 import numpy as np
-import shutil
 import tensorflow as tf
 
 from ctapipe.core import Tool
@@ -24,6 +23,7 @@ from ctapipe.core.traits import (
     Unicode,
 )
 from dl1_data_handler.reader import DLDataReader
+from ctlearn import __version__ as ctlearn_version
 from ctlearn.core.loader import DLDataLoader
 from ctlearn.core.model import CTLearnModel
 from ctlearn.utils import validate_trait_dict
@@ -114,9 +114,9 @@ class TrainCTLearnModel(Tool):
         help="List of specific file pattern for matching files in ``input_dir_background``",
     ).tag(config=True)
 
-    dl1dh_reader_type = ComponentName(
-        DLDataReader, default_value="DLImageReader"
-    ).tag(config=True)
+    dl1dh_reader_type = ComponentName(DLDataReader, default_value="DLImageReader").tag(
+        config=True
+    )
 
     stack_telescope_images = Bool(
         default_value=False,
@@ -136,9 +136,7 @@ class TrainCTLearnModel(Tool):
         ),
     ).tag(config=True)
 
-    model_type = ComponentName(
-        CTLearnModel, default_value="ResNet"
-    ).tag(config=True)
+    model_type = ComponentName(CTLearnModel, default_value="ResNet").tag(config=True)
 
     output_dir = Path(
         exits=False,
@@ -151,14 +149,14 @@ class TrainCTLearnModel(Tool):
 
     reco_tasks = List(
         trait=CaselessStrEnum(["type", "energy", "cameradirection", "skydirection"]),
-        allow_none=False, 
+        allow_none=False,
         help=(
             "List of reconstruction tasks to perform. "
-            "'type': classification of the primary particle type "
-            "'energy': regression of the primary particle energy "
-            "'cameradirection': regression of the primary particle arrival direction in camera coordinates "
-            "'skydirection': regression of the primary particle arrival direction in sky coordinates"
-        )
+            "'type': classification of the primary particle type; "
+            "'energy': regression of the primary particle energy; "
+            "'cameradirection': reconstruction of the primary particle arrival direction in camera coordinates; "
+            "'skydirection': reconstruction of the primary particle arrival direction in sky coordinates."
+        ),
     ).tag(config=True)
 
     n_epochs = Int(
@@ -187,20 +185,29 @@ class TrainCTLearnModel(Tool):
     ).tag(config=True)
 
     optimizer = Dict(
-        default_value={"name": "Adam", "base_learning_rate": 0.0001, "adam_epsilon": 1.0e-8},
-	help=(
-	    "Optimizer to use for training. "
-	    "E.g. {'name': 'Adam', 'base_learning_rate': 0.0001, 'adam_epsilon': 1.0e-8}. "
-	)
+        default_value={
+            "name": "Adam",
+            "base_learning_rate": 0.0001,
+            "adam_epsilon": 1.0e-8,
+        },
+        help=(
+            "Optimizer to use for training. "
+            "E.g. {'name': 'Adam', 'base_learning_rate': 0.0001, 'adam_epsilon': 1.0e-8}. "
+        ),
     ).tag(config=True)
 
     lr_reducing = Dict(
-        default_value={"factor": 0.5, "patience": 5, "min_delta": 0.01, "min_lr": 0.000001},
+        default_value={
+            "factor": 0.5,
+            "patience": 5,
+            "min_delta": 0.01,
+            "min_lr": 0.000001,
+        },
         allow_none=True,
-	help=(
-	    "Learning rate reducing parameters for the Keras callback. "
-	    "E.g. {'factor': 0.5, 'patience': 5, 'min_delta': 0.01, 'min_lr': 0.000001}. "
-	)
+        help=(
+            "Learning rate reducing parameters for the Keras callback. "
+            "E.g. {'factor': 0.5, 'patience': 5, 'min_delta': 0.01, 'min_lr': 0.000001}. "
+        ),
     ).tag(config=True)
 
     random_seed = Int(
@@ -209,7 +216,7 @@ class TrainCTLearnModel(Tool):
             "Random seed for shuffling the data "
             "before the training/validation split "
             "and after the end of an epoch."
-        )
+        ),
     ).tag(config=True)
 
     save_onnx = Bool(
@@ -217,16 +224,15 @@ class TrainCTLearnModel(Tool):
         allow_none=False,
         help="Set whether to save model in an ONNX file.",
     ).tag(config=True)
-    
+
     early_stopping = Dict(
         default_value=None,
         allow_none=True,
-	help=(
-	    "Early stopping parameters for the Keras callback. "
-	    "E.g. {'monitor': 'val_loss', 'patience': 4, 'verbose': 1, 'restore_best_weights': True}. "
-	)
+        help=(
+            "Early stopping parameters for the Keras callback. "
+            "E.g. {'monitor': 'val_loss', 'patience': 4, 'verbose': 1, 'restore_best_weights': True}. "
+        ),
     ).tag(config=True)
-
 
     aliases = {
         "signal": "TrainCTLearnModel.input_dir_signal",
@@ -240,6 +246,7 @@ class TrainCTLearnModel(Tool):
     classes = classes_with_traits(CTLearnModel) + classes_with_traits(DLDataReader)
 
     def setup(self):
+        self.log.info("ctlearn version %s", ctlearn_version)
         # Check if the output directory exists
         if self.output_dir.exists():
             raise ToolConfigurationError(
@@ -257,7 +264,9 @@ class TrainCTLearnModel(Tool):
         self.input_url_background = []
         if self.input_dir_background is not None:
             for background_pattern in self.file_pattern_background:
-                self.input_url_background.extend(self.input_dir_background.glob(background_pattern))
+                self.input_url_background.extend(
+                    self.input_dir_background.glob(background_pattern)
+                )
 
         # Set up the data reader
         self.log.info("Loading data:")
@@ -275,8 +284,12 @@ class TrainCTLearnModel(Tool):
         )
         self.log.info("Number of events loaded: %s", self.dl1dh_reader._get_n_events())
         if "type" in self.reco_tasks:
-            self.log.info("Number of signal events: %d", self.dl1dh_reader.n_signal_events)
-            self.log.info("Number of background events: %d", self.dl1dh_reader.n_bkg_events)
+            self.log.info(
+                "Number of signal events: %d", self.dl1dh_reader.n_signal_events
+            )
+            self.log.info(
+                "Number of background events: %d", self.dl1dh_reader.n_bkg_events
+            )
         # Check if the number of events is enough to form a batch
         if self.dl1dh_reader._get_n_events() < self.batch_size:
             raise ValueError(
@@ -294,7 +307,10 @@ class TrainCTLearnModel(Tool):
                 f"Cannot stack telescope images in mono mode. Use stereo mode for stacking."
             )
         # Ckeck if only one telescope type is selected for stacking telescope images
-        if self.stack_telescope_images and len(list(self.dl1dh_reader.selected_telescopes)) > 1:
+        if (
+            self.stack_telescope_images
+            and len(list(self.dl1dh_reader.selected_telescopes)) > 1
+        ):
             raise ToolConfigurationError(
                 f"Cannot stack telescope images from multiple telescope types. Use only one telescope type."
             )
@@ -309,14 +325,16 @@ class TrainCTLearnModel(Tool):
         # Shuffle the indices before the training/validation split
         np.random.seed(self.random_seed)
         np.random.shuffle(indices)
-        n_validation_examples = int(self.validation_split * self.dl1dh_reader._get_n_events())
+        n_validation_examples = int(
+            self.validation_split * self.dl1dh_reader._get_n_events()
+        )
         training_indices = indices[n_validation_examples:]
         validation_indices = indices[:n_validation_examples]
         self.training_loader = DLDataLoader(
             self.dl1dh_reader,
             training_indices,
             tasks=self.reco_tasks,
-            batch_size=self.batch_size*self.strategy.num_replicas_in_sync,
+            batch_size=self.batch_size * self.strategy.num_replicas_in_sync,
             random_seed=self.random_seed,
             sort_by_intensity=self.sort_by_intensity,
             stack_telescope_images=self.stack_telescope_images,
@@ -325,7 +343,7 @@ class TrainCTLearnModel(Tool):
             self.dl1dh_reader,
             validation_indices,
             tasks=self.reco_tasks,
-            batch_size=self.batch_size*self.strategy.num_replicas_in_sync,
+            batch_size=self.batch_size * self.strategy.num_replicas_in_sync,
             random_seed=self.random_seed,
             sort_by_intensity=self.sort_by_intensity,
             stack_telescope_images=self.stack_telescope_images,
@@ -335,11 +353,7 @@ class TrainCTLearnModel(Tool):
         monitor = "val_loss"
         monitor_mode = "min"
         # Model checkpoint callback
-        # Temp fix for supporting keras2 & keras3
-        if int(keras.__version__.split(".")[0]) >= 3:
-            model_path = f"{self.output_dir}/ctlearn_model.keras"
-        else:
-            model_path = f"{self.output_dir}/ctlearn_model.cpk"
+        model_path = f"{self.output_dir}/ctlearn_model.keras"
         model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
             filepath=model_path,
             monitor=monitor,
@@ -355,23 +369,32 @@ class TrainCTLearnModel(Tool):
         csv_logger_callback = keras.callbacks.CSVLogger(
             filename=f"{self.output_dir}/training_log.csv", append=True
         )
-        self.callbacks = [model_checkpoint_callback, tensorboard_callback, csv_logger_callback]
-	
+        self.callbacks = [
+            model_checkpoint_callback,
+            tensorboard_callback,
+            csv_logger_callback,
+        ]
+
         if self.early_stopping is not None:
             # EarlyStopping callback
-            validate_trait_dict(self.early_stopping, ["monitor", "patience", "verbose", "restore_best_weights"])
+            validate_trait_dict(
+                self.early_stopping,
+                ["monitor", "patience", "verbose", "restore_best_weights"],
+            )
             early_stopping_callback = keras.callbacks.EarlyStopping(
-            	monitor=self.early_stopping["monitor"], 
-		patience=self.early_stopping["patience"], 
-		verbose=self.early_stopping["verbose"],
-		restore_best_weights=self.early_stopping["restore_best_weights"]
+                monitor=self.early_stopping["monitor"],
+                patience=self.early_stopping["patience"],
+                verbose=self.early_stopping["verbose"],
+                restore_best_weights=self.early_stopping["restore_best_weights"],
             )
             self.callbacks.append(early_stopping_callback)
 
         # Learning rate reducing callback
         if self.lr_reducing is not None:
             # Validate the learning rate reducing parameters
-            validate_trait_dict(self.lr_reducing, ["factor", "patience", "min_delta", "min_lr"])
+            validate_trait_dict(
+                self.lr_reducing, ["factor", "patience", "min_delta", "min_lr"]
+            )
             lr_reducing_callback = keras.callbacks.ReduceLROnPlateau(
                 monitor=monitor,
                 factor=self.lr_reducing["factor"],
@@ -383,10 +406,8 @@ class TrainCTLearnModel(Tool):
             )
             self.callbacks.append(lr_reducing_callback)
 
-
-	
     def start(self):
-        
+
         # Open a strategy scope.
         with self.strategy.scope():
             # Construct the model
@@ -400,7 +421,7 @@ class TrainCTLearnModel(Tool):
             # Validate the optimizer parameters
             validate_trait_dict(self.optimizer, ["name", "base_learning_rate"])
             # Set the learning rate for the optimizer
-            learning_rate =  self.optimizer["base_learning_rate"]
+            learning_rate = self.optimizer["base_learning_rate"]
             # Set the epsilon for the Adam optimizer
             adam_epsilon = None
             if self.optimizer["name"] == "Adam":
@@ -419,7 +440,10 @@ class TrainCTLearnModel(Tool):
                     keras.optimizers.Adam,
                     dict(learning_rate=learning_rate, epsilon=adam_epsilon),
                 ),
-                "RMSProp": (keras.optimizers.RMSprop, dict(learning_rate=learning_rate)),
+                "RMSProp": (
+                    keras.optimizers.RMSprop,
+                    dict(learning_rate=learning_rate),
+                ),
                 "SGD": (keras.optimizers.SGD, dict(learning_rate=learning_rate)),
             }
             # Get the optimizer function and arguments
@@ -428,7 +452,9 @@ class TrainCTLearnModel(Tool):
             losses, metrics = self._get_losses_and_mertics(self.reco_tasks)
             # Compile the model
             self.log.info("Compiling CTLearn model.")
-            self.model.compile(optimizer=optimizer_fn(**optimizer_args), loss=losses, metrics=metrics)
+            self.model.compile(
+                optimizer=optimizer_fn(**optimizer_args), loss=losses, metrics=metrics
+            )
 
         # Train and evaluate the model
         self.log.info("Training and evaluating...")
@@ -441,7 +467,6 @@ class TrainCTLearnModel(Tool):
             verbose=2,
         )
         self.log.info("Training and evaluating finished succesfully!")
-
 
     def finish(self):
 
@@ -456,7 +481,9 @@ class TrainCTLearnModel(Tool):
 
             output_path = f"{self.output_dir}/ctlearn_model.onnx"
             tf2onnx.convert.from_keras(
-                self.model, input_signature=self.model.input_layer.input._type_spec, output_path=output_path
+                self.model,
+                input_signature=self.model.input_layer.input._type_spec,
+                output_path=output_path,
             )
             self.log.info("ONNX model saved in %s", self.output_dir)
 
@@ -505,12 +532,16 @@ class TrainCTLearnModel(Tool):
             losses["cameradirection"] = keras.losses.MeanAbsoluteError(
                 reduction="sum_over_batch_size"
             )
-            metrics["cameradirection"] = keras.metrics.MeanAbsoluteError(name="mae_cameradirection")
+            metrics["cameradirection"] = keras.metrics.MeanAbsoluteError(
+                name="mae_cameradirection"
+            )
         if "skydirection" in self.reco_tasks:
             losses["skydirection"] = keras.losses.MeanAbsoluteError(
                 reduction="sum_over_batch_size"
             )
-            metrics["skydirection"] = keras.metrics.MeanAbsoluteError(name="mae_skydirection")
+            metrics["skydirection"] = keras.metrics.MeanAbsoluteError(
+                name="mae_skydirection"
+            )
         return losses, metrics
 
 

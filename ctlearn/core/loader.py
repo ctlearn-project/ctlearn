@@ -155,7 +155,7 @@ class DLDataLoader(Sequence):
         """
         # Retrieve the telescope images and store in the features dictionary
         labels = {}
-        features = {"input": batch["features"].data}
+        features = batch["features"].data
         if "type" in self.tasks:
             labels["type"] = to_categorical(
                 batch["true_shower_primary_class"].data,
@@ -186,9 +186,6 @@ class DLDataLoader(Sequence):
                 ),
                 axis=1,
             )
-        # Temp fix for supporting keras2 & keras3
-        if int(keras.__version__.split(".")[0]) >= 3:
-            features = features["input"]
         return features, labels
 
     def _get_stereo_item(self, batch):
@@ -303,13 +300,10 @@ class DLDataLoader(Sequence):
             )
         # Store the fatures in the features dictionary
         if "features" in batch.colnames:
-            features = {"input": np.array(features)}
+            features = np.array(features)
         # TDOO: Add support for both feature vectors
         if "mono_feature_vectors" in batch.colnames:
-            features = {"input": np.array(mono_feature_vectors)}
+            features = np.array(mono_feature_vectors)
         if "stereo_feature_vectors" in batch.colnames:
-            features = {"input": np.array(stereo_feature_vectors)}
-        # Temp fix for supporting keras2 & keras3
-        if int(keras.__version__.split(".")[0]) >= 3:
-            features = features["input"]
+            features = np.array(stereo_feature_vectors)
         return features, labels

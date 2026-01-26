@@ -288,7 +288,7 @@ class SingleCNN(CTLearnModel):
         """
 
         # Define the input layer from the input shape
-        network_input = keras.Input(shape=input_shape, name="input")
+        network_input = keras.Input(shape=input_shape)
         # Get model arcihtecture parameters for the backbone
         filters_list = [layer["filters"] for layer in self.architecture]
         kernel_sizes = [layer["kernel_size"] for layer in self.architecture]
@@ -472,7 +472,7 @@ class ResNet(CTLearnModel):
             Keras input layer object for the backbone model.
         """
         # Define the input layer from the input shape
-        network_input = keras.Input(shape=input_shape, name="input")
+        network_input = keras.Input(shape=input_shape)
         # Apply initial padding if specified
         if self.init_padding > 0:
             network_input = keras.layers.ZeroPadding2D(
@@ -880,7 +880,7 @@ class LoadedModel(CTLearnModel):
         """
 
         # Define the input layer from the input shape
-        network_input = keras.Input(shape=input_shape, name="input")
+        network_input = keras.Input(shape=input_shape)
         # Set the backbone model to be trainable or not
         for layer in self.model.layers:
             if layer.name.endswith("_block"):
