@@ -18,7 +18,7 @@ jobs:
         dl1dh-version: ['latest', 'nightly']
       max-parallel: 6
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.dl1dh-version == 'nightly' || matrix.python-version == '3.14' }}
+    continue-on-error: ${{ matrix.dl1dh-version == 'nightly'}}
     steps:
       - uses: actions/checkout@v4
 
