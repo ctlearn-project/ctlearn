@@ -541,9 +541,12 @@ class PredictCTLearnModel(Tool):
         )
 
         subarray_trigger_table = tel_trigger_table.copy()
-        subarray_trigger_table.keep_columns(
-            SUBARRAY_EVENT_KEYS + ["time", "event_type"]
-        )
+        subarray_columns = SUBARRAY_EVENT_KEYS + ["time"]
+        # In older data formats the event type is not included in the trigger table, so we need to
+        # check if it is present before keeping the column to be backwards compatible.
+        if "event_type" in subarray_trigger_table.colnames:
+            subarray_columns.append("event_type")
+        subarray_trigger_table.keep_columns(subarray_columns)
         subarray_trigger_table = unique(
             subarray_trigger_table, keys=SUBARRAY_EVENT_KEYS
         )
