@@ -90,9 +90,6 @@ from ctlearn.core.loader import DLDataLoader
 from ctlearn.utils import validate_trait_dict
 
 # Convienient constants for column names and table keys
-CONFIG_INSTRUMENT_SUBARRAY_LAYOUT = "/configuration/instrument/subarray/layout"
-CONFIG_INSTRUMENT_TEL = "/configuration/instrument/telescope"
-CONFIG_INSTRUMENT_TEL_CAMERA = "/configuration/instrument/telescope/camera"
 SUBARRAY_EVENT_KEYS = ["obs_id", "event_id"]
 TEL_EVENT_KEYS = ["obs_id", "event_id", "tel_id"]
 TEL_ITER_GROUPS = [
@@ -519,7 +516,13 @@ class PredictCTLearnModel(Tool):
         if input_subarray == self.dl1dh_reader.subarray:
             return
 
-        self.dl1dh_reader.subarray.to_hdf(self.output_path, overwrite=True)
+        # From the merger tool a SubarrayDescription for the full array is already stored
+        # in the output file. We need to remove it to avoid conflicts when storing
+        # the new SubarrayDescription for the selected telescopes.
+        with tables.open_file(self.output_path, mode="a") as h5file:
+            h5file.remove_node("/configuration/instrument", recursive=True)
+        selected_subarray = input_subarray.select_subarray(set(self.dl1dh_reader.tel_ids))
+        selected_subarray.to_hdf(self.output_path)
         self.log.info("SubarrayDescription was stored in '%s'", self.output_path)
 
         tel_trigger_table = read_table(
@@ -538,9 +541,12 @@ class PredictCTLearnModel(Tool):
         )
 
         subarray_trigger_table = tel_trigger_table.copy()
-        subarray_trigger_table.keep_columns(
-            SUBARRAY_EVENT_KEYS + ["time", "event_type"]
-        )
+        subarray_columns = SUBARRAY_EVENT_KEYS + ["time"]
+        # In older data formats the event type is not included in the trigger table, so we need to
+        # check if it is present before keeping the column to be backwards compatible.
+        if "event_type" in subarray_trigger_table.colnames:
+            subarray_columns.append("event_type")
+        subarray_trigger_table.keep_columns(subarray_columns)
         subarray_trigger_table = unique(
             subarray_trigger_table, keys=SUBARRAY_EVENT_KEYS
         )
@@ -611,19 +617,6 @@ class PredictCTLearnModel(Tool):
                 if group is not None:
                     prune_group(group, tel_ids)
 
-            # Camera configuration tables
-            layout_node = getattr(h5_file.root, CONFIG_INSTRUMENT_SUBARRAY_LAYOUT, None)
-            camera_group = getattr(h5_file.root, CONFIG_INSTRUMENT_TEL_CAMERA, None)
-            if not (layout_node and camera_group):
-                return
-            # layout can be either a Table or a Group containing a Table
-            layout_table = (
-                layout_node
-                if isinstance(layout_node, tables.Table)
-                else next(layout_node._f_iter_nodes("Table"))
-            )
-            camera_indices = set(layout_table.col("camera_index"))
-            prune_group(camera_group, camera_indices)
 
     def _create_nan_table(self, nonexample_identifiers, columns, shapes, reco_task):
         """
