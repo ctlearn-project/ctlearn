@@ -16,6 +16,7 @@ jobs:
         os: [ubuntu-22.04]
         python-version: ['3.12', '3.13', '3.14']
         dl1dh-version: ['latest', 'nightly']
+        tensorflow-version: ['latest', '2.16.*']
       max-parallel: 6
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.dl1dh-version == 'nightly' || matrix.python-version == '3.14' }}
@@ -49,6 +50,11 @@ jobs:
             pip install git+https://github.com/cta-observatory/dl1-data-handler.git
           else
             pip install dl1-data-handler
+          fi
+          if [ "${{ matrix.tensorflow-version }}" = "latest" ]; then
+            pip install --upgrade tensorflow
+          else
+            pip install "tensorflow==${{ matrix.tensorflow-version }}"
           fi
 
       - name: Add MKL_THREADING_LAYER variable
