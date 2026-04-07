@@ -17,6 +17,11 @@ jobs:
         python-version: ['3.12', '3.13', '3.14']
         dl1dh-version: ['latest', 'nightly']
         tensorflow-version: ['latest', '2.16.*']
+        exclude:
+          - python-version: '3.13'
+            tensorflow-version: '2.16.*'
+          - python-version: '3.14'
+            tensorflow-version: '2.16.*'
       max-parallel: 6
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.dl1dh-version == 'nightly'}}
