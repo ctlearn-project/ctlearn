@@ -37,6 +37,7 @@ dependencies = [
     "scikit-learn",
     "numba",
     "tensorflow>=2.16",
+    "tensorboard",
     "pydot",
     "setuptools",
     "ctapipe[all]>=0.29",
