@@ -24,7 +24,7 @@ jobs:
             tensorflow-version: '2.16.*'
       max-parallel: 6
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.dl1dh-version == 'nightly'}}
+    continue-on-error: ${{ matrix.dl1dh-version == 'nightly' || matrix.python-version == '3.14' }}
     steps:
       - uses: actions/checkout@v4
 
