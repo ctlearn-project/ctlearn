@@ -1,3 +1,5 @@
+import pytest
+torch = pytest.importorskip("torch")
 from traitlets.config.loader import Config
 
 from dl1_data_handler.reader import DLImageReader

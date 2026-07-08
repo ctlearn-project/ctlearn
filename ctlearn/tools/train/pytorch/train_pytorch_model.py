@@ -151,8 +151,10 @@ class TrainPyTorchModel(TrainCTLearnModel):
             self.type_checkpoint = get_conf_val("data", "type_checkpoint", "type_checkpoint", self.type_checkpoint)
             self.energy_checkpoint = get_conf_val("data", "energy_checkpoint", "energy_checkpoint", self.energy_checkpoint)
             self.direction_checkpoint = get_conf_val("data", "direction_checkpoint", "direction_checkpoint", self.direction_checkpoint)
+            self.load_onnx_model = get_conf_val("data", "load_onnx_model", "load_onnx_model", self.load_onnx_model)
             
             self.experiment_number = get_conf_val("run_details", "experiment_number", "experiment_number", self.experiment_number)
+            self.save_onnx = get_conf_val("run_details", "save_onnx", "save_onnx", self.save_onnx)
             self.save_k_checkpoints = get_conf_val("hyp", "save_k", "save_k_checkpoints", self.save_k_checkpoints)
             self.device_str = get_conf_val("arch", "device", "device", self.device)
             self.batch_size = get_conf_val("hyp", "batches", "batch_size", self.batch_size)
@@ -261,6 +263,7 @@ class TrainPyTorchModel(TrainCTLearnModel):
                 "type_checkpoint": self.type_checkpoint,
                 "energy_checkpoint": self.energy_checkpoint,
                 "direction_checkpoint": self.direction_checkpoint,
+                "load_onnx_model": self.load_onnx_model,
             },
             "run_details": {
                 "mode": "train",
@@ -396,6 +399,12 @@ class TrainPyTorchModel(TrainCTLearnModel):
                 f"run_{task.name}_training_", next_number=self.experiment_number
             )
 
+            # Save the resolved configuration parameters to a config file in the experiment directory
+            config_filename = os.path.join(save_folder, "resolved_config.yml")
+            with open(config_filename, "w") as outfile:
+                import yaml
+                yaml.dump(self.parameters, outfile, default_flow_style=False)
+
             # ------------------------------------------------------------------------------
             # Select the model and precision
             # ------------------------------------------------------------------------------
@@ -424,24 +433,88 @@ class TrainPyTorchModel(TrainCTLearnModel):
                     self.log.warning(f"Failed to load model {model_name} as Component: {e}. Falling back to create_model.")
                 return create_model(model_info)
 
+            import torch.nn as nn
+            import torch
+            class ONNXModelWrapper(nn.Module):
+                def __init__(self, onnx_model_net, active_task, onnx_input_shape):
+                    super().__init__()
+                    self.onnx_model_net = onnx_model_net
+                    self.active_task = active_task
+                    self.onnx_input_shape = onnx_input_shape
+                    
+                    self.onnx_channel_last = False
+                    self.expected_channels = 1
+                    if len(onnx_input_shape) == 4:
+                        if onnx_input_shape[3] in [1, 2, 3] and onnx_input_shape[1] > onnx_input_shape[3]:
+                            self.onnx_channel_last = True
+                            self.expected_channels = onnx_input_shape[3]
+                        else:
+                            self.expected_channels = onnx_input_shape[1]
+
+                def forward(self, x, y=None):
+                    if self.expected_channels == 2 and y is not None:
+                        x = torch.cat([x, y], dim=1)
+                        
+                    import inspect
+                    sig = inspect.signature(self.onnx_model_net.forward)
+                    num_onnx_inputs = len(sig.parameters)
+                    
+                    if num_onnx_inputs == 2 and y is not None:
+                        if self.onnx_channel_last:
+                            x = x.permute(0, 2, 3, 1)
+                            y = y.permute(0, 2, 3, 1)
+                        out = self.onnx_model_net(x, y)
+                    else:
+                        if self.onnx_channel_last:
+                            x = x.permute(0, 2, 3, 1)
+                        out = self.onnx_model_net(x)
+                        
+                    if isinstance(out, (tuple, list)):
+                        if len(out) == 3:
+                            return out
+                        val = out[0]
+                    else:
+                        val = out
+                        
+                    if self.active_task == Task.type:
+                        return val, None, None
+                    elif self.active_task == Task.energy:
+                        return None, val, None
+                    else:
+                        return None, None, val
+
             num_inputs = 1
 
-            if task == Task.type:
-                precision = self.parameters["arch"]["precision_type"]
-                model_net = load_pytorch_model_net(self.parameters["model"]["model_type"], "type", num_inputs, 2)
-
-            elif task == Task.energy:
-                precision = self.parameters["arch"]["precision_energy"]
-                model_net = load_pytorch_model_net(self.parameters["model"]["model_energy"], "energy", num_inputs, 1)
-            
-            elif task == Task.cameradirection or task == Task.skydirection:
-                precision = self.parameters["arch"]["precision_direction"]
-                model_net = load_pytorch_model_net(self.parameters["model"]["model_direction"], "direction", num_inputs, 3)
-
+            if self.load_onnx_model:
+                self.log.info(f"Loading ONNX model from {self.load_onnx_model} for training...")
+                import onnx
+                from onnx2pytorch import ConvertModel
+                try:
+                    onnx_proto = onnx.load(self.load_onnx_model)
+                    onnx_model = ConvertModel(onnx_proto)
+                    onnx_input_shape = [dim.dim_value for dim in onnx_proto.graph.input[0].type.tensor_type.shape.dim]
+                    model_net = ONNXModelWrapper(onnx_model, task, onnx_input_shape)
+                    precision = self.parameters["arch"].get(f"precision_{task.name.lower()}", "32-true")
+                except Exception as e:
+                    self.log.error(f"Failed to load ONNX model: {e}")
+                    raise e
             else:
-                raise ValueError(
-                    f"task:{task.name} is not supported. Task must be type, direction or energy"
-                )
+                if task == Task.type:
+                    precision = self.parameters["arch"]["precision_type"]
+                    model_net = load_pytorch_model_net(self.parameters["model"]["model_type"], "type", num_inputs, 2)
+
+                elif task == Task.energy:
+                    precision = self.parameters["arch"]["precision_energy"]
+                    model_net = load_pytorch_model_net(self.parameters["model"]["model_energy"], "energy", num_inputs, 1)
+                
+                elif task == Task.cameradirection or task == Task.skydirection:
+                    precision = self.parameters["arch"]["precision_direction"]
+                    model_net = load_pytorch_model_net(self.parameters["model"]["model_direction"], "direction", num_inputs, 3)
+
+                else:
+                    raise ValueError(
+                        f"task:{task.name} is not supported. Task must be type, direction or energy"
+                    )
 
             # if hasattr(model_net, 'T'):
             #     self.training_loader.set_T(model_net.T)
@@ -480,6 +553,11 @@ class TrainPyTorchModel(TrainCTLearnModel):
                 default_hp_metric=False,
             )
 
+            extra_trainer_args = {}
+            if os.environ.get("CTLEARN_TEST_LIMIT"):
+                extra_trainer_args["limit_train_batches"] = 5
+                extra_trainer_args["limit_val_batches"] = 2
+
             # Setup the Trainer
             trainer_pl = CTLearnTrainer(
                 max_epochs=self.parameters["hyp"]["epochs"],
@@ -494,6 +572,7 @@ class TrainPyTorchModel(TrainCTLearnModel):
                 gradient_clip_val=self.parameters["hyp"]["gradient_clip_val"],
                 callbacks=[GPUStatsLogger()],
                 sync_batchnorm=True,
+                **extra_trainer_args
             )
  
             # Setup Lighting 
@@ -528,6 +607,53 @@ class TrainPyTorchModel(TrainCTLearnModel):
                 train_dataloaders=self.training_loader,
                 val_dataloaders=[self.validation_loader],
             )    
+
+            # Export to ONNX if requested
+            if self.save_onnx:
+                self.log.info("Converting PyTorch model into ONNX format...")
+                try:
+                    # Load the best model weights if available
+                    if trainer_pl.checkpoint_callback and trainer_pl.checkpoint_callback.best_model_path:
+                        best_model_path = trainer_pl.checkpoint_callback.best_model_path
+                        self.log.info(f"Loading best model from {best_model_path} for ONNX export...")
+                        model_net = ModelHelper.loadModel(
+                            model_net, "", best_model_path, Mode.train, device_str=self.device_str
+                        )
+                    
+                    # Create dummy input dynamically from a batch
+                    batch = next(iter(self.training_loader))
+                    features, labels, t = batch
+                    
+                    import inspect
+                    sig = inspect.signature(model_net.forward)
+                    num_inputs_sig = len(sig.parameters)
+                    
+                    # Transfer dummy inputs to same device as model
+                    if num_inputs_sig == 2:
+                        dummy_image = torch.randn_like(features["image"][:1]).to(self.device_str)
+                        dummy_peak = torch.randn_like(features["peak_time"][:1]).to(self.device_str)
+                        dummy_input = (dummy_image, dummy_peak)
+                        input_names = ["image", "peak_time"]
+                    else:
+                        dummy_input = torch.randn_like(features["image"][:1]).to(self.device_str)
+                        input_names = ["image"]
+                        
+                    output_names = [task.name]
+                    
+                    # Put model in evaluation mode
+                    model_net.eval()
+                    
+                    onnx_path = os.path.join(save_folder, f"ctlearn_model_{task.name}")
+                    ModelHelper.exportOnnx(
+                        model_net,
+                        dummy_input,
+                        onnx_path,
+                        input_names=input_names,
+                        output_names=output_names
+                    )
+                    self.log.info(f"ONNX model saved successfully to {onnx_path}.onnx and {onnx_path}_simp.onnx")
+                except Exception as e:
+                    self.log.error(f"Failed to export model to ONNX: {e}")
 
     def finish(self):
         super().finish()

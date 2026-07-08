@@ -566,6 +566,15 @@ class ModelHelper:
             - Reduces model size
             - Improves inference speed
         """
+        # Define dynamic axes to support variable batch sizes
+        dynamic_axes = {}
+        if input_names:
+            for name in input_names:
+                dynamic_axes[name] = {0: "batch_size"}
+        if output_names:
+            for name in output_names:
+                dynamic_axes[name] = {0: "batch_size"}
+
         # Export model to ONNX format
         torch.onnx.export(
             model,
@@ -574,6 +583,7 @@ class ModelHelper:
             verbose=True,
             input_names=input_names,
             output_names=output_names,
+            dynamic_axes=dynamic_axes,
         )
 
         # Load the exported ONNX model

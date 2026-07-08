@@ -34,6 +34,7 @@ dependencies:
       # --- ONNX tools ---
       - onnx==1.17.0
       - onnxsim==0.4.36
+      - onnx2pytorch==0.5.3
 
       # --- CTA related packages ---
       - ctapipe==0.23.2

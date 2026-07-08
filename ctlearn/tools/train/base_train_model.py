@@ -426,6 +426,13 @@ class TrainCTLearnModel(Tool):
         help="Path to checkpoint for direction regression",
     ).tag(config=True)
 
+    load_onnx_model = Path(
+        default_value=None,
+        allow_none=True,
+        exists=True,
+        help="Path to an ONNX model to load and train/fine-tune.",
+    ).tag(config=True)
+
     aliases = {
         "framework": "TrainCTLearnModel.framework_type",
         "n_epochs": "TrainCTLearnModel.n_epochs",
@@ -435,6 +442,10 @@ class TrainCTLearnModel(Tool):
         "pattern-background": "TrainCTLearnModel.file_pattern_background",
         "reco": "TrainCTLearnModel.reco_tasks",
         "save_onnx": "TrainCTLearnModel.save_onnx",
+        "load_onnx_model": "TrainCTLearnModel.load_onnx_model",
+        "experiment_number": "TrainCTLearnModel.experiment_number",
+        "apply_log_scaling": "TrainCTLearnModel.apply_log_scaling",
+        "use_clean": "TrainCTLearnModel.use_clean",
         "random_seed": "TrainCTLearnModel.random_seed",
         "optimizer": "TrainCTLearnModel.optimizer",
         "overwrite": "TrainCTLearnModel.overwrite",
