@@ -1,5 +1,5 @@
 # conda env create -f environment.yml
-name: ctlearn
+name: ctlearn-tf
 channels:
   - conda-forge
   - anaconda
