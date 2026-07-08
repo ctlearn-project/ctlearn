@@ -37,9 +37,8 @@ dependencies:
       # --- CTA related packages ---
       - ctapipe==0.23.2
       - ctapipe-io-lst==0.27.1
-      - dl1_data_handler==0.14.6.dev10+ga9d2de1
+      - dl1_data_handler==0.14.6
       - ctaplot==0.6.4
-      - CTLearn==0.10.3.dev48+g492c4d6
       - pyirf==0.12.0
 
       # --- I/O and plotting ---
