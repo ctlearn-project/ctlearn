@@ -204,6 +204,228 @@ class TrainCTLearnModel(Tool):
 
     overwrite = Bool(help="Overwrite output dir if it exists").tag(config=True)
 
+    # Unified Hardware Architecture & Execution Strategy
+    device = CaselessStrEnum(
+        ["cuda", "cpu", "mps"],
+        default_value="cuda",
+        help="Device to use for training: cuda, cpu, or mps",
+    ).tag(config=True)
+
+    precision_type = CaselessStrEnum(
+        ["64-true", "32-true", "16-true", "16-mixed", "bf16-mixed", "bf16-true"],
+        default_value="32-true",
+        help="Precision for type classification model",
+    ).tag(config=True)
+
+    precision_energy = CaselessStrEnum(
+        ["64-true", "32-true", "16-true", "16-mixed", "bf16-mixed", "bf16-true"],
+        default_value="32-true",
+        help="Precision for energy regression model",
+    ).tag(config=True)
+
+    precision_direction = CaselessStrEnum(
+        ["64-true", "32-true", "16-true", "16-mixed", "bf16-mixed", "bf16-true"],
+        default_value="32-true",
+        help="Precision for direction regression model",
+    ).tag(config=True)
+
+    devices = List(
+        trait=Int(),
+        default_value=[0],
+        help="List of GPU device IDs to use for training",
+    ).tag(config=True)
+
+    strategy = Unicode(
+        default_value="auto",
+        help="Multi-GPU strategy (e.g. auto, ddp, deepspeed_stage_2, fsdp)",
+    ).tag(config=True)
+
+    # Optimizer & Learning Rate Hyperparameters
+    optimizer_momentum = Float(
+        default_value=0.9,
+        help="Momentum for optimizer (e.g. SGD, RMSProp, Adamw)",
+    ).tag(config=True)
+
+    optimizer_weight_decay = Float(
+        default_value=0.0005,
+        help="Weight decay for optimizer",
+    ).tag(config=True)
+
+    lrf = Float(
+        default_value=0.1,
+        help="Learning rate factor for learning rate schedulers",
+    ).tag(config=True)
+
+    l2_lambda = Float(
+        default_value=1e-7,
+        help="L2 regularization lambda factor",
+    ).tag(config=True)
+
+    gradient_clip_val = Float(
+        default_value=3.0,
+        allow_none=True,
+        help="Gradient clipping value to avoid gradient explosion",
+    ).tag(config=True)
+
+    save_k_checkpoints = Int(
+        default_value=3,
+        help="Number of top checkpoints to save",
+    ).tag(config=True)
+
+    experiment_number = Int(
+        default_value=1,
+        help="Experiment run number",
+    ).tag(config=True)
+
+    # Event Cut-offs
+    leakage_intensity_cutoff = Float(
+        default_value=0.2,
+        help="Events with leakage intensity greater than this value are removed",
+    ).tag(config=True)
+
+    intensity_cutoff = Float(
+        default_value=50.0,
+        help="Events with Hillas intensity below this value are removed",
+    ).tag(config=True)
+
+    # Normalizations
+    apply_log_scaling = List(
+        trait=Bool(),
+        default_value=[True, True],
+        help="List specifying whether to apply log10(X+1.0) scaling for [charge, peak_time]",
+    ).tag(config=True)
+
+    use_clean = Bool(
+        default_value=True,
+        help="Use the image with the applied mask (True), otherwise the mask is not applied",
+    ).tag(config=True)
+
+    use_clean_dvr = Bool(
+        default_value=False,
+        help="Use clean DVR mask",
+    ).tag(config=True)
+
+    type_mu = Float(
+        default_value=0.0,
+        help="Mean for type channel normalization",
+    ).tag(config=True)
+
+    type_sigma = Float(
+        default_value=1000.0,
+        help="Std dev for type channel normalization",
+    ).tag(config=True)
+
+    dir_mu = Float(
+        default_value=0.0,
+        help="Mean for direction channel normalization",
+    ).tag(config=True)
+
+    dir_sigma = Float(
+        default_value=1000.0,
+        help="Std dev for direction channel normalization",
+    ).tag(config=True)
+
+    energy_mu = Float(
+        default_value=0.0,
+        help="Mean for energy channel normalization",
+    ).tag(config=True)
+
+    energy_sigma = Float(
+        default_value=1000.0,
+        help="Std dev for energy channel normalization",
+    ).tag(config=True)
+
+    # Augmentations
+    use_augmentation = Bool(
+        default_value=False,
+        help="Apply data augmentation during training",
+    ).tag(config=True)
+
+    aug_prob = Float(
+        default_value=0.5,
+        help="Probability of applying data augmentation",
+    ).tag(config=True)
+
+    rot_prob = Float(
+        default_value=0.5,
+        help="Probability of applying rotation",
+    ).tag(config=True)
+
+    trans_prob = Float(
+        default_value=0.5,
+        help="Probability of applying translation",
+    ).tag(config=True)
+
+    flip_hor_prob = Float(
+        default_value=0.5,
+        help="Probability of applying horizontal flip",
+    ).tag(config=True)
+
+    flip_ver_prob = Float(
+        default_value=0.5,
+        help="Probability of applying vertical flip",
+    ).tag(config=True)
+
+    mask_prob = Float(
+        default_value=0.5,
+        help="Probability of applying masking",
+    ).tag(config=True)
+
+    mask_dvr_prob = Float(
+        default_value=0.5,
+        help="Probability of applying DVR masking",
+    ).tag(config=True)
+
+    noise_prob = Float(
+        default_value=0.5,
+        help="Probability of applying noise",
+    ).tag(config=True)
+
+    max_rot = Float(
+        default_value=5.0,
+        help="Maximum rotation in augmentation (degrees)",
+    ).tag(config=True)
+
+    max_trans = Float(
+        default_value=10.0,
+        help="Maximum translation in augmentation (pixels)",
+    ).tag(config=True)
+
+    # Dataset & Loading Settings
+    num_workers = Int(
+        default_value=1,
+        help="Number of workers for data loading",
+    ).tag(config=True)
+
+    pin_memory = Bool(
+        default_value=True,
+        help="Pin memory in PyTorch dataloader for faster GPU transfer",
+    ).tag(config=True)
+
+    persistent_workers = Bool(
+        default_value=True,
+        help="Keep workers alive between epochs",
+    ).tag(config=True)
+
+    # Checkpoint paths
+    type_checkpoint = Path(
+        default_value=None,
+        allow_none=True,
+        help="Path to checkpoint for type classification",
+    ).tag(config=True)
+
+    energy_checkpoint = Path(
+        default_value=None,
+        allow_none=True,
+        help="Path to checkpoint for energy regression",
+    ).tag(config=True)
+
+    direction_checkpoint = Path(
+        default_value=None,
+        allow_none=True,
+        help="Path to checkpoint for direction regression",
+    ).tag(config=True)
+
     aliases = {
         "framework": "TrainCTLearnModel.framework_type",
         "n_epochs": "TrainCTLearnModel.n_epochs",
@@ -222,6 +444,16 @@ class TrainCTLearnModel(Tool):
         "stack_telescope_images": "TrainCTLearnModel.stack_telescope_images",
         "dl1dh_reader_type": "TrainCTLearnModel.dl1dh_reader_type",
         ("o", "output"): "TrainCTLearnModel.output_dir",
+        "device": "TrainCTLearnModel.device",
+        "devices": "TrainCTLearnModel.devices",
+        "strategy": "TrainCTLearnModel.strategy",
+        "use_augmentation": "TrainCTLearnModel.use_augmentation",
+        "precision_type": "TrainCTLearnModel.precision_type",
+        "precision_energy": "TrainCTLearnModel.precision_energy",
+        "precision_direction": "TrainCTLearnModel.precision_direction",
+        "type_checkpoint": "TrainCTLearnModel.type_checkpoint",
+        "energy_checkpoint": "TrainCTLearnModel.energy_checkpoint",
+        "direction_checkpoint": "TrainCTLearnModel.direction_checkpoint",
     }
 
     flags = {

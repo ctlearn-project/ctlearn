@@ -181,6 +181,18 @@ class KerasDLDataLoader(Sequence, BaseDLDataLoader):
         # Retrieve telescope images and store in features dictionary
         features = {"input": batch["features"].data}
         
+        image = features["input"][..., 0:1]
+        peak_time = features["input"][..., 1:2]
+        
+        active_task = self.tasks[0] if self.tasks else None
+        image, peak_time = self.clean_and_normalize(image, peak_time, active_task)
+        
+        if self.use_augmentation:
+            image, peak_time = self.apply_augmentation(image, peak_time, active_task)
+            
+        image, peak_time = self.apply_log_scaling_to_channels(image, peak_time)
+        features["input"] = np.concatenate([image, peak_time], axis=-1)
+        
         # Extract particle type classification labels
         if "type" in self.tasks:
             # Convert to one-hot encoding (0=gamma, 1=proton)
@@ -385,6 +397,33 @@ class KerasDLDataLoader(Sequence, BaseDLDataLoader):
         if "features" in batch.colnames:
             # Telescope images
             features = {"input": np.array(features)}
+            
+            features_arr = features["input"]
+            active_task = self.tasks[0] if self.tasks else None
+
+            # Slicing image and peak_time based on dimensionality
+            if len(features_arr.shape) == 5: # Unstacked mode: (batch, tel, height, width, channels)
+                image = features_arr[..., 0]
+                peak_time = features_arr[..., 1]
+                
+                image, peak_time = self.clean_and_normalize(image, peak_time, active_task)
+                image, peak_time = self.apply_log_scaling_to_channels(image, peak_time)
+                
+                features["input"] = np.stack([image, peak_time], axis=-1)
+            else: # Stacked mode: (batch, height, width, channels)
+                image = features_arr[..., ::2]
+                peak_time = features_arr[..., 1::2]
+                
+                image, peak_time = self.clean_and_normalize(image, peak_time, active_task)
+                image, peak_time = self.apply_log_scaling_to_channels(image, peak_time)
+                
+                # Re-stack alternating channels
+                stacked = []
+                for i in range(image.shape[-1]):
+                    stacked.append(image[..., i:i+1])
+                    stacked.append(peak_time[..., i:i+1])
+                features["input"] = np.concatenate(stacked, axis=-1)
+                
         # TODO: Add support for using both mono and stereo feature vectors simultaneously
         if "mono_feature_vectors" in batch.colnames:
             # Telescope-level feature vectors

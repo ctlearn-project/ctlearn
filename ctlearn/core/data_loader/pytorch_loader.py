@@ -50,49 +50,19 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         is_training=False,
         **kwargs,
     ):
-
-        self.is_training=is_training
-        # self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)  
-        # self.max_prefetch = 8
-        # self.prefetch_queue = []
-        # self._next_batch_idx = 0     
-        # self._next_batch_future = None
-        self.apply_log_scaling = parameters["normalization"]["apply_log_scaling"]
-        self.parameter = parameters
-        self.use_augmentation = use_augmentation
-        self.use_clean = parameters["normalization"]["use_clean"]
-        self.use_clean_dvr = parameters["normalization"]["use_clean_dvr"]
-
-        self.task = tasks
-
-        # Augmentation probabilities
-        self.mask_augmentation = parameters["augmentation"]["aug_prob"]
-        self.aug_prob = parameters["augmentation"]["aug_prob"]
-        self.rot_prob = parameters["augmentation"]["rot_prob"]
-        self.trans_prob = parameters["augmentation"]["trans_prob"]
-        self.flip_hor_prob = parameters["augmentation"]["flip_hor_prob"]
-        self.flip_ver_prob = parameters["augmentation"]["flip_ver_prob"]
-        self.mask_prob = parameters["augmentation"]["mask_prob"]
-        self.mask_dvr_prob = parameters["augmentation"]["mask_dvr_prob"]
-        self.noise_prob = parameters["augmentation"]["noise_prob"]
-        self.max_aug_rot = parameters["augmentation"]["max_rot"]
-        self.max_aug_trans = parameters["augmentation"]["max_trans"]
-
-        # Normalization
-        self.type_mu = parameters["normalization"]["type_mu"]
-        self.type_sigma = parameters["normalization"]["type_sigma"]
-        self.dir_mu = parameters["normalization"]["dir_mu"]
-        self.dir_sigma = parameters["normalization"]["dir_sigma"]
-        self.energy_mu = parameters["normalization"]["energy_mu"]
-        self.energy_sigma = parameters["normalization"]["energy_sigma"]
-
-        super().__init__(**kwargs, tasks=tasks)
-        self.on_epoch_end()
-
-        # self.T=T 
-        # self.total_len = len(self.indices) * T
-        self.set_T(T)
+        self.is_training = is_training
         
+        super().__init__(
+            tasks=tasks,
+            parameters=parameters,
+            use_augmentation=use_augmentation,
+            **kwargs,
+        )
+        
+        self.task = tasks
+        self.on_epoch_end()
+        self.set_T(T)
+
         self.hillas_names = [
             "obs_id",
             "event_id",
@@ -171,66 +141,7 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
             np.random.seed(self.random_seed)
             np.random.shuffle(self.indices)
 
-    def apply_augmentation(self, image, peak_time):
 
-        for id_batch in range(image.shape[0]):
-            random_aug = random.random()
-
-            if random_aug > self.aug_prob:
-
-                if self.task != Task.cameradirection and self.task != Task.skydirection:
-
-                    random_aug_flip_ver = random.random()
-                    if random_aug_flip_ver > self.flip_ver_prob:
-                        # Vertical flip
-                        image[id_batch] = np.expand_dims(cv2.flip(image[id_batch].astype(np.float32), 0), axis=-1)
-                        peak_time[id_batch] = np.expand_dims(cv2.flip(peak_time[id_batch].astype(np.float32), 0), axis=-1)
-                        continue
-                    random_aug_flip_hor = random.random()
-                    if random_aug_flip_hor > self.flip_hor_prob:
-                        # Horizontal
-                        image[id_batch] = np.expand_dims(cv2.flip(image[id_batch].astype(np.float32), 1), axis=-1)
-                        peak_time[id_batch] = np.expand_dims(cv2.flip(peak_time[id_batch].astype(np.float32), 1), axis=-1)
-                    # Rotation
-                        continue
-                    random_aug_rot = random.random()
-                    if random_aug_rot > self.rot_prob:
-                        (h, w) = image[id_batch].shape[:2]
-
-                        angle = random.uniform(-self.max_aug_rot, self.max_aug_rot)
-                        scale = 1.0  # No scaling
-                        center = (w // 2, h // 2)
-                        # Step 5: Get the rotation matrix
-                        rotation_matrix = cv2.getRotationMatrix2D(center, angle, scale)
-
-                        # Step 6: Rotate the image
-                        image[id_batch] = np.expand_dims(cv2.warpAffine(
-                            image[id_batch].astype(np.float32), rotation_matrix, (w, h)
-                        ), axis=-1)
-                        peak_time[id_batch] = np.expand_dims(cv2.warpAffine(
-                            peak_time[id_batch].astype(np.float32), rotation_matrix, (w, h)
-                        ), axis=-1)
-                        continue
-                    # Translation
-                    random_aug_trans = random.random()
-                    if random_aug_trans > self.trans_prob:
-                        # Translation
-                        (h, w) = image[id_batch].shape[:2]
-
-                        tx = random.uniform(-self.max_aug_trans, self.max_aug_trans)
-                        ty = random.uniform(-self.max_aug_trans, self.max_aug_trans)
-                        translation_matrix = np.float32([[1, 0, tx], [0, 1, ty]])
-                        image[id_batch] =  np.expand_dims(cv2.warpAffine(
-                            image[id_batch].astype(np.float32), translation_matrix, (w, h)
-                        ), axis=-1)
-                        peak_time[id_batch] =  np.expand_dims(cv2.warpAffine(
-                            peak_time[id_batch].astype(np.float32), translation_matrix, (w, h)
-                        ), axis=-1)
-                        continue
-                else:
-                    doNothing = True
-
-        return image, peak_time
 
     def _fetch_batch(self, index):
         batch_indices = self.indices[index * self.batch_size : (index + 1) * self.batch_size]
@@ -491,37 +402,8 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         image = features["input"][..., 0:1]
         peak_time = features["input"][..., 1:2]
 
-
-        # ----------------------------------------------------
-        # Remove negative numbers and avoid inf or nans
-        # ----------------------------------------------------
-        image[image < 0] = 0
-        peak_time[peak_time < 0] = 0
-        image[np.isnan(image)] = 0
-        image[np.isinf(image)] = 0
-        peak_time[np.isnan(peak_time)] = 0
-        peak_time[np.isinf(peak_time)] = 0
-
-
-        # image, peak_time = self.apply_augmentation(image, peak_time)
-
-        # image = np.transpose(image, (0, 3, 1, 2))
-        # peak_time = np.transpose(peak_time, (0, 3, 1, 2))
-
-        if self.task == Task.type:
-            image = (image - self.type_mu) / self.type_sigma
-            peak_time = (peak_time - self.type_mu) / self.type_sigma
-
-        if self.task == Task.energy:
-            image = (image - self.energy_mu) / self.energy_sigma
-            peak_time = (peak_time - self.energy_mu) / self.energy_sigma
-
-        if self.task == Task.cameradirection or self.task == Task.skydirection:
-            image = (image - self.dir_mu) / self.dir_sigma
-            peak_time = (peak_time - self.dir_mu) / self.dir_sigma
-
-        # image = torch.from_numpy(image).contiguous().float()
-        # peak_time = torch.from_numpy(peak_time).contiguous().float()
+        active_task = self.tasks[0] if self.tasks else None
+        image, peak_time = self.clean_and_normalize(image, peak_time, active_task)
 
         features_out = {}
         features_out["image"] = image
@@ -617,43 +499,32 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
 
 
         if self.use_augmentation:
-            
             if isinstance(features_out["image"], torch.Tensor):
                 features_out["image"] = features_out["image"].cpu().numpy()
             if isinstance(features_out["peak_time"], torch.Tensor):
                 features_out["peak_time"] = features_out["peak_time"].cpu().numpy()
             
-            image, peak_time = self.apply_augmentation(features_out["image"], features_out["peak_time"])
+            image, peak_time = self.apply_augmentation(features_out["image"], features_out["peak_time"], active_task)
+        else:
+            image, peak_time = features_out["image"], features_out["peak_time"]
 
         # Apply log scaling
-        if self.apply_log_scaling[0]:
-            image = image.astype(np.float32)
-            image = np.log10(image + 1.0)
-
-        if self.apply_log_scaling[1]:
-            peak_time = peak_time.astype(np.float32)
-            peak_time = np.log10(peak_time + 1.0)
-        # Change to channel first
+        image, peak_time = self.apply_log_scaling_to_channels(image, peak_time)
         
+        # Change to channel first
         image = np.transpose(image, (0, 3, 1, 2))
         peak_time = np.transpose(peak_time, (0, 3, 1, 2))
-        # features_out["image"] = torch.from_numpy(image).float().permute(0, 3, 1, 2).contiguous()
-        # features_out["peak_time"] = torch.from_numpy(peak_time).float().permute(0, 3, 1, 2).contiguous()
         
         features_out["image"] = torch.from_numpy(image.copy()).contiguous().float()
         features_out["peak_time"] = torch.from_numpy(peak_time.copy()).contiguous().float()
         
-        #Create a dummy keep_idx that keeps all events
+        #Create keep_idx based on configurable leakage and intensity cutoffs
         hillas = features["hillas"]
         leakage = np.array(hillas["leakage_intensity_width_2"])
         intensity = np.array(hillas["hillas_intensity"])
-        keep_idx = np.where((leakage <= 0.2) & (intensity >= 50))[0]
+        keep_idx = np.where((leakage <= self.leakage_intensity_cutoff) & (intensity >= self.intensity_cutoff))[0]
 
         if not self.is_training:
-            # Generate keep_idx as before
-            #keep_idx = np.where((leakage < 0.2) & (intensity > 50))[0]
-            # keep_idx = np.where((leakage > 0.8) & (intensity > 50))[0]
-            #Keep all events during evaluation for now
             keep_idx = np.arange(len(intensity))
 
         # Filter features_out
@@ -791,22 +662,47 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
                 ),
                 axis=1,
             )
-        # Store the fatures in the features dictionary
+        # Store the features in the features dictionary
         if "features" in batch.colnames:
             features = {"input": np.array(features)}
-        # TDOO: Add support for both feature vectors
+        # TODO: Add support for both feature vectors
         if "mono_feature_vectors" in batch.colnames:
             features = {"input": np.array(mono_feature_vectors)}
         if "stereo_feature_vectors" in batch.colnames:
             features = {"input": np.array(stereo_feature_vectors)}
 
-        image = features[:, :, :, 0]
-        peak_time = features[:, :, :, 1]
+        # Extract features array from dict
+        features_arr = features["input"]
+        active_task = self.tasks[0] if self.tasks else None
 
-        image = np.transpose(image, (2, 0, 1))
-        peak_time = np.transpose(peak_time, (2, 0, 1))
+        # Slicing image and peak_time based on dimensionality
+        if len(features_arr.shape) == 5: # Unstacked mode: (batch, tel, height, width, channels)
+            image = features_arr[..., 0]
+            peak_time = features_arr[..., 1]
+            
+            image, peak_time = self.clean_and_normalize(image, peak_time, active_task)
+            image, peak_time = self.apply_log_scaling_to_channels(image, peak_time)
+            
+            image = np.transpose(image, (0, 1, 4, 2, 3)) if len(image.shape) == 5 else np.expand_dims(image, axis=2)
+            peak_time = np.transpose(peak_time, (0, 1, 4, 2, 3)) if len(peak_time.shape) == 5 else np.expand_dims(peak_time, axis=2)
+        else: # Stacked mode: (batch, height, width, channels)
+            image = features_arr[..., ::2]
+            peak_time = features_arr[..., 1::2]
+            
+            image, peak_time = self.clean_and_normalize(image, peak_time, active_task)
+            image, peak_time = self.apply_log_scaling_to_channels(image, peak_time)
+            
+            image = np.transpose(image, (0, 3, 1, 2))
+            peak_time = np.transpose(peak_time, (0, 3, 1, 2))
 
-        features_out = None
-        features_out["image"] = image
-        features_out["peak_time"] = peak_time
+        features_out = {}
+        features_out["image"] = torch.from_numpy(image.copy()).contiguous().float()
+        features_out["peak_time"] = torch.from_numpy(peak_time.copy()).contiguous().float()
+        
+        # Convert labels to PyTorch tensors
+        for key in labels.keys():
+            labels[key] = torch.from_numpy(labels[key]).contiguous()
+            if key != "type":
+                labels[key] = labels[key].unsqueeze(-1)
+
         return features_out, labels

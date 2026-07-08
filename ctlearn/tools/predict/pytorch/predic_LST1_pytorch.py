@@ -254,19 +254,43 @@ def load_pytorch_model(self):
         torch.nn.Module: The last loaded model (for compatibility)
     """
     model = None
+    from ctlearn.core.pytorch.model import CTLearnPyTorchModel
+
+    def load_pytorch_model_net(model_info, task_name, num_inputs, num_outputs):
+        model_name = model_info.get("model_name", "")
+        try:
+            component_cls = CTLearnPyTorchModel.non_abstract_subclasses().get(model_name)
+            if component_cls is not None:
+                params = model_info.get("parameters", {}).copy()
+                params.pop("task", None)
+                params.pop("num_inputs", None)
+                params.pop("num_outputs", None)
+                params["parent"] = self
+                component = component_cls(
+                    task=task_name,
+                    num_inputs=num_inputs,
+                    num_outputs=num_outputs,
+                    **params
+                )
+                return component.model
+        except Exception as e:
+            self.log.warning(f"Failed to load model {model_name} as Component: {e}. Falling back to create_model.")
+        return create_model(model_info)
+
+    num_inputs = 1
     
     for task in self.tasks:
         # Create model based on task type
         if task == Task.type:
-            model_net = create_model(self.parameters["model"]["model_type"])
+            model_net = load_pytorch_model_net(self.parameters["model"]["model_type"], "type", num_inputs, 2)
             check_point_path = self.parameters["data"]["type_checkpoint"]
             
         elif task == Task.energy:
-            model_net = create_model(self.parameters["model"]["model_energy"])
+            model_net = load_pytorch_model_net(self.parameters["model"]["model_energy"], "energy", num_inputs, 1)
             check_point_path = self.parameters["data"]["energy_checkpoint"]
 
         elif task in [Task.cameradirection, Task.skydirection, Task.direction]:
-            model_net = create_model(self.parameters["model"]["model_direction"])
+            model_net = load_pytorch_model_net(self.parameters["model"]["model_direction"], "direction", num_inputs, 3)
             check_point_path = self.parameters["data"]["direction_checkpoint"]
 
         else:

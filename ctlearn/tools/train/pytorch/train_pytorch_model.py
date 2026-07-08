@@ -99,7 +99,7 @@ class TrainPyTorchModel(TrainCTLearnModel):
     config_file = Path(
         exits=True,
         default_value=None,
-        allow_none=False,
+        allow_none=True,
         directory_ok=True,
         file_ok=True,
         help="Configuration file.",
@@ -133,27 +133,187 @@ class TrainPyTorchModel(TrainCTLearnModel):
         for task_ in self.tasks:
             print("Task:", task_.name)
 
-        print(self.config_file)
-        self.parameters = read_configuration(self.config_file)
-        sanity_check(self.parameters, expected_structure)
+        if self.config_file is not None:
+            self.log.info("Loading configuration from legacy PyTorch config file: %s", self.config_file)
+            legacy_params = read_configuration(self.config_file)
+            sanity_check(legacy_params, expected_structure)
+            
+            def get_conf_val(key1, key2, trait_name, default_val):
+                in_config = False
+                for cls_name in ["TrainPyTorchModel", "TrainCTLearnModel"]:
+                    if cls_name in self.config and trait_name in self.config[cls_name]:
+                        in_config = True
+                        break
+                if not in_config:
+                    return legacy_params.get(key1, {}).get(key2, default_val)
+                return getattr(self, trait_name)
+                
+            self.type_checkpoint = get_conf_val("data", "type_checkpoint", "type_checkpoint", self.type_checkpoint)
+            self.energy_checkpoint = get_conf_val("data", "energy_checkpoint", "energy_checkpoint", self.energy_checkpoint)
+            self.direction_checkpoint = get_conf_val("data", "direction_checkpoint", "direction_checkpoint", self.direction_checkpoint)
+            
+            self.experiment_number = get_conf_val("run_details", "experiment_number", "experiment_number", self.experiment_number)
+            self.save_k_checkpoints = get_conf_val("hyp", "save_k", "save_k_checkpoints", self.save_k_checkpoints)
+            self.device_str = get_conf_val("arch", "device", "device", self.device)
+            self.batch_size = get_conf_val("hyp", "batches", "batch_size", self.batch_size)
+            self.pin_memory = get_conf_val("dataset", "pin_memory", "pin_memory", self.pin_memory)
+            self.num_workers = get_conf_val("dataset", "num_workers", "num_workers", self.num_workers)
+            self.persistent_workers = get_conf_val("dataset", "persistent_workers", "persistent_workers", self.persistent_workers)
+            self.devices = get_conf_val("arch", "devices", "devices", self.devices)
+            self.strategy = get_conf_val("arch", "strategy", "strategy", self.strategy)
+            
+            # Augmentations
+            self.use_augmentation = get_conf_val("augmentation", "use_augmentation", "use_augmentation", self.use_augmentation)
+            self.aug_prob = get_conf_val("augmentation", "aug_prob", "aug_prob", self.aug_prob)
+            self.rot_prob = get_conf_val("augmentation", "rot_prob", "rot_prob", self.rot_prob)
+            self.trans_prob = get_conf_val("augmentation", "trans_prob", "trans_prob", self.trans_prob)
+            self.flip_hor_prob = get_conf_val("augmentation", "flip_hor_prob", "flip_hor_prob", self.flip_hor_prob)
+            self.flip_ver_prob = get_conf_val("augmentation", "flip_ver_prob", "flip_ver_prob", self.flip_ver_prob)
+            self.mask_prob = get_conf_val("augmentation", "mask_prob", "mask_prob", self.mask_prob)
+            self.mask_dvr_prob = get_conf_val("augmentation", "mask_dvr_prob", "mask_dvr_prob", self.mask_dvr_prob)
+            self.noise_prob = get_conf_val("augmentation", "noise_prob", "noise_prob", self.noise_prob)
+            self.max_rot = get_conf_val("augmentation", "max_rot", "max_rot", self.max_rot)
+            self.max_trans = get_conf_val("augmentation", "max_trans", "max_trans", self.max_trans)
 
-        self.experiment_number = self.parameters["run_details"]["experiment_number"]
-        self.save_k = self.parameters["hyp"]["save_k"]
-        self.device_str = self.parameters["arch"]["device"]
-        self.device = torch.device(self.device_str)
+            # Normalizations
+            self.use_clean = get_conf_val("normalization", "use_clean", "use_clean", self.use_clean)
+            self.use_clean_dvr = get_conf_val("normalization", "use_clean_dvr", "use_clean_dvr", self.use_clean_dvr)
+            self.type_mu = get_conf_val("normalization", "type_mu", "type_mu", self.type_mu)
+            self.type_sigma = get_conf_val("normalization", "type_sigma", "type_sigma", self.type_sigma)
+            self.dir_mu = get_conf_val("normalization", "dir_mu", "dir_mu", self.dir_mu)
+            self.dir_sigma = get_conf_val("normalization", "dir_sigma", "dir_sigma", self.dir_sigma)
+            self.energy_mu = get_conf_val("normalization", "energy_mu", "energy_mu", self.energy_mu)
+            self.energy_sigma = get_conf_val("normalization", "energy_sigma", "energy_sigma", self.energy_sigma)
+            
+            # Cut-offs
+            self.leakage_intensity_cutoff = get_conf_val("cut-off", "leakage_intensity", "leakage_intensity_cutoff", self.leakage_intensity_cutoff)
+            self.intensity_cutoff = get_conf_val("cut-off", "intensity", "intensity_cutoff", self.intensity_cutoff)
 
-        self.batch_size = self.parameters["hyp"]["batches"]
-        self.pin_memory = self.parameters["dataset"]["pin_memory"]
+            self.pytorch_model_configs = legacy_params.get("model", {})
+            self.hyp_configs = legacy_params.get("hyp", {})
+        else:
+            self.log.info("No legacy config file provided. Using standard Traitlets configuration.")
+            self.device_str = self.device
+            self.pytorch_model_configs = {
+                "model_type": {
+                    "model_name": "DoubleBBEfficientNet",
+                    "parameters": {
+                        "model_variant": "efficientnet-b3",
+                        "task": "type",
+                        "num_outputs": 2,
+                        "device_str": self.device_str,
+                        "energy_bins": None,
+                    }
+                },
+                "model_energy": {
+                    "model_name": "ThinResNet",
+                    "parameters": {
+                        "task": "energy",
+                        "num_inputs": 1,
+                        "num_outputs": 1,
+                        "num_blocks": [3, 4, 6, 3],
+                        "dropout": 0.1,
+                        "use_bn": False,
+                    }
+                },
+                "model_direction": {
+                    "model_name": "ThinResNet_DBB",
+                    "parameters": {
+                        "task": "direction",
+                        "num_inputs": 1,
+                        "num_outputs": 3,
+                        "num_blocks": [3, 4, 6, 3],
+                        "dropout": 0.1,
+                        "use_bn": False,
+                    }
+                }
+            }
+            self.hyp_configs = {
+                "epochs": self.n_epochs,
+                "batches": self.batch_size,
+                "dynamic_batches": True,
+                "optimizer": self.optimizer.get("name", "Adam"),
+                "momentum": self.optimizer_momentum,
+                "weight_decay": self.optimizer_weight_decay,
+                "learning_rate": self.optimizer.get("base_learning_rate", 0.0001),
+                "lrf": self.lrf,
+                "start_epoch": 0,
+                "steps_epoch": 100,
+                "l2_lambda": self.l2_lambda,
+                "adam_epsilon": self.optimizer.get("adam_epsilon", 1.0e-8),
+                "gradient_clip_val": self.gradient_clip_val,
+                "save_k": self.save_k_checkpoints,
+            }
 
-        self.num_workers = self.parameters["dataset"]["num_workers"]
-        self.persistent_workers = self.parameters["dataset"]["persistent_workers"]
+        self.save_k = self.save_k_checkpoints
 
-        self.devices =  self.parameters["arch"]["devices"]
-        self.save_k = self.parameters["hyp"]["save_k"]
+        self.parameters = {
+            "data": {
+                "train_gamma_proton": None,
+                "validation_gamma_proton": None,
+                "train_gamma": None,
+                "validation_gamma": None,
+                "test_gamma": None,
+                "test_proton": None,
+                "test_electron": None,
+                "test_validation_gamma": None,
+                "test_validation_gamma_proton": None,
+                "type_checkpoint": self.type_checkpoint,
+                "energy_checkpoint": self.energy_checkpoint,
+                "direction_checkpoint": self.direction_checkpoint,
+            },
+            "run_details": {
+                "mode": "train",
+                "task": self.reco_tasks[0] if self.reco_tasks else "all",
+                "test_type": "gamma",
+                "experiment_number": self.experiment_number,
+            },
+            "cut-off": {
+                "leakage_intensity": self.leakage_intensity_cutoff,
+                "intensity": self.intensity_cutoff,
+            },
+            "model": self.pytorch_model_configs,
+            "hyp": self.hyp_configs,
+            "augmentation": {
+                "use_augmentation": self.use_augmentation,
+                "aug_prob": self.aug_prob,
+                "rot_prob": self.rot_prob,
+                "trans_prob": self.trans_prob,
+                "flip_hor_prob": self.flip_hor_prob,
+                "flip_ver_prob": self.flip_ver_prob,
+                "mask_prob": self.mask_prob,
+                "mask_dvr_prob": self.mask_dvr_prob,
+                "noise_prob": self.noise_prob,
+                "max_rot": self.max_rot,
+                "max_trans": self.max_trans,
+            },
+            "normalization": {
+                "apply_log_scaling": self.apply_log_scaling,
+                "use_clean": self.use_clean,
+                "use_clean_dvr": self.use_clean_dvr,
+                "type_mu": self.type_mu,
+                "type_sigma": self.type_sigma,
+                "dir_mu": self.dir_mu,
+                "dir_sigma": self.dir_sigma,
+                "energy_mu": self.energy_mu,
+                "energy_sigma": self.energy_sigma,
+            },
+            "dataset": {
+                "num_workers": self.num_workers,
+                "pin_memory": self.pin_memory,
+                "persistent_workers": self.persistent_workers,
+            },
+            "arch": {
+                "device": self.device_str,
+                "precision_type": self.precision_type,
+                "precision_energy": self.precision_energy,
+                "precision_direction": self.precision_direction,
+                "devices": self.devices,
+                "strategy": self.strategy,
+            }
+        }
 
         print(f"Using Devices: {self.devices}")
-
-        # all_log_energies = self.dl1dh_reader.data['log_true_energy'] 
 
         # Set up the data loaders for training and validation
         indices = list(range(self.dl1dh_reader._get_n_events()))
@@ -166,17 +326,6 @@ class TrainPyTorchModel(TrainCTLearnModel):
         training_indices = indices[n_validation_examples:]
         validation_indices = indices[:n_validation_examples]
 
-
-        # --------------------------------------------------------------------
-        # Reduce for testing 
-        # --------------------------------------------------------------------
-        # Limit the number of examples (optional)
-        # max_training_samples = 5000  # or whatever number you want
-        # max_validation_samples = 1200  # or whatever number you want
-
-        # training_indices = training_indices[:max_training_samples]
-        # validation_indices = validation_indices[:max_validation_samples]
-        
         if not ("class_weight" in self.parameters):
             self.parameters['class_weight'] = self.dl1dh_reader.class_weight
             self.log.info(f"Class weights not provided. Using class weights from data reader: {self.parameters['class_weight']}")
@@ -197,17 +346,17 @@ class TrainPyTorchModel(TrainCTLearnModel):
             sort_by_intensity=self.sort_by_intensity,
             stack_telescope_images=self.stack_telescope_images,
             parameters=self.parameters,
-            use_augmentation=self.parameters["augmentation"]["use_augmentation"],
+            use_augmentation=self.use_augmentation,
             is_training=True,
         )
         self.training_loader = DataLoader(
             dataset=self.train_dataset,
             batch_size=None,
             batch_sampler=None,
-            num_workers=4,       
-            pin_memory=True, 
-            prefetch_factor=4,    
-            persistent_workers=True
+            num_workers=self.num_workers,       
+            pin_memory=self.pin_memory, 
+            prefetch_factor=4 if self.num_workers > 0 else None,    
+            persistent_workers=self.persistent_workers if self.num_workers > 0 else False
         )
         
         print(len(self.training_loader))
@@ -229,10 +378,10 @@ class TrainPyTorchModel(TrainCTLearnModel):
             dataset=self.validation_dataset,
             batch_size=None,
             batch_sampler=None,
-            num_workers=4,       
-            pin_memory=True, 
-            prefetch_factor=4,    
-            persistent_workers=True
+            num_workers=self.num_workers,       
+            pin_memory=self.pin_memory, 
+            prefetch_factor=4 if self.num_workers > 0 else None,    
+            persistent_workers=self.persistent_workers if self.num_workers > 0 else False
         )
         
         print(len(self.validation_dataset))
@@ -251,17 +400,43 @@ class TrainPyTorchModel(TrainCTLearnModel):
             # Select the model and precision
             # ------------------------------------------------------------------------------
 
+            from ctlearn.core.pytorch.model import CTLearnPyTorchModel
+
+            def load_pytorch_model_net(model_info, task_name, num_inputs, num_outputs):
+                model_name = model_info.get("model_name", "")
+                try:
+                    component_cls = CTLearnPyTorchModel.non_abstract_subclasses().get(model_name)
+                    if component_cls is not None:
+                        params = model_info.get("parameters", {}).copy()
+                        params.pop("task", None)
+                        params.pop("num_inputs", None)
+                        params.pop("num_outputs", None)
+                        # Ensure device_str is set
+                        params["parent"] = self
+                        component = component_cls(
+                            task=task_name,
+                            num_inputs=num_inputs,
+                            num_outputs=num_outputs,
+                            **params
+                        )
+                        return component.model
+                except Exception as e:
+                    self.log.warning(f"Failed to load model {model_name} as Component: {e}. Falling back to create_model.")
+                return create_model(model_info)
+
+            num_inputs = 1
+
             if task == Task.type:
                 precision = self.parameters["arch"]["precision_type"]
-                model_net = create_model(self.parameters["model"]["model_type"])
+                model_net = load_pytorch_model_net(self.parameters["model"]["model_type"], "type", num_inputs, 2)
 
             elif task == Task.energy:
                 precision = self.parameters["arch"]["precision_energy"]
-                model_net = create_model(self.parameters["model"]["model_energy"])
+                model_net = load_pytorch_model_net(self.parameters["model"]["model_energy"], "energy", num_inputs, 1)
             
             elif task == Task.cameradirection or task == Task.skydirection:
                 precision = self.parameters["arch"]["precision_direction"]
-                model_net = create_model(self.parameters["model"]["model_direction"])
+                model_net = load_pytorch_model_net(self.parameters["model"]["model_direction"], "direction", num_inputs, 3)
 
             else:
                 raise ValueError(
@@ -286,10 +461,11 @@ class TrainPyTorchModel(TrainCTLearnModel):
                 raise ValueError(
                     f"task:{task.name} is not supported. Task must be type, direction or energy"
                 )
-            # Load the checkpoint
-            model_net = ModelHelper.loadModel(
-                model_net, "", check_point_path, Mode.train, device_str=self.device_str
-            )
+            # Load the checkpoint if provided
+            if check_point_path:
+                model_net = ModelHelper.loadModel(
+                    model_net, "", check_point_path, Mode.train, device_str=self.device_str
+                )
            
             # Setup the TensorBoard logger
             log_dir = save_folder

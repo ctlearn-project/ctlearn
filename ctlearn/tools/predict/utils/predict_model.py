@@ -294,10 +294,87 @@ class PredictCTLearnModel(Tool):
     ).tag(config=True)
     
     pytorch_config_file = Path(
-        default_value="./ctlearn/tools/train/pytorch/config/training_config_iaa_neutron_training.yml",
+        default_value=None,
+        allow_none=True,
         help="Pytorch config file",
     ).tag(config=True)
-    
+
+    # Unified Hardware Architecture & Execution Strategy
+    device = CaselessStrEnum(
+        ["cuda", "cpu", "mps"],
+        default_value="cuda",
+        help="Device to use: cuda, cpu, or mps",
+    ).tag(config=True)
+
+    devices = List(
+        trait=Int(),
+        default_value=[0],
+        help="List of GPU device IDs to use",
+    ).tag(config=True)
+
+    strategy = Unicode(
+        default_value="auto",
+        help="Multi-GPU strategy",
+    ).tag(config=True)
+
+    # Event Cut-offs
+    leakage_intensity_cutoff = Float(
+        default_value=0.2,
+        help="Events with leakage intensity greater than this value are removed",
+    ).tag(config=True)
+
+    intensity_cutoff = Float(
+        default_value=50.0,
+        help="Events with Hillas intensity below this value are removed",
+    ).tag(config=True)
+
+    # Normalizations
+    apply_log_scaling = List(
+        trait=Bool(),
+        default_value=[True, True],
+        help="List specifying whether to apply log10(X+1.0) scaling for [charge, peak_time]",
+    ).tag(config=True)
+
+    use_clean = Bool(
+        default_value=True,
+        help="Use the image with the applied mask",
+    ).tag(config=True)
+
+    use_clean_dvr = Bool(
+        default_value=False,
+        help="Use clean DVR mask",
+    ).tag(config=True)
+
+    type_mu = Float(
+        default_value=0.0,
+        help="Mean for type channel normalization",
+    ).tag(config=True)
+
+    type_sigma = Float(
+        default_value=1000.0,
+        help="Std dev for type channel normalization",
+    ).tag(config=True)
+
+    dir_mu = Float(
+        default_value=0.0,
+        help="Mean for direction channel normalization",
+    ).tag(config=True)
+
+    dir_sigma = Float(
+        default_value=1000.0,
+        help="Std dev for direction channel normalization",
+    ).tag(config=True)
+
+    energy_mu = Float(
+        default_value=0.0,
+        help="Mean for energy channel normalization",
+    ).tag(config=True)
+
+    energy_sigma = Float(
+        default_value=1000.0,
+        help="Std dev for energy channel normalization",
+    ).tag(config=True)
+
     keras_verbose = Int(
         default_value=1,
         min=0,
@@ -327,6 +404,15 @@ class PredictCTLearnModel(Tool):
         ("o", "output"): "PredictCTLearnModel.output_path",
         ("f", "framework"): "PredictCTLearnModel.framework_type",
         ("p", "pytorch_config_file"): "PredictCTLearnModel.pytorch_config_file",
+        "device": "PredictCTLearnModel.device",
+        "devices": "PredictCTLearnModel.devices",
+        "strategy": "PredictCTLearnModel.strategy",
+        "type_mu": "PredictCTLearnModel.type_mu",
+        "type_sigma": "PredictCTLearnModel.type_sigma",
+        "dir_mu": "PredictCTLearnModel.dir_mu",
+        "dir_sigma": "PredictCTLearnModel.dir_sigma",
+        "energy_mu": "PredictCTLearnModel.energy_mu",
+        "energy_sigma": "PredictCTLearnModel.energy_sigma",
     }
 
     flags = {
@@ -397,24 +483,106 @@ class PredictCTLearnModel(Tool):
     def setup(self):
         if self.framework_type == "pytorch":
             import torch
-            self.log.info(f"Using {self.pytorch_config_file} config file for pytorch framework")
-            self.parameters = read_configuration(self.pytorch_config_file)
-            sanity_check(self.parameters, expected_structure)
-            self.device_str = self.parameters["arch"]["device"]
+            if self.pytorch_config_file is not None:
+                self.log.info(f"Using {self.pytorch_config_file} config file for pytorch framework")
+                legacy_params = read_configuration(self.pytorch_config_file)
+                sanity_check(legacy_params, expected_structure)
+                
+                def get_conf_val(key1, key2, trait_name, default_val):
+                    in_config = False
+                    if "PredictCTLearnModel" in self.config and trait_name in self.config["PredictCTLearnModel"]:
+                        in_config = True
+                    if not in_config:
+                        return legacy_params.get(key1, {}).get(key2, default_val)
+                    return getattr(self, trait_name)
+                    
+                self.device_str = get_conf_val("arch", "device", "device", self.device.name if hasattr(self.device, "name") else str(self.device))
+                self.type_mu = get_conf_val("normalization", "type_mu", "type_mu", self.type_mu)
+                self.type_sigma = get_conf_val("normalization", "type_sigma", "type_sigma", self.type_sigma)
+                self.dir_mu = get_conf_val("normalization", "dir_mu", "dir_mu", self.dir_mu)
+                self.dir_sigma = get_conf_val("normalization", "dir_sigma", "dir_sigma", self.dir_sigma)
+                self.energy_mu = get_conf_val("normalization", "energy_mu", "energy_mu", self.energy_mu)
+                self.energy_sigma = get_conf_val("normalization", "energy_sigma", "energy_sigma", self.energy_sigma)
+                self.leakage_intensity_cutoff = get_conf_val("cut-off", "leakage_intensity", "leakage_intensity_cutoff", self.leakage_intensity_cutoff)
+                self.intensity_cutoff = get_conf_val("cut-off", "intensity", "intensity_cutoff", self.intensity_cutoff)
+                
+                self.parameters = legacy_params
+            else:
+                self.log.info("No legacy config file provided. Using standard Traitlets configuration for PyTorch.")
+                self.device_str = self.device.name if hasattr(self.device, "name") else str(self.device)
+                
+                self.parameters = {
+                    "data": {
+                        "type_checkpoint": self.load_type_model_from,
+                        "energy_checkpoint": self.load_energy_model_from,
+                        "direction_checkpoint": self.load_cameradirection_model_from or self.load_skydirection_model_from,
+                    },
+                    "hyp": {
+                        "batches": self.batch_size,
+                        "dynamic_batches": True,
+                    },
+                    "cut-off": {
+                        "leakage_intensity": self.leakage_intensity_cutoff,
+                        "intensity": self.intensity_cutoff,
+                    },
+                    "normalization": {
+                        "apply_log_scaling": self.apply_log_scaling,
+                        "use_clean": self.use_clean,
+                        "use_clean_dvr": self.use_clean_dvr,
+                        "type_mu": self.type_mu,
+                        "type_sigma": self.type_sigma,
+                        "dir_mu": self.dir_mu,
+                        "dir_sigma": self.dir_sigma,
+                        "energy_mu": self.energy_mu,
+                        "energy_sigma": self.energy_sigma,
+                    },
+                    "arch": {
+                        "device": self.device_str,
+                        "devices": self.devices,
+                        "strategy": self.strategy,
+                    },
+                    "model": {
+                        "model_type": {
+                            "model_name": "DoubleBBEfficientNet",
+                            "parameters": {
+                                "model_variant": "efficientnet-b3",
+                                "task": "type",
+                                "num_outputs": 2,
+                                "device_str": self.device_str,
+                                "energy_bins": None,
+                            }
+                        },
+                        "model_energy": {
+                            "model_name": "ThinResNet",
+                            "parameters": {
+                                "task": "energy",
+                                "num_inputs": 1,
+                                "num_outputs": 1,
+                                "num_blocks": [3, 4, 6, 3],
+                                "dropout": 0.1,
+                                "use_bn": False,
+                            }
+                        },
+                        "model_direction": {
+                            "model_name": "ThinResNet_DBB",
+                            "parameters": {
+                                "task": "direction",
+                                "num_inputs": 1,
+                                "num_outputs": 3,
+                                "num_blocks": [3, 4, 6, 3],
+                                "dropout": 0.1,
+                                "use_bn": False,
+                            }
+                        }
+                    }
+                }
             self.device = torch.device(self.device_str)
             self.tasks = []
-            self.type_mu = self.parameters["normalization"]["type_mu"]
-            self.type_sigma = self.parameters["normalization"]["type_sigma"]
-            self.dir_mu = self.parameters["normalization"]["dir_mu"]
-            self.dir_sigma = self.parameters["normalization"]["dir_sigma"]
-            self.energy_mu = self.parameters["normalization"]["energy_mu"]
-            self.energy_sigma = self.parameters["normalization"]["energy_sigma"]
-            
             if self.load_type_model_from is not None:
                 self.tasks.append(Task.type)
             if self.load_energy_model_from is not None:
                 self.tasks.append(Task.energy)
-            if self.load_cameradirection_model_from is not None:
+            if self.load_cameradirection_model_from is not None or self.load_skydirection_model_from is not None:
                 self.tasks.append(Task.direction)
 
         # Check if the ctapipe HDF5Merger component is enabled
@@ -506,6 +674,17 @@ class PredictCTLearnModel(Tool):
          
         if self.framework_type == "pytorch":
             from ctlearn.tools.predict.pytorch.predic_model_pytorch import predict_with_model_pytorch
+            
+            task = None
+            if model_path == self.load_type_model_from:
+                task = Task.type
+            elif model_path == self.load_energy_model_from:
+                task = Task.energy
+            elif model_path in [self.load_cameradirection_model_from, self.load_skydirection_model_from]:
+                task = Task.direction
+            else:
+                task = Task.type
+                
             predict_data, feature_vectors = predict_with_model_pytorch(self, task)
             return predict_data, feature_vectors
         return predict_data, feature_vectors
