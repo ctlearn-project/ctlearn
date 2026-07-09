@@ -37,6 +37,7 @@ from ctapipe.core import Tool
 from ctapipe.core.tool import ToolConfigurationError
 from ctapipe.core.traits import (
     Bool,
+    Float,
     Int,
     Path,
     flag,
