@@ -821,6 +821,26 @@ class CTLearnPL(pl.LightningModule):
                 labels_direction = labels["direction"]
 
             imgs = imgs.to(self.device)
+
+            # Log sample images to TensorBoard every 5 epochs
+            if batch_idx == 0 and self.current_epoch % 5 == 0 and self.trainer.is_global_zero:
+                import torchvision
+                try:
+                    num_samples = min(4, imgs.shape[0])
+                    sample_imgs = imgs[:num_samples]
+                    
+                    label_str = ""
+                    if self.task == Task.type:
+                        label_str = str(labels_class[:num_samples].tolist())
+                    elif self.task == Task.energy:
+                        label_str = str(labels_energy_value[:num_samples].tolist())
+                    elif self.task == Task.cameradirection:
+                        label_str = str(labels_direction[:num_samples].tolist())
+                        
+                    grid = torchvision.utils.make_grid(sample_imgs, normalize=True)
+                    self.logger.experiment.add_image(f"Train/Images_labels_{label_str}", grid, self.current_epoch)
+                except Exception as e:
+                    print(f"Error logging train images: {e}")
             
             # ------------------------------------------------------------------
             # Predictions based on one backbone or two back bones
@@ -1095,6 +1115,25 @@ class CTLearnPL(pl.LightningModule):
                 labels_direction = labels["direction"]
 
 
+            # Log sample images to TensorBoard every 5 epochs
+            if batch_idx == 0 and self.current_epoch % 5 == 0 and self.trainer.is_global_zero:
+                import torchvision
+                try:
+                    num_samples = min(4, imgs.shape[0])
+                    sample_imgs = imgs[:num_samples].to(self.device)
+                    
+                    label_str = ""
+                    if self.task == Task.type:
+                        label_str = str(labels_class[:num_samples].tolist())
+                    elif self.task == Task.energy:
+                        label_str = str(labels_energy_value[:num_samples].tolist())
+                    elif self.task == Task.cameradirection:
+                        label_str = str(labels_direction[:num_samples].tolist())
+                        
+                    grid = torchvision.utils.make_grid(sample_imgs, normalize=True)
+                    self.logger.experiment.add_image(f"Validation/Images_labels_{label_str}", grid, self.current_epoch)
+                except Exception as e:
+                    print(f"Error logging validation images: {e}")
             # ------------------------------------------------------------------
             # Predictions based on one backbone or two back bones
             # ------------------------------------------------------------------
@@ -1489,6 +1528,47 @@ class CTLearnPL(pl.LightningModule):
             )
 
             plt.close(fig_energy_error)  # Close the figure to release memory
+            plt.close("all")
+            
+            # Add histograms for energy labels and predictions
+            fig_hist, ax_hist = plt.subplots(figsize=(8, 6))
+            
+            import numpy as np
+            min_val = min(min(self.val_energy_label_list), min(self.val_energy_pred_list))
+            max_val = max(max(self.val_energy_label_list), max(self.val_energy_pred_list))
+            shared_bins = np.linspace(min_val, max_val, 50)
+            
+            ax_hist.hist(
+                self.val_energy_label_list,
+                bins=shared_bins,
+                alpha=0.5,
+                label="Labels",
+                color="blue",
+            )
+            ax_hist.hist(
+                self.val_energy_pred_list,
+                bins=shared_bins,
+                alpha=0.5,
+                label="Predictions",
+                color="orange",
+            )
+            ax_hist.set_xlabel("Energy (TeV)")
+            ax_hist.set_ylabel("Counts")
+            ax_hist.set_title("Energy Distribution - Labels vs Predictions (Validation)")
+            ax_hist.legend()
+            
+            self.logger.experiment.add_figure(
+                "Energy Distribution - Labels vs Predictions/Validation",
+                fig_hist,
+                self.current_epoch,
+            )
+            
+            save_path = os.path.join(
+                self.logger.log_dir,
+                f"energy_distribution_validation_{self.current_epoch}_{global_loss_val}.png"
+            )
+            fig_hist.savefig(save_path, format="png")
+            plt.close(fig_hist)
             plt.close("all")
             
     # ----------------------------------------------------------------------------------------------------------

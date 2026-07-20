@@ -1,4 +1,4 @@
-from ctapipe.core.traits import Path
+from ctapipe.core.traits import Path, Bool
 from torch.utils.data import DataLoader
 from ctlearn.tools.train.pytorch.CTLearnPL import CTLearnTrainer, CTLearnPL
 import os
@@ -105,9 +105,15 @@ class TrainPyTorchModel(TrainCTLearnModel):
         help="Configuration file.",
     ).tag(config=True)
 
+    disable_progress_bar = Bool(
+        default_value=False,
+        help="Disable PyTorch Lightning progress bar.",
+    ).tag(config=True)
+
     aliases = {
         **TrainCTLearnModel.aliases,
         "config_file": "TrainPyTorchModel.config_file",
+        "disable_progress_bar": "TrainPyTorchModel.disable_progress_bar",
     }
 
     def __init__(self, **kwargs):
@@ -483,7 +489,7 @@ class TrainPyTorchModel(TrainCTLearnModel):
                     else:
                         return None, None, val
 
-            num_inputs = 1
+            num_inputs =  1 ## Change thiss!!!!
 
             if self.load_onnx_model:
                 self.log.info(f"Loading ONNX model from {self.load_onnx_model} for training...")
@@ -554,9 +560,14 @@ class TrainPyTorchModel(TrainCTLearnModel):
             )
 
             extra_trainer_args = {}
-            if os.environ.get("CTLEARN_TEST_LIMIT"):
-                extra_trainer_args["limit_train_batches"] = 5
-                extra_trainer_args["limit_val_batches"] = 2
+            test_limit = os.environ.get("CTLEARN_TEST_LIMIT")
+            if test_limit:
+                try:
+                    limit = int(test_limit)
+                except ValueError:
+                    limit = 5
+                extra_trainer_args["limit_train_batches"] = limit
+                extra_trainer_args["limit_val_batches"] = limit
 
             # Setup the Trainer
             trainer_pl = CTLearnTrainer(
@@ -572,6 +583,7 @@ class TrainPyTorchModel(TrainCTLearnModel):
                 gradient_clip_val=self.parameters["hyp"]["gradient_clip_val"],
                 callbacks=[GPUStatsLogger()],
                 sync_batchnorm=True,
+                enable_progress_bar=not self.disable_progress_bar,
                 **extra_trainer_args
             )
  
@@ -595,7 +607,12 @@ class TrainPyTorchModel(TrainCTLearnModel):
                     os.makedirs(trainer_pl.get_log_dir())
                 
                 with open(os.path.join(trainer_pl.get_log_dir(),"parameters.json"), "w") as f:
-                    json.dump(self.parameters, f, indent=4)
+                    def path_serializer(obj):
+                        import pathlib
+                        if isinstance(obj, pathlib.Path):
+                            return str(obj)
+                        raise TypeError(f"Type {type(obj)} not serializable")
+                    json.dump(self.parameters, f, indent=4, default=path_serializer)
         
                 print(f"Run tensorboard server: tensorboard --load_fast=false --host=0.0.0.0 --logdir={trainer_pl.get_log_dir()}/")
 

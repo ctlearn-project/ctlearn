@@ -465,6 +465,9 @@ class TrainCTLearnModel(Tool):
         "type_checkpoint": "TrainCTLearnModel.type_checkpoint",
         "energy_checkpoint": "TrainCTLearnModel.energy_checkpoint",
         "direction_checkpoint": "TrainCTLearnModel.direction_checkpoint",
+        "num_workers": "TrainCTLearnModel.num_workers",
+        "pin_memory": "TrainCTLearnModel.pin_memory",
+        "persistent_workers": "TrainCTLearnModel.persistent_workers",
     }
 
     flags = {
