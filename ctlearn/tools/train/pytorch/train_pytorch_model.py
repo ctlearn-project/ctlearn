@@ -493,6 +493,13 @@ class TrainPyTorchModel(TrainCTLearnModel):
 
             if self.load_onnx_model:
                 self.log.info(f"Loading ONNX model from {self.load_onnx_model} for training...")
+                self.log.warning(
+                    "WARNING: Training an ONNX model from scratch (untrained) in PyTorch using onnx2pytorch "
+                    "often leads to frozen gradients and the loss not improving. This is because onnx2pytorch "
+                    "is designed primarily for inference, and many operations break the computational graph. "
+                    "It is highly recommended to train the native PyTorch model instead by removing the "
+                    "--load_onnx_model flag."
+                )
                 import onnx
                 from onnx2pytorch import ConvertModel
                 try:
