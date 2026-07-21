@@ -114,7 +114,7 @@ class PyTorchSingleCNN(SingleCNN):
     """
 
     def __init__(self, input_shape, tasks, config=None, parent=None, **kwargs):
-        super().__init__(config=config, parent=parent, **kwargs)
+        super().__init__(tasks=tasks, config=config, parent=parent, **kwargs)
         
         # Build modules
         self.backbone_model, out_features = self._build_backbone(input_shape)     
@@ -267,7 +267,7 @@ class PyTorchResNet(ResNet):
 
 
     def __init__(self, input_shape, tasks, config=None, parent=None, **kwargs):
-        super().__init__(config=config, parent=parent, **kwargs)
+        super().__init__(tasks=tasks, config=config, parent=parent, **kwargs)
 
         # Build PyTorch backbone and track final out_features channel size
         self.backbone_model, out_features = self._build_backbone(input_shape)
