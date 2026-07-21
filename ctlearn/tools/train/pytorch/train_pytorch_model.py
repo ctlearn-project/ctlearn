@@ -1,4 +1,4 @@
-from ctapipe.core.traits import Path, Bool
+from ctapipe.core.traits import Path, Bool, Unicode
 from torch.utils.data import DataLoader
 from ctlearn.tools.train.pytorch.CTLearnPL import CTLearnTrainer, CTLearnPL
 import os
@@ -110,10 +110,17 @@ class TrainPyTorchModel(TrainCTLearnModel):
         help="Disable PyTorch Lightning progress bar.",
     ).tag(config=True)
 
+    model_name = Unicode(
+        default_value=None,
+        allow_none=True,
+        help="Model name to override the default model for the reco task.",
+    ).tag(config=True)
+
     aliases = {
         **TrainCTLearnModel.aliases,
         "config_file": "TrainPyTorchModel.config_file",
         "disable_progress_bar": "TrainPyTorchModel.disable_progress_bar",
+        "model-name": "TrainPyTorchModel.model_name",
     }
 
     def __init__(self, **kwargs):
@@ -252,6 +259,24 @@ class TrainPyTorchModel(TrainCTLearnModel):
                 "gradient_clip_val": self.gradient_clip_val,
                 "save_k": self.save_k_checkpoints,
             }
+
+        # Override model name if passed through command line
+        if self.model_name is not None:
+            for task in self.tasks:
+                task_key = f"model_{task.name}"
+                if task_key not in self.pytorch_model_configs:
+                    self.pytorch_model_configs[task_key] = {"parameters": {}}
+                self.pytorch_model_configs[task_key]["model_name"] = self.model_name
+                
+                # Clear out parameters to avoid passing the old model's params to the new one
+                if "parameters" in self.pytorch_model_configs[task_key]:
+                    old_params = self.pytorch_model_configs[task_key]["parameters"]
+                    # Keep basic essential params if they exist
+                    new_params = {}
+                    for key in ["task", "num_inputs", "num_outputs", "device_str"]:
+                        if key in old_params:
+                            new_params[key] = old_params[key]
+                    self.pytorch_model_configs[task_key]["parameters"] = new_params
 
         self.save_k = self.save_k_checkpoints
 

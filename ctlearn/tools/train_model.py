@@ -6,11 +6,6 @@ import sys
 from ctapipe.core import Tool
 from ctapipe.core.traits import CaselessStrEnum
 from ctlearn.core.ctlearn_enum import FrameworkType
-from ctlearn.tools.train.keras.train_keras_model import TrainKerasModel
-from ctlearn.tools.train.pytorch.train_pytorch_model import (
-    TrainPyTorchModel,
-)
-
 class DLFrameWork(Tool):
     """
     Tool to select and run a specific deep learning training framework (Keras or PyTorch)
@@ -63,10 +58,20 @@ class DLFrameWork(Tool):
     ).tag(config=True)
 
     aliases = {
-        **TrainPyTorchModel.aliases,
-        **TrainKerasModel.aliases,
         "framework": "DLFrameWork.framework_type",
     }
+    
+    try:
+        from ctlearn.tools.train.pytorch.train_pytorch_model import TrainPyTorchModel
+        aliases.update(TrainPyTorchModel.aliases)
+    except ImportError:
+        pass
+        
+    try:
+        from ctlearn.tools.train.keras.train_keras_model import TrainKerasModel
+        aliases.update(TrainKerasModel.aliases)
+    except ImportError:
+        pass
 
     def __init__(self, **kwargs):
         """
@@ -159,11 +164,22 @@ class DLFrameWork(Tool):
 
 def main():
     # Run the tool
-    # Parse only --framework to determine which subclass to load
+    tool = DLFrameWork()
+    
+    # Manually parse --framework to determine which subclass to load, as traitlets alias 
+    # update can sometimes fail to parse it correctly before setup
+    framework = "keras"
+    for i, arg in enumerate(sys.argv[1:]):
+        if arg.startswith("--framework="):
+            framework = arg.split("=")[1].strip()
+        elif arg == "--framework" and i + 2 < len(sys.argv):
+            framework = sys.argv[i + 2].strip()
+    
+    tool.framework_type = framework
+    
     minimal_args = [
         arg for arg in sys.argv[1:] if "--framework" in arg or arg in ["-h", "--help"]
     ]
-    tool = DLFrameWork()
     tool.initialize(argv=minimal_args)
 
     # Setup and inject the correct framework instance
