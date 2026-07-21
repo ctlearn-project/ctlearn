@@ -61,7 +61,8 @@ class KerasDLDataLoader(Sequence, BaseDLDataLoader):
                 - sort_by_intensity: Whether to sort by intensity
                 - stack_telescope_images: Whether to stack images
         """
-        super().__init__(**kwargs)
+        BaseDLDataLoader.__init__(self, **kwargs)
+        Sequence.__init__(self)
         # Perform initial shuffling of indices if random seed is set
         self.on_epoch_end()
 
@@ -185,12 +186,14 @@ class KerasDLDataLoader(Sequence, BaseDLDataLoader):
         peak_time = features["input"][..., 1:2]
         
         active_task = self.tasks[0] if self.tasks else None
-        image, peak_time = self.clean_and_normalize(image, peak_time, active_task)
+        
+        image, peak_time = self.clean_data(image, peak_time)
+        image, peak_time = self.apply_log_scaling_to_channels(image, peak_time)
         
         if self.use_augmentation:
             image, peak_time = self.apply_augmentation(image, peak_time, active_task)
             
-        image, peak_time = self.apply_log_scaling_to_channels(image, peak_time)
+        image, peak_time = self.normalize_data(image, peak_time, active_task)
         features["input"] = np.concatenate([image, peak_time], axis=-1)
         
         # Extract particle type classification labels
@@ -406,16 +409,18 @@ class KerasDLDataLoader(Sequence, BaseDLDataLoader):
                 image = features_arr[..., 0]
                 peak_time = features_arr[..., 1]
                 
-                image, peak_time = self.clean_and_normalize(image, peak_time, active_task)
+                image, peak_time = self.clean_data(image, peak_time)
                 image, peak_time = self.apply_log_scaling_to_channels(image, peak_time)
+                image, peak_time = self.normalize_data(image, peak_time, active_task)
                 
                 features["input"] = np.stack([image, peak_time], axis=-1)
             else: # Stacked mode: (batch, height, width, channels)
                 image = features_arr[..., ::2]
                 peak_time = features_arr[..., 1::2]
                 
-                image, peak_time = self.clean_and_normalize(image, peak_time, active_task)
+                image, peak_time = self.clean_data(image, peak_time)
                 image, peak_time = self.apply_log_scaling_to_channels(image, peak_time)
+                image, peak_time = self.normalize_data(image, peak_time, active_task)
                 
                 # Re-stack alternating channels
                 stacked = []

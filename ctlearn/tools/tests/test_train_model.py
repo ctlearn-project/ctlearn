@@ -1,13 +1,15 @@
 import pandas as pd
 import pytest
 import shutil
+from unittest import mock
 
 from ctapipe.core import run_tool
-from ctlearn.tools import TrainCTLearnModel
+from ctlearn.tools import DLFrameWork
 
 
 @pytest.mark.parametrize("reco_task", ["type", "energy", "cameradirection"])
-def test_train_ctlearn_model(reco_task, dl1_gamma_file, dl1_proton_file, tmp_path):
+@mock.patch("ctapipe.instrument.SubarrayDescription.__eq__", return_value=True)
+def test_train_ctlearn_model(mock_eq, reco_task, dl1_gamma_file, dl1_proton_file, tmp_path):
     """
     Test training CTLearn model using the DL1 gamma and proton files for all reconstruction tasks.
     Each test run gets its own isolated temp directories.
@@ -40,18 +42,16 @@ def test_train_ctlearn_model(reco_task, dl1_gamma_file, dl1_proton_file, tmp_pat
         f"--DLImageReader.allowed_tels={allowed_tels}",
     ]
 
-    # Include background only for classification task
     if reco_task == "type":
         argv.extend(
             [
                 f"--background={background_dir}",
                 "--pattern-background=*.dl1.h5",
-                "--DLImageReader.enforce_subarray_equality=False",
             ]
         )
 
     # Run training
-    assert run_tool(TrainCTLearnModel(), argv=argv, cwd=tmp_path) == 0
+    assert run_tool(DLFrameWork(), argv=argv, cwd=tmp_path) == 0
 
     # --- Additional checks ---
     # Check that the trained model exists

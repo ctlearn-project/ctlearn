@@ -14,7 +14,7 @@ from traitlets.config.loader import Config
 from ctapipe.core import run_tool
 from ctapipe.io import write_table
 from ctapipe.utils import get_dataset_path
-from ctlearn.tools import TrainCTLearnModel
+from ctlearn.tools import DLFrameWork
 from ctlearn.utils import get_lst1_subarray_description
 
 
@@ -263,12 +263,11 @@ def ctlearn_trained_r1_mono_models(r1_gamma_file, r1_proton_file, tmp_path_facto
                 [
                     f"--background={background_dir}",
                     "--pattern-background=*.r1.h5",
-                    "--DLWaveformReader.enforce_subarray_equality=False",
                 ]
             )
 
         # Run training
-        assert run_tool(TrainCTLearnModel(config=config), argv=argv, cwd=tmp_path) == 0
+        assert run_tool(DLFrameWork(config=config), argv=argv, cwd=tmp_path) == 0
 
         ctlearn_trained_r1_mono_models[f"{telescope_type}_{reco_task}"] = (
             output_dir / "ctlearn_model.keras"
@@ -345,14 +344,13 @@ def ctlearn_trained_dl1_mono_models(dl1_gamma_file, dl1_proton_file, tmp_path_fa
                     [
                         f"--background={background_dir}",
                         "--pattern-background=*.dl1.h5",
-                        "--DLImageReader.enforce_subarray_equality=False",
                         f"--DLImageReader.image_mapper_type={image_mapper_types[telescope_type]}",
                     ]
                 )
 
             # Run training
             assert (
-                run_tool(TrainCTLearnModel(config=config), argv=argv, cwd=tmp_path) == 0
+                run_tool(DLFrameWork(config=config), argv=argv, cwd=tmp_path) == 0
             )
 
             ctlearn_trained_dl1_mono_models[f"{telescope_type}_{reco_task}"] = (
@@ -427,12 +425,11 @@ def ctlearn_trained_dl1_stereo_models(
                 [
                     f"--background={background_dir}",
                     "--pattern-background=*.dl1.h5",
-                    "--DLImageReader.enforce_subarray_equality=False",
                 ]
             )
 
         # Run training
-        assert run_tool(TrainCTLearnModel(config=config), argv=argv, cwd=tmp_path) == 0
+        assert run_tool(DLFrameWork(config=config), argv=argv, cwd=tmp_path) == 0
 
         ctlearn_trained_dl1_stereo_models[f"{telescope_type}_{reco_task}"] = (
             output_dir / "ctlearn_model.keras"

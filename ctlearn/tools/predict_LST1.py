@@ -35,22 +35,41 @@ from ctapipe.core.traits import (
 from ctapipe.instrument.optics import FocalLengthKind
 from ctapipe.instrument.optics import FocalLengthKind
 from ctapipe.io import read_table, write_table
-from ctapipe.io.hdf5dataformat import (
-    DL1_SUBARRAY_TRIGGER_TABLE,
-    DL1_TEL_GROUP,
-    DL1_TEL_PARAMETERS_GROUP,
-    DL1_TEL_POINTING_GROUP,
-    DL1_TEL_TRIGGER_TABLE,
-    DL2_TEL_PARTICLETYPE_GROUP,
-    DL2_TEL_ENERGY_GROUP,
-    DL2_TEL_GEOMETRY_GROUP,
-    DL2_SUBARRAY_PARTICLETYPE_GROUP,
-    DL2_SUBARRAY_ENERGY_GROUP,
-    DL2_SUBARRAY_GEOMETRY_GROUP,
-)
+
+DL0_TEL_POINTING_GROUP = "/dl0/event/telescope/pointing"
+DL1_SUBARRAY_GROUP = "/dl1/event/subarray"
+DL1_SUBARRAY_POINTING_GROUP = "/dl1/event/subarray/pointing"
+DL1_SUBARRAY_TRIGGER_TABLE = "/dl1/event/subarray/trigger"
+DL1_TEL_GROUP = "/dl1/event/telescope"
+DL1_TEL_CALIBRATION_GROUP = "/dl1/event/telescope/calibration"
+DL1_TEL_ILLUMINATOR_THROUGHPUT_GROUP = "/dl1/event/telescope/illuminator_throughput"
+DL1_TEL_IMAGES_GROUP = "/dl1/event/telescope/image"
+DL1_TEL_MUON_GROUP = "/dl1/event/telescope/muon"
+DL1_TEL_MUON_THROUGHPUT_GROUP = "/dl1/event/telescope/muon_throughput"
+DL1_TEL_OPTICAL_PSF_GROUP = "/dl1/event/telescope/optical_psf"
+DL1_TEL_PARAMETERS_GROUP = "/dl1/event/telescope/parameters"
+DL1_TEL_POINTING_GROUP = "/dl1/event/telescope/pointing"
+DL1_TEL_TRIGGER_TABLE = "/dl1/event/telescope/trigger"
+DL2_EVENT_STATISTICS_GROUP = "/dl2/event/subarray/statistics"
+FIXED_POINTING_GROUP = "/configuration/telescope/pointing"
+R0_TEL_GROUP = "/r0/event/telescope"
+R1_TEL_GROUP = "/r1/event/telescope"
+SIMULATION_IMAGES_GROUP = "/simulation/event/telescope/images"
+SIMULATION_IMPACT_GROUP = "/simulation/event/telescope/impact"
+SIMULATION_PARAMETERS_GROUP = "/simulation/event/telescope/parameters"
+SIMULATION_RUN_TABLE = "/simulation/run_config"
+SIMULATION_SHOWER_TABLE = "/simulation/event/subarray/shower"
+DL2_TEL_PARTICLETYPE_GROUP = "/dl2/event/telescope/classification"
+DL2_TEL_ENERGY_GROUP = "/dl2/event/telescope/energy"
+DL2_TEL_GEOMETRY_GROUP = "/dl2/event/telescope/geometry"
+DL2_SUBARRAY_GROUP = "/dl2/event/subarray"
+DL2_SUBARRAY_PARTICLETYPE_GROUP = "/dl2/event/subarray/classification"
+DL2_SUBARRAY_ENERGY_GROUP = "/dl2/event/subarray/energy"
+DL2_SUBARRAY_GEOMETRY_GROUP = "/dl2/event/subarray/geometry"
+
 from ctapipe.reco.utils import add_defaults_and_meta
 
-from ctlearn.core.model import LoadedModel
+from ctlearn.core.keras.model import LoadedModel
 from ctlearn.utils import get_lst1_subarray_description
 from ctlearn.utils import get_lst1_subarray_description
 from dl1_data_handler.image_mapper import ImageMapper
@@ -279,7 +298,12 @@ class LST1PredictionTool(Tool):
     }
 
 
-    classes = classes_with_traits(ImageMapper)
+    @property
+    def classes(self):
+        return [
+            type(self),
+            LST1PredictionTool,
+        ] + classes_with_traits(ImageMapper)
 
     def setup(self):
         self.log.info("ctlearn version %s", ctlearn_version)

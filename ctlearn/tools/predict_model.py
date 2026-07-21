@@ -39,44 +39,45 @@ from ctapipe.core.traits import (
     flag,
     Dict,
     ComponentName,
+    CaselessStrEnum,
     classes_with_traits,
 )
 from ctapipe.monitoring.interpolation import PointingInterpolator
 from ctapipe.instrument import SubarrayDescription
 from ctapipe.io import read_table, write_table, HDF5Merger
 from ctapipe.io.datalevels import DataLevel
-from ctapipe.io.hdf5dataformat import (
-    DL0_TEL_POINTING_GROUP,
-    DL1_SUBARRAY_GROUP,
-    DL1_SUBARRAY_POINTING_GROUP,
-    DL1_SUBARRAY_TRIGGER_TABLE,
-    DL1_TEL_GROUP,
-    DL1_TEL_CALIBRATION_GROUP,
-    DL1_TEL_ILLUMINATOR_THROUGHPUT_GROUP,
-    DL1_TEL_IMAGES_GROUP,
-    DL1_TEL_MUON_GROUP,
-    DL1_TEL_MUON_THROUGHPUT_GROUP,
-    DL1_TEL_OPTICAL_PSF_GROUP,
-    DL1_TEL_PARAMETERS_GROUP,
-    DL1_TEL_POINTING_GROUP,
-    DL1_TEL_TRIGGER_TABLE,
-    DL2_EVENT_STATISTICS_GROUP,
-    FIXED_POINTING_GROUP,
-    R0_TEL_GROUP,
-    R1_TEL_GROUP,
-    SIMULATION_IMAGES_GROUP,
-    SIMULATION_IMPACT_GROUP,
-    SIMULATION_PARAMETERS_GROUP,
-    SIMULATION_RUN_TABLE,
-    SIMULATION_SHOWER_TABLE,
-    DL2_TEL_PARTICLETYPE_GROUP,
-    DL2_TEL_ENERGY_GROUP,
-    DL2_TEL_GEOMETRY_GROUP,
-    DL2_SUBARRAY_GROUP,
-    DL2_SUBARRAY_PARTICLETYPE_GROUP,
-    DL2_SUBARRAY_ENERGY_GROUP,
-    DL2_SUBARRAY_GEOMETRY_GROUP,
-)
+
+DL0_TEL_POINTING_GROUP = "/dl0/event/telescope/pointing"
+DL1_SUBARRAY_GROUP = "/dl1/event/subarray"
+DL1_SUBARRAY_POINTING_GROUP = "/dl1/event/subarray/pointing"
+DL1_SUBARRAY_TRIGGER_TABLE = "/dl1/event/subarray/trigger"
+DL1_TEL_GROUP = "/dl1/event/telescope"
+DL1_TEL_CALIBRATION_GROUP = "/dl1/event/telescope/calibration"
+DL1_TEL_ILLUMINATOR_THROUGHPUT_GROUP = "/dl1/event/telescope/illuminator_throughput"
+DL1_TEL_IMAGES_GROUP = "/dl1/event/telescope/image"
+DL1_TEL_MUON_GROUP = "/dl1/event/telescope/muon"
+DL1_TEL_MUON_THROUGHPUT_GROUP = "/dl1/event/telescope/muon_throughput"
+DL1_TEL_OPTICAL_PSF_GROUP = "/dl1/event/telescope/optical_psf"
+DL1_TEL_PARAMETERS_GROUP = "/dl1/event/telescope/parameters"
+DL1_TEL_POINTING_GROUP = "/dl1/event/telescope/pointing"
+DL1_TEL_TRIGGER_TABLE = "/dl1/event/telescope/trigger"
+DL2_EVENT_STATISTICS_GROUP = "/dl2/event/subarray/statistics"
+FIXED_POINTING_GROUP = "/configuration/telescope/pointing"
+R0_TEL_GROUP = "/r0/event/telescope"
+R1_TEL_GROUP = "/r1/event/telescope"
+SIMULATION_IMAGES_GROUP = "/simulation/event/telescope/images"
+SIMULATION_IMPACT_GROUP = "/simulation/event/telescope/impact"
+SIMULATION_PARAMETERS_GROUP = "/simulation/event/telescope/parameters"
+SIMULATION_RUN_TABLE = "/simulation/run_config"
+SIMULATION_SHOWER_TABLE = "/simulation/event/subarray/shower"
+DL2_TEL_PARTICLETYPE_GROUP = "/dl2/event/telescope/classification"
+DL2_TEL_ENERGY_GROUP = "/dl2/event/telescope/energy"
+DL2_TEL_GEOMETRY_GROUP = "/dl2/event/telescope/geometry"
+DL2_SUBARRAY_GROUP = "/dl2/event/subarray"
+DL2_SUBARRAY_PARTICLETYPE_GROUP = "/dl2/event/subarray/classification"
+DL2_SUBARRAY_ENERGY_GROUP = "/dl2/event/subarray/energy"
+DL2_SUBARRAY_GEOMETRY_GROUP = "/dl2/event/subarray/geometry"
+
 from ctapipe.reco.reconstructor import ReconstructionProperty
 from ctapipe.reco.stereo_combination import StereoCombiner
 from ctapipe.reco.utils import add_defaults_and_meta
@@ -424,7 +425,13 @@ class PredictCTLearnModel(Tool):
         ),
     }
 
-    classes = classes_with_traits(DLDataReader)
+    @property
+    def classes(self):
+        return [
+            type(self),
+            PredictCTLearnModel,
+            HDF5Merger,
+        ] + classes_with_traits(DLDataReader)
 
     def setup(self):
         self.activity_start_time = Time.now()
@@ -707,129 +714,7 @@ class PredictCTLearnModel(Tool):
 
              return predict_data, feature_vectors
         
-        # # Create a new DLDataLoader for each task
-        # # It turned out to be more robust to initialize the DLDataLoader separately.
-        # data_loader = DLDataLoader.create(
-        #     framework="keras",
-        #     DLDataReader=self.dl1dh_reader,
-        #     indices=self.indices,
-        #     tasks=[],
-        #     batch_size=self.batch_size * self.strategy.num_replicas_in_sync,
-        #     sort_by_intensity=self.sort_by_intensity,
-        #     stack_telescope_images=self.stack_telescope_images,
-        # )
-        
-        # # Keras is only considering the last complete batch.
-        # # In prediction mode we don't want to loose the last
-        # # uncomplete batch, so we are creating an additional
-        # # batch generator for the remaining events.
-        # data_loader_last_batch = None
-        # if self.last_batch_size > 0:
-        #     last_batch_indices = self.indices[-self.last_batch_size :]
-        #     data_loader_last_batch = DLDataLoader.create(
-        #         framework="keras",
-        #         DLDataReader=self.dl1dh_reader,
-        #         indices=last_batch_indices,
-        #         tasks=[],
-        #         batch_size=self.last_batch_size,
-        #         sort_by_intensity=self.sort_by_intensity,
-        #         stack_telescope_images=self.stack_telescope_images,
-        #     )
 
-                    
-        # # Load the model from the specified path
-        # model = keras.saving.load_model(model_path)
-        # prediction_colname = (
-        #     "type"
-            if isinstance(model.layers[-1], keras.layers.Softmax)
-            else model.layers[-1].name
-        # )
-        # backbone_model, feature_vectors = None, None
-        # if self.dl1_features:
-        #     # Get the backbone model which is the second layer of the model
-        #     backbone_model = model.get_layer(index=1)
-        #     # Create a new head model with the same layers as the original model.
-        #     # The output of the backbone model is the input of the head model.
-        #     backbone_output_shape = keras.Input(model.layers[2].input.shape[1:])
-        #     x = backbone_output_shape
-        #     for layer in model.layers[2:]:
-        #         x = layer(x)
-        #     head = keras.Model(inputs=backbone_output_shape, outputs=x)
-        #     # Apply the backbone model with the data loader to retrieve the feature vectors
-            try:
-            #     feature_vectors = backbone_model.predict(
-            #         data_loader, verbose=self.keras_verbose
-            #     )
-            except ValueError as err:
-                if str(err).startswith("Input 0 of layer"):
-                    raise ToolConfigurationError(
-                        "Model input shape does not match the prediction data. "
-                        "This is usually caused by selecting the wrong telescope_id. "
-                        "Please ensure the telescope configuration matches the one used for training."
-                    ) from err
-                raise
-        #     # Apply the head model with the feature vectors to retrieve the prediction
-        #     predict_data = Table(
-        #         {
-        #             prediction_colname: head.predict(
-        #                 feature_vectors, verbose=self.keras_verbose
-        #             )
-        #         }
-        #     )
-        #     # Predict the last batch and stack the results to the prediction data
-        #     if data_loader_last_batch is not None:
-        #         feature_vectors_last_batch = backbone_model.predict(
-        #             data_loader_last_batch, verbose=self.keras_verbose
-        #         )
-        #         feature_vectors = np.concatenate(
-        #             (feature_vectors, feature_vectors_last_batch)
-        #         )
-        #         predict_data = vstack(
-        #             [
-        #                 predict_data,
-        #                 Table(
-        #                     {
-        #                         prediction_colname: head.predict(
-        #                             feature_vectors_last_batch,
-        #                             verbose=self.keras_verbose,
-        #                         )
-        #                     }
-        #                 ),
-        #             ]
-        #         )
-        # else:
-        #     # Predict the data using the loaded model
-            try:
-            #     predict_data = model.predict(data_loader, verbose=self.keras_verbose)
-            except ValueError as err:
-                if str(err).startswith("Input 0 of layer"):
-                    raise ToolConfigurationError(
-                        "Model input shape does not match the prediction data. "
-                        "This is usually caused by selecting the wrong telescope_id. "
-                        "Please ensure the telescope configuration matches the one used for training."
-                    ) from err
-                raise
-        #     # Create a astropy table with the prediction results
-        #     # The classification task has a softmax layer as the last layer
-        #     # which returns the probabilities for each class in an array, while
-        #     # the regression tasks have output neurons which returns the
-        #     # predicted value for the task in a dictionary.
-        #     if prediction_colname == "type":
-        #         predict_data = Table({prediction_colname: predict_data})
-        #     else:
-        #         predict_data = Table(predict_data)
-        #     # Predict the last batch and stack the results to the prediction data
-        #     if data_loader_last_batch is not None:
-        #         predict_data_last_batch = model.predict(
-        #             data_loader_last_batch, verbose=self.keras_verbose
-        #         )
-        #         if model.layers[-1].name == "type":
-        #             predict_data_last_batch = Table(
-        #                 {prediction_colname: predict_data_last_batch}
-        #             )
-        #         else:
-        #             predict_data_last_batch = Table(predict_data_last_batch)
-        #         predict_data = vstack([predict_data, predict_data_last_batch])
         return predict_data, feature_vectors
 
     def _predict_particletype(self, example_identifiers):

@@ -174,7 +174,34 @@ class BaseDLDataLoader(ABC):
         self.leakage_intensity_cutoff = get_val("leakage_intensity_cutoff", 0.2)
         self.intensity_cutoff = get_val("intensity_cutoff", 50.0)
 
-    def clean_and_normalize(self, image, peak_time, task):
+        # Determine input shape based on reader type and observation mode
+        # Feature vector readers don't have spatial dimensions
+        if self.DLDataReader.__class__.__name__ != "DLFeatureVectorReader":
+            
+            # Mono mode: single telescope per event
+            if self.DLDataReader.mode == "mono":
+                # Use the input shape directly from the data reader
+                self.input_shape = self.DLDataReader.input_shape
+                
+            # Stereo mode: multiple telescopes per event
+            elif self.DLDataReader.mode == "stereo":
+                # Get input shape from the first selected telescope
+                # All telescopes are assumed to have the same image dimensions
+                self.input_shape = self.DLDataReader.input_shape[
+                    list(self.DLDataReader.selected_telescopes)[0]
+                ]
+                
+                # Modify input shape if stacking telescope images
+                # Original shape: (num_telescopes, height, width, channels)
+                # Stacked shape: (height, width, num_telescopes * channels)
+                if self.stack_telescope_images:
+                    self.input_shape = (
+                        self.input_shape[1],  # height
+                        self.input_shape[2],  # width
+                        self.input_shape[0] * self.input_shape[3],  # stacked channels
+                    )
+
+    def clean_data(self, image, peak_time):
         # Remove negative numbers and avoid inf or nans
         image[image < 0] = 0
         peak_time[peak_time < 0] = 0
@@ -182,7 +209,9 @@ class BaseDLDataLoader(ABC):
         image[np.isinf(image)] = 0
         peak_time[np.isnan(peak_time)] = 0
         peak_time[np.isinf(peak_time)] = 0
+        return image, peak_time
 
+    def normalize_data(self, image, peak_time, task):
         # Normalization
         if task == Task.type or task == "type":
             image = (image - self.type_mu) / self.type_sigma
@@ -250,33 +279,6 @@ class BaseDLDataLoader(ABC):
                         continue
         return image, peak_time
 
-        # Determine input shape based on reader type and observation mode
-        # Feature vector readers don't have spatial dimensions
-        if self.DLDataReader.__class__.__name__ != "DLFeatureVectorReader":
-            
-            # Mono mode: single telescope per event
-            if self.DLDataReader.mode == "mono":
-                # Use the input shape directly from the data reader
-                self.input_shape = self.DLDataReader.input_shape
-                
-            # Stereo mode: multiple telescopes per event
-            elif self.DLDataReader.mode == "stereo":
-                # Get input shape from the first selected telescope
-                # All telescopes are assumed to have the same image dimensions
-                self.input_shape = self.DLDataReader.input_shape[
-                    list(self.DLDataReader.selected_telescopes)[0]
-                ]
-                
-                # Modify input shape if stacking telescope images
-                # Original shape: (num_telescopes, height, width, channels)
-                # Stacked shape: (height, width, num_telescopes * channels)
-                if self.stack_telescope_images:
-                    self.input_shape = (
-                        self.input_shape[1],  # height
-                        self.input_shape[2],  # width
-                        self.input_shape[0] * self.input_shape[3],  # stacked channels
-                    )
-     
     @abstractmethod
     def __len__(self):
         """

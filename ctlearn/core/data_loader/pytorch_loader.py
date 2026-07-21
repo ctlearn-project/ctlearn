@@ -403,7 +403,9 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         peak_time = features["input"][..., 1:2]
 
         active_task = self.tasks[0] if self.tasks else None
-        image, peak_time = self.clean_and_normalize(image, peak_time, active_task)
+        
+        image, peak_time = self.clean_data(image, peak_time)
+        image, peak_time = self.apply_log_scaling_to_channels(image, peak_time)
 
         features_out = {}
         features_out["image"] = image
@@ -508,8 +510,8 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         else:
             image, peak_time = features_out["image"], features_out["peak_time"]
 
-        # Apply log scaling
-        image, peak_time = self.apply_log_scaling_to_channels(image, peak_time)
+        # Normalize data
+        image, peak_time = self.normalize_data(image, peak_time, active_task)
         
         # Change to channel first
         image = np.transpose(image, (0, 3, 1, 2))
@@ -680,8 +682,9 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
             image = features_arr[..., 0]
             peak_time = features_arr[..., 1]
             
-            image, peak_time = self.clean_and_normalize(image, peak_time, active_task)
+            image, peak_time = self.clean_data(image, peak_time)
             image, peak_time = self.apply_log_scaling_to_channels(image, peak_time)
+            image, peak_time = self.normalize_data(image, peak_time, active_task)
             
             image = np.transpose(image, (0, 1, 4, 2, 3)) if len(image.shape) == 5 else np.expand_dims(image, axis=2)
             peak_time = np.transpose(peak_time, (0, 1, 4, 2, 3)) if len(peak_time.shape) == 5 else np.expand_dims(peak_time, axis=2)
@@ -689,8 +692,9 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
             image = features_arr[..., ::2]
             peak_time = features_arr[..., 1::2]
             
-            image, peak_time = self.clean_and_normalize(image, peak_time, active_task)
+            image, peak_time = self.clean_data(image, peak_time)
             image, peak_time = self.apply_log_scaling_to_channels(image, peak_time)
+            image, peak_time = self.normalize_data(image, peak_time, active_task)
             
             image = np.transpose(image, (0, 3, 1, 2))
             peak_time = np.transpose(peak_time, (0, 3, 1, 2))

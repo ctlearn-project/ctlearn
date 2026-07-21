@@ -133,9 +133,9 @@ class TrainKerasModel(TrainCTLearnModel):
         
         print(tf.config.list_physical_devices('GPU'))
         # Create a MirroredStrategy.
-        self.strategy = tf.distribute.MirroredStrategy()
-        atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore
-        self.log.info("Number of devices: %s", self.strategy.num_replicas_in_sync)
+        self._keras_strategy = tf.distribute.MirroredStrategy()
+        atexit.register(self._keras_strategy._extended._collective_ops._lock.locked)  # type: ignore
+        self.log.info("Number of devices: %s", self._keras_strategy.num_replicas_in_sync)
         # print(self.framework_type)
         super().setup()
 
@@ -151,9 +151,9 @@ class TrainKerasModel(TrainCTLearnModel):
         validation_indices = indices[:n_validation_examples]
 
         # Set self.strategy.num_replicas_in_sync to 1 in case that does not exist (Pytorch)
-        if not hasattr(self, "strategy"):
-            self.strategy = type("FakeStrategy", (), {"num_replicas_in_sync": 1})()
-            print("num_replicas_in_sync:", self.strategy.num_replicas_in_sync)
+        if not hasattr(self, "_keras_strategy"):
+            self._keras_strategy = type("FakeStrategy", (), {"num_replicas_in_sync": 1})()
+            print("num_replicas_in_sync:", self._keras_strategy.num_replicas_in_sync)
 
         print("BASE TRAIN FRAMEWORK", self.framework_type)
         
@@ -162,7 +162,7 @@ class TrainKerasModel(TrainCTLearnModel):
             DLDataReader=self.dl1dh_reader,
             indices=training_indices,
             tasks=self.reco_tasks,
-            batch_size=self.batch_size * self.strategy.num_replicas_in_sync,
+            batch_size=self.batch_size * self._keras_strategy.num_replicas_in_sync,
             random_seed=self.random_seed,
             sort_by_intensity=self.sort_by_intensity,
             stack_telescope_images=self.stack_telescope_images,
@@ -173,7 +173,7 @@ class TrainKerasModel(TrainCTLearnModel):
             DLDataReader=self.dl1dh_reader,
             indices=validation_indices,
             tasks=self.reco_tasks,
-            batch_size=self.batch_size * self.strategy.num_replicas_in_sync,
+            batch_size=self.batch_size * self._keras_strategy.num_replicas_in_sync,
             random_seed=self.random_seed,
             sort_by_intensity=self.sort_by_intensity,
             stack_telescope_images=self.stack_telescope_images,
@@ -235,7 +235,7 @@ class TrainKerasModel(TrainCTLearnModel):
             )
             self.callbacks.append(lr_reducing_callback)
         # Open a strategy scope.
-        with self.strategy.scope():
+        with self._keras_strategy.scope():
             # Construct the model
             self.log.info("Setting up the model.")
             self.model = CTLearnModel.from_name(

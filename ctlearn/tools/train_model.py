@@ -4,7 +4,7 @@ import numpy as np
 import tensorflow as tf
 import sys
 from ctapipe.core import Tool
-from ctapipe.core.traits import CaselessStrEnum
+from ctapipe.core.traits import CaselessStrEnum, Dict
 from ctlearn.core.ctlearn_enum import FrameworkType
 class DLFrameWork(Tool):
     """
@@ -161,6 +161,21 @@ class DLFrameWork(Tool):
             raise ValueError(f"Unknown Framework: {framework_type.name}")
 
         return fw
+
+    @property
+    def classes(self):
+        from ctlearn.tools.train.keras.train_keras_model import TrainKerasModel
+        from ctlearn.tools.train.pytorch.train_pytorch_model import TrainPyTorchModel
+        from ctlearn.tools.train.base_train_model import TrainCTLearnModel
+        from ctapipe.core.traits import classes_with_traits
+        from dl1_data_handler.reader import DLDataReader
+        
+        return [
+            type(self),
+            TrainCTLearnModel,
+            TrainKerasModel,
+            TrainPyTorchModel,
+        ] + classes_with_traits(DLDataReader)
 
 def main():
     # Run the tool
