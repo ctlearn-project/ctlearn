@@ -40,6 +40,7 @@ dependencies:
       - dl1_data_handler==0.14.6
       - ctaplot==0.6.4
       - pyirf==0.12.0
+      - eventio>=1.9.1
 
       # --- I/O and plotting ---
       - h5py==3.14.0
