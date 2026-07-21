@@ -319,3 +319,21 @@ class LoadedModel(CTLearnModel):
         allow_none=False,
         help="Set to set the backbone model to be trainable.",
     ).tag(config=True)
+
+    def __init__(
+        self,
+        tasks,
+        config=None,
+        parent=None,
+        **kwargs,
+    ):
+        super().__init__(
+            config=config,
+            parent=parent,
+            **kwargs,
+        )
+        # Load the fully connected head from the loaded model or build a new one
+        if self.overwrite_head:
+            backbone_output = self.backbone_model(self.input_layer)
+            # Validate the head trait with the provided tasks
+            validate_trait_dict(self.head_layers, tasks)

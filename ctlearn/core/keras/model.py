@@ -14,7 +14,6 @@ from ctlearn.core.keras.attention import (
     channel_squeeze_excite_block,
     spatial_squeeze_excite_block,
 )
-from ctlearn.utils import validate_trait_dict
 
 __all__ = [
     "build_fully_connect_keras_head",
@@ -26,9 +25,9 @@ __all__ = [
 
 def build_fully_connect_keras_head(inputs, layers, activation_function, tasks):
     """
-    Build the fully connected head for the keras-based CTLearn model.
+    Build the fully connected head for the Keras-based CTLearn model.
 
-    Function to build the fully connected head of the keras-based CTLearn model using the specified parameters.
+    Function to build the fully connected head of the Keras-based CTLearn model using the specified parameters.
 
     Parameters
     ----------
@@ -588,6 +587,7 @@ class KerasLoadedModel(LoadedModel):
         **kwargs,
     ):
         super().__init__(
+            tasks=tasks,
             config=config,
             parent=parent,
             **kwargs,
@@ -600,8 +600,6 @@ class KerasLoadedModel(LoadedModel):
         # Load the fully connected head from the loaded model or build a new one
         if self.overwrite_head:
             backbone_output = self.backbone_model(self.input_layer)
-            # Validate the head trait with the provided tasks
-            validate_trait_dict(self.head_layers, tasks)
             # Build the fully connected head depending on the tasks
             self.logits = build_fully_connect_keras_head(
                 backbone_output, self.head_layers, self.head_activation_function, tasks
