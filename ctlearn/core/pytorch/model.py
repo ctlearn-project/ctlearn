@@ -2,7 +2,6 @@
 This module defines the ``CTLearnModel`` classes, which holds the basic functionality for creating a PyTorch model to be used in CTLearn.
 """
 
-from abc import abstractmethod
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -18,7 +17,6 @@ from ctlearn.core.pytorch.attention import (
     ChannelSqueezeExciteBlock,
     SpatialSqueezeExciteBlock,
 )
-from ctlearn.utils import validate_trait_dict
 
 __all__ = [
     "BasicBlock",
