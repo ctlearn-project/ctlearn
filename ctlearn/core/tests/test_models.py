@@ -22,7 +22,7 @@ def common_config():
             "head_activation_function": {
                 "type": "relu",
                 "energy": "relu",
-                "cameradirection": "relu",
+                "cameradirection": "tanh",
             },
             "attention_mechanism": None,
         },
