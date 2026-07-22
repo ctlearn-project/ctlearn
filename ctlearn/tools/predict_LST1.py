@@ -73,8 +73,9 @@ DL2_SUBARRAY_GEOMETRY_GROUP = "/dl2/event/subarray/geometry"
 from ctapipe.reco.utils import add_defaults_and_meta
 
 from ctlearn.core.keras.model import LoadedModel
+from ctlearn import __version__ as ctlearn_version
 from ctlearn.utils import get_lst1_subarray_description
-from ctlearn.utils import get_lst1_subarray_description
+from ctlearn.utils import validate_trait_dict
 from dl1_data_handler.image_mapper import ImageMapper
 from dl1_data_handler.reader import (
     get_unmapped_image,
