@@ -2,6 +2,8 @@ import shutil
 import numpy as np
 import pytest
 
+pytest.importorskip("tensorflow")
+
 from ctapipe.core import run_tool
 from ctapipe.io import TableLoader
 from ctlearn.tools import LST1PredictionTool

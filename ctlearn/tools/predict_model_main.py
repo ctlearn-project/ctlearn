@@ -6,8 +6,12 @@ import atexit
 import pathlib
 import numpy as np
 import os
-import tensorflow as tf
-import keras
+try:
+    import tensorflow as tf
+    import keras
+except ImportError:
+    tf = None
+    keras = None
 
 from astropy import units as u
 from astropy.coordinates.earth import EarthLocation
@@ -395,6 +399,9 @@ class PredictCTLearnModel(Tool):
                 "No copy to output destination, since the usage of the HDF5Merger component is disabled."
             )
 
+        if tf is None:
+            raise ImportError("TensorFlow is required for prediction. Install it with 'pip install ctlearn[tf]' or 'pip install ctlearn[all]'.")
+            
         # Create a MirroredStrategy.
         self.strategy = tf.distribute.MirroredStrategy()
         atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore

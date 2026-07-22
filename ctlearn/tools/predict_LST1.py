@@ -4,7 +4,10 @@ Predict the gammaness, energy and arrival direction from lstchain DL1 data.
 
 import numpy as np
 import tables
-import keras
+try:
+    import keras
+except ImportError:
+    keras = None
 from astropy import units as u
 from astropy.coordinates import AltAz, SkyCoord
 from astropy.table import Table, join, setdiff, vstack
@@ -319,6 +322,9 @@ class LST1PredictionTool(Tool):
         # Get the number of rows in the table
         with tables.open_file(self.input_url) as input_file:
             self.table_length = len(input_file.get_node(self.image_table_path))
+            
+        if keras is None:
+            raise ImportError("TensorFlow/Keras is required for prediction. Install it with 'pip install ctlearn[tf]' or 'pip install ctlearn[all]'.")
 
         # Load the models from the specified paths
         if self.load_type_model_from is not None:

@@ -8,8 +8,12 @@ import warnings
 
 import numpy as np
 import tables
-import tensorflow as tf
-import keras
+try:
+    import tensorflow as tf
+    import keras
+except ImportError:
+    tf = None
+    keras = None
 
 from astropy import units as u
 from astropy.coordinates.earth import EarthLocation
@@ -446,6 +450,10 @@ class PredictCTLearnModel(Tool):
             self.output_path, dl2_subarray=False, dl2_telescope=False, parent=self
         ) as merger:
             merger(self.input_url)
+        
+        if tf is None:
+            raise ImportError("TensorFlow is required for prediction. Install it with 'pip install ctlearn[tf]' or 'pip install ctlearn[all]'.")
+            
         # Create a MirroredStrategy.
         self.strategy = tf.distribute.MirroredStrategy()
         atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore

@@ -1,7 +1,6 @@
 import atexit
 import pandas as pd
 import numpy as np
-import tensorflow as tf
 import sys
 from ctapipe.core import Tool
 from ctapipe.core.traits import CaselessStrEnum, Dict

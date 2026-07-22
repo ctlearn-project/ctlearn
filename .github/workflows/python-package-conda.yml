@@ -8,23 +8,18 @@ on:
   workflow_dispatch:
 
 jobs:
-  pytorch-job:
-    name: PyTorch Job
+  test-job:
+    name: Test Job
     runs-on: ubuntu-22.04
     strategy:
       matrix:
         os: [ubuntu-22.04]
-        python-version: ['3.12', '3.13', '3.14']
+        python-version: ['3.12', '3.13']
         dl1dh-version: ['latest', 'nightly']
-        tensorflow-version: ['latest', '2.16.*']
-        exclude:
-          - python-version: '3.13'
-            tensorflow-version: '2.16.*'
-          - python-version: '3.14'
-            tensorflow-version: '2.16.*'
+        framework: ['tensorflow', 'pytorch', 'all']
       max-parallel: 6
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.dl1dh-version == 'nightly' || matrix.python-version == '3.14' }}
+    continue-on-error: ${{ matrix.dl1dh-version == 'nightly' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -56,11 +51,6 @@ jobs:
           else
             pip install dl1-data-handler
           fi
-          if [ "${{ matrix.tensorflow-version }}" = "latest" ]; then
-            pip install --upgrade tensorflow
-          else
-            pip install "tensorflow==${{ matrix.tensorflow-version }}"
-          fi
 
       - name: Add MKL_THREADING_LAYER variable
         run: echo "MKL_THREADING_LAYER=GNU" >> $GITHUB_ENV
@@ -76,7 +66,13 @@ jobs:
         run: |
           source $HOME/miniconda/etc/profile.d/conda.sh
           conda activate ctlearn
-          pip install -e .
+          if [ "${{ matrix.framework }}" = "tensorflow" ]; then
+            pip install -e .[tf]
+          elif [ "${{ matrix.framework }}" = "pytorch" ]; then
+            pip install -e .[pytorch]
+          else
+            pip install -e .[all]
+          fi
 
       - name: Run pytest
         run: |

@@ -36,9 +36,7 @@ dependencies = [
     "pyyaml",
     "scikit-learn",
     "numba",
-    "tensorflow>=2.16",
     "tensorboard",
-    "pydot",
     "setuptools",
     "ctapipe[all]>=0.29",
 ]
@@ -49,12 +47,25 @@ dynamic = ["version"]
 packages = ["ctlearn"]
 
 [project.optional-dependencies]
+tf = [
+    "tensorflow>=2.16",
+    "tensorflow-estimator>=2.14.0",
+    "tf2onnx",
+    "pydot",
+]
+pytorch = [
+    "torch>=2.0.0",
+    "torchvision",
+    "pytorch-lightning",
+    "torchmetrics",
+    "onnx2pytorch",
+]
 doc = [
   "sphinx",
   "sphinx-rtd-theme",
 ]
 # self reference allows all to be defined in terms of other extras
-all = ["ctlearn[doc]"]
+all = ["ctlearn[tf,pytorch,doc]"]
 
 [project.urls]
 repository = "https://github.com/ctlearn-project/ctlearn"

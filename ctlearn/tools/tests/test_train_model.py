@@ -1,6 +1,8 @@
 import pandas as pd
 import pytest
 import shutil
+
+pytest.importorskip("tensorflow")
 from unittest import mock
 
 from ctapipe.core import run_tool
