@@ -35,31 +35,31 @@ class MultiHeadClassifier(nn.Module):
     """
     def __init__(self, heads_dict, single_output_task=None):
         super().__init__()
-        self.heads = nn.ModuleDict(heads_dict)
+        # Sanitize keys because 'type' conflicts with nn.Module.type() method
+        self._task_mapping = {
+            task: f"head_{task}" if hasattr(nn.Module, task) else task
+            for task in heads_dict.keys()
+        }
+        sanitized_heads = {
+            self._task_mapping[task]: module for task, module in heads_dict.items()
+        }
+        self.heads = nn.ModuleDict(sanitized_heads)
         self.single_output_task = single_output_task
 
     def forward(self, x):
-        # Flatten the backbone output if it's spatially aggregated but still has dimensions (B, C, 1, 1)
+        # Flatten the backbone output if it's spatially aggregated (B, C, 1, 1) -> (B, C)
         if x.dim() > 2:
             x = torch.flatten(x, start_dim=1)
             
         logits = {}
-        for task, head in self.heads.items():
+        for original_task, internal_key in self._task_mapping.items():
+            head = self.heads[internal_key]
             out = head(x)
-            logits[task] = F.softmax(out, dim=-1) if task == "type" else out
+            logits[original_task] = F.softmax(out, dim=-1) if original_task == "type" else out
             
         if self.single_output_task:
             return logits[self.single_output_task]
         return logits
-
-
-class DynamicSequential(nn.Sequential):
-    """A tiny wrapper to make nn.Sequential accept keyword arguments natively if needed."""
-    def forward(self, input):
-        for module in self:
-            input = module(input)
-        return input
-
 
 
 def build_fully_connect_pytorch_head(in_features, layers, activation_function, tasks):
@@ -263,53 +263,60 @@ class PyTorchResNet(ResNet):
     ``PyTorchResNet`` is a residual neural network model implemented in PyTorch.
     """
 
-
     def __init__(self, input_shape, tasks, config=None, parent=None, **kwargs):
         super().__init__(tasks=tasks, config=config, parent=parent, **kwargs)
 
         # Build PyTorch backbone and track final out_features channel size
         self.backbone_model, out_features = self._build_backbone(input_shape)
-        # Build the fully connected head (from previous module mapping)
+        # Build the fully connected head
         self.logits_head = build_fully_connect_pytorch_head(
             out_features, self.head_layers, self.head_activation_function, tasks
         )
         # Unify into our structural pipeline wrapper module
         self.model = FullModelPipeline(self.backbone_model, self.logits_head)
 
-
     def _build_backbone(self, input_shape):
-        # PyTorch input shape constraint layout: (channels, height, width)
         in_channels = input_shape[0]
         modules = []
 
-        # 1. Handle Initial Zero Padding
+        # 1. Initial Zero Padding
         if self.init_padding > 0:
             modules.append(nn.ZeroPad2d(self.init_padding))
 
-        # 2. Handle Initial Conv Layer
+        # 2. Initial Conv Layer
         if self.init_layer is not None:
             out_ch = self.init_layer["filters"]
             k_size = self.init_layer["kernel_size"]
             stride = self.init_layer["strides"]
-            # Dynamic calculation matching Keras implicit padding configuration
             padding = k_size // 2 
             
-            modules.append(nn.Conv2d(in_channels, out_ch, kernel_size=k_size, stride=stride, padding=padding, bias=False))
+            modules.append(
+                nn.Conv2d(
+                    in_channels,
+                    out_ch,
+                    kernel_size=k_size,
+                    stride=stride,
+                    padding=padding,
+                    bias=False,
+                )
+            )
             modules.append(nn.ReLU())
             in_channels = out_ch
 
-        # 3. Handle Initial Max Pooling
+        # 3. Initial Max Pooling
         if self.init_max_pool is not None:
             p_size = self.init_max_pool["size"]
             p_stride = self.init_max_pool["strides"]
-            modules.append(nn.MaxPool2d(kernel_size=p_size, stride=p_stride, padding=p_size // 2))
+            modules.append(
+                nn.MaxPool2d(kernel_size=p_size, stride=p_stride, padding=p_size // 2)
+            )
 
         # 4. Assemble Stacked Residual Architecture blocks
         res_blocks, final_channels = self._stacked_res_blocks(
             in_channels,
             architecture=self.architecture,
             residual_block_type=self.residual_block_type,
-            attention=self.attention
+            attention=self.attention,
         )
         modules.extend(res_blocks)
 
@@ -330,63 +337,66 @@ class PyTorchResNet(ResNet):
         blocks_count = [layer["blocks"] for layer in architecture]
         
         # First layer block sequence (stride=1)
-        blocks_list.extend(self._stack_fn(
-            current_channels, filters_list[0], blocks_count[0], residual_block_type, stride=1, attention=attention
-        ))
+        blocks_list.extend(
+            self._stack_fn(
+                current_channels,
+                filters_list[0],
+                blocks_count[0],
+                residual_block_type,
+                stride=1,
+                attention=attention,
+            )
+        )
         
-        # Update internal channel counts based on block configurations
         multiplier = 4 if residual_block_type == "bottleneck" else 1
         current_channels = filters_list[0] * multiplier
         
-        # Iteratively attach standard downsampling/residual block levels
+        # Subsequent downsampling levels (stride=2)
         for filters, blocks in zip(filters_list[1:], blocks_count[1:]):
-            blocks_list.extend(self._stack_fn(
-                current_channels, filters, blocks, residual_block_type, stride=2, attention=attention
-            ))
+            blocks_list.extend(
+                self._stack_fn(
+                    current_channels,
+                    filters,
+                    blocks,
+                    residual_block_type,
+                    stride=2,
+                    attention=attention,
+                )
+            )
             current_channels = filters * multiplier
             
         return blocks_list, current_channels
     
     def _stack_fn(self, in_channels, filters, blocks, residual_block_type, stride=2, attention=None):
-        block_layer = BasicBlock if residual_block_type == "basic" else BottleneckBlock
         stack = []
         
-        # Build common arguments shared by BOTH block types
-        base_kwargs = {
-            "in_channels": in_channels,
-            "stride": stride,
-            "attention": attention
-        }
-        
-        # Add block-specific filter mappings
-        if residual_block_type == "basic":
-            base_kwargs["out_channels"] = filters
-            base_kwargs["base_filters"] = filters # fallback if needed, matching signature
-        else:
-            base_kwargs["base_filters"] = filters
+        def build_block(in_c, conv_s, s):
+            if residual_block_type == "basic":
+                return BasicBlock(
+                    in_channels=in_c,
+                    out_channels=filters,
+                    stride=s,
+                    conv_shortcut=conv_s,
+                    attention=attention,
+                )
+            else:
+                return BottleneckBlock(
+                    in_channels=in_c,
+                    base_filters=filters,
+                    stride=s,
+                    conv_shortcut=conv_s,
+                    attention=attention,
+                )
 
-        # 1. First block handles the structural transition
-        stack.append(block_layer(conv_shortcut=True, **base_kwargs))
+        # First block transition
+        stack.append(build_block(in_channels, conv_s=True, s=stride))
         
-        # Update dimensional inputs for subsequent blocks in this group
         multiplier = 4 if residual_block_type == "bottleneck" else 1
         current_in = filters * multiplier
         
-        # 2. Remaining blocks map cleanly identity-to-identity
+        # Remaining blocks in the layer
         for _ in range(1, blocks):
-            next_kwargs = {
-                "in_channels": current_in,
-                "stride": 1,
-                "attention": attention,
-                "conv_shortcut": False
-            }
-            if residual_block_type == "basic":
-                next_kwargs["out_channels"] = filters
-                next_kwargs["base_filters"] = filters
-            else:
-                next_kwargs["base_filters"] = filters
-                
-            stack.append(block_layer(**next_kwargs))
+            stack.append(build_block(current_in, conv_s=False, s=1))
             
         return stack
 
