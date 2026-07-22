@@ -2221,10 +2221,14 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
             Table containing the subarray pointing information.
         """
         # Read the subarray pointing table
-        pointing_info = read_table(
-            self.input_url,
-            SIMULATION_RUN_TABLE,
-        )
+        try:
+            pointing_info = read_table(
+                self.input_url,
+                SIMULATION_RUN_TABLE,
+            )
+        except Exception as e:
+            self.log.warning("Could not read simulation run table: %s", e)
+            return None
         # Assuming min_az = max_az and min_alt = max_alt
         pointing_info.keep_columns(["obs_id", "min_az", "min_alt"])
         pointing_info.rename_column("min_az", "pointing_azimuth")
