@@ -243,32 +243,31 @@ class KerasResNet(ResNet):
         """
         # Define the input layer from the input shape
         network_input = keras.Input(shape=input_shape)
+        x = network_input
         # Apply initial padding if specified
         if self.init_padding > 0:
-            network_input = keras.layers.ZeroPadding2D(
+            x = keras.layers.ZeroPadding2D(
                 padding=self.init_padding,
-                kernel_size=self.init_layer["kernel_size"],
-                strides=self.init_layer["strides"],
                 name=self.backbone_name + "_padding",
-            )(network_input)
+            )(x)
         # Apply initial convolutional layer if specified
         if self.init_layer is not None:
-            network_input = keras.layers.Conv2D(
+            x = keras.layers.Conv2D(
                 filters=self.init_layer["filters"],
                 kernel_size=self.init_layer["kernel_size"],
                 strides=self.init_layer["strides"],
                 name=self.backbone_name + "_conv1_conv",
-            )(network_input)
+            )(x)
         # Apply max pooling if specified
         if self.init_max_pool is not None:
-            network_input = keras.layers.MaxPool2D(
+            x = keras.layers.MaxPool2D(
                 pool_size=self.init_max_pool["size"],
                 strides=self.init_max_pool["strides"],
                 name=self.backbone_name + "_pool1_pool",
-            )(network_input)
+            )(x)
         # Build the residual blocks
         engine_output = self._stacked_res_blocks(
-            network_input,
+            x,
             architecture=self.architecture,
             residual_block_type=self.residual_block_type,
             attention=self.attention,
