@@ -124,6 +124,7 @@ class TestSingleCNNParity:
         batch_size = 4
         
         # Dummy data creation
+        np.random.seed(42)
         x_keras = np.random.randn(batch_size, *common_config["input_shape_keras"]).astype(np.float32)
         x_torch = torch.from_numpy(np.transpose(x_keras, (0, 3, 1, 2)))  # (B, H, W, C) -> (B, C, H, W)
 
