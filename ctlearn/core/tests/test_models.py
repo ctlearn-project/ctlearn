@@ -3,78 +3,100 @@ import pytest
 import torch
 import keras
 
-# Import your implementations (adjust module paths to match your project layout)
-from ctlearn.core.keras.model import (
-    KerasSingleCNN,
-    KerasResNet,
-)
-from ctlearn.core.pytorch.model import (
-    PyTorchSingleCNN,
-    PyTorchResNet,
-)
+from ctlearn.core.keras.model import KerasSingleCNN, KerasResNet
+from ctlearn.core.pytorch.model import PyTorchSingleCNN, PyTorchResNet
 
 
 @pytest.fixture
 def common_config():
-    """Provides common configuration settings for both backends."""
     return {
-        "tasks": ["type", "energy"],
-        "input_shape_keras": (32, 32, 3),  # (H, W, C)
+        "tasks": ["type", "energy", "cameradirection"],
+        "input_shape_keras": (32, 32, 3),    # (H, W, C)
         "input_shape_pytorch": (3, 32, 32),  # (C, H, W)
         "kwargs": {
             "head_layers": {
                 "type": [64, 2],
                 "energy": [64, 1],
+                "cameradirection": [64, 2],
             },
             "head_activation_function": {
                 "type": "relu",
                 "energy": "relu",
+                "cameradirection": "relu",
             },
-            "attention_mechanism": None,  # Keep attention off for baseline structural tests
+            "attention_mechanism": None,
         },
     }
 
-
-def copy_weights_single_cnn(keras_model, pytorch_model):
+def copy_weights_single_cnn(keras_model_wrapper, pytorch_model_wrapper):
     """
-    Transfers weights from KerasSingleCNN to PyTorchSingleCNN layer by layer
-    to ensure numerical parity tests are exact.
+    Copies weights from KerasSingleCNN to PyTorchSingleCNN by matching
+    layer types, shapes, and task head structures.
     """
-    k_layers = [
+    # 1. Transfer Backbone Weights (Conv2D and BatchNorm)
+    k_backbone_layers = [
         layer
-        for layer in keras_model.layers
-        if isinstance(layer, (keras.layers.Conv2D, keras.layers.Dense, keras.layers.BatchNormalization))
-    ]
-    p_layers = [
-        m
-        for m in pytorch_model.modules()
-        if isinstance(m, (torch.nn.Conv2d, torch.nn.Linear, torch.nn.BatchNorm2d))
+        for layer in keras_model_wrapper.backbone_model.layers
+        if isinstance(layer, (keras.layers.Conv2D, keras.layers.BatchNormalization))
+        and len(layer.weights) > 0
     ]
 
-    for k_layer, p_module in zip(k_layers, p_layers):
+    p_backbone_modules = [
+        m
+        for m in pytorch_model_wrapper.backbone_model.modules()
+        if isinstance(m, (torch.nn.Conv2d, torch.nn.BatchNorm2d))
+    ]
+
+    assert len(k_backbone_layers) == len(p_backbone_modules), (
+        f"Backbone layer count mismatch: Keras has {len(k_backbone_layers)}, "
+        f"PyTorch has {len(p_backbone_modules)}"
+    )
+
+    for k_layer, p_module in zip(k_backbone_layers, p_backbone_modules):
         weights = k_layer.get_weights()
         if isinstance(k_layer, keras.layers.Conv2D):
-            # Keras Conv2D weights shape: (H, W, In, Out)
-            # PyTorch Conv2d weights shape: (Out, In, H, W)
+            # Keras: (H, W, In, Out) -> PyTorch: (Out, In, H, W)
             w = np.transpose(weights[0], (3, 2, 0, 1))
             p_module.weight.data = torch.from_numpy(w).float()
-            if len(weights) > 1:  # Bias
+            if len(weights) > 1 and p_module.bias is not None:
                 p_module.bias.data = torch.from_numpy(weights[1]).float()
-
-        elif isinstance(k_layer, keras.layers.Dense):
-            # Keras Dense weights shape: (In, Out)
-            # PyTorch Linear weights shape: (Out, In)
-            w = np.transpose(weights[0], (1, 0))
-            p_module.weight.data = torch.from_numpy(w).float()
-            if len(weights) > 1:  # Bias
-                p_module.bias.data = torch.from_numpy(weights[1]).float()
-
         elif isinstance(k_layer, keras.layers.BatchNormalization):
-            # Keras: [gamma, beta, mean, variance]
-            p_module.weight.data = torch.from_numpy(weights[0]).float()  # gamma
-            p_module.bias.data = torch.from_numpy(weights[1]).float()    # beta
+            p_module.weight.data = torch.from_numpy(weights[0]).float()
+            p_module.bias.data = torch.from_numpy(weights[1]).float()
             p_module.running_mean.data = torch.from_numpy(weights[2]).float()
             p_module.running_var.data = torch.from_numpy(weights[3]).float()
+
+    # 2. Transfer Head Weights (Dense -> Linear) Task by Task
+    tasks = keras_model_wrapper.logits.keys() if isinstance(keras_model_wrapper.logits, dict) else [keras_model_wrapper.logits.name]
+
+    for task in tasks:
+        # Collect Keras Dense layers for this task
+        k_dense_layers = [
+            layer
+            for layer in keras_model_wrapper.model.layers
+            if isinstance(layer, keras.layers.Dense) and task in layer.name
+        ]
+
+        # Get corresponding PyTorch module for this task
+        p_head_module = pytorch_model_wrapper.logits_head.heads[
+            pytorch_model_wrapper.logits_head._task_mapping[task]
+        ]
+        p_linear_modules = [
+            m for m in p_head_module if isinstance(m, torch.nn.Linear)
+        ]
+
+        assert len(k_dense_layers) == len(p_linear_modules), (
+            f"Head layer count mismatch for task '{task}': Keras has {len(k_dense_layers)}, "
+            f"PyTorch has {len(p_linear_modules)}"
+        )
+
+        for k_layer, p_module in zip(k_dense_layers, p_linear_modules):
+            weights = k_layer.get_weights()
+            # Keras Dense: (In, Out) -> PyTorch Linear: (Out, In)
+            w = np.transpose(weights[0], (1, 0))
+            p_module.weight.data = torch.from_numpy(w).float()
+            if len(weights) > 1 and p_module.bias is not None:
+                p_module.bias.data = torch.from_numpy(weights[1]).float()
 
 
 class TestSingleCNNParity:
@@ -133,8 +155,7 @@ class TestSingleCNNParity:
             **kwargs
         )
 
-        # Transfer weights from Keras -> PyTorch
-        copy_weights_single_cnn(keras_wrapper.model, torch_wrapper.model)
+        copy_weights_single_cnn(keras_wrapper, torch_wrapper)
 
         # Prepare identical input data
         np.random.seed(42)
@@ -151,13 +172,12 @@ class TestSingleCNNParity:
         for task in tasks:
             k_val = keras_preds[task].numpy() if hasattr(keras_preds[task], "numpy") else np.array(keras_preds[task])
             p_val = torch_preds[task].cpu().numpy()
-
             np.testing.assert_allclose(
                 k_val,
                 p_val,
                 rtol=1e-4,
                 atol=1e-4,
-                err_msg=f"Value divergence detected in output task '{task}'",
+                err_msg=f"Value divergence detected in task '{task}'",
             )
 
 
