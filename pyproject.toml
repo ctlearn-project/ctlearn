@@ -45,6 +45,7 @@ dependencies = [
     "torch>=2.2.0",
     "torchvision",
     "torchmetrics",
+    "opencv-python",
 ]
 
 dynamic = ["version"]
