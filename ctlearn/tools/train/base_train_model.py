@@ -522,10 +522,14 @@ class TrainCTLearnModel(Tool):
                 "'DLFeatureVectorReader' is not supported in CTLearn yet. "
                 "Missing stereo CTLearnModel implementation."
             )
-        self.quality_query = TableQualityQuery(quality_criteria=[('> 50 phe', 'hillas_intensity > 50')])
-        self.channels = ["cleaned_image", "cleaned_peak_time"]
-        self.config.TableQualityQuery.quality_criteria = self.quality_query.quality_criteria
-        self.config.DLDataReader.channels = self.channels
+        if "quality_criteria" not in self.config.get("TableQualityQuery", {}):
+            self.quality_query = TableQualityQuery(quality_criteria=[('> 50 phe', 'hillas_intensity > 50')])
+            self.config.TableQualityQuery.quality_criteria = self.quality_query.quality_criteria
+        
+        if self.dl1dh_reader_type == "DLImageReader":
+            self.channels = ["cleaned_image", "cleaned_peak_time"]
+            if "channels" not in self.config.get("DLImageReader", {}):
+                self.config.DLImageReader.channels = self.channels
         
         print(f"self.dl1dh_reader_type: {self.dl1dh_reader_type}")
         self.dl1dh_reader = DLDataReader.from_name(
