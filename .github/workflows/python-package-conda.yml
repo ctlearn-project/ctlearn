@@ -15,7 +15,6 @@ jobs:
         os: [ubuntu-22.04]
         python-version: ['3.12', '3.13']
         dl1dh-version: ['latest', 'nightly']
-        framework: ['tensorflow', 'pytorch', 'all']
       max-parallel: 6
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.dl1dh-version == 'nightly' }}
@@ -65,14 +64,8 @@ jobs:
         run: |
           source $HOME/miniconda/etc/profile.d/conda.sh
           conda activate ctlearn
-          if [ "${{ matrix.framework }}" = "tensorflow" ]; then
-            pip install -e .[tf]
-          elif [ "${{ matrix.framework }}" = "pytorch" ]; then
-            pip install -e .[pytorch]
-          else
-            pip install -e .[all]
-          fi
-
+          pip install -e .[tests]
+          
       - name: Run pytest
         run: |
           source $HOME/miniconda/etc/profile.d/conda.sh
