@@ -160,6 +160,17 @@ class PyTorchSingleCNN(SingleCNN):
             if self.batchnorm:
                 modules.append(nn.BatchNorm2d(in_channels, momentum=0.01))
 
+        if self.attention is not None:
+            mech = self.attention.get("mechanism")
+            ratio = self.attention.get("reduction_ratio", 16)
+            if mech == "Dual-SE":
+                attention_layer = DualSqueezeExciteBlock(in_channels=in_channels, ratio=ratio)
+            elif mech == "Channel-SE":
+                attention_layer = ChannelSqueezeExciteBlock(in_channels=in_channels, ratio=ratio)
+            elif mech == "Spatial-SE":
+                attention_layer = SpatialSqueezeExciteBlock(in_channels=in_channels)
+            modules.append(attention_layer)
+
         # Global Average Pooling wrapper block
         class GlobalAvgPool(nn.Module):
             def forward(self, x):
@@ -171,29 +182,32 @@ class PyTorchSingleCNN(SingleCNN):
         return backbone_model, in_channels
 
 
-
 class BasicBlock(nn.Module):
     def __init__(self, in_channels, out_channels, stride=1, conv_shortcut=True, attention=None):
         super().__init__()
         self.conv_shortcut = conv_shortcut
         self.attention_config = attention
-        
-        # Shortcut connection handling channel/spatial modifications
+        # Projection Shortcut Branch
         if conv_shortcut:
-            self.shortcut = nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False)
+            self.shortcut = nn.Conv2d(
+                in_channels, out_channels, kernel_size=1, stride=stride, bias=True
+            )
         else:
-            self.shortcut = nn.Identity()
-            
-        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
-        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1, bias=False)
-        
-        # Setup attention if applicable (Assuming your packages take/return tensors or modules)
+            self.shortcut = None
+        # Main Branch Convolutions (Matching Keras _1_conv and _2_conv)
+        self.conv1 = nn.Conv2d(
+            in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=True
+        )
+        self.conv2 = nn.Conv2d(
+            out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=True
+        )
+        # Setup the attention mechanism
         self.setup_attention(out_channels)
 
     def setup_attention(self, channels):
         self.attn_layer = None
         if self.attention_config:
-            mech = self.attention_config["mechanism"]
+            mech = self.attention_config.get("mechanism")
             ratio = self.attention_config.get("reduction_ratio", 16)
             if mech == "Dual-SE":
                 self.attn_layer = DualSqueezeExciteBlock(in_channels=channels, ratio=ratio)
@@ -203,14 +217,19 @@ class BasicBlock(nn.Module):
                 self.attn_layer = SpatialSqueezeExciteBlock(in_channels=channels)
 
     def forward(self, x):
-        identity = self.shortcut(x)
-        
+        # Shortcut path
+        if self.conv_shortcut and self.shortcut is not None:
+            identity = self.shortcut(x)
+        else:
+            identity = x
+
+        # Main path (Matches Keras activation order: conv1 -> relu -> conv2)
         out = F.relu(self.conv1(x))
         out = self.conv2(out)
-        
-        if self.attn_layer:
+
+        if self.attn_layer is not None:
             out = self.attn_layer(out)
-            
+
         out += identity
         return F.relu(out)
 
@@ -221,16 +240,27 @@ class BottleneckBlock(nn.Module):
         self.conv_shortcut = conv_shortcut
         self.attention_config = attention
         out_channels = 4 * base_filters
-        
+
+        # Shortcut connection
         if conv_shortcut:
-            self.shortcut = nn.Conv2d(in_channels, out_channels, kernel_size=1, stride=stride, bias=False)
+            self.shortcut = nn.Conv2d(
+                in_channels, out_channels, kernel_size=1, stride=stride, bias=False
+            )
         else:
             self.shortcut = nn.Identity()
-            
-        self.conv1 = nn.Conv2d(in_channels, base_filters, kernel_size=1, stride=stride, bias=False)
-        self.conv2 = nn.Conv2d(base_filters, base_filters, kernel_size=3, padding=1, bias=False)
-        self.conv3 = nn.Conv2d(base_filters, out_channels, kernel_size=1, bias=False)
-        
+        # Main branch convolutions matching Keras layout:
+        self.conv1 = nn.Conv2d(
+            in_channels, base_filters, kernel_size=1, stride=stride, bias=False
+        )
+        # Keras _2_conv is 3x3 spatial convolution with stride=1 (since stride is handled in _1_conv)
+        self.conv2 = nn.Conv2d(
+            base_filters, base_filters, kernel_size=3, stride=1, padding=1, bias=False
+        )
+        # Keras _3_conv restores channels back to 4 * base_filters
+        self.conv3 = nn.Conv2d(
+            base_filters, out_channels, kernel_size=1, bias=False
+        )
+        # Setup the attention mechanism
         self.setup_attention(out_channels)
 
     def setup_attention(self, channels):
@@ -248,6 +278,7 @@ class BottleneckBlock(nn.Module):
     def forward(self, x):
         identity = self.shortcut(x)
         
+        # Matches Keras sequence: conv1 (with stride) -> relu -> conv2 -> relu -> conv3
         out = F.relu(self.conv1(x))
         out = F.relu(self.conv2(out))
         out = self.conv3(out)
@@ -276,15 +307,15 @@ class PyTorchResNet(ResNet):
         self.model = FullModelPipeline(self.backbone_model, self.logits_head)
 
     def _build_backbone(self, input_shape):
-        in_channels = input_shape[0]
+        in_channels = input_shape[0] if isinstance(input_shape, (list, tuple)) else input_shape[-1]
         modules = []
 
-        # 1. Initial Zero Padding
-        if self.init_padding > 0:
+        # Initial Zero Padding
+        if getattr(self, "init_padding", 0) > 0:
             modules.append(nn.ZeroPad2d(self.init_padding))
 
-        # 2. Initial Conv Layer
-        if self.init_layer is not None:
+        # Initial Conv Layer
+        if getattr(self, "init_layer", None) is not None:
             out_ch = self.init_layer["filters"]
             k_size = self.init_layer["kernel_size"]
             stride = self.init_layer["strides"]
@@ -297,21 +328,21 @@ class PyTorchResNet(ResNet):
                     kernel_size=k_size,
                     stride=stride,
                     padding=padding,
-                    bias=False,
+                    bias=True,  # Match Keras default bias if applicable
                 )
             )
             modules.append(nn.ReLU())
             in_channels = out_ch
 
-        # 3. Initial Max Pooling
-        if self.init_max_pool is not None:
+        # Initial Max Pooling
+        if getattr(self, "init_max_pool", None) is not None:
             p_size = self.init_max_pool["size"]
             p_stride = self.init_max_pool["strides"]
             modules.append(
-                nn.MaxPool2d(kernel_size=p_size, stride=p_stride, padding=p_size // 2)
+                nn.MaxPool2d(kernel_size=p_size, stride=p_stride, padding=0)
             )
 
-        # 4. Assemble Stacked Residual Architecture blocks
+        # Assemble Stacked Residual Architecture blocks
         res_blocks, final_channels = self._stacked_res_blocks(
             in_channels,
             architecture=self.architecture,
@@ -320,10 +351,11 @@ class PyTorchResNet(ResNet):
         )
         modules.extend(res_blocks)
 
-        # 5. Global Average Pooling setup
+        # Global Average Pooling setup
         class GlobalAvgPool(nn.Module):
             def forward(self, x):
-                return F.adaptive_avg_pool2d(x, (1, 1))
+                x = F.adaptive_avg_pool2d(x, (1, 1))
+                return x.view(x.size(0), -1)
 
         modules.append(GlobalAvgPool())
 
@@ -369,14 +401,18 @@ class PyTorchResNet(ResNet):
     
     def _stack_fn(self, in_channels, filters, blocks, residual_block_type, stride=2, attention=None):
         stack = []
-        
-        def build_block(in_c, conv_s, s):
+        # Calculate target output channel count for this block level
+        out_channels = filters
+
+        def build_block(in_c, s):
+            # Only use a conv shortcut if channels change or if downsampling (stride > 1)
+            needs_shortcut = (in_c != out_channels) or (s != 1)            
             if residual_block_type == "basic":
                 return BasicBlock(
                     in_channels=in_c,
                     out_channels=filters,
                     stride=s,
-                    conv_shortcut=conv_s,
+                    conv_shortcut=needs_shortcut,
                     attention=attention,
                 )
             else:
@@ -384,19 +420,16 @@ class PyTorchResNet(ResNet):
                     in_channels=in_c,
                     base_filters=filters,
                     stride=s,
-                    conv_shortcut=conv_s,
+                    conv_shortcut=needs_shortcut,
                     attention=attention,
                 )
 
         # First block transition
-        stack.append(build_block(in_channels, conv_s=True, s=stride))
-        
-        multiplier = 4 if residual_block_type == "bottleneck" else 1
-        current_in = filters * multiplier
+        stack.append(build_block(in_channels, s=stride))
         
         # Remaining blocks in the layer
         for _ in range(1, blocks):
-            stack.append(build_block(current_in, conv_s=False, s=1))
+            stack.append(build_block(out_channels, s=1))
             
         return stack
 

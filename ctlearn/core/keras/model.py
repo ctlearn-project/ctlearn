@@ -171,11 +171,11 @@ class KerasSingleCNN(SingleCNN):
         if self.attention is not None:
             if self.attention["mechanism"] == "Dual-SE":
                 x = dual_squeeze_excite_block(
-                    x, self.attention["ratio"], name=f"{self.backbone_name}_dse"
+                    x, self.attention["reduction_ratio"], name=f"{self.backbone_name}_dse"
                 )
             elif self.attention["mechanism"] == "Channel-SE":
                 x = channel_squeeze_excite_block(
-                    x, self.attention["ratio"], name=f"{self.backbone_name}_cse"
+                    x, self.attention["reduction_ratio"], name=f"{self.backbone_name}_cse"
                 )
             elif self.attention["mechanism"] == "Spatial-SE":
                 x = spatial_squeeze_excite_block(x, name=f"{self.backbone_name}_sse")

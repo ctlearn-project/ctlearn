@@ -73,11 +73,7 @@ def channel_squeeze_excite_block(inputs, ratio=4, name=None):
         Output tensor for the channel squeeze-excite block.
     """
 
-    # Temp fix for supporting keras2 & keras3
-    if int(keras.__version__.split(".")[0]) >= 3:
-        filters = inputs.shape[-1]
-    else:
-        filters = inputs.get_shape().as_list()[-1]
+    filters = inputs.shape[-1]
     cse = keras.layers.GlobalAveragePooling2D(
         keepdims=True, name=name + "_avgpool"
     )(inputs)

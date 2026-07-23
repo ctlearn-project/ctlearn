@@ -33,24 +33,24 @@ class ChannelSqueezeExciteBlock(nn.Module):
     """
     def __init__(self, in_channels, ratio=4):
         super().__init__()
-        # Keras uses Dense layers on global pooled tensors. 
-        # In PyTorch, we can achieve this elegantly using 1x1 Convolutions, 
-        # avoiding the need to flatten and unflatten the spatial grid.
-        self.gate = nn.Sequential(
-            nn.Conv2d(in_channels, in_channels // ratio, kernel_size=1, bias=True),
-            nn.ReLU(),
-            nn.Conv2d(in_channels // ratio, in_channels, kernel_size=1, bias=True),
-            nn.Sigmoid()
-        )
+        reduced_channels = in_channels // ratio
+        # Using nn.Linear to match Keras Dense layers
+        self.fc1 = nn.Linear(in_channels, reduced_channels, bias=True)
+        self.fc2 = nn.Linear(reduced_channels, in_channels, bias=True)
 
     def forward(self, x):
-        # Global Average Pooling keeping spatial dims: (B, C, H, W) -> (B, C, 1, 1)
+        batch_size, channels, _, _ = x.shape
+        # Global Average Pooling keeping dimensions: (B, C, H, W) -> (B, C, 1, 1)
         squeeze = F.adaptive_avg_pool2d(x, (1, 1))
-        # Compute channel scale factor
-        excitation = self.gate(squeeze)
-        # Multiply input tensor by the scale factor across the channel dimension
+        # Flatten for Linear layers: (B, C, 1, 1) -> (B, C)
+        squeeze = squeeze.view(batch_size, channels)
+        # Dense projections with ReLU and Sigmoid
+        excitation = F.relu(self.fc1(squeeze))
+        excitation = torch.sigmoid(self.fc2(excitation))
+        # Reshape back to broadcast across spatial dimensions: (B, C) -> (B, C, 1, 1)
+        excitation = excitation.view(batch_size, channels, 1, 1)
+        # Scale input tensor
         return x * excitation
-
 
 class SpatialSqueezeExciteBlock(nn.Module):
     """
