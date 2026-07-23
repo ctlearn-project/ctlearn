@@ -6,10 +6,11 @@ on:
     tags: ["**"]
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * *"  # Daily at 02:00 UTC
 
 jobs:
-  test-job:
-    name: Test Job
+  build:
     strategy:
       matrix:
         os: [ubuntu-22.04]
