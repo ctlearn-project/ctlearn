@@ -124,9 +124,9 @@ def test_SingleCNN_model_structure_parity(common_config, batchnorm, attention):
     "attention",
     [
         {"mechanism": None},
-        #{"mechanism": "Channel-SE", "reduction_ratio": 8},
-        #{"mechanism": "Spatial-SE"},
-        #{"mechanism": "Dual-SE", "reduction_ratio": 32},
+        {"mechanism": "Channel-SE", "reduction_ratio": 8},
+        {"mechanism": "Spatial-SE"},
+        {"mechanism": "Dual-SE", "reduction_ratio": 32},
     ],
 )
 def test_ResNet_model_structure_parity(common_config, block_type, first_layers, attention):
@@ -184,6 +184,19 @@ def test_ResNet_model_structure_parity(common_config, block_type, first_layers, 
                 if hasattr(module, "conv3"):
                     c3 = module.conv3
                     torch_layers.append((c3.kernel_size[0], c3.kernel_size[1], c3.in_channels, c3.out_channels))
+                # Attention layer (if present)
+                if hasattr(module, "attn_layer") and module.attn_layer is not None:
+                    # Inspect linear/conv layers inside the SE block (e.g. Channel-SE / Dual-SE / Spatial-SE)
+                    for attn_submodule in module.attn_layer.modules():
+                        if isinstance(attn_submodule, nn.Linear):
+                            torch_layers.append((attn_submodule.weight.shape[1], attn_submodule.weight.shape[0]))
+                        elif isinstance(attn_submodule, nn.Conv2d):
+                            torch_layers.append((
+                                attn_submodule.kernel_size[0],
+                                attn_submodule.kernel_size[1],
+                                attn_submodule.in_channels,
+                                attn_submodule.out_channels,
+                            ))
                 # shortcut projection (if present and not Identity)
                 if isinstance(module.shortcut, nn.Conv2d):
                     sc = module.shortcut
