@@ -475,7 +475,7 @@ class KerasResNet(ResNet):
             elif attention["mechanism"] == "Spatial-SE":
                 x = spatial_squeeze_excite_block(x, name=name + "_sse")
 
-        x = keras.layers.Add(name=name + "_add")([shortcut, x])
+        x = keras.layers.Add(name=name + "_add")([x, shortcut])
         x = keras.layers.ReLU(name=name + "_out")(x)
 
         return x
@@ -562,7 +562,7 @@ class KerasResNet(ResNet):
             elif attention["mechanism"] == "Spatial-SE":
                 x = spatial_squeeze_excite_block(x, name=name + "_sse")
 
-        x = keras.layers.Add(name=name + "_add")([shortcut, x])
+        x = keras.layers.Add(name=name + "_add")([x, shortcut])
         x = keras.layers.ReLU(name=name + "_out")(x)
 
         return x

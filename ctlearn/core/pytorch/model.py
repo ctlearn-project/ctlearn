@@ -239,12 +239,11 @@ class BottleneckBlock(nn.Module):
         super().__init__()
         self.conv_shortcut = conv_shortcut
         self.attention_config = attention
-        out_channels = 4 * base_filters
 
         # Shortcut connection
         if conv_shortcut:
             self.shortcut = nn.Conv2d(
-                in_channels, out_channels, kernel_size=1, stride=stride, bias=False
+                in_channels, 4 * base_filters, kernel_size=1, stride=stride, bias=False
             )
         else:
             self.shortcut = nn.Identity()
@@ -258,10 +257,10 @@ class BottleneckBlock(nn.Module):
         )
         # Keras _3_conv restores channels back to 4 * base_filters
         self.conv3 = nn.Conv2d(
-            base_filters, out_channels, kernel_size=1, bias=False
+            base_filters, 4 * base_filters, kernel_size=1, bias=False
         )
         # Setup the attention mechanism
-        self.setup_attention(out_channels)
+        self.setup_attention(4 * base_filters)
 
     def setup_attention(self, channels):
         self.attn_layer = None
@@ -401,8 +400,9 @@ class PyTorchResNet(ResNet):
     
     def _stack_fn(self, in_channels, filters, blocks, residual_block_type, stride=2, attention=None):
         stack = []
-        # Calculate target output channel count for this block level
-        out_channels = filters
+        # Bottleneck blocks expand channels by 4x; Basic blocks do not expand.
+        multiplier = 4 if residual_block_type == "bottleneck" else 1
+        out_channels = filters * multiplier
 
         def build_block(in_c, s):
             # Only use a conv shortcut if channels change or if downsampling (stride > 1)
