@@ -33,7 +33,7 @@ class ChannelSqueezeExciteBlock(nn.Module):
     """
     def __init__(self, in_channels, ratio=4):
         super().__init__()
-        reduced_channels = in_channels // ratio
+        reduced_channels = max(1, in_channels // ratio)
         # Using nn.Linear to match Keras Dense layers
         self.fc1 = nn.Linear(in_channels, reduced_channels, bias=True)
         self.fc2 = nn.Linear(reduced_channels, in_channels, bias=True)

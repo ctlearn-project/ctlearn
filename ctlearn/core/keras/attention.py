@@ -79,7 +79,7 @@ def channel_squeeze_excite_block(inputs, ratio=4, name=None):
     )(inputs)
 
     cse = keras.layers.Dense(
-        units=filters // ratio,
+        units=max(1, filters // ratio),
         activation="relu",
         name=name + "_1_dense",
     )(cse)
