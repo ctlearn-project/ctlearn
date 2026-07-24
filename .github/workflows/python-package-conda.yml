@@ -30,6 +30,8 @@ jobs:
       max-parallel: 6
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.dl1dh-version == 'nightly' || matrix.python-version == '3.14' }}
+    env:
+      PIP_NO_CACHE_DIR: "1"
     steps:
       - uses: actions/checkout@v4
 
@@ -67,9 +69,9 @@ jobs:
             pip install "tensorflow==${{ matrix.tensorflow-version }}"
           fi
           if [ "${{ matrix.torch-version }}" = "latest" ]; then
-            pip install --upgrade torch
+            pip install --upgrade torch --index-url https://download.pytorch.org/whl/cpu
           else
-            pip install "torch==${{ matrix.torch-version }}"
+            pip install "torch==${{ matrix.torch-version }}" --index-url https://download.pytorch.org/whl/cpu
           fi
 
       - name: Add MKL_THREADING_LAYER variable
