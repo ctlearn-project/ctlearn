@@ -20,9 +20,9 @@ from ctlearn.core.pytorch.attention import (
 
 __all__ = [
     "BasicBlock",
-    "BottleneckBlock"
+    "BottleneckBlock",
+    "MultiHeadClassifier",
     "build_fully_connect_pytorch_head",
-    "PyTorchCTLearnModel",
     "PyTorchSingleCNN",
     "PyTorchResNet",
     "PyTorchLoadedModel",
