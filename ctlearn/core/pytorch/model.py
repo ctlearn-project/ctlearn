@@ -128,7 +128,7 @@ class PyTorchSingleCNN(SingleCNN):
         modules = []
 
         if self.batchnorm:
-            modules.append(nn.BatchNorm2d(in_channels, momentum=0.01)) # PyTorch momentum = 1 - Keras momentum
+            modules.append(nn.BatchNorm2d(in_channels, momentum=0.01, eps=1e-3)) # PyTorch momentum = 1 - Keras momentum
 
         for i, layer in enumerate(self.architecture):
             filters = layer["filters"]
@@ -151,14 +151,14 @@ class PyTorchSingleCNN(SingleCNN):
                     modules.append(nn.AvgPool2d(kernel_size=p_size, stride=p_stride))
                     
             if self.batchnorm:
-                modules.append(nn.BatchNorm2d(in_channels, momentum=0.01))
+                modules.append(nn.BatchNorm2d(in_channels, momentum=0.01, eps=1e-3))
 
         if self.bottleneck_filters is not None:
             modules.append(nn.Conv2d(in_channels, self.bottleneck_filters, kernel_size=1))
             modules.append(nn.ReLU())
             in_channels = self.bottleneck_filters
             if self.batchnorm:
-                modules.append(nn.BatchNorm2d(in_channels, momentum=0.01))
+                modules.append(nn.BatchNorm2d(in_channels, momentum=0.01, eps=1e-3))
 
         if self.attention is not None:
             mech = self.attention.get("mechanism")

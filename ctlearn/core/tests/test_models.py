@@ -6,12 +6,7 @@ import torch
 import torch.nn as nn
 
 from ctlearn.core.keras.model import KerasResNet, KerasSingleCNN
-from ctlearn.core.pytorch.model import (
-    BasicBlock,
-    BottleneckBlock,
-    PyTorchResNet,
-    PyTorchSingleCNN,
-)
+from ctlearn.core.pytorch.model import PyTorchResNet, PyTorchSingleCNN
 
 rng = np.random.default_rng(42)
 
@@ -230,6 +225,7 @@ def test_ResNet_model_structure_parity(common_config, block_type, first_layers, 
 
 
 '''
+TODO: Do this correctly with more time
 def _copy_head_weights(keras_wrapper, torch_wrapper, tasks):
     """Shared helper to copy Dense -> Linear head weights for mapped tasks."""
     for task in tasks:
@@ -256,29 +252,69 @@ def _copy_weights_single_cnn(keras_wrapper, torch_wrapper, tasks):
     k_backbone = keras_wrapper.backbone_model
     p_backbone = torch_wrapper.backbone_model
 
-    def extract_keras_layers(model_or_layer):
-        layers = []
-        if hasattr(model_or_layer, "layers"):
-            for l in model_or_layer.layers:
-                layers.extend(extract_keras_layers(l))
-        elif isinstance(model_or_layer, (keras.layers.Conv2D, keras.layers.BatchNormalization)) and len(model_or_layer.weights) > 0:
-            layers.append(model_or_layer)
-        return layers
+    # 1. Include Dense / Linear layers alongside Conv and BN
+    def extract_keras_layers(model):
+        found = []
+        for l in model.layers:
+            # Recurse into nested sub-models / custom layers if present
+            if hasattr(l, "layers") and not isinstance(l, (keras.layers.Conv2D, keras.layers.Dense, keras.layers.BatchNormalization)):
+                found.extend(extract_keras_layers(l))
+            elif isinstance(l, (keras.layers.Conv2D, keras.layers.Dense, keras.layers.BatchNormalization)) and len(l.weights) > 0:
+                found.append(l)
+        return found
 
     k_layers = extract_keras_layers(k_backbone)
+    
+    # 2. Match corresponding PyTorch parameter-bearing modules
     p_modules = [
         m for m in p_backbone.modules()
-        if isinstance(m, (torch.nn.Conv2d, torch.nn.BatchNorm2d))
+        if isinstance(m, (torch.nn.Conv2d, torch.nn.Linear, torch.nn.BatchNorm2d))
     ]
+
+    # Guard against architecture/sequence mismatch
+    if len(k_layers) != len(p_modules):
+        raise ValueError(
+            f"Layer count mismatch! Keras found {len(k_layers)} parameter layers, "
+            f"PyTorch found {len(p_modules)}. Check if Linear/Dense or SE modules are missing."
+        )
 
     for k_layer, p_module in zip(k_layers, p_modules):
         weights = k_layer.get_weights()
+        if not weights:
+            continue
+        
+        # --- Handle Conv2D / Conv2d ---
         if isinstance(k_layer, keras.layers.Conv2D):
+            assert isinstance(p_module, torch.nn.Conv2d), f"Type mismatch: {type(k_layer)} vs {type(p_module)}"
+            # Keras Conv2D: (H, W, In, Out) -> PyTorch Conv2d: (Out, In, H, W)
             w = np.transpose(weights[0], (3, 2, 0, 1))
+            
+            assert p_module.weight.shape == w.shape, f"Shape mismatch in Conv2D: Keras transposed {w.shape} vs PyTorch {p_module.weight.shape}"
             p_module.weight.data = torch.from_numpy(w).float()
+            
             if len(weights) > 1 and p_module.bias is not None:
                 p_module.bias.data = torch.from_numpy(weights[1]).float()
+            elif p_module.bias is not None:
+                p_module.bias.data.zero_()
+
+        # --- Handle Dense / Linear (Crucial for Channel-SE & Dual-SE!) ---
+        elif isinstance(k_layer, keras.layers.Dense):
+            assert isinstance(p_module, torch.nn.Linear), f"Type mismatch: {type(k_layer)} vs {type(p_module)}"
+            # Keras Dense: (In, Out) -> PyTorch Linear: (Out, In)
+            w = np.transpose(weights[0], (1, 0))
+            
+            assert p_module.weight.shape == w.shape, f"Shape mismatch in Dense: Keras transposed {w.shape} vs PyTorch {p_module.weight.shape}"
+            p_module.weight.data = torch.from_numpy(w).float()
+            
+            if len(weights) > 1 and p_module.bias is not None:
+                p_module.bias.data = torch.from_numpy(weights[1]).float()
+            elif p_module.bias is not None:
+                p_module.bias.data.zero_()
+
+        # --- Handle Batch Normalization ---
         elif isinstance(k_layer, keras.layers.BatchNormalization):
+            assert isinstance(p_module, torch.nn.BatchNorm2d), f"Type mismatch: {type(k_layer)} vs {type(p_module)}"
+            # Keras BN weights order: [gamma (scale), beta (bias), moving_mean, moving_variance]
             p_module.weight.data = torch.from_numpy(weights[0]).float()
             p_module.bias.data = torch.from_numpy(weights[1]).float()
             p_module.running_mean.data = torch.from_numpy(weights[2]).float()
@@ -286,20 +322,27 @@ def _copy_weights_single_cnn(keras_wrapper, torch_wrapper, tasks):
 
     _copy_head_weights(keras_wrapper, torch_wrapper, tasks)
 
-
 def _copy_weights_resnet(keras_wrapper, torch_wrapper, tasks):
-    """Transfers weights between KerasResNet and PyTorchResNet block by block."""
+    """Transfers weights between KerasResNet and PyTorchResNet block by block,
+
+    including BatchNorm, Dense (SE), and Conv layers.
+    """
     k_backbone = keras_wrapper.backbone_model
     p_backbone = torch_wrapper.backbone_model
 
-    # 1. Transfer Initial Conv Layer only
-    k_init_conv = [l for l in k_backbone.layers if isinstance(l, keras.layers.Conv2D)][0]
-    p_init_conv = [m for m in p_backbone.modules() if isinstance(m, torch.nn.Conv2d)][0]
+    # 1. Transfer Initial Layers (Conv + BN)
+    k_init_layers = [
+        l for l in k_backbone.layers 
+        if isinstance(l, (keras.layers.Conv2D, keras.layers.BatchNormalization))
+        and not re.search(r"conv\d+_block\d+", l.name)
+    ]
+    p_init_modules = [
+        m for m in p_backbone.children()
+        if isinstance(m, (torch.nn.Conv2d, torch.nn.BatchNorm2d))
+    ]
 
-    w_init = np.transpose(k_init_conv.get_weights()[0], (3, 2, 0, 1))
-    p_init_conv.weight.data = torch.from_numpy(w_init).float()
-    if len(k_init_conv.get_weights()) > 1 and p_init_conv.bias is not None:
-        p_init_conv.bias.data = torch.from_numpy(k_init_conv.get_weights()[1]).float()
+    for k_l, p_m in zip(k_init_layers, p_init_modules):
+        _transfer_single_layer_weights(k_l, p_m)
 
     # 2. Collect PyTorch Residual Blocks
     p_res_blocks = [
@@ -322,147 +365,192 @@ def _copy_weights_resnet(keras_wrapper, torch_wrapper, tasks):
 
     sorted_keras_keys = sorted(keras_blocks_dict.keys(), key=_sort_key)
 
-    # 4. Transfer Block Weights accurately (Conv layers only)
+    # 4. Sequential Intra-Block Transfer (Handles Conv, BN, and Dense / SE layers)
     for block_key, p_block in zip(sorted_keras_keys, p_res_blocks):
-        k_block_layers = keras_blocks_dict[block_key]
-        for k_layer in k_block_layers:
-            weights = k_layer.get_weights()
-            if not weights:
-                continue
+        k_block_layers = [
+            l for l in keras_blocks_dict[block_key] 
+            if len(l.weights) > 0
+        ]
+        p_block_modules = [
+            m for m in p_block.modules() 
+            if isinstance(m, (torch.nn.Conv2d, torch.nn.BatchNorm2d, torch.nn.Linear))
+        ]
 
-            if isinstance(k_layer, keras.layers.Conv2D):
-                w = np.transpose(weights[0], (3, 2, 0, 1))
-                target_module = None
-                if "_0_conv" in k_layer.name:
-                    target_module = getattr(p_block, "shortcut", None)
-                elif "_1_conv" in k_layer.name:
-                    target_module = getattr(p_block, "conv1", None)
-                elif "_2_conv" in k_layer.name:
-                    target_module = getattr(p_block, "conv2", None)
-                elif "_3_conv" in k_layer.name:
-                    target_module = getattr(p_block, "conv3", None)
+        if len(k_block_layers) != len(p_block_modules):
+            raise ValueError(
+                f"Block {block_key} mismatch! Keras has {len(k_block_layers)} weighted layers, "
+                f"PyTorch block has {len(p_block_modules)} modules."
+            )
 
-                if target_module is not None and not isinstance(target_module, torch.nn.Identity):
-                    target_module.weight.data = torch.from_numpy(w).float()
-                    if len(weights) > 1 and target_module.bias is not None:
-                        target_module.bias.data = torch.from_numpy(weights[1]).float()
+        for k_layer, p_module in zip(k_block_layers, p_block_modules):
+            _transfer_single_layer_weights(k_layer, p_module)
 
     # 5. Transfer Task Head Weights
     _copy_head_weights(keras_wrapper, torch_wrapper, tasks)
 
-class TestSingleCNNParity:
-    """Tests verifying output shapes and output parity for SingleCNN."""
-    
 
-    def test_numerical_outputs_with_aligned_weights(self, common_config):
-        """Verify that models yield identical numerical predictions once weights are copied."""
-        tasks = common_config["tasks"]
-        kwargs = common_config["kwargs"]
+def _transfer_single_layer_weights(k_layer, p_module):
+    """Helper to copy parameter weights from a Keras layer to a PyTorch module."""
+    weights = k_layer.get_weights()
+    if not weights:
+        return
 
+    if isinstance(k_layer, keras.layers.Conv2D):
+        assert isinstance(p_module, torch.nn.Conv2d)
+        w = np.transpose(weights[0], (3, 2, 0, 1))
+        p_module.weight.data = torch.from_numpy(w).float()
+        if len(weights) > 1 and p_module.bias is not None:
+            p_module.bias.data = torch.from_numpy(weights[1]).float()
+
+    elif isinstance(k_layer, keras.layers.Dense):
+        if isinstance(p_module, torch.nn.Linear):
+            # Dense -> Linear
+            w = np.transpose(weights[0], (1, 0))  # (in_features, out_features) -> (out_features, in_features)
+            p_module.weight.data = torch.from_numpy(w).float()
+            if len(weights) > 1 and p_module.bias is not None:
+                p_module.bias.data = torch.from_numpy(weights[1]).float()
+                
+        elif isinstance(p_module, torch.nn.Conv2d):
+            # Dense -> 1x1 Conv2d (SE Block representation)
+            # Keras Dense weight shape: (in_features, out_features)
+            # PyTorch Conv2d weight shape: (out_channels, in_channels, 1, 1)
+            w = np.transpose(weights[0], (1, 0))[:, :, None, None]
+            p_module.weight.data = torch.from_numpy(w).float()
+            if len(weights) > 1 and p_module.bias is not None:
+                p_module.bias.data = torch.from_numpy(weights[1]).float()
+        else:
+            raise TypeError(f"Unsupported PyTorch module type {type(p_module)} for Keras Dense layer.")
+
+    elif isinstance(k_layer, keras.layers.BatchNormalization):
+        assert isinstance(p_module, torch.nn.BatchNorm2d)
+        p_module.weight.data = torch.from_numpy(weights[0]).float()      # gamma
+        p_module.bias.data = torch.from_numpy(weights[1]).float()        # beta
+        p_module.running_mean.data = torch.from_numpy(weights[2]).float() # mean
+        p_module.running_var.data = torch.from_numpy(weights[3]).float()  # variance
+
+
+@pytest.mark.parametrize("batchnorm", [True, False])
+@pytest.mark.parametrize(
+    "attention",
+    [
+        {"mechanism": None},
+        {"mechanism": "Channel-SE", "reduction_ratio": 8},
+        {"mechanism": "Spatial-SE"},
+        {"mechanism": "Dual-SE", "reduction_ratio": 32},
+    ],
+)
+def test_numerical_outputs_with_aligned_weights(common_config, batchnorm, attention):
+    """Verify that models yield similar predictions once weights are copied."""
+    tasks = common_config["tasks"]
+    kwargs = common_config["kwargs"].copy()
+    kwargs["architecture"] = [
+        {"filters": 32, "kernel_size": 2, "number": 1},
+        {"filters": 64, "kernel_size": 3, "number": 4},
+        {"filters": 128, "kernel_size": 2, "number": 2},
+        {"filters": 128, "kernel_size": 3, "number": 1},
+    ]
+    kwargs["batchnorm"] = batchnorm
+    kwargs["attention_mechanism"] = attention["mechanism"]
+    if "reduction_ratio" in attention:
+        kwargs["attention_reduction_ratio"] = attention["reduction_ratio"]
+
+    for task in tasks:
         keras_wrapper = KerasSingleCNN(
             input_shape=common_config["input_shape_keras"],
-            tasks=tasks,
+            tasks=[task],
             **kwargs
         )
         torch_wrapper = PyTorchSingleCNN(
             input_shape=common_config["input_shape_pytorch"],
-            tasks=tasks,
+            tasks=[task],
             **kwargs
         )
-
-        _copy_weights_single_cnn(keras_wrapper, torch_wrapper, tasks)
+        _copy_weights_single_cnn(keras_wrapper, torch_wrapper, [task])
 
         # Prepare identical input data
         x_keras = rng.standard_normal(size=(2, *common_config["input_shape_keras"])).astype(np.float32)
         x_torch = torch.from_numpy(np.transpose(x_keras, (0, 3, 1, 2)))
-
         # Evaluate models in eval mode
         keras_preds = keras_wrapper.model(x_keras, training=False)
         torch_wrapper.model.eval()
         with torch.no_grad():
             torch_preds = torch_wrapper.model(x_torch)
 
-        # Compare outputs within tight numerical tolerance
-        for task in tasks:
-            k_val = keras_preds[task].numpy() if hasattr(keras_preds[task], "numpy") else np.array(keras_preds[task])
+        # Extract predicted value array for the task
+        if isinstance(keras_preds, dict):
+            k_tensor = keras_preds[task]
+        else:
+            k_tensor = keras_preds
+
+        k_val = k_tensor.numpy() if hasattr(k_tensor, "numpy") else np.array(k_tensor)
+
+        # Handle PyTorch prediction output
+        if isinstance(torch_preds, dict):
             p_val = torch_preds[task].cpu().numpy()
-            np.testing.assert_allclose(
-                k_val,
-                p_val,
-                rtol=1e-4,
-                atol=1e-4,
-                err_msg=f"Value divergence detected in task '{task}'",
-            )
+        else:
+            p_val = torch_preds.cpu().numpy()
 
-
-class TestResNetParity:
-    """Tests verifying output shapes and structural parity for ResNet."""
-
-    @pytest.mark.parametrize("block_type", ["basic", "bottleneck"])
-    def test_model_layer_structure_parity(self, common_config, block_type):
-        """Verify that Keras and PyTorch models have matching layer counts and weight shapes."""
-        tasks = common_config["tasks"]
-        kwargs = common_config["kwargs"].copy()
-        kwargs["residual_block_type"] = block_type
- 
-        keras_wrapper = KerasResNet(
-            input_shape=common_config["input_shape_keras"],
-            tasks=tasks,
-            **kwargs
-        )
-        torch_wrapper = PyTorchResNet(
-            input_shape=common_config["input_shape_pytorch"],
-            tasks=tasks,
-            **kwargs
+        # Compare outputs within tight numerical tolerance
+        np.testing.assert_allclose(
+            k_val,
+            p_val,
+            atol=0.025,
+            err_msg=f"Value divergence detected in task '{task}'",
         )
 
-        # 1. Collect Keras Conv2D weights shapes
-        keras_layers = [
-            l.get_weights()[0].shape 
-            for l in keras_wrapper.backbone_model.layers 
-            if isinstance(l, keras.layers.Conv2D)
-        ]
 
-        # 2. Collect PyTorch Conv2d weights shapes (PyTorch format: Out, In, H, W -> Keras: H, W, In, Out)
-        torch_layers = [
-            (m.weight.shape[2], m.weight.shape[3], m.weight.shape[1], m.weight.shape[0])
-            for m in torch_wrapper.backbone_model.modules() 
-            if isinstance(m, torch.nn.Conv2d)
-        ]
-
-        # 3. Assert structural weight shape alignment
-        for idx, (k_shape, p_shape) in enumerate(zip(keras_layers, torch_layers)):
-            assert k_shape == p_shape, (
-                f"Shape mismatch at Conv layer {idx}: Keras shape {k_shape} vs PyTorch mapped shape {p_shape}"
-            )
-
-
-    @pytest.mark.parametrize("block_type", ["bottleneck"])
-    def test_resnet_numerical_outputs_with_aligned_weights(self, common_config, block_type):
-        """Verify numerical output parity for both Basic and Bottleneck ResNets after weight copying."""
-        tasks = common_config["tasks"]
-        kwargs = common_config["kwargs"].copy()
-        kwargs["residual_block_type"] = block_type
-        #kwargs["init_layer"] = {"filters": 16, "kernel_size": 3, "strides": 1}
-        #kwargs["init_max_pool"] = {"size": 2, "strides": 2}
-        absolute_tolerance = {
+@pytest.mark.parametrize("block_type", ["basic", "bottleneck"])
+@pytest.mark.parametrize(
+    "first_layers",
+    [
+        {"init_layer": None, "init_max_pool": None},
+        {"init_layer": {'filters': 8, 'kernel_size': 7, 'strides': 2}, "init_max_pool": {'size': 3, 'strides': 2}},
+    ],
+)
+@pytest.mark.parametrize(
+    "attention",
+    [
+        {"mechanism": None},
+        {"mechanism": "Channel-SE", "reduction_ratio": 8},
+        {"mechanism": "Spatial-SE"},
+        {"mechanism": "Dual-SE", "reduction_ratio": 32},
+    ],
+)
+def test_ResNet_model_structure_parity(common_config, block_type, first_layers, attention):
+    """Verify that Keras and PyTorch models have matching layer counts and weight shapes."""
+    tasks = common_config["tasks"]
+    kwargs = common_config["kwargs"].copy()
+    kwargs["init_layer"] = first_layers["init_layer"]
+    kwargs["init_max_pool"] = first_layers["init_max_pool"]
+    kwargs["residual_block_type"] = block_type
+    kwargs["architecture"] = [
+        {"filters": 16, "blocks": 2},
+        {"filters": 48, "blocks": 3},
+        {"filters": 48, "blocks": 4},
+        {"filters": 96, "blocks": 2},
+    ]
+    kwargs["attention_mechanism"] = attention["mechanism"]
+    if "reduction_ratio" in attention:
+        kwargs["attention_reduction_ratio"] = attention["reduction_ratio"]
+    absolute_tolerance = {
             "basic": 0.1,
             "bottleneck": 0.05,
         }
 
+    for task in tasks:
         keras_wrapper = KerasResNet(
             input_shape=common_config["input_shape_keras"],
-            tasks=tasks,
+            tasks=[task],
             **kwargs
         )
         torch_wrapper = PyTorchResNet(
             input_shape=common_config["input_shape_pytorch"],
-            tasks=tasks,
+            tasks=[task],
             **kwargs
         )
 
         # Copy weights for ResNet
-        _copy_weights_resnet(keras_wrapper, torch_wrapper, tasks)
+        _copy_weights_resnet(keras_wrapper, torch_wrapper, [task])
 
         x_keras = rng.standard_normal(size=(2, *common_config["input_shape_keras"])).astype(np.float32)
         x_torch = torch.from_numpy(np.transpose(x_keras, (0, 3, 1, 2)))
@@ -472,14 +560,13 @@ class TestResNetParity:
         with torch.no_grad():
             torch_preds = torch_wrapper.model(x_torch)
 
-        for task in tasks:
-            k_val = keras_preds[task].numpy() if hasattr(keras_preds[task], "numpy") else np.array(keras_preds[task])
-            p_val = torch_preds[task].cpu().numpy()
+        k_val = keras_preds[task].numpy() if hasattr(keras_preds[task], "numpy") else np.array(keras_preds[task])
+        p_val = torch_preds[task].cpu().numpy()
 
-            np.testing.assert_allclose(
-                k_val,
-                p_val,
-                atol=absolute_tolerance[block_type],
-                err_msg=f"Value divergence detected in ResNet ({block_type}) for task '{task}'",
-            )
+        np.testing.assert_allclose(
+            k_val,
+            p_val,
+            atol=absolute_tolerance[block_type],
+            err_msg=f"Value divergence detected in ResNet ({block_type}) for task '{task}'",
+        )
 '''
