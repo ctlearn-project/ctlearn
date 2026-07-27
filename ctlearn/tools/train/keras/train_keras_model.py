@@ -21,7 +21,7 @@ from ctapipe.core.traits import (
 )
 from ctlearn.core.data_loader.loader import DLDataLoader
 from ctlearn.tools.train.base_train_model import TrainCTLearnModel
-from ctlearn.core.keras.model import CTLearnModel
+from ctlearn.core.model import CTLearnModel
 from ctlearn.utils import validate_trait_dict
 
 try:
@@ -98,7 +98,7 @@ class TrainKerasModel(TrainCTLearnModel):
     """
 
     model_type = ComponentName(
-        CTLearnModel, default_value="ResNet"
+        CTLearnModel, default_value="KerasResNet"
     ).tag(config=True)
 
     save_best_validation_only = Bool(
