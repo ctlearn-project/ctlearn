@@ -8,8 +8,7 @@ import torch
 import torch.nn as nn
 
 from ctlearn.core.keras.model import KerasResNet, KerasSingleCNN
-from ctlearn.core.pytorch.model_collection import PyTorchResNet
-from ctlearn.core.pytorch.model import PyTorchSingleCNN
+from ctlearn.core.pytorch.model import PyTorchResNet, PyTorchSingleCNN
 
 rng = np.random.default_rng(42)
 
