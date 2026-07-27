@@ -1,4 +1,5 @@
 import pytest
+pytest.importorskip("dl1_data_handler")
 torch = pytest.importorskip("torch")
 from traitlets.config.loader import Config
 

@@ -16,9 +16,11 @@ jobs:
         os: [ubuntu-22.04]
         python-version: ['3.12', '3.13', '3.14']
         dl1dh-version: ['latest', 'nightly']
-        tensorflow-version: ['latest', '2.16.*']
-        torch-version: ['latest', '2.2.*']
+        tensorflow-version: ['latest', '2.16.*', 'none']
+        torch-version: ['latest', '2.2.*', 'none']
         exclude:
+          - tensorflow-version: 'none'
+            torch-version: 'none'
           - python-version: '3.13'
             tensorflow-version: '2.16.*'
           - python-version: '3.14'
@@ -64,15 +66,19 @@ jobs:
           else
             pip install dl1-data-handler
           fi
-          if [ "${{ matrix.tensorflow-version }}" = "latest" ]; then
-            pip install --upgrade tensorflow
-          else
-            pip install "tensorflow==${{ matrix.tensorflow-version }}"
+          if [ "${{ matrix.tensorflow-version }}" != "none" ]; then
+            if [ "${{ matrix.tensorflow-version }}" = "latest" ]; then
+              pip install --upgrade tensorflow
+            else
+              pip install "tensorflow==${{ matrix.tensorflow-version }}"
+            fi
           fi
-          if [ "${{ matrix.torch-version }}" = "latest" ]; then
-            pip install --upgrade torch torchvision
-          else
-            pip install "torch==${{ matrix.torch-version }}" torchvision
+          if [ "${{ matrix.torch-version }}" != "none" ]; then
+            if [ "${{ matrix.torch-version }}" = "latest" ]; then
+              pip install --upgrade torch torchvision
+            else
+              pip install "torch==${{ matrix.torch-version }}" torchvision
+            fi
           fi
 
       - name: Add MKL_THREADING_LAYER variable

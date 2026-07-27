@@ -209,7 +209,7 @@ class CTLearnPL(pl.LightningModule):
             )
 
 
-        self.criterion_energy_value = torch.nn.L1Loss(reduction="mean")
+        self.criterion_energy_value = torch.nn.L1Loss(reduction="sum")
         self.criterion_direction = torch.nn.SmoothL1Loss()  # nn.MSELoss()
         self.criterion_magnitud = torch.nn.L1Loss(reduction="mean") 
 

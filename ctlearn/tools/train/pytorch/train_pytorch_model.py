@@ -440,7 +440,7 @@ class TrainPyTorchModel(TrainCTLearnModel):
             # Select the model and precision
             # ------------------------------------------------------------------------------
 
-            from ctlearn.core.pytorch.model import CTLearnPyTorchModel
+            from ctlearn.core.pytorch.model_collection import CTLearnPyTorchModel
 
             def load_pytorch_model_net(model_info, task_name, num_inputs, num_outputs):
                 model_name = model_info.get("model_name", "")
