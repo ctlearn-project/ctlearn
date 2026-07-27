@@ -311,7 +311,7 @@ class TrainCTLearnModel(Tool):
     ).tag(config=True)
 
     type_sigma = Float(
-        default_value=1000.0,
+        default_value=1.0,
         help="Std dev for type channel normalization",
     ).tag(config=True)
 
@@ -321,7 +321,7 @@ class TrainCTLearnModel(Tool):
     ).tag(config=True)
 
     dir_sigma = Float(
-        default_value=1000.0,
+        default_value=1.0,
         help="Std dev for direction channel normalization",
     ).tag(config=True)
 
@@ -331,7 +331,7 @@ class TrainCTLearnModel(Tool):
     ).tag(config=True)
 
     energy_sigma = Float(
-        default_value=1000.0,
+        default_value=1.0,
         help="Std dev for energy channel normalization",
     ).tag(config=True)
 

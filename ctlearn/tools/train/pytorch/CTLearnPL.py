@@ -1534,9 +1534,15 @@ class CTLearnPL(pl.LightningModule):
             fig_hist, ax_hist = plt.subplots(figsize=(8, 6))
             
             import numpy as np
-            min_val = min(min(self.val_energy_label_list), min(self.val_energy_pred_list))
-            max_val = max(max(self.val_energy_label_list), max(self.val_energy_pred_list))
-            shared_bins = np.linspace(min_val, max_val, 50)
+            # Use percentiles of true labels to avoid extreme predictions ruining the x-axis range
+            min_val = np.percentile(self.val_energy_label_list, 1)
+            max_val = np.percentile(self.val_energy_label_list, 99)
+            
+            # Energy typically spans multiple orders of magnitude, so log bins are more appropriate
+            min_val = max(1e-3, min_val)
+            if min_val >= max_val:
+                max_val = min_val * 10
+            shared_bins = np.logspace(np.log10(min_val), np.log10(max_val), 50)
             
             ax_hist.hist(
                 self.val_energy_label_list,
@@ -1552,6 +1558,7 @@ class CTLearnPL(pl.LightningModule):
                 label="Predictions",
                 color="orange",
             )
+            ax_hist.set_xscale("log")
             ax_hist.set_xlabel("Energy (TeV)")
             ax_hist.set_ylabel("Counts")
             ax_hist.set_title("Energy Distribution - Labels vs Predictions (Validation)")

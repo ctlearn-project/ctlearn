@@ -165,11 +165,11 @@ class BaseDLDataLoader(ABC):
         self.use_clean_dvr = get_val("use_clean_dvr", False)
         
         self.type_mu = get_val("type_mu", 0.0)
-        self.type_sigma = get_val("type_sigma", 1000.0)
+        self.type_sigma = get_val("type_sigma", 1.0)
         self.dir_mu = get_val("dir_mu", 0.0)
-        self.dir_sigma = get_val("dir_sigma", 1000.0)
+        self.dir_sigma = get_val("dir_sigma", 1.0)
         self.energy_mu = get_val("energy_mu", 0.0)
-        self.energy_sigma = get_val("energy_sigma", 1000.0)
+        self.energy_sigma = get_val("energy_sigma", 1.0)
 
         self.leakage_intensity_cutoff = get_val("leakage_intensity_cutoff", 0.2)
         self.intensity_cutoff = get_val("intensity_cutoff", 50.0)
