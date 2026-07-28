@@ -225,14 +225,6 @@ class BaseDLDataLoader(ABC):
 
         return image, peak_time
 
-    def apply_log_scaling_to_channels(self, image, peak_time):
-        if self.apply_log_scaling[0]:
-            image = image.astype(np.float32)
-            image = np.log10(image + 1.0)
-        if self.apply_log_scaling[1]:
-            peak_time = peak_time.astype(np.float32)
-            peak_time = np.log10(peak_time + 1.0)
-        return image, peak_time
 
     def apply_augmentation(self, image, peak_time, task):
         for id_batch in range(image.shape[0]):

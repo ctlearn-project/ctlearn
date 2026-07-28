@@ -51,15 +51,22 @@ class MultiHeadClassifier(nn.Module):
         if x.dim() > 2:
             x = torch.flatten(x, start_dim=1)
             
-        logits = {}
+        classification = None
+        energy = None
+        direction = None
+
         for original_task, internal_key in self._task_mapping.items():
             head = self.heads[internal_key]
             out = head(x)
-            logits[original_task] = F.softmax(out, dim=-1) if original_task == "type" else out
             
-        if self.single_output_task:
-            return logits[self.single_output_task]
-        return logits
+            if original_task == "type":
+                classification = F.softmax(out, dim=-1)
+            elif original_task == "energy":
+                energy = out
+            elif original_task in ["direction", "skydirection", "cameradirection"]:
+                direction = out
+                
+        return classification, energy, direction
 
 
 def build_fully_connect_pytorch_head(in_features, layers, activation_function, tasks):
@@ -124,7 +131,7 @@ class PyTorchSingleCNN(SingleCNN):
 
     def _build_backbone(self, input_shape):
         # input_shape format: (channels, height, width)
-        in_channels = input_shape[0]
+        in_channels = input_shape[-1]
         modules = []
 
         if self.batchnorm:
@@ -306,7 +313,7 @@ class PyTorchResNet(ResNet):
         self.model = FullModelPipeline(self.backbone_model, self.logits_head)
 
     def _build_backbone(self, input_shape):
-        in_channels = input_shape[0] if isinstance(input_shape, (list, tuple)) else input_shape[-1]
+        in_channels = input_shape[-1]
         modules = []
 
         # Initial Zero Padding

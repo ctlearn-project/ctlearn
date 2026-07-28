@@ -4,10 +4,16 @@ import matplotlib.pyplot as plt
 import cv2
 from io import BytesIO
 import os 
-import seaborn as sns
+try:
+    import seaborn as sns
+except ImportError:
+    sns = None
 import pandas as pd
 import astropy.units as u
-import ctaplot
+try:
+    import ctaplot
+except ImportError:
+    ctaplot = None
 import torch
 # ----------------------------------------------------------------------------------------------------------
 def plot_energy_resolution_error(val_energy_pred_list,val_energy_label_list,val_hillas_intensity_list):
@@ -17,6 +23,9 @@ def plot_energy_resolution_error(val_energy_pred_list,val_energy_label_list,val_
         'energy_true': list(val_energy_label_list),
         'hillas_intensity': list(val_hillas_intensity_list)
     })
+    if ctaplot is None:
+        raise ImportError("ctaplot is required for plot_energy_resolution_error. Install it via 'pip install ctaplot'")
+
     cut_off = 50
     filtered_data = data[data['hillas_intensity'] > cut_off]
     true_energy = u.Quantity(filtered_data['energy_true'], u.TeV)
@@ -48,6 +57,9 @@ def plot_direction_resolution_error(val_alt_pred_list,val_az_pred_list, val_alt_
         'energy_true': list(val_energy_label_list),
         'hillas_intensity': list(val_hillas_intensity_list)
     })
+    if ctaplot is None:
+        raise ImportError("ctaplot is required for plot_direction_resolution_error. Install it via 'pip install ctaplot'")
+
     cut_off = 50
     filtered_data = data[data['hillas_intensity'] > cut_off]
     true_energy = u.Quantity(filtered_data['energy_true'], u.TeV)
@@ -77,6 +89,9 @@ def plot_confusion_matrix(cm, classes, cm_file_name, save_folder):
     """
     if isinstance(cm, torch.Tensor):
         cm = cm.cpu().numpy()  # Convert to NumPy if it's a tensor
+
+    if sns is None:
+        raise ImportError("seaborn is required for plot_confusion_matrix. Install it via 'pip install seaborn'")
 
     plt.figure(figsize=(10, 7))
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 

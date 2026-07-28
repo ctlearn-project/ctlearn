@@ -249,13 +249,13 @@ class CTLearnPL(pl.LightningModule):
  
         self.class_train_accuracy = Accuracy(
             task="multiclass",
-            num_classes=parameters["model"]["model_type"]["parameters"]["num_outputs"],
+            num_classes=2,
             dist_sync_on_step=True  # GPUs Sync
         )
 
         self.class_val_accuracy = Accuracy(
             task="multiclass",
-            num_classes=parameters["model"]["model_type"]["parameters"]["num_outputs"],
+            num_classes=2,
             dist_sync_on_step=True  # GPUs Sync            
         )
  

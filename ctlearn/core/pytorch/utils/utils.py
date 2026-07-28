@@ -16,7 +16,13 @@ import matplotlib.pyplot as plt
 import torch
 from astropy.coordinates import SkyCoord, AltAz
 import astropy.units as u
-from ctapipe_io_lst.constants import LST1_LOCATION
+try:
+    from ctapipe_io_lst.constants import LST1_LOCATION
+except ImportError:
+    from astropy.coordinates import EarthLocation
+    # Fallback coordinates for LST-1
+    LST1_LOCATION = EarthLocation(lon=-17.89139 * u.deg, lat=28.76139 * u.deg, height=2184 * u.m)
+    
 from ctlearn.core.ctlearn_enum import Task, Mode
 import time as time_
 from ctapipe.io import read_table, write_table

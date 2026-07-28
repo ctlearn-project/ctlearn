@@ -63,6 +63,14 @@ def predictions(self):
             - energy_fvs: Energy estimation feature vectors
             - direction_fvs: Direction reconstruction feature vectors
     """
+    
+    # Update channels based on log scaling config
+    if "normalization" in self.parameters and "apply_log_scaling" in self.parameters["normalization"]:
+        new_channels = list(self.channels)
+        if self.parameters["normalization"]["apply_log_scaling"][0] and not new_channels[0].startswith("log_"):
+            new_channels[0] = "log_" + new_channels[0]
+        self.channels = new_channels
+
     # Optimize batch size if requested
     if self.optim_batch_size:
         batch_size_found = False

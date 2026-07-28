@@ -18,10 +18,6 @@ import numpy as np
 import os.path
 import pickle
 from matplotlib import pyplot as plt
-from skimage.filters import gabor_kernel
-from skimage.transform import resize
-import onnx
-from onnxsim import simplify
 import warnings
 from ctlearn.core.ctlearn_enum import Task, Mode 
 
@@ -290,6 +286,12 @@ class ModelHelper:
             - Feature extraction for shower image analysis
             - Edge and orientation detection in Cherenkov images
         """
+        try:
+            from skimage.filters import gabor_kernel
+            from skimage.transform import resize
+        except ImportError:
+            raise ImportError("skimage is required for GaborKernels. Install it via 'pip install scikit-image'")
+
         # prepare filter bank kernels
         kernels = []
         # Iterate over 4 orientations
@@ -585,6 +587,12 @@ class ModelHelper:
             output_names=output_names,
             dynamic_axes=dynamic_axes,
         )
+
+        try:
+            import onnx
+            from onnxsim import simplify
+        except ImportError:
+            raise ImportError("onnx and onnxsim are required for exportOnnx. Install them via 'pip install onnx onnxsim'")
 
         # Load the exported ONNX model
         model = onnx.load(onnx_name + ".onnx")

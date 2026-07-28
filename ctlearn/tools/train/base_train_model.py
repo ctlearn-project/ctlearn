@@ -528,6 +528,8 @@ class TrainCTLearnModel(Tool):
         
         if self.dl1dh_reader_type == "DLImageReader":
             self.channels = ["cleaned_image", "cleaned_peak_time"]
+            if self.apply_log_scaling[0]:
+                self.channels[0] = "log_" + self.channels[0]
             if "channels" not in self.config.get("DLImageReader", {}):
                 self.config.DLImageReader.channels = self.channels
         

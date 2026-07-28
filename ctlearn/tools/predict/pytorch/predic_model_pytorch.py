@@ -48,8 +48,10 @@ def predict_with_model_pytorch(self, task):
 
     # Create data loader for the specified task
     # The DLDataLoader is initialized separately for each task to ensure robustness
-    self.dl1dh_reader.channels = ["cleaned_image", "cleaned_peak_time"]
-    
+    channels = ["cleaned_image", "cleaned_peak_time"]
+    if self.parameters["normalization"]["apply_log_scaling"][0]:
+        channels[0] = "log_" + channels[0]
+    self.dl1dh_reader.channels = channels    
     data_loader = DLDataLoader.create(
         framework="pytorch",
         DLDataReader=self.dl1dh_reader,

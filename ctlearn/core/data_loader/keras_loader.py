@@ -188,7 +188,6 @@ class KerasDLDataLoader(Sequence, BaseDLDataLoader):
         active_task = self.tasks[0] if self.tasks else None
         
         image, peak_time = self.clean_data(image, peak_time)
-        image, peak_time = self.apply_log_scaling_to_channels(image, peak_time)
         
         if self.use_augmentation:
             image, peak_time = self.apply_augmentation(image, peak_time, active_task)
@@ -410,7 +409,6 @@ class KerasDLDataLoader(Sequence, BaseDLDataLoader):
                 peak_time = features_arr[..., 1]
                 
                 image, peak_time = self.clean_data(image, peak_time)
-                image, peak_time = self.apply_log_scaling_to_channels(image, peak_time)
                 image, peak_time = self.normalize_data(image, peak_time, active_task)
                 
                 features["input"] = np.stack([image, peak_time], axis=-1)
@@ -419,7 +417,6 @@ class KerasDLDataLoader(Sequence, BaseDLDataLoader):
                 peak_time = features_arr[..., 1::2]
                 
                 image, peak_time = self.clean_data(image, peak_time)
-                image, peak_time = self.apply_log_scaling_to_channels(image, peak_time)
                 image, peak_time = self.normalize_data(image, peak_time, active_task)
                 
                 # Re-stack alternating channels

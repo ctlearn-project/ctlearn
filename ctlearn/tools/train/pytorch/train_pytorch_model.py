@@ -1,12 +1,34 @@
-from ctapipe.core.traits import Path, Bool, Unicode
+from ctapipe.core.traits import Path, Bool, Unicode, ComponentName
 from torch.utils.data import DataLoader
 from ctlearn.tools.train.pytorch.CTLearnPL import CTLearnTrainer, CTLearnPL
+from ctlearn.core.model import CTLearnModel
+import ctlearn.core.pytorch.model
+import sys
 import os
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress TensorFlow logging
+
+is_debug = '--debug' in sys.argv or any(arg.startswith('--log-level=DEBUG') for arg in sys.argv)
+
+if not is_debug:
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # Suppress TensorFlow logging
+    os.environ['NCCL_DEBUG'] = 'WARN'       # Suppress verbose NCCL networking logs
+
+import warnings
+warnings.filterwarnings("ignore", ".*AccumulateGrad node's stream does not match.*")
+warnings.filterwarnings("ignore", ".*torch.distributed.nn.functional.all_gather is deprecated.*")
+warnings.filterwarnings("ignore", ".*does not have many workers which may be a bottleneck.*")
+warnings.filterwarnings("ignore", ".*isinstance.treespec, LeafSpec.*")
+warnings.filterwarnings("ignore", ".*This axis already has a converter set and is updating.*")
+
+if not is_debug:
+    # Silence noisy external library warnings
+    warnings.filterwarnings("ignore", ".*NoneDefaultNotAllowedWarning.*")
+    warnings.filterwarnings("ignore", ".*MergeConflictWarning.*")
+    warnings.filterwarnings("ignore", ".*'ctlearn.tools.train_model' found in sys.modules.*")
 
 try:
     import torch
-    
+    if hasattr(torch.autograd.graph, "set_warn_on_accumulate_grad_stream_mismatch"):
+        torch.autograd.graph.set_warn_on_accumulate_grad_stream_mismatch(False)
 except ImportError:
     raise ImportError("pytorch is not installed in your environment!")
 
@@ -110,17 +132,16 @@ class TrainPyTorchModel(TrainCTLearnModel):
         help="Disable PyTorch Lightning progress bar.",
     ).tag(config=True)
 
-    model_name = Unicode(
-        default_value=None,
-        allow_none=True,
-        help="Model name to override the default model for the reco task.",
+    model_type = ComponentName(
+        CTLearnModel, default_value="PyTorchResNet"
     ).tag(config=True)
 
     aliases = {
         **TrainCTLearnModel.aliases,
         "config_file": "TrainPyTorchModel.config_file",
         "disable_progress_bar": "TrainPyTorchModel.disable_progress_bar",
-        "model-name": "TrainPyTorchModel.model_name",
+        "model-type": "TrainPyTorchModel.model_type",
+        "model-name": "TrainPyTorchModel.model_type",
     }
 
     def __init__(self, **kwargs):
@@ -130,7 +151,6 @@ class TrainPyTorchModel(TrainCTLearnModel):
         os.environ["NCCL_IB_DISABLE"] = "1"
         os.environ["NCCL_DEBUG"] = "WARN"
         os.environ["TORCH_NCCL_ASYNC_ERROR_HANDLING"] = "1"
-        os.environ["NCCL_DEBUG"] = "INFO"
         torch.set_float32_matmul_precision('medium')        
  
         super().__init__(**kwargs)
@@ -204,45 +224,10 @@ class TrainPyTorchModel(TrainCTLearnModel):
             self.leakage_intensity_cutoff = get_conf_val("cut-off", "leakage_intensity", "leakage_intensity_cutoff", self.leakage_intensity_cutoff)
             self.intensity_cutoff = get_conf_val("cut-off", "intensity", "intensity_cutoff", self.intensity_cutoff)
 
-            self.pytorch_model_configs = legacy_params.get("model", {})
             self.hyp_configs = legacy_params.get("hyp", {})
         else:
             self.log.info("No legacy config file provided. Using standard Traitlets configuration.")
             self.device_str = self.device
-            self.pytorch_model_configs = {
-                "model_type": {
-                    "model_name": "DoubleBBEfficientNet",
-                    "parameters": {
-                        "model_variant": "efficientnet-b3",
-                        "task": "type",
-                        "num_outputs": 2,
-                        "device_str": self.device_str,
-                        "energy_bins": None,
-                    }
-                },
-                "model_energy": {
-                    "model_name": "ThinResNet",
-                    "parameters": {
-                        "task": "energy",
-                        "num_inputs": 1,
-                        "num_outputs": 1,
-                        "num_blocks": [3, 4, 6, 3],
-                        "dropout": 0.1,
-                        "use_bn": False,
-                    }
-                },
-                "model_direction": {
-                    "model_name": "ThinResNet_DBB",
-                    "parameters": {
-                        "task": "direction",
-                        "num_inputs": 1,
-                        "num_outputs": 3,
-                        "num_blocks": [3, 4, 6, 3],
-                        "dropout": 0.1,
-                        "use_bn": False,
-                    }
-                }
-            }
             self.hyp_configs = {
                 "epochs": self.n_epochs,
                 "batches": self.batch_size,
@@ -259,24 +244,6 @@ class TrainPyTorchModel(TrainCTLearnModel):
                 "gradient_clip_val": self.gradient_clip_val,
                 "save_k": self.save_k_checkpoints,
             }
-
-        # Override model name if passed through command line
-        if self.model_name is not None:
-            for task in self.tasks:
-                task_key = f"model_{task.name}"
-                if task_key not in self.pytorch_model_configs:
-                    self.pytorch_model_configs[task_key] = {"parameters": {}}
-                self.pytorch_model_configs[task_key]["model_name"] = self.model_name
-                
-                # Clear out parameters to avoid passing the old model's params to the new one
-                if "parameters" in self.pytorch_model_configs[task_key]:
-                    old_params = self.pytorch_model_configs[task_key]["parameters"]
-                    # Keep basic essential params if they exist
-                    new_params = {}
-                    for key in ["task", "num_inputs", "num_outputs", "device_str"]:
-                        if key in old_params:
-                            new_params[key] = old_params[key]
-                    self.pytorch_model_configs[task_key]["parameters"] = new_params
 
         self.save_k = self.save_k_checkpoints
 
@@ -306,7 +273,7 @@ class TrainPyTorchModel(TrainCTLearnModel):
                 "leakage_intensity": self.leakage_intensity_cutoff,
                 "intensity": self.intensity_cutoff,
             },
-            "model": self.pytorch_model_configs,
+            "model": self.model_type,
             "hyp": self.hyp_configs,
             "augmentation": {
                 "use_augmentation": self.use_augmentation,
@@ -439,33 +406,21 @@ class TrainPyTorchModel(TrainCTLearnModel):
             # ------------------------------------------------------------------------------
             # Select the model and precision
             # ------------------------------------------------------------------------------
-
-            from ctlearn.core.pytorch.model_collection import CTLearnPyTorchModel
-
-            def load_pytorch_model_net(model_info, task_name, num_inputs, num_outputs):
-                model_name = model_info.get("model_name", "")
-                try:
-                    component_cls = CTLearnPyTorchModel.non_abstract_subclasses().get(model_name)
-                    if component_cls is not None:
-                        params = model_info.get("parameters", {}).copy()
-                        params.pop("task", None)
-                        params.pop("num_inputs", None)
-                        params.pop("num_outputs", None)
-                        # Ensure device_str is set
-                        params["parent"] = self
-                        component = component_cls(
-                            task=task_name,
-                            num_inputs=num_inputs,
-                            num_outputs=num_outputs,
-                            **params
-                        )
-                        return component.model
-                except Exception as e:
-                    self.log.warning(f"Failed to load model {model_name} as Component: {e}. Falling back to create_model.")
-                return create_model(model_info)
-
             import torch.nn as nn
             import torch
+            torch.backends.cudnn.enabled = False
+
+            if task == Task.type:
+                precision = self.parameters["arch"]["precision_type"]
+            elif task == Task.energy:
+                precision = self.parameters["arch"]["precision_energy"]
+            elif task == Task.cameradirection or task == Task.skydirection:
+                precision = self.parameters["arch"]["precision_direction"]
+            else:
+                raise ValueError(
+                    f"task:{task.name} is not supported. Task must be type, direction or energy"
+                )
+
             class ONNXModelWrapper(nn.Module):
                 def __init__(self, onnx_model_net, active_task, onnx_input_shape):
                     super().__init__()
@@ -514,8 +469,6 @@ class TrainPyTorchModel(TrainCTLearnModel):
                     else:
                         return None, None, val
 
-            num_inputs =  1 ## Change thiss!!!!
-
             if self.load_onnx_model:
                 self.log.info(f"Loading ONNX model from {self.load_onnx_model} for training...")
                 self.log.warning(
@@ -532,27 +485,24 @@ class TrainPyTorchModel(TrainCTLearnModel):
                     onnx_model = ConvertModel(onnx_proto)
                     onnx_input_shape = [dim.dim_value for dim in onnx_proto.graph.input[0].type.tensor_type.shape.dim]
                     model_net = ONNXModelWrapper(onnx_model, task, onnx_input_shape)
-                    precision = self.parameters["arch"].get(f"precision_{task.name.lower()}", "32-true")
                 except Exception as e:
                     self.log.error(f"Failed to load ONNX model: {e}")
                     raise e
             else:
-                if task == Task.type:
-                    precision = self.parameters["arch"]["precision_type"]
-                    model_net = load_pytorch_model_net(self.parameters["model"]["model_type"], "type", num_inputs, 2)
-
-                elif task == Task.energy:
-                    precision = self.parameters["arch"]["precision_energy"]
-                    model_net = load_pytorch_model_net(self.parameters["model"]["model_energy"], "energy", num_inputs, 1)
+                self.log.info("Setting up the PyTorch model.")
+                num_inputs = 1
+                if isinstance(self.parameters.get("model"), dict):
+                    num_inputs = self.parameters["model"].get(f"model_{task.name}", {}).get("parameters", {}).get("num_inputs", 1)
                 
-                elif task == Task.cameradirection or task == Task.skydirection:
-                    precision = self.parameters["arch"]["precision_direction"]
-                    model_net = load_pytorch_model_net(self.parameters["model"]["model_direction"], "direction", num_inputs, 3)
-
-                else:
-                    raise ValueError(
-                        f"task:{task.name} is not supported. Task must be type, direction or energy"
-                    )
+                model_input_shape = list(self.train_dataset.input_shape)
+                model_input_shape[-1] = num_inputs
+                
+                model_net = CTLearnModel.from_name(
+                    self.model_type,
+                    input_shape=tuple(model_input_shape),
+                    tasks=[task.name],
+                    parent=self,
+                ).model
 
             # if hasattr(model_net, 'T'):
             #     self.training_loader.set_T(model_net.T)
