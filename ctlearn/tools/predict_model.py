@@ -697,7 +697,7 @@ class PredictCTLearnModel(Tool):
 
         return unique(t, keys=list(keys), keep="first")
 
-    def _predict_with_model(self, model_path):
+    def _predict_with_model(self, model_path, task):
         """
         Load and predict with a CTLearn model.
 
@@ -708,6 +708,8 @@ class PredictCTLearnModel(Tool):
         ----------
         model_path : str
             Path to a Keras model file (Keras3).
+        task : str
+            The task for which prediction is being made.
 
         Returns
         -------
@@ -718,7 +720,7 @@ class PredictCTLearnModel(Tool):
         """
         if self.framework_type == "keras":
              from ctlearn.tools.predict.keras.predic_model_keras import predict_with_model
-             predict_data, feature_vectors = predict_with_model(self, model_path)
+             predict_data, feature_vectors = predict_with_model(self, model_path, task)
 
              return predict_data, feature_vectors
         
@@ -746,7 +748,7 @@ class PredictCTLearnModel(Tool):
         )
         # Predict the data using the loaded type_model
         predict_data, feature_vectors = self._predict_with_model(
-            self.load_type_model_from
+            self.load_type_model_from, "type"
         )
         # Create prediction table and add the predicted classification score ('gammaness')
         particletype_table = example_identifiers.copy()
@@ -774,7 +776,7 @@ class PredictCTLearnModel(Tool):
         self.log.info("Predicting for the regression of the primary particle energy...")
         # Predict the data using the loaded energy_model
         predict_data, feature_vectors = self._predict_with_model(
-            self.load_energy_model_from
+            self.load_energy_model_from, "energy"
         )
         # Convert the reconstructed energy from log10(TeV) to TeV
         reco_energy = u.Quantity(
@@ -814,7 +816,7 @@ class PredictCTLearnModel(Tool):
         )
         # Predict the data using the loaded direction_model
         predict_data, feature_vectors = self._predict_with_model(
-            self.load_cameradirection_model_from
+            self.load_cameradirection_model_from, "cameradirection"
         )
         # For the direction task, the prediction is the camera coordinate offset in x and y
         # from the telescope pointing.
@@ -852,7 +854,7 @@ class PredictCTLearnModel(Tool):
         )
         # Predict the data using the loaded direction_model
         predict_data, feature_vectors = self._predict_with_model(
-            self.load_skydirection_model_from
+            self.load_skydirection_model_from, "skydirection"
         )
         # For the direction task, the prediction is the spherical offset in fov_lon and fov_lat
         # from the telescope pointing.

@@ -54,7 +54,7 @@ def test_data_loader(dl1_gamma_file):
         and "skydirection" in labels
     )
     #  Check the shape of the features
-    assert features["image"].shape == (1, 1, 110, 110)
+    assert features["image"].shape == (1, 2, 110, 110)
 
 if __name__ == "__main__":
     test_data_loader()

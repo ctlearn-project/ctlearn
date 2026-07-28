@@ -10,7 +10,7 @@ from astropy.table import Table, vstack
 import numpy as np
 
 
-def predict_with_model(self, model_path):
+def predict_with_model(self, model_path, task):
     """
     Load and predict with a CTLearn Keras model.
     
@@ -23,23 +23,17 @@ def predict_with_model(self, model_path):
     model_path : str
         Path to a Keras model file (Keras 3) or directory (Keras 2).
         The model should be a complete trained CTLearn model.
+    task : str
+        The task for which prediction is being made (e.g., 'type', 'energy', 'cameradirection').
     
     Returns
     -------
     predict_data : astropy.table.Table
         Table containing the prediction results with columns corresponding to
-        the model's output (e.g., 'type' for classification, task-specific names
-        for regression tasks like energy or direction).
+        the model's output.
     feature_vectors : np.ndarray or None
         Feature vectors extracted from the backbone model if dl1_features is enabled.
         Returns None if feature extraction is not requested.
-    
-    Notes
-    -----
-    - The function handles distributed training by accounting for multiple replicas
-    - Keras only processes complete batches, so incomplete last batches are handled separately
-    - Feature extraction splits the model into backbone (feature extractor) and head (predictor)
-    - Classification tasks use softmax output, regression tasks use direct outputs
     """
     # Create data loader for the main batch processing
     # The DLDataLoader is initialized separately for each prediction task
@@ -74,12 +68,6 @@ def predict_with_model(self, model_path):
     # Load the trained model from the specified path
     model = keras.saving.load_model(model_path)
     
-    # Determine prediction column name from model architecture
-    # Use the last layer name, or 'type' if it's a softmax layer (classification)
-    prediction_colname = (
-        model.layers[-1].name if model.layers[-1].name != "softmax" else "type"
-    )
-    
     # Initialize variables for optional feature extraction
     backbone_model, feature_vectors = None, None
     
@@ -109,7 +97,7 @@ def predict_with_model(self, model_path):
         # Generate predictions from head using extracted features
         predict_data = Table(
             {
-                prediction_colname: head.predict(
+                task: head.predict(
                     feature_vectors, verbose=self.keras_verbose
                 )
             }
@@ -131,7 +119,7 @@ def predict_with_model(self, model_path):
                     predict_data,
                     Table(
                         {
-                            prediction_colname: head.predict(
+                            task: head.predict(
                                 feature_vectors_last_batch,
                                 verbose=self.keras_verbose,
                             )
@@ -145,14 +133,10 @@ def predict_with_model(self, model_path):
         predict_data = model.predict(data_loader, verbose=self.keras_verbose)
         
         # Convert predictions to Astropy Table
-        # Classification tasks (with softmax) return arrays that need wrapping
-        # Regression tasks return dictionaries that can be directly converted
-        if prediction_colname == "type":
-            # Classification: wrap array in table with 'type' column
-            predict_data = Table({prediction_colname: predict_data})
-        else:
-            # Regression: convert dictionary directly to table
+        if isinstance(predict_data, dict):
             predict_data = Table(predict_data)
+        else:
+            predict_data = Table({task: predict_data})
         
         # Process last incomplete batch if it exists
         if data_loader_last_batch is not None:
@@ -161,13 +145,10 @@ def predict_with_model(self, model_path):
                 data_loader_last_batch, verbose=self.keras_verbose
             )
             
-            # Convert last batch predictions to table (same logic as above)
-            if model.layers[-1].name == "type":
-                predict_data_last_batch = Table(
-                    {prediction_colname: predict_data_last_batch}
-                )
-            else:
+            if isinstance(predict_data_last_batch, dict):
                 predict_data_last_batch = Table(predict_data_last_batch)
+            else:
+                predict_data_last_batch = Table({task: predict_data_last_batch})
             
             # Stack predictions from main batches and last batch
             predict_data = vstack([predict_data, predict_data_last_batch])
