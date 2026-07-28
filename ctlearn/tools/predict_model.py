@@ -718,7 +718,7 @@ class PredictCTLearnModel(Tool):
         """
         if self.framework_type == "keras":
              from ctlearn.tools.predict.keras.predic_model_keras import predict_with_model
-             predict_data, feature_vectors = predict_with_model(model_path)
+             predict_data, feature_vectors = predict_with_model(self, model_path)
 
              return predict_data, feature_vectors
         

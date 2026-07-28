@@ -377,7 +377,11 @@ class DBBDanet(nn.Module):
         self.backbone_2.fc = nn.Identity()
         self.backbone_2.dropout = nn.Identity()
 
-    def forward(self, x, y):
+    def forward(self, x):
+        if x.shape[1] >= 2:
+            x, y = torch.split(x, [1, x.shape[1]-1], dim=1)
+        else:
+            y = x
         """
         Forward pass through the dual-backbone network.
         

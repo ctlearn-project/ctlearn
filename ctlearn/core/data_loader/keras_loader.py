@@ -182,18 +182,23 @@ class KerasDLDataLoader(Sequence, BaseDLDataLoader):
         # Retrieve telescope images and store in features dictionary
         features = {"input": batch["features"].data}
         
-        image = features["input"][..., 0:1]
-        peak_time = features["input"][..., 1:2]
-        
-        active_task = self.tasks[0] if self.tasks else None
-        
-        image, peak_time = self.clean_data(image, peak_time)
-        
-        if self.use_augmentation:
-            image, peak_time = self.apply_augmentation(image, peak_time, active_task)
+        if features["input"].shape[-1] == 2:
+            image = features["input"][..., 0:1]
+            peak_time = features["input"][..., 1:2]
             
-        image, peak_time = self.normalize_data(image, peak_time, active_task)
-        features["input"] = np.concatenate([image, peak_time], axis=-1)
+            active_task = self.tasks[0] if self.tasks else None
+            
+            image, peak_time = self.clean_data(image, peak_time)
+            
+            if self.use_augmentation:
+                image, peak_time = self.apply_augmentation(image, peak_time, active_task)
+                
+            image, peak_time = self.normalize_data(image, peak_time, active_task)
+            features["input"] = np.concatenate([image, peak_time], axis=-1)
+        else:
+            # If it's a waveform or just image, just use it directly for now (or apply cleaning if needed)
+            pass
+        
         
         # Extract particle type classification labels
         if "type" in self.tasks:

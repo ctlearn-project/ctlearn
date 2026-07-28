@@ -269,7 +269,7 @@ class LST1PredictionTool(Tool):
         ("e", "energy_model"): "LST1PredictionTool.load_energy_model_from",
         ("d", "cameradirection_model"): "LST1PredictionTool.load_cameradirection_model_from",
         ("o", "output"): "LST1PredictionTool.output_path",
-        ("c", "channels"): "LST1PredictionTool.channels",
+        ("ch", "channels"): "LST1PredictionTool.channels",
 
     }
 

@@ -131,7 +131,7 @@ class PyTorchSingleCNN(SingleCNN):
 
     def _build_backbone(self, input_shape):
         # input_shape format: (channels, height, width)
-        in_channels = input_shape[-1]
+        in_channels = input_shape[0]
         modules = []
 
         if self.batchnorm:
@@ -313,7 +313,7 @@ class PyTorchResNet(ResNet):
         self.model = FullModelPipeline(self.backbone_model, self.logits_head)
 
     def _build_backbone(self, input_shape):
-        in_channels = input_shape[-1]
+        in_channels = input_shape[0]
         modules = []
 
         # Initial Zero Padding

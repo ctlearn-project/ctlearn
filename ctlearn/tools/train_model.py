@@ -175,30 +175,23 @@ class DLFrameWork(Tool):
 
         return fw
 
-    @property
-    def classes(self):
-        from ctlearn.tools.train.base_train_model import TrainCTLearnModel
-        from ctapipe.core.traits import classes_with_traits
-        from dl1_data_handler.reader import DLDataReader
+    from ctlearn.tools.train.base_train_model import TrainCTLearnModel
+    classes = [TrainCTLearnModel]
+    try:
+        from ctlearn.tools.train.keras.train_keras_model import TrainKerasModel
+        classes.append(TrainKerasModel)
+    except ImportError:
+        pass
         
-        tool_classes = [
-            type(self),
-            TrainCTLearnModel,
-        ]
-        
-        try:
-            from ctlearn.tools.train.keras.train_keras_model import TrainKerasModel
-            tool_classes.append(TrainKerasModel)
-        except ImportError:
-            pass
-            
-        try:
-            from ctlearn.tools.train.pytorch.train_pytorch_model import TrainPyTorchModel
-            tool_classes.append(TrainPyTorchModel)
-        except ImportError:
-            pass
-            
-        return tool_classes + classes_with_traits(DLDataReader)
+    try:
+        from ctlearn.tools.train.pytorch.train_pytorch_model import TrainPyTorchModel
+        classes.append(TrainPyTorchModel)
+    except ImportError:
+        pass
+    
+    from ctapipe.core.traits import classes_with_traits
+    from dl1_data_handler.reader import DLDataReader
+    classes = classes + classes_with_traits(DLDataReader)
 
 def main():
     # Run the tool

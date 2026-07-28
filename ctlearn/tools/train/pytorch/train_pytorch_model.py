@@ -495,7 +495,12 @@ class TrainPyTorchModel(TrainCTLearnModel):
                     num_inputs = self.parameters["model"].get(f"model_{task.name}", {}).get("parameters", {}).get("num_inputs", 1)
                 
                 model_input_shape = list(self.train_dataset.input_shape)
-                model_input_shape[-1] = num_inputs
+                if len(model_input_shape) == 3:
+                    # Convert (H, W, C) to PyTorch's (C, H, W)
+                    model_input_shape = [model_input_shape[2], model_input_shape[0], model_input_shape[1]]
+                elif len(model_input_shape) >= 4:
+                    # e.g., (Telescopes, H, W, C) -> (Telescopes, C, H, W)
+                    model_input_shape = list(model_input_shape[:-3]) + [model_input_shape[-1], model_input_shape[-3], model_input_shape[-2]]
                 
                 model_net = CTLearnModel.from_name(
                     self.model_type,

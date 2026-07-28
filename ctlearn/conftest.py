@@ -271,11 +271,11 @@ def ctlearn_trained_r1_mono_models(r1_gamma_file, r1_proton_file, tmp_path_facto
             # Run training
             assert run_tool(DLFrameWork(config=config), argv=argv, cwd=tmp_path) == 0
 
-        ctlearn_trained_r1_mono_models[f"{telescope_type}_{reco_task}"] = (
-            output_dir / "ctlearn_model.keras"
-        )
-        # Check that the trained model exists
-        assert ctlearn_trained_r1_mono_models[f"{telescope_type}_{reco_task}"].exists()
+            ctlearn_trained_r1_mono_models[f"{telescope_type}_{reco_task}"] = (
+                output_dir / "ctlearn_model.keras"
+            )
+            # Check that the trained model exists
+            assert ctlearn_trained_r1_mono_models[f"{telescope_type}_{reco_task}"].exists()
     return ctlearn_trained_r1_mono_models
 
 
@@ -356,13 +356,13 @@ def ctlearn_trained_dl1_mono_models(dl1_gamma_file, dl1_proton_file, tmp_path_fa
                     run_tool(DLFrameWork(config=config), argv=argv, cwd=tmp_path) == 0
                 )
 
-            ctlearn_trained_dl1_mono_models[f"{telescope_type}_{reco_task}"] = (
-                output_dir / "ctlearn_model.keras"
-            )
-            # Check that the trained model exists
-            assert ctlearn_trained_dl1_mono_models[
-                f"{telescope_type}_{reco_task}"
-            ].exists()
+                ctlearn_trained_dl1_mono_models[f"{telescope_type}_{reco_task}"] = (
+                    output_dir / "ctlearn_model.keras"
+                )
+                # Check that the trained model exists
+                assert ctlearn_trained_dl1_mono_models[
+                    f"{telescope_type}_{reco_task}"
+                ].exists()
     return ctlearn_trained_dl1_mono_models
 
 
@@ -435,11 +435,11 @@ def ctlearn_trained_dl1_stereo_models(
             # Run training
             assert run_tool(DLFrameWork(config=config), argv=argv, cwd=tmp_path) == 0
 
-        ctlearn_trained_dl1_stereo_models[f"{telescope_type}_{reco_task}"] = (
-            output_dir / "ctlearn_model.keras"
-        )
-        # Check that the trained model exists
-        assert ctlearn_trained_dl1_stereo_models[
-            f"{telescope_type}_{reco_task}"
-        ].exists()
+            ctlearn_trained_dl1_stereo_models[f"{telescope_type}_{reco_task}"] = (
+                output_dir / "ctlearn_model.keras"
+            )
+            # Check that the trained model exists
+            assert ctlearn_trained_dl1_stereo_models[
+                f"{telescope_type}_{reco_task}"
+            ].exists()
     return ctlearn_trained_dl1_stereo_models

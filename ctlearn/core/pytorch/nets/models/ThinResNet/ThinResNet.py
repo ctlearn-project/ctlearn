@@ -99,18 +99,15 @@ class ThinResNet(nn.Module):
         return nn.Sequential(*layers)
 
     def forward(self, x):
-
         energy = None
         classification = None
         direction = None
 
-        # out_1 = F.relu(self.bn1(self.conv1(x)))    
         out = F.relu(self.conv1(x)) 
         out = self.layer1_1(out)
         out = self.layer2_1(out)
         out = self.layer3_1(out)
 
-        # out = self.layer3(out)
         out = self.layer4(out)
         out = self.adaptive_pool(out)
         out_feature = out.view(out.size(0), -1)

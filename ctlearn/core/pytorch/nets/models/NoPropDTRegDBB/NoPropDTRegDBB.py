@@ -113,7 +113,11 @@ class NoPropDTRegDBB(nn.Module):
 
         return self.regress(z)
     
-    def forward(self, x, y):
+    def forward(self, x):
+        if x.shape[1] >= 2:
+            x, y = torch.split(x, [1, x.shape[1]-1], dim=1)
+        else:
+            y = x
 
         if self.task=="direction":
             return None, None, self.inference(x,y)

@@ -187,34 +187,27 @@ def predictions(self):
             peak_time = peak_time.astype(np.float32)
             peak_time = np.log10(peak_time + 1.0)
         
+        # Prepare unified input tensor
+        if len(self.channels) == 2:
+            input_tensor = torch.cat([
+                torch.tensor(imgs).unsqueeze(1),
+                torch.tensor(peak_time).unsqueeze(1)
+            ], dim=1).to(self.device)
+        else:
+            input_tensor = torch.tensor(imgs).unsqueeze(1).to(self.device)
+
         # Run predictions for each configured task
         for task in self.tasks:
             if task == Task.type:
                 # Particle type classification
-                if len(self.channels) == 2:
-                    classification_pred, energy_pred, direction_pred = self.type_model(
-                        torch.tensor(imgs).unsqueeze(1).to(self.device),
-                        torch.tensor(peak_time).unsqueeze(1).to(self.device)
-                    )
-                else:
-                    classification_pred, energy_pred, direction_pred = self.type_model(
-                        torch.tensor(imgs).unsqueeze(1).to(self.device)
-                    )
+                classification_pred, energy_pred, direction_pred = self.type_model(input_tensor)
                 
                 prediction.extend(torch.softmax(classification_pred[0], dim=1).cpu().detach().numpy()[:, 1])
                 classification_fvs.extend(classification_pred[1].cpu().detach().numpy())
                 
             elif task == Task.energy:
                 # Energy estimation
-                if len(self.channels) == 2:
-                    classification_pred, energy_pred, direction_pred = self.energy_model(
-                        torch.tensor(imgs).unsqueeze(1).to(self.device),
-                        torch.tensor(peak_time).unsqueeze(1).to(self.device)
-                    )
-                else:
-                    classification_pred, energy_pred, direction_pred = self.energy_model(
-                        torch.tensor(imgs).unsqueeze(1).to(self.device)
-                    )
+                classification_pred, energy_pred, direction_pred = self.energy_model(input_tensor)
                 
                 energy.extend(energy_pred[0].cpu().detach().numpy())
                 if feature_vector:
@@ -224,15 +217,7 @@ def predictions(self):
 
             elif task in [Task.cameradirection, Task.skydirection, Task.direction]:
                 # Direction reconstruction
-                if len(self.channels) == 2:
-                    classification_pred, energy_pred, direction_pred = self.dirrection_model(
-                        torch.tensor(imgs).unsqueeze(1).to(self.device),
-                        torch.tensor(peak_time).unsqueeze(1).to(self.device)
-                    )
-                else:
-                    classification_pred, energy_pred, direction_pred = self.dirrection_model(
-                        torch.tensor(imgs).unsqueeze(1).to(self.device)
-                    )
+                classification_pred, energy_pred, direction_pred = self.dirrection_model(input_tensor)
                 
                 cam_coord_offset_x.extend(direction_pred[0][:, 0].float().cpu().detach().numpy())
                 cam_coord_offset_y.extend(direction_pred[0][:, 1].float().cpu().detach().numpy())

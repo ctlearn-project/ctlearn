@@ -282,7 +282,11 @@ class TransformerDBB(nn.Module):
             layers.append(block(self.in_channels, out_channels, use_gn=self.use_gn))
         return nn.Sequential(*layers)
 
-    def forward(self, x1, x2):
+    def forward(self, x1):
+        if x1.shape[1] >= 2:
+            x1, x2 = torch.split(x1, [1, x1.shape[1]-1], dim=1)
+        else:
+            x2 = x1
         """
         Forward pass through the dual-backbone transformer network.
         

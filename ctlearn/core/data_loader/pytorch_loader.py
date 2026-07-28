@@ -409,7 +409,6 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         features_out = {}
         features_out["image"] = image
         features_out["peak_time"] = peak_time
-
         for key in features["hillas"].keys():
             features["hillas"][key] = (
                 torch.from_numpy(np.array(features["hillas"][key]))
@@ -516,8 +515,12 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
         image = np.transpose(image, (0, 3, 1, 2))
         peak_time = np.transpose(peak_time, (0, 3, 1, 2))
         
+        if len(peak_time.shape) > 0 and peak_time.size > 0:
+            image = np.concatenate([image, peak_time], axis=1)
+        
         features_out["image"] = torch.from_numpy(image.copy()).contiguous().float()
-        features_out["peak_time"] = torch.from_numpy(peak_time.copy()).contiguous().float()
+        if "peak_time" in features_out:
+            del features_out["peak_time"]
         
         #Create keep_idx based on configurable leakage and intensity cutoffs
         hillas = features["hillas"]
@@ -694,11 +697,13 @@ class PyTorchDLDataLoader(Dataset, BaseDLDataLoader):
             image, peak_time = self.normalize_data(image, peak_time, active_task)
             
             image = np.transpose(image, (0, 3, 1, 2))
-            peak_time = np.transpose(peak_time, (0, 3, 1, 2))
+            
+            if len(peak_time.shape) > 0:
+                peak_time = np.transpose(peak_time, (0, 3, 1, 2))
+                image = np.concatenate([image, peak_time], axis=1)
 
         features_out = {}
         features_out["image"] = torch.from_numpy(image.copy()).contiguous().float()
-        features_out["peak_time"] = torch.from_numpy(peak_time.copy()).contiguous().float()
         
         # Convert labels to PyTorch tensors
         for key in labels.keys():

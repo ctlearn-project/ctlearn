@@ -350,7 +350,11 @@ class DBBNoPropDTReg(nn.Module):
         # Generate final prediction from clean embedding
         return self.regress(z)
     
-    def forward(self, x, y):
+    def forward(self, x):
+        if x.shape[1] >= 2:
+            x, y = torch.split(x, [1, x.shape[1]-1], dim=1)
+        else:
+            y = x
         """
         Forward pass through the model.
         

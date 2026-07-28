@@ -111,18 +111,9 @@ def predict_with_model_pytorch(self, task):
                 continue
             
             # Forward pass through the model
-            # Handle both single-input and dual-input models
-            if num_inputs == 2:
-                # Model expects both image and peak time
-                classification_pred, energy_pred, direction_pred = model(
-                    x[0]['image'].to(self.device),
-                    x[0]['peak_time'].to(self.device)
-                )
-            else:
-                # Model expects only image
-                classification_pred, energy_pred, direction_pred = model(
-                    x[0]['image'].to(self.device)
-                )
+            classification_pred, energy_pred, direction_pred = model(
+                x[0]['image'].to(self.device)
+            )
             
             # Collect particle type classification predictions
             if classification_pred[0] is not None:

@@ -223,7 +223,11 @@ class DBBRegNet(nn.Module):
         # Final task-specific prediction layer
         self.fc = nn.Linear(num_features, num_classes)
 
-    def forward(self, x, y):
+    def forward(self, x):
+        if x.shape[1] >= 2:
+            x, y = torch.split(x, [1, x.shape[1]-1], dim=1)
+        else:
+            y = x
         """
         Forward pass through the dual-backbone network.
         

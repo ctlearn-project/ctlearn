@@ -336,8 +336,8 @@ class CTLearnPL(pl.LightningModule):
         self.optimizer_type = str(parameters["hyp"]["optimizer"]).lower()
         self.l2_lambda = float(parameters["hyp"]["l2_lambda"])
     # ----------------------------------------------------------------------------------------------------------
-    def forward(self, x, y):
-        return self.model(x, y)
+    def forward(self, x):
+        return self.model(x)
     # ----------------------------------------------------------------------------------------------------------
     def save_checkpoint(self, save_folder, metric_value, filename_prefix, is_loss=True):
         """Save checkpoint and manage top k checkpoints for loss or accuracy."""
@@ -846,14 +846,7 @@ class CTLearnPL(pl.LightningModule):
             # Predictions based on one backbone or two back bones
             # ------------------------------------------------------------------
             if not self.is_difussion:
-                if self.num_inputs == 2:
-                    peak_time = features["peak_time"]
-                    peak_time = peak_time.to(self.device)
-                    classification_pred, energy_pred, direction_pred = self.model(
-                        imgs, peak_time
-                    )
-                else:
-                    classification_pred, energy_pred, direction_pred = self.model(imgs)
+                classification_pred, energy_pred, direction_pred = self.model(imgs)
 
             # ------------------------------------------------------------------
             # Particle type
@@ -1138,13 +1131,7 @@ class CTLearnPL(pl.LightningModule):
             # Predictions based on one backbone or two back bones
             # ------------------------------------------------------------------
             if not self.is_difussion:
-                if self.num_inputs == 2:
-                    peak_time = features["peak_time"]
-                    classification_pred, energy_pred, direction_pred = self.model(
-                        imgs, peak_time
-                    )
-                else:
-                    classification_pred, energy_pred, direction_pred = self.model(imgs)                
+                classification_pred, energy_pred, direction_pred = self.model(imgs)
             # ------------------------------------------------------------------
             # Compute Loss functions based on different tasks
             # ------------------------------------------------------------------

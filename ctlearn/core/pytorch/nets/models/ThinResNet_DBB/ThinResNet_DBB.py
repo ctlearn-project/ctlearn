@@ -130,7 +130,11 @@ class ThinResNet_DBB(nn.Module):
         fused_features = self.dropout(out_feature) 
         return fused_features
     
-    def forward(self, x, y):
+    def forward(self, x):
+        if x.shape[1] >= 2:
+            x, y = torch.split(x, [1, x.shape[1]-1], dim=1)
+        else:
+            y = x
 
         energy = None
         classification = None
