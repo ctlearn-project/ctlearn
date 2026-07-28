@@ -2,16 +2,12 @@ import pandas as pd
 import pytest
 import shutil
 
-pytest.importorskip("tensorflow")
-from unittest import mock
-
 from ctapipe.core import run_tool
-from ctlearn.tools import DLFrameWork
+from ctlearn.conftest import TRAINING_TOOLS, MODEL_FILE_FORMATS
 
-
+@pytest.mark.parametrize("model", ["KerasSingleCNN", "KerasResNet"])
 @pytest.mark.parametrize("reco_task", ["type", "energy", "cameradirection"])
-@mock.patch("ctapipe.instrument.SubarrayDescription.__eq__", return_value=True)
-def test_train_ctlearn_model(mock_eq, reco_task, dl1_gamma_file, dl1_proton_file, tmp_path):
+def test_train_ctlearn_model(model, reco_task, dl1_gamma_file, dl1_proton_file, tmp_path):
     """
     Test training CTLearn model using the DL1 gamma and proton files for all reconstruction tasks.
     Each test run gets its own isolated temp directories.
@@ -44,37 +40,44 @@ def test_train_ctlearn_model(mock_eq, reco_task, dl1_gamma_file, dl1_proton_file
         f"--DLImageReader.allowed_tels={allowed_tels}",
     ]
 
+    # Include background only for classification task
     if reco_task == "type":
         argv.extend(
             [
                 f"--background={background_dir}",
                 "--pattern-background=*.dl1.h5",
+                "--DLImageReader.enforce_subarray_equality=False",
             ]
         )
 
-    # Run training
-    assert run_tool(DLFrameWork(), argv=argv, cwd=tmp_path) == 0
+    if model.startswith("Keras"):
+        framework = "Keras"
+    elif model.startswith("PyTorch"):
+        framework = "PyTorch"
 
+    argv.append(f"--TrainCTLearn{framework}Model.model_type={model}")
+    assert run_tool(TRAINING_TOOLS[framework](), argv=argv, cwd=tmp_path) == 0
     # --- Additional checks ---
     # Check that the trained model exists
-    model_file = output_dir / "ctlearn_model.keras"
+    model_file = output_dir / f"ctlearn_model.{MODEL_FILE_FORMATS[framework]}"
     assert model_file.exists(), f"Trained model file not found for {reco_task}"
-    # Check training_log.csv exists
-    log_file = output_dir / "training_log.csv"
-    assert log_file.exists(), f"Training log file not found for {reco_task}"
-    # Read CSV and verify number of epochs
-    log_df = pd.read_csv(log_file)
-    num_epochs_logged = log_df.shape[0]
-    assert (
-        num_epochs_logged == 2
-    ), f"Expected two epochs, found {num_epochs_logged} for {reco_task}"
-    # Check that val_loss column exists
-    assert (
-        "val_loss" in log_df.columns
-    ), f"'val_loss' column missing in training_log.csv for {reco_task}"
-    val_loss = log_df["val_loss"].dropna()
-    assert not val_loss.empty, f"'val_loss' column is empty for {reco_task}"
-    assert ((val_loss >= 0.0) & (val_loss <= 1.0)).all(), (
-        f"'val_loss' values out of range [0.0, 1.0] for {reco_task}: "
-        f"{val_loss.tolist()}"
-    )
+    if framework == "Keras":
+        # Check training_log.csv exists
+        log_file = output_dir / "training_log.csv"
+        assert log_file.exists(), f"Training log file not found for {reco_task}"
+        # Read CSV and verify number of epochs
+        log_df = pd.read_csv(log_file)
+        num_epochs_logged = log_df.shape[0]
+        assert (
+            num_epochs_logged == 2
+        ), f"Expected two epochs, found {num_epochs_logged} for {reco_task}"
+        # Check that val_loss column exists
+        assert (
+            "val_loss" in log_df.columns
+        ), f"'val_loss' column missing in training_log.csv for {reco_task}"
+        val_loss = log_df["val_loss"].dropna()
+        assert not val_loss.empty, f"'val_loss' column is empty for {reco_task}"
+        assert ((val_loss >= 0.0) & (val_loss <= 1.0)).all(), (
+            f"'val_loss' values out of range [0.0, 1.0] for {reco_task}: "
+            f"{val_loss.tolist()}"
+        )
