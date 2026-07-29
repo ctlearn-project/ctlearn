@@ -203,7 +203,7 @@ class PyTorchResNetModel(nn.Module):
             head_layers = {
                 "type": [512, 256, num_outputs],
                 "energy": [512, 256, 1],
-                "direction": [512, 256, 2],
+                "direction": [512, 256, 3],
             }
         
         if head_activation_function is None:

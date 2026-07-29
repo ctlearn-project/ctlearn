@@ -37,8 +37,8 @@ class CTLearnModel(Component):
         default_value={
             "type": [512, 256, 2],
             "energy": [512, 256, 1],
-            "cameradirection": [512, 256, 2],
-            "skydirection": [512, 256, 2],
+            "cameradirection": [512, 256, 3],
+            "skydirection": [512, 256, 3],
         },
         allow_none=False,
         help=(
