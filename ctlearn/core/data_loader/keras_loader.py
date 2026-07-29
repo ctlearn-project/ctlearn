@@ -228,6 +228,7 @@ class KerasDLDataLoader(Sequence, BaseDLDataLoader):
                 (
                     batch["fov_lon"].data,
                     batch["fov_lat"].data,
+                    batch["angular_separation"].data,
                 ),
                 axis=1,
             )
@@ -239,6 +240,7 @@ class KerasDLDataLoader(Sequence, BaseDLDataLoader):
                 (
                     batch["cam_coord_offset_x"].data,
                     batch["cam_coord_offset_y"].data,
+                    batch["cam_coord_distance"].data,
                 ),
                 axis=1,
             )
@@ -357,11 +359,13 @@ class KerasDLDataLoader(Sequence, BaseDLDataLoader):
             if "skydirection" in self.tasks:
                 fov_lon.append(group_element["fov_lon"].data[0])
                 fov_lat.append(group_element["fov_lat"].data[0])
+                angular_separation.append(group_element["angular_separation"].data[0])
             
             # Camera direction reconstruction
             if "cameradirection" in self.tasks:
                 cam_coord_offset_x.append(group_element["cam_coord_offset_x"].data)
                 cam_coord_offset_y.append(group_element["cam_coord_offset_y"].data)
+                cam_coord_distance.append(group_element["cam_coord_distance"].data)
         
         # Format labels for each task
         if "type" in self.tasks:
@@ -386,6 +390,7 @@ class KerasDLDataLoader(Sequence, BaseDLDataLoader):
                 (
                     np.array(fov_lon),
                     np.array(fov_lat),
+                    np.array(angular_separation),
                 ),
                 axis=1,
             )
@@ -396,6 +401,7 @@ class KerasDLDataLoader(Sequence, BaseDLDataLoader):
                 (
                     np.array(cam_coord_offset_x),
                     np.array(cam_coord_offset_y),
+                    np.array(cam_coord_distance),
                 ),
                 axis=1,
             )
