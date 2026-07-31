@@ -43,7 +43,7 @@ def test_train_ctlearn_model(framework, model, reco_task, dl1_gamma_file, dl1_pr
         assert model_file.exists(), f"Trained {framework} mono model file not found for {key}"
 
     # Output directory for trained model
-    output_dir = tmp_path / f"ctlearn_{reco_task}"
+    output_dir = tmp_path / f"ctlearn_{framework}_{model}_{reco_task}"
 
     # Build command-line arguments
     argv = [
