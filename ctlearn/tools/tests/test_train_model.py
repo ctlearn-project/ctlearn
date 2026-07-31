@@ -6,13 +6,18 @@ from ctapipe.core import run_tool
 from ctlearn.conftest import TRAINING_TOOLS, MODEL_FILE_FORMATS
 
 @pytest.mark.parametrize("framework", ["Keras"])
-@pytest.mark.parametrize("model", ["SingleCNN", "ResNet"])
+@pytest.mark.parametrize("model", ["SingleCNN", "ResNet", "LoadedModel"])
 @pytest.mark.parametrize("reco_task", ["type", "energy", "cameradirection"])
-def test_train_ctlearn_model(framework, model, reco_task, dl1_gamma_file, dl1_proton_file, tmp_path):
+def test_train_ctlearn_model(framework, model, reco_task, dl1_gamma_file, dl1_proton_file, ctlearn_trained_dl1_mono_models, tmp_path):
     """
     Test training CTLearn model using the DL1 gamma and proton files for all reconstruction tasks.
     Each test run gets its own isolated temp directories.
     """
+
+    # Restrict to MST array
+    telescope_type = "MST"
+    allowed_tels = [7, 13, 15, 16, 17, 19]
+
     # Temporary directories for signal and background
     signal_dir = tmp_path / "gamma_dl1"
     signal_dir.mkdir(parents=True, exist_ok=True)
@@ -25,9 +30,20 @@ def test_train_ctlearn_model(framework, model, reco_task, dl1_gamma_file, dl1_pr
     # Hardcopy DL1 proton file to the background directory
     shutil.copy(dl1_proton_file, background_dir)
 
+    # Hardcopy the trained models to the model directory
+    if model == "LoadedModel":
+        model_dir = tmp_path / "pretrained_model"
+        model_dir.mkdir(parents=True, exist_ok=True)
+        key = f"{framework}_{telescope_type}_{reco_task}"
+        shutil.copy(
+            ctlearn_trained_dl1_mono_models[key],
+            model_dir / f"ctlearn_mono_model_{key}.{MODEL_FILE_FORMATS[framework]}",
+        )
+        model_file = model_dir / f"ctlearn_mono_model_{key}.{MODEL_FILE_FORMATS[framework]}"
+        assert model_file.exists(), f"Trained {framework} mono model file not found for {key}"
+
     # Output directory for trained model
     output_dir = tmp_path / f"ctlearn_{reco_task}"
-    allowed_tels = [7, 13, 15, 16, 17, 19]
 
     # Build command-line arguments
     argv = [
@@ -52,6 +68,8 @@ def test_train_ctlearn_model(framework, model, reco_task, dl1_gamma_file, dl1_pr
         )
 
     argv.append(f"--TrainCTLearnModel.model_type={model}")
+    if model == "LoadedModel":
+        argv.append(f"--LoadedModel.load_model_from={model_file}")
     assert run_tool(TRAINING_TOOLS[framework](), argv=argv, cwd=tmp_path) == 0
     # --- Additional checks ---
     # Check that the trained model exists

@@ -99,9 +99,6 @@ class TrainCTLearnKerasModel(TrainCTLearnModel):
 	)
     ).tag(config=True)
 
-    #aliases = {
-    #    **TrainCTLearnModel.aliases,  
-    #}	
 
     def setup_framework(self):
         # Create a MirroredStrategy.
