@@ -37,7 +37,6 @@ class TrainCTLearnKerasModel(TrainCTLearnModel):
     examples = """
     To train a Keras-based CTLearn model for the classification of the primary particle type:
     > ctlearn-train-keras-model \\
-        --TrainCTLearnModel.model_type=KerasResNet \\
         --signal /path/to/your/gammas_dl1_dir/ \\
         --pattern-signal "gamma_*_run1.dl1.h5" \\
         --pattern-signal "gamma_*_run10.dl1.h5" \\
@@ -59,7 +58,6 @@ class TrainCTLearnKerasModel(TrainCTLearnModel):
     To train a Keras-based CTLearn model for the regression of the primary particle
     arrival direction based on the offsets in camera coordinates:
     > ctlearn-train-keras-model \\
-        --TrainCTLearnModel.model_type=KerasResNet \\
         --signal /path/to/your/gammas_dl1_dir/ \\
         --pattern-signal "gamma_*_run1.dl1.h5" \\
         --pattern-signal "gamma_*_run10.dl1.h5" \\
@@ -69,7 +67,6 @@ class TrainCTLearnKerasModel(TrainCTLearnModel):
     To train a Keras-based CTLearn model for the regression of the primary particle
     arrival direction based on the offsets in sky coordinates:
     > ctlearn-train-keras-model \\
-        --TrainCTLearnModel.model_type=KerasResNet \\
         --signal /path/to/your/gammas_dl1_dir/ \\
         --pattern-signal "gamma_*_run1.dl1.h5" \\
         --pattern-signal "gamma_*_run10.dl1.h5" \\
@@ -77,12 +74,6 @@ class TrainCTLearnKerasModel(TrainCTLearnModel):
         --reco skydirection \\
     """
 
-    model_type = CaselessStrEnum(
-        ["KerasSingleCNN", "KerasResNet", "KerasLoadedModel"],
-        default_value="KerasResNet",
-        allow_none=False,
-        help="Keras-based model type to be used.",
-    ).tag(config=True)
 
     save_best_validation_only = Bool(
         default_value=True,
@@ -202,7 +193,7 @@ class TrainCTLearnKerasModel(TrainCTLearnModel):
             # Construct the model
             self.log.info("Setting up the model.")
             self.model = CTLearnModel.from_name(
-                self.model_type,
+                f"Keras{self.model_type}",
                 input_shape=self.training_loader.input_shape,
                 tasks=self.reco_tasks,
                 parent=self,

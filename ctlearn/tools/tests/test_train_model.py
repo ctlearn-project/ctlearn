@@ -5,9 +5,10 @@ import shutil
 from ctapipe.core import run_tool
 from ctlearn.conftest import TRAINING_TOOLS, MODEL_FILE_FORMATS
 
-@pytest.mark.parametrize("model", ["KerasSingleCNN", "KerasResNet"])
+@pytest.mark.parametrize("framework", ["Keras"])
+@pytest.mark.parametrize("model", ["SingleCNN", "ResNet"])
 @pytest.mark.parametrize("reco_task", ["type", "energy", "cameradirection"])
-def test_train_ctlearn_model(model, reco_task, dl1_gamma_file, dl1_proton_file, tmp_path):
+def test_train_ctlearn_model(framework, model, reco_task, dl1_gamma_file, dl1_proton_file, tmp_path):
     """
     Test training CTLearn model using the DL1 gamma and proton files for all reconstruction tasks.
     Each test run gets its own isolated temp directories.
@@ -50,12 +51,7 @@ def test_train_ctlearn_model(model, reco_task, dl1_gamma_file, dl1_proton_file, 
             ]
         )
 
-    if model.startswith("Keras"):
-        framework = "Keras"
-    elif model.startswith("PyTorch"):
-        framework = "PyTorch"
-
-    argv.append(f"--TrainCTLearn{framework}Model.model_type={model}")
+    argv.append(f"--TrainCTLearnModel.model_type={model}")
     assert run_tool(TRAINING_TOOLS[framework](), argv=argv, cwd=tmp_path) == 0
     # --- Additional checks ---
     # Check that the trained model exists

@@ -273,10 +273,7 @@ def ctlearn_trained_r1_mono_models(r1_gamma_file, r1_proton_file, tmp_path_facto
 
         # Run training tools
         for framework, training_tool in TRAINING_TOOLS.items():
-            framework_argv = argv.copy()
-            framework_argv.append(f"--TrainCTLearn{framework}Model.model_type={framework}ResNet")
-            assert run_tool(training_tool(config=config), argv=framework_argv, cwd=tmp_path) == 0
-
+            assert run_tool(training_tool(config=config), argv=argv, cwd=tmp_path) == 0
             ctlearn_trained_r1_mono_models[f"{framework}_{telescope_type}_{reco_task}"] = (
                 output_dir / f"ctlearn_model.{MODEL_FILE_FORMATS[framework]}"
             )
@@ -359,9 +356,7 @@ def ctlearn_trained_dl1_mono_models(dl1_gamma_file, dl1_proton_file, tmp_path_fa
 
             # Run training tools
             for framework, training_tool in TRAINING_TOOLS.items():
-                framework_argv = argv.copy()
-                framework_argv.append(f"--TrainCTLearn{framework}Model.model_type={framework}ResNet")
-                assert run_tool(training_tool(config=config), argv=framework_argv, cwd=tmp_path) == 0
+                assert run_tool(training_tool(config=config), argv=argv, cwd=tmp_path) == 0
             ctlearn_trained_dl1_mono_models[f"{framework}_{telescope_type}_{reco_task}"] = (
                 output_dir / f"ctlearn_model.{MODEL_FILE_FORMATS[framework]}"
             )
@@ -440,9 +435,7 @@ def ctlearn_trained_dl1_stereo_models(
 
         # Run training tools
         for framework, training_tool in TRAINING_TOOLS.items():
-            framework_argv = argv.copy()
-            framework_argv.append(f"--TrainCTLearn{framework}Model.model_type={framework}ResNet")
-            assert run_tool(training_tool(config=config), argv=framework_argv, cwd=tmp_path) == 0
+            assert run_tool(training_tool(config=config), argv=argv, cwd=tmp_path) == 0
             ctlearn_trained_dl1_stereo_models[f"{framework}_{telescope_type}_{reco_task}"] = (
                 output_dir / f"ctlearn_model.{MODEL_FILE_FORMATS[framework]}"
             )

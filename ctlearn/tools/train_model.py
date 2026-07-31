@@ -84,7 +84,15 @@ class TrainCTLearnModel(Tool):
         ),
     ).tag(config=True)
 
-    #model_type = ComponentName(CTLearnModel, default_value="KerasResNet").tag(config=True)
+    model_type = CaselessStrEnum(
+        ["SingleCNN", "ResNet", "LoadedModel"],
+        default_value="ResNet",
+        allow_none=False,
+        help=(
+            "Model type to be used in the Keras or PyTorch framework. "
+            "The framework is determined by the inherited tools being used."
+        ),
+    ).tag(config=True)
 
     output_dir = Path(
         exits=False,
