@@ -5,7 +5,7 @@ import shutil
 from ctapipe.core import run_tool
 from ctlearn.conftest import TRAINING_TOOLS, MODEL_FILE_FORMATS
 
-@pytest.mark.parametrize("framework", ["Keras"])
+@pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
 @pytest.mark.parametrize("model", ["SingleCNN", "ResNet", "LoadedModel"])
 @pytest.mark.parametrize("reco_task", ["type", "energy", "cameradirection"])
 def test_train_ctlearn_model(framework, model, reco_task, dl1_gamma_file, dl1_proton_file, ctlearn_trained_dl1_mono_models, tmp_path):

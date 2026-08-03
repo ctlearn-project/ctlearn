@@ -22,6 +22,7 @@ from ctapipe.core.traits import (
 )
 from ctlearn import __version__ as ctlearn_version
 from ctlearn.core.model import CTLearnModel
+from ctlearn.utils import validate_trait_dict
 from dl1_data_handler.reader import DLDataReader
 
 
@@ -155,6 +156,30 @@ class TrainCTLearnModel(Tool):
         ),
     ).tag(config=True)
 
+    save_best_validation_only = Bool(
+        default_value=True,
+        allow_none=False,
+        help="Set whether to save the best validation checkpoint only.",
+    ).tag(config=True)
+
+    lr_reducing = Dict(
+        default_value={"factor": 0.5, "patience": 5, "min_delta": 0.01, "min_lr": 0.000001},
+        allow_none=True,
+	help=(
+	    "Learning rate reducing parameters for the Keras callback or the PyTorch scheduler. "
+	    "E.g. {'factor': 0.5, 'patience': 5, 'min_delta': 0.01, 'min_lr': 0.000001}. "
+	)
+    ).tag(config=True)
+
+    early_stopping = Dict(
+        default_value=None,
+        allow_none=True,
+	help=(
+	    "Early stopping parameters for the Keras callback or the PyTorch scheduler. "
+	    "E.g. {'monitor': 'val_loss', 'patience': 4, 'verbose': 1, 'restore_best_weights': True}. "
+	)
+    ).tag(config=True)
+
     aliases = {
         "signal": "TrainCTLearnModel.input_dir_signal",
         "background": "TrainCTLearnModel.input_dir_background",
@@ -247,6 +272,23 @@ class TrainCTLearnModel(Tool):
         )
         self.training_indices = self.indices[self.n_validation_examples:]
         self.validation_indices = self.indices[:self.n_validation_examples]
+
+        # Validate the optimizer parameters
+        validate_trait_dict(self.optimizer, ["name", "base_learning_rate"])
+        self.learning_rate = self.optimizer["base_learning_rate"]
+        self.adam_epsilon = self.optimizer.get("adam_epsilon", 1e-8)
+
+        # Validate the learning rate reducing parameters
+        if self.lr_reducing is not None:
+            validate_trait_dict(
+                self.lr_reducing, ["factor", "patience", "min_delta", "min_lr"]
+            )
+        # Validate the early stopping parameters
+        if self.early_stopping is not None:
+            validate_trait_dict(
+                self.early_stopping,
+                ["monitor", "patience", "verbose", "restore_best_weights"],
+            )
 
         # Set up framework-specific training tool
         self.setup_framework()

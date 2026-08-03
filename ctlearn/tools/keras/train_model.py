@@ -6,15 +6,9 @@ import atexit
 import tensorflow as tf
 import keras
 
-from ctapipe.core.traits import (
-    Bool,
-    CaselessStrEnum,
-    Dict,
-)
-from ctlearn.core.keras.loader import KerasDataLoader
-from ctlearn.tools.train_model import TrainCTLearnModel
+from ctlearn.core.keras.sequence import KerasSequence
 from ctlearn.core.model import CTLearnModel
-from ctlearn.utils import validate_trait_dict
+from ctlearn.tools.train_model import TrainCTLearnModel
 
 
 class TrainCTLearnKerasModel(TrainCTLearnModel):
@@ -48,7 +42,6 @@ class TrainCTLearnKerasModel(TrainCTLearnModel):
 
     To train a Keras-based CTLearn model for the regression of the primary particle energy:
     > ctlearn-train-keras-model \\
-        --TrainCTLearnModel.model_type=KerasResNet \\
         --signal /path/to/your/gammas_dl1_dir/ \\
         --pattern-signal "gamma_*_run1.dl1.h5" \\
         --pattern-signal "gamma_*_run10.dl1.h5" \\
@@ -74,32 +67,6 @@ class TrainCTLearnKerasModel(TrainCTLearnModel):
         --reco skydirection \\
     """
 
-
-    save_best_validation_only = Bool(
-        default_value=True,
-        allow_none=False,
-        help="Set whether to save the best validation checkpoint only.",
-    ).tag(config=True)
-
-    lr_reducing = Dict(
-        default_value={"factor": 0.5, "patience": 5, "min_delta": 0.01, "min_lr": 0.000001},
-        allow_none=True,
-	help=(
-	    "Learning rate reducing parameters for the Keras callback. "
-	    "E.g. {'factor': 0.5, 'patience': 5, 'min_delta': 0.01, 'min_lr': 0.000001}. "
-	)
-    ).tag(config=True)
-
-    early_stopping = Dict(
-        default_value=None,
-        allow_none=True,
-	help=(
-	    "Early stopping parameters for the Keras callback. "
-	    "E.g. {'monitor': 'val_loss', 'patience': 4, 'verbose': 1, 'restore_best_weights': True}. "
-	)
-    ).tag(config=True)
-
-
     def setup_framework(self):
         # Create a MirroredStrategy.
         self.strategy = tf.distribute.MirroredStrategy()
@@ -107,18 +74,18 @@ class TrainCTLearnKerasModel(TrainCTLearnModel):
         self.log.info("Number of devices: %s", self.strategy.num_replicas_in_sync)
 
         # Init the DLDataLoader for the 
-        self.training_loader = KerasDataLoader(
-            self.dl1dh_reader,
-            self.training_indices,
+        self.training_loader = KerasSequence(
+            DLDataReader=self.dl1dh_reader,
+            indices=self.training_indices,
             tasks=self.reco_tasks,
             batch_size=self.batch_size * self.strategy.num_replicas_in_sync,
             random_seed=self.random_seed,
             sort_by_intensity=self.sort_by_intensity,
             stack_telescope_images=self.stack_telescope_images,
         )
-        self.validation_loader = KerasDataLoader(
-            self.dl1dh_reader,
-            self.validation_indices,
+        self.validation_loader = KerasSequence(
+            DLDataReader=self.dl1dh_reader,
+            indices=self.validation_indices,
             tasks=self.reco_tasks,
             batch_size=self.batch_size * self.strategy.num_replicas_in_sync,
             random_seed=self.random_seed,
@@ -154,10 +121,6 @@ class TrainCTLearnKerasModel(TrainCTLearnModel):
 
         if self.early_stopping is not None:
             # EarlyStopping callback
-            validate_trait_dict(
-                self.early_stopping,
-                ["monitor", "patience", "verbose", "restore_best_weights"],
-            )
             early_stopping_callback = keras.callbacks.EarlyStopping(
                 monitor=self.early_stopping["monitor"],
                 patience=self.early_stopping["patience"],
@@ -168,10 +131,6 @@ class TrainCTLearnKerasModel(TrainCTLearnModel):
 
         # Learning rate reducing callback
         if self.lr_reducing is not None:
-            # Validate the learning rate reducing parameters
-            validate_trait_dict(
-                self.lr_reducing, ["factor", "patience", "min_delta", "min_lr"]
-            )
             lr_reducing_callback = keras.callbacks.ReduceLROnPlateau(
                 monitor=monitor,
                 factor=self.lr_reducing["factor"],
@@ -188,49 +147,31 @@ class TrainCTLearnKerasModel(TrainCTLearnModel):
         # Open a strategy scope.
         with self.strategy.scope():
             # Construct the model
-            self.log.info("Setting up the model.")
+            self.log.info("Setting up the Keras model.")
             self.model = CTLearnModel.from_name(
                 f"Keras{self.model_type}",
                 input_shape=self.training_loader.input_shape,
                 tasks=self.reco_tasks,
                 parent=self,
             ).model
-            # Validate the optimizer parameters
-            validate_trait_dict(self.optimizer, ["name", "base_learning_rate"])
-            # Set the learning rate for the optimizer
-            learning_rate = self.optimizer["base_learning_rate"]
-            # Set the epsilon for the Adam optimizer
-            adam_epsilon = None
-            if self.optimizer["name"] == "Adam":
-                # Validate the epsilon for the Adam optimizer
-                validate_trait_dict(self.optimizer, ["adam_epsilon"])
-                # Set the epsilon for the Adam optimizer
-                adam_epsilon = self.optimizer["adam_epsilon"]
+
             # Select optimizer with appropriate arguments
-            # Dict of optimizer_name: (optimizer_fn, optimizer_args)
             optimizers = {
-                "Adadelta": (
-                    keras.optimizers.Adadelta,
-                    dict(learning_rate=learning_rate),
+                "Adadelta": lambda: keras.optimizers.Adadelta(learning_rate=self.learning_rate),
+                "Adam": lambda: keras.optimizers.Adam(
+                    learning_rate=self.learning_rate, epsilon=self.adam_epsilon
                 ),
-                "Adam": (
-                    keras.optimizers.Adam,
-                    dict(learning_rate=learning_rate, epsilon=adam_epsilon),
-                ),
-                "RMSProp": (
-                    keras.optimizers.RMSprop,
-                    dict(learning_rate=learning_rate),
-                ),
-                "SGD": (keras.optimizers.SGD, dict(learning_rate=learning_rate)),
+                "RMSProp": lambda: keras.optimizers.RMSprop(learning_rate=self.learning_rate),
+                "SGD": lambda: keras.optimizers.SGD(learning_rate=self.learning_rate),
             }
-            # Get the optimizer function and arguments
-            optimizer_fn, optimizer_args = optimizers[self.optimizer["name"]]
+            self.opt = optimizers[self.optimizer["name"]]()
+           
             # Get the losses and metrics for the model
             losses, metrics = self._get_losses_and_mertics(self.reco_tasks)
             # Compile the model
             self.log.info("Compiling CTLearn model.")
             self.model.compile(
-                optimizer=optimizer_fn(**optimizer_args), loss=losses, metrics=metrics
+                optimizer=self.opt, loss=losses, metrics=metrics
             )
 
         # Train and evaluate the model

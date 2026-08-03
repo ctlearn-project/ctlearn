@@ -3,7 +3,6 @@ This module defines the ``CTLearnModel`` classes, which holds the basic function
 """
 
 from abc import abstractmethod
-import keras
 
 from ctapipe.core import Component
 from ctapipe.core.traits import Bool, Int, CaselessStrEnum, List, Dict, Unicode, Path
@@ -37,8 +36,8 @@ class CTLearnModel(Component):
         default_value={
             "type": [512, 256, 2],
             "energy": [512, 256, 1],
-            "cameradirection": [512, 256, 3],
-            "skydirection": [512, 256, 3],
+            "cameradirection": [512, 256, 2],
+            "skydirection": [512, 256, 2],
         },
         allow_none=False,
         help=(
