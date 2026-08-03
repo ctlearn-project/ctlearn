@@ -246,14 +246,10 @@ def ctlearn_trained_r1_mono_models(r1_gamma_file, r1_proton_file, tmp_path_facto
     # Loop over reconstruction tasks and train models for each combination
     ctlearn_trained_r1_mono_models = {}
     for reco_task in ["type", "energy", "cameradirection"]:
-        # Output directory for trained model
-        output_dir = tmp_path / f"ctlearn_{telescope_type}_{reco_task}"
-
         # Build command-line arguments
         argv = [
             f"--signal={signal_dir}",
             "--pattern-signal=*.r1.h5",
-            f"--output={output_dir}",
             f"--reco={reco_task}",
             "--TrainCTLearnModel.n_epochs=1",
             "--TrainCTLearnModel.batch_size=2",
@@ -274,7 +270,10 @@ def ctlearn_trained_r1_mono_models(r1_gamma_file, r1_proton_file, tmp_path_facto
 
         # Run training tools
         for framework, training_tool in TRAINING_TOOLS.items():
-            assert run_tool(training_tool(config=config), argv=argv, cwd=tmp_path) == 0
+            framework_argv = argv.copy()
+            output_dir = tmp_path / f"ctlearn_{framework}_{telescope_type}_{reco_task}"
+            framework_argv.append(f"--output={output_dir}")
+            assert run_tool(training_tool(config=config), argv=framework_argv, cwd=tmp_path) == 0
             ctlearn_trained_r1_mono_models[f"{framework}_{telescope_type}_{reco_task}"] = (
                 output_dir / f"ctlearn_model.{MODEL_FILE_FORMATS[framework]}"
             )
