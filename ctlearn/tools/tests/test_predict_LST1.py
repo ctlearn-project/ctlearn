@@ -53,9 +53,9 @@ def test_predict_mono_model_with_lst1_mock_data(
         key = f"{framework}_{telescope_type}_{reco_task}"
         shutil.copy(
             ctlearn_trained_dl1_mono_models[key],
-            model_dir / f"ctlearn_mono_model_{key}.keras",
+            model_dir / f"ctlearn_mono_model_{key}.{MODEL_FILE_FORMATS[framework]}",
         )
-        model_file = model_dir / f"ctlearn_mono_model_{key}.keras"
+        model_file = model_dir / f"ctlearn_mono_model_{key}.{MODEL_FILE_FORMATS[framework]}"
         assert model_file.exists(), f"Trained mono model file not found for {key}"
 
     # Check that the mock LST1 DL1 file was created
