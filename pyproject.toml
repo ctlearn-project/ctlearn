@@ -42,7 +42,7 @@ dependencies = [
     "setuptools",
     "tensorboard",
     "tensorflow>=2.16",
-    "torch>=2.2.0",
+    "torch>=2.4.0",
     "torchvision",
     "torchmetrics",
     "opencv-python",
@@ -87,7 +87,8 @@ repository = "https://github.com/ctlearn-project/ctlearn"
 documentation = "https://ctlearn.readthedocs.io/en/latest/"
 
 [project.scripts]
-ctlearn-train-model = "ctlearn.tools.train_model:main"
+ctlearn-train-keras-model = "ctlearn.tools.keras.train_model:main"
+ctlearn-train-pytorch-model = "ctlearn.tools.pytorch.train_model:main"
 ctlearn-predict-mono-model = "ctlearn.tools.predict.predict_mono:main"
 ctlearn-predict-stereo-model = "ctlearn.tools.predict_stereo:main"
 ctlearn-predict-LST1= "ctlearn.tools.predict_LST1:main"

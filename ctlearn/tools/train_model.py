@@ -1,274 +1,302 @@
-import sys
-import os
-import warnings
+"""
+Base tool to train a ``CTLearnModel``on R1/DL1a data using the ``DLDataReader`` and ``DLDataLoader``.
+"""
 
-is_debug = '--debug' in sys.argv or any(arg.startswith('--log-level=DEBUG') for arg in sys.argv)
-if not is_debug:
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-    os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
-    os.environ['NCCL_DEBUG'] = 'WARN'
-    warnings.filterwarnings("ignore", category=UserWarning)
-    warnings.filterwarnings("ignore", ".*NoneDefaultNotAllowedWarning.*")
-    warnings.filterwarnings("ignore", ".*MergeConflictWarning.*")
-    warnings.filterwarnings("ignore", ".*'ctlearn.tools.train_model' found in sys.modules.*")
-
-import atexit
-import pandas as pd
+from abc import abstractmethod
 import numpy as np
 
+
 from ctapipe.core import Tool
-from ctapipe.core.traits import CaselessStrEnum, Dict
-from ctlearn.core.ctlearn_enum import FrameworkType
-class DLFrameWork(Tool):
+from ctapipe.core.tool import ToolConfigurationError
+from ctapipe.core.traits import (
+    Bool,
+    CaselessStrEnum,
+    Path,
+    Float,
+    Int,
+    List,
+    Dict,
+    classes_with_traits,
+    ComponentName,
+    Unicode,
+)
+from ctlearn import __version__ as ctlearn_version
+from ctlearn.core.model import CTLearnModel
+from ctlearn.utils import validate_trait_dict
+from dl1_data_handler.reader import DLDataReader
+
+
+class TrainCTLearnModel(Tool):
     """
-    Tool to select and run a specific deep learning training framework (Keras or PyTorch)
-    for CTLearn model training. It dynamically loads the appropriate subclass based on
-    the user-defined --framework argument.
+    Base tool to train a ``~ctlearn.core.model.CTLearnModel`` on R1/DL1a data.
+
+    The tool holds configurations and set up functions.
+   
     """
 
-    name = "dlframework"
+    input_dir_signal = Path(
+        help="Input directory for signal events",
+        allow_none=False,
+        exists=True,
+        directory_ok=True,
+        file_ok=False,
+    ).tag(config=True)
 
-    framework_type = CaselessStrEnum(
-        ["pytorch", "keras"],
-        default_value="keras",
-        help="Framework to use: pytorch or keras",
+    file_pattern_signal = List(
+        trait=Unicode(),
+        default_value=["*.h5"],
+        help="List of specific file pattern for matching files in ``input_dir_signal``",
+    ).tag(config=True)
+
+    input_dir_background = Path(
+        default_value=None,
+        help="Input directory for background events",
+        allow_none=True,
+        exists=True,
+        directory_ok=True,
+        file_ok=False,
+    ).tag(config=True)
+
+    file_pattern_background = List(
+        trait=Unicode(),
+        default_value=["*.h5"],
+        help="List of specific file pattern for matching files in ``input_dir_background``",
+    ).tag(config=True)
+
+    dl1dh_reader_type = ComponentName(DLDataReader, default_value="DLImageReader").tag(
+        config=True
+    )
+
+    stack_telescope_images = Bool(
+        default_value=False,
+        allow_none=False,
+        help=(
+            "Set whether to stack the telescope images in the data loader. "
+            "Requires DLDataReader mode to be ``stereo``."
+        ),
+    ).tag(config=True)
+
+    sort_by_intensity = Bool(
+        default_value=False,
+        allow_none=True,
+        help=(
+            "Set whether to sort the telescope images by intensity in the data loader. "
+            "Requires DLDataReader mode to be ``stereo``."
+        ),
+    ).tag(config=True)
+
+    model_type = CaselessStrEnum(
+        ["SingleCNN", "ResNet", "LoadedModel"],
+        default_value="ResNet",
+        allow_none=False,
+        help=(
+            "Model type to be used in the Keras or PyTorch framework. "
+            "The framework is determined by the inherited tools being used."
+        ),
+    ).tag(config=True)
+
+    output_dir = Path(
+        exits=False,
+        default_value=None,
+        allow_none=False,
+        directory_ok=True,
+        file_ok=False,
+        help="Output directory for the trained reconstructor.",
+    ).tag(config=True)
+
+    reco_tasks = List(
+        trait=CaselessStrEnum(["type", "energy", "cameradirection", "skydirection"]),
+        allow_none=False,
+        help=(
+            "List of reconstruction tasks to perform. "
+            "'type': classification of the primary particle type; "
+            "'energy': regression of the primary particle energy; "
+            "'cameradirection': reconstruction of the primary particle arrival direction in camera coordinates; "
+            "'skydirection': reconstruction of the primary particle arrival direction in sky coordinates."
+        ),
+    ).tag(config=True)
+
+    n_epochs = Int(
+        default_value=10,
+        allow_none=False,
+        help="Number of epochs to train the neural network.",
+    ).tag(config=True)
+
+    batch_size = Int(
+        default_value=64,
+        allow_none=False,
+        help="Size of the batch to train the neural network.",
+    ).tag(config=True)
+
+    validation_split = Float(
+        default_value=0.1,
+        help="Fraction of the data to use for validation",
+        min=0.01,
+        max=0.99,
+    ).tag(config=True)
+
+    optimizer = Dict(
+        default_value={
+            "name": "Adam",
+            "base_learning_rate": 0.0001,
+            "adam_epsilon": 1.0e-8,
+        },
+        help=(
+            "Optimizer to use for training. "
+            "E.g. {'name': 'Adam', 'base_learning_rate': 0.0001, 'adam_epsilon': 1.0e-8}. "
+        ),
+    ).tag(config=True)
+
+    random_seed = Int(
+        default_value=0,
+        help=(
+            "Random seed for shuffling the data "
+            "before the training/validation split "
+            "and after the end of an epoch."
+        ),
+    ).tag(config=True)
+
+    save_best_validation_only = Bool(
+        default_value=True,
+        allow_none=False,
+        help="Set whether to save the best validation checkpoint only.",
+    ).tag(config=True)
+
+    lr_reducing = Dict(
+        default_value={"factor": 0.5, "patience": 5, "min_delta": 0.01, "min_lr": 0.000001},
+        allow_none=True,
+	help=(
+	    "Learning rate reducing parameters for the Keras callback or the PyTorch scheduler. "
+	    "E.g. {'factor': 0.5, 'patience': 5, 'min_delta': 0.01, 'min_lr': 0.000001}. "
+	)
     ).tag(config=True)
 
     early_stopping = Dict(
         default_value=None,
         allow_none=True,
-        help=(
-            "Early stopping parameters for the Keras callback. "
-            "E.g. {'monitor': 'val_loss', 'patience': 4, 'verbose': 1, 'restore_best_weights': True}. "
-        ),
-    ).tag(config=True)
-
-    early_stopping = Dict(
-        default_value=None,
-        allow_none=True,
-        help=(
-            "Early stopping parameters for the Keras callback. "
-            "E.g. {'monitor': 'val_loss', 'patience': 4, 'verbose': 1, 'restore_best_weights': True}. "
-        ),
-    ).tag(config=True)
-
-    early_stopping = Dict(
-        default_value=None,
-        allow_none=True,
-        help=(
-            "Early stopping parameters for the Keras callback. "
-            "E.g. {'monitor': 'val_loss', 'patience': 4, 'verbose': 1, 'restore_best_weights': True}. "
-        ),
-    ).tag(config=True)
-
-    early_stopping = Dict(
-        default_value=None,
-        allow_none=True,
-        help=(
-            "Early stopping parameters for the Keras callback. "
-            "E.g. {'monitor': 'val_loss', 'patience': 4, 'verbose': 1, 'restore_best_weights': True}. "
-        ),
+	help=(
+	    "Early stopping parameters for the Keras callback or the PyTorch scheduler. "
+	    "E.g. {'monitor': 'val_loss', 'patience': 4, 'verbose': 1, 'restore_best_weights': True}. "
+	)
     ).tag(config=True)
 
     aliases = {
-        "framework": "DLFrameWork.framework_type",
+        "signal": "TrainCTLearnModel.input_dir_signal",
+        "background": "TrainCTLearnModel.input_dir_background",
+        "pattern-signal": "TrainCTLearnModel.file_pattern_signal",
+        "pattern-background": "TrainCTLearnModel.file_pattern_background",
+        "reco": "TrainCTLearnModel.reco_tasks",
+        ("o", "output"): "TrainCTLearnModel.output_dir",
     }
-    
-    try:
-        from ctlearn.tools.train.pytorch.train_pytorch_model import TrainPyTorchModel
-        aliases.update(TrainPyTorchModel.aliases)
-    except ImportError:
-        pass
-        
-    try:
-        from ctlearn.tools.train.keras.train_keras_model import TrainKerasModel
-        aliases.update(TrainKerasModel.aliases)
-    except ImportError:
-        pass
 
-    def __init__(self, **kwargs):
-        """
-        Initialize the DLFrameWork tool and prepare for framework injection.
-        """
-        super().__init__(**kwargs)
-        self.framework_instance = None
+    classes = classes_with_traits(CTLearnModel) + classes_with_traits(DLDataReader)
 
     def setup(self):
-        """
-        Setup method called after basic trait parsing. 
-        This dynamically loads and prepares the correct framework subclass 
-        (TrainKerasModel or TrainPyTorchModel).
-        """
-        framework_enum = self.string_to_type(self.framework_type)
-        self.framework_instance = self.get_framework(framework_enum)
-
-        # Inject aliases and shared config before full CLI parsing
-        self.framework_instance.update_config(self.config)
-        self.aliases.update(self.framework_instance.aliases)
-        DLFrameWork.aliases.update(self.framework_instance.aliases)
-
-    def start(self):
-        """
-        Start method called after setup. Executes the selected framework instance.
-        """
-        print("start")
-        self.framework_instance.run()
-
-    @classmethod
-    def string_to_type(cls, str_type: str) -> FrameworkType:
-        """
-        Convert a string to a FrameworkType enum (case-insensitive).
-
-        Parameters:
-            str_type (str): The name of the framework (e.g., 'keras', 'pytorch').
-
-        Returns:
-            FrameworkType: Corresponding enum value.
-
-        Raises:
-            ValueError: If the provided string is not a valid framework type.
-        """
-        try:
-            return FrameworkType[str_type.upper()]
-        except KeyError:
-            raise ValueError(f"'{str_type}' is not a valid framework type.")
-
-    @classmethod
-    def get_framework(cls, framework_type: FrameworkType):
-        """
-        Dynamically import and return the corresponding training class
-        based on the framework type.
-
-        Parameters:
-            framework_type (FrameworkType): Enum indicating which framework to use.
-
-        Returns:
-            Tool: An instance of the selected training framework (subclass of Tool).
-
-        Raises:
-            ImportError: If the training module could not be imported.
-            ValueError: If the framework type is unknown.
-        """
-        if framework_type == FrameworkType.KERAS:
-            try:
-                from ctlearn.tools.train.keras.train_keras_model import TrainKerasModel
-
-                fw = TrainKerasModel()
-            except ImportError as e:
-                raise ImportError(f"Not possible to import TrainKerasModel: {e}") from e
-
-        elif framework_type == FrameworkType.PYTORCH:
-            try:
-                from ctlearn.tools.train.pytorch.train_pytorch_model import (
-                    TrainPyTorchModel,
+        self.log.info("ctlearn version %s", ctlearn_version)
+        # Check if the output directory exists
+        if self.output_dir.exists():
+            raise ToolConfigurationError(
+                f"Output directory {self.output_dir} already exists."
+            )
+        # Get signal input files
+        self.input_url_signal = []
+        for signal_pattern in self.file_pattern_signal:
+            self.input_url_signal.extend(self.input_dir_signal.glob(signal_pattern))
+        # Get bkg input files
+        self.input_url_background = []
+        if self.input_dir_background is not None:
+            for background_pattern in self.file_pattern_background:
+                self.input_url_background.extend(
+                    self.input_dir_background.glob(background_pattern)
                 )
 
-                fw = TrainPyTorchModel()
+        # Set up the data reader
+        self.log.info("Loading data:")
+        self.log.info("For a large dataset, this may take a while...")
+        if self.dl1dh_reader_type == "DLFeatureVectorReader":
+            raise NotImplementedError(
+                "'DLFeatureVectorReader' is not supported in CTLearn yet. "
+                "Missing stereo CTLearnModel implementation."
+            )
+        self.dl1dh_reader = DLDataReader.from_name(
+            self.dl1dh_reader_type,
+            input_url_signal=sorted(self.input_url_signal),
+            input_url_background=sorted(self.input_url_background),
+            parent=self,
+        )
+        self.log.info("Number of events loaded: %s", self.dl1dh_reader._get_n_events())
+        if "type" in self.reco_tasks:
+            self.log.info(
+                "Number of signal events: %d", self.dl1dh_reader.n_signal_events
+            )
+            self.log.info(
+                "Number of background events: %d", self.dl1dh_reader.n_bkg_events
+            )
+        # Check if the number of events is enough to form a batch
+        if self.dl1dh_reader._get_n_events() < self.batch_size:
+            raise ValueError(
+                f"{self.dl1dh_reader._get_n_events()} events are not enough "
+                f"to form a batch of size {self.batch_size}. Reduce the batch size."
+            )
+        # Check if there are at least two classes in the reader for the particle classification
+        if self.dl1dh_reader.class_weight is None and "type" in self.reco_tasks:
+            raise ValueError(
+                "Classification task selected but less than two classes are present in the data."
+            )
+        # Check if stereo mode is selected for stacking telescope images
+        if self.stack_telescope_images and self.dl1dh_reader.mode == "mono":
+            raise ToolConfigurationError(
+                f"Cannot stack telescope images in mono mode. Use stereo mode for stacking."
+            )
+        # Ckeck if only one telescope type is selected for stacking telescope images
+        if (
+            self.stack_telescope_images
+            and len(list(self.dl1dh_reader.selected_telescopes)) > 1
+        ):
+            raise ToolConfigurationError(
+                f"Cannot stack telescope images from multiple telescope types. Use only one telescope type."
+            )
+        # Check if sorting by intensity is disabled for stacking telescope images
+        if self.stack_telescope_images and self.sort_by_intensity:
+            raise ToolConfigurationError(
+                f"Cannot stack telescope images when sorting by intensity. Disable sorting by intensity."
+            )
 
-            except ImportError as e:
-                raise ImportError(
-                    f"Not possible to import TrainPyTorchModel: {e}"
-                ) from e
+        # Set up the data loaders for training and validation
+        self.indices = list(range(self.dl1dh_reader._get_n_events()))
+        # Shuffle the indices before the training/validation split
+        np.random.seed(self.random_seed)
+        np.random.shuffle(self.indices)
+        self.n_validation_examples = int(
+            self.validation_split * self.dl1dh_reader._get_n_events()
+        )
+        self.training_indices = self.indices[self.n_validation_examples:]
+        self.validation_indices = self.indices[:self.n_validation_examples]
 
-        else:
-            raise ValueError(f"Unknown Framework: {framework_type.name}")
+        # Validate the optimizer parameters
+        validate_trait_dict(self.optimizer, ["name", "base_learning_rate"])
+        self.learning_rate = self.optimizer["base_learning_rate"]
+        self.adam_epsilon = self.optimizer.get("adam_epsilon", 1e-8)
 
-        return fw
+        # Validate the learning rate reducing parameters
+        if self.lr_reducing is not None:
+            validate_trait_dict(
+                self.lr_reducing, ["factor", "patience", "min_delta", "min_lr"]
+            )
+        # Validate the early stopping parameters
+        if self.early_stopping is not None:
+            validate_trait_dict(
+                self.early_stopping,
+                ["monitor", "patience", "verbose", "restore_best_weights"],
+            )
 
-    from ctlearn.tools.train.base_train_model import TrainCTLearnModel
-    classes = [TrainCTLearnModel]
-    try:
-        from ctlearn.tools.train.keras.train_keras_model import TrainKerasModel
-        classes.append(TrainKerasModel)
-    except ImportError:
+        # Set up framework-specific training tool
+        self.setup_framework()
+     
+    @abstractmethod
+    def setup_framework():
+        """ This is an abstract method for the setup of the framework-specific training tool."""
         pass
-        
-    try:
-        from ctlearn.tools.train.pytorch.train_pytorch_model import TrainPyTorchModel
-        classes.append(TrainPyTorchModel)
-    except ImportError:
-        pass
-    
-    from ctapipe.core.traits import classes_with_traits
-    from dl1_data_handler.reader import DLDataReader
-    classes = classes + classes_with_traits(DLDataReader)
 
-def main():
-    # Run the tool
-    tool = DLFrameWork()
-    
-    # Manually parse --framework to determine which subclass to load, as traitlets alias 
-    # update can sometimes fail to parse it correctly before setup
-    framework = "keras"
-    for i, arg in enumerate(sys.argv[1:]):
-        if arg.startswith("--framework="):
-            framework = arg.split("=")[1].strip()
-        elif arg == "--framework" and i + 2 < len(sys.argv):
-            framework = sys.argv[i + 2].strip()
-    
-    tool.framework_type = framework
-    
-    minimal_args = [
-        arg for arg in sys.argv[1:] if "--framework" in arg or arg in ["-h", "--help"]
-    ]
-    tool.initialize(argv=minimal_args)
-
-    # Setup and inject the correct framework instance
-    tool.setup()
-
-    # Parse all CLI args with the selected framework subclass
-    tool.framework_instance.initialize(argv=sys.argv[1:])
-
-    tool.run()
-
-
-if __name__ == "__main__":
-    main()
-   
-
-# Example:
-# python -m ctlearn.tools.train_model --framework=pytorch --output ./output_dir2 --signal ./mc_tjark/ --pattern-signal gamma_*.dl1.h5 --reco energy --overwrite
-# python -m ctlearn.tools.train_model --framework=pytorch --output ./output_dir3 --signal ./mc_tjark/ --pattern-signal gamma_*.dl1.h5 --reco energy --overwrite --config_file ./ctlearn/tools/train/pytorch/config/training_config_iaa_neutron_training.yml
-
-# nohup python -m ctlearn.tools.train_model --framework=pytorch --output ./output_dir3 --signal /storage/ctlearn_data/h5_files/mc/gamma-diffuse/ --background /storage/ctlearn_data/h5_files/mc/protons/ --pattern-signal gamma_theta_*.dl1.h5 --pattern-background proton_*.dl1.h5 --reco type --overwrite --config_file ./ctlearn/tools/train/pytorch/config/training_config_iaa_neutron_training.yml> nohup_type_training.out 2>&1 &
-
-# nohup python -m ctlearn.tools.train_model --framework=pytorch --output ./output_dir3 --signal /storage/ctlearn_data/h5_files/mc/gamma-diffuse/ --background /storage/ctlearn_data/h5_files/mc/protons/ --pattern-signal gamma_theta_23.161_az_260.739_runs7-65*.dl1.h5 --pattern-background proton_theta_23.161_az_99.261_runs833-1250*.dl1.h5 --reco type --overwrite --config_file ./ctlearn/tools/train/pytorch/config/training_config_iaa_neutron_training.yml> nohup_type_training.out 2>&1 &
-
-# nohup python -m ctlearn.tools.train_model --framework=pytorch --output ./output_dir3 --signal /storage/ctlearn_data/h5_files/mc/gamma-diffuse/ --background /storage/ctlearn_data/h5_files/mc/protons/ --pattern-signal=gamma_theta_16.087_az_108.090_runs123-182.dl1.h5 --pattern-signal=gamma_theta_16.087_az_108.090_runs1-62.dl1.h5 --pattern-signal=gamma_theta_16.087_az_108.090_runs183-242.dl1.h5 --pattern-signal=gamma_theta_16.087_az_251.910_runs121-180.dl1.h5 --pattern-signal=gamma_theta_16.087_az_251.910_runs1-60.dl1.h5 --pattern-signal=gamma_theta_16.087_az_251.910_runs181-240.dl1.h5 --pattern-signal=gamma_theta_23.161_az_260.739_runs129-187.dl1.h5 --pattern-signal=gamma_theta_23.161_az_260.739_runs188-246.dl1.h5 --pattern-signal=gamma_theta_23.161_az_260.739_runs247-305.dl1.h5 --pattern-signal=gamma_theta_23.161_az_99.261_runs118-176.dl1.h5 --pattern-signal=gamma_theta_23.161_az_99.261_runs1-59.dl1.h5 --pattern-signal=gamma_theta_23.161_az_99.261_runs177-235.dl1.h5 --pattern-signal=gamma_theta_30.390_az_266.360_runs121-180.dl1.h5 --pattern-signal=gamma_theta_30.390_az_266.360_runs1-60.dl1.h5 --pattern-signal=gamma_theta_30.390_az_266.360_runs181-240.dl1.h5 --pattern-signal=gamma_theta_30.390_az_93.640_runs121-180.dl1.h5 --pattern-signal=gamma_theta_30.390_az_93.640_runs1-60.dl1.h5 --pattern-signal=gamma_theta_30.390_az_93.640_runs181-240.dl1.h5 --pattern-signal=gamma_theta_37.661_az_270.641_runs121-180.dl1.h5 --pattern-signal=gamma_theta_37.661_az_270.641_runs1-60.dl1.h5 --pattern-signal=gamma_theta_37.661_az_270.641_runs181-240.dl1.h5 --pattern-signal=gamma_theta_37.661_az_89.359_runs121-180.dl1.h5 --pattern-signal=gamma_theta_37.661_az_89.359_runs1-60.dl1.h5 --pattern-signal=gamma_theta_37.661_az_89.359_runs181-240.dl1.h5 --pattern-signal=gamma_theta_6.000_az_180.000_runs121-180.dl1.h5 --pattern-signal=gamma_theta_6.000_az_180.000_runs1-60.dl1.h5 --pattern-signal=gamma_theta_6.000_az_180.000_runs181-240.dl1.h5 --pattern-signal=gamma_theta_9.579_az_126.888_runs121-180.dl1.h5 --pattern-signal=gamma_theta_9.579_az_126.888_runs1-60.dl1.h5 --pattern-signal=gamma_theta_9.579_az_126.888_runs181-240.dl1.h5 --pattern-signal=gamma_theta_9.579_az_233.112_runs121-180.dl1.h5 --pattern-signal=gamma_theta_9.579_az_233.112_runs1-60.dl1.h5 --pattern-signal=gamma_theta_9.579_az_233.112_runs181-240.dl1.h5 --pattern-background proton_*.dl1.h5 --reco type --overwrite --config_file ./ctlearn/tools/train/pytorch/config/training_config_iaa_neutron_training.yml> nohup_type_training.out 2>&1 &
-
-# gamma_theta_16.087_az_108.090_runs123-182.dl1.h5 gamma_theta_16.087_az_108.090_runs1-62.dl1.h5 gamma_theta_16.087_az_108.090_runs183-242.dl1.h5 gamma_theta_16.087_az_251.910_runs121-180.dl1.h5 gamma_theta_16.087_az_251.910_runs1-60.dl1.h5 gamma_theta_16.087_az_251.910_runs181-240.dl1.h5 gamma_theta_23.161_az_260.739_runs129-187.dl1.h5 gamma_theta_23.161_az_260.739_runs188-246.dl1.h5 gamma_theta_23.161_az_260.739_runs247-305.dl1.h5 gamma_theta_23.161_az_99.261_runs118-176.dl1.h5 gamma_theta_23.161_az_99.261_runs1-59.dl1.h5 gamma_theta_23.161_az_99.261_runs177-235.dl1.h5 gamma_theta_30.390_az_266.360_runs121-180.dl1.h5 gamma_theta_30.390_az_266.360_runs1-60.dl1.h5 gamma_theta_30.390_az_266.360_runs181-240.dl1.h5 gamma_theta_30.390_az_93.640_runs121-180.dl1.h5 gamma_theta_30.390_az_93.640_runs1-60.dl1.h5 gamma_theta_30.390_az_93.640_runs181-240.dl1.h5 gamma_theta_37.661_az_270.641_runs121-180.dl1.h5 gamma_theta_37.661_az_270.641_runs1-60.dl1.h5 gamma_theta_37.661_az_270.641_runs181-240.dl1.h5 gamma_theta_37.661_az_89.359_runs121-180.dl1.h5 gamma_theta_37.661_az_89.359_runs1-60.dl1.h5 gamma_theta_37.661_az_89.359_runs181-240.dl1.h5 gamma_theta_6.000_az_180.000_runs121-180.dl1.h5 gamma_theta_6.000_az_180.000_runs1-60.dl1.h5 gamma_theta_6.000_az_180.000_runs181-240.dl1.h5 gamma_theta_9.579_az_126.888_runs121-180.dl1.h5 gamma_theta_9.579_az_126.888_runs1-60.dl1.h5 gamma_theta_9.579_az_126.888_runs181-240.dl1.h5 gamma_theta_9.579_az_233.112_runs121-180.dl1.h5 gamma_theta_9.579_az_233.112_runs1-60.dl1.h5 gamma_theta_9.579_az_233.112_runs181-240.dl1.h5
-
-# --pattern-signal=gamma_theta_16.087_az_108.090_runs123-182.dl1.h5 --pattern-signal=gamma_theta_16.087_az_108.090_runs1-62.dl1.h5 --pattern-signal=gamma_theta_16.087_az_108.090_runs183-242.dl1.h5 --pattern-signal=gamma_theta_16.087_az_251.910_runs121-180.dl1.h5 --pattern-signal=gamma_theta_16.087_az_251.910_runs1-60.dl1.h5 --pattern-signal=gamma_theta_16.087_az_251.910_runs181-240.dl1.h5 --pattern-signal=gamma_theta_23.161_az_260.739_runs129-187.dl1.h5 --pattern-signal=gamma_theta_23.161_az_260.739_runs188-246.dl1.h5 --pattern-signal=gamma_theta_23.161_az_260.739_runs247-305.dl1.h5 --pattern-signal=gamma_theta_23.161_az_99.261_runs118-176.dl1.h5 --pattern-signal=gamma_theta_23.161_az_99.261_runs1-59.dl1.h5 --pattern-signal=gamma_theta_23.161_az_99.261_runs177-235.dl1.h5 --pattern-signal=gamma_theta_30.390_az_266.360_runs121-180.dl1.h5 --pattern-signal=gamma_theta_30.390_az_266.360_runs1-60.dl1.h5 --pattern-signal=gamma_theta_30.390_az_266.360_runs181-240.dl1.h5 --pattern-signal=gamma_theta_30.390_az_93.640_runs121-180.dl1.h5 --pattern-signal=gamma_theta_30.390_az_93.640_runs1-60.dl1.h5 --pattern-signal=gamma_theta_30.390_az_93.640_runs181-240.dl1.h5 --pattern-signal=gamma_theta_37.661_az_270.641_runs121-180.dl1.h5 --pattern-signal=gamma_theta_37.661_az_270.641_runs1-60.dl1.h5 --pattern-signal=gamma_theta_37.661_az_270.641_runs181-240.dl1.h5 --pattern-signal=gamma_theta_37.661_az_89.359_runs121-180.dl1.h5 --pattern-signal=gamma_theta_37.661_az_89.359_runs1-60.dl1.h5 --pattern-signal=gamma_theta_37.661_az_89.359_runs181-240.dl1.h5 --pattern-signal=gamma_theta_6.000_az_180.000_runs121-180.dl1.h5 --pattern-signal=gamma_theta_6.000_az_180.000_runs1-60.dl1.h5 --pattern-signal=gamma_theta_6.000_az_180.000_runs181-240.dl1.h5 --pattern-signal=gamma_theta_9.579_az_126.888_runs121-180.dl1.h5 --pattern-signal=gamma_theta_9.579_az_126.888_runs1-60.dl1.h5 --pattern-signal=gamma_theta_9.579_az_126.888_runs181-240.dl1.h5 --pattern-signal=gamma_theta_9.579_az_233.112_runs121-180.dl1.h5 --pattern-signal=gamma_theta_9.579_az_233.112_runs1-60.dl1.h5 --pattern-signal=gamma_theta_9.579_az_233.112_runs181-240.dl1.h5
-
-
-
-
-# --pattern-signal=gamma_theta_16.087_az_108.090_runs123-182.dl1.h5 --pattern-signal=gamma_theta_16.087_az_251.910_runs121-180.dl1.h5 --pattern-signal=gamma_theta_23.161_az_260.739_runs129-187.dl1.h5 --pattern-signal=gamma_theta_23.161_az_99.261_runs118-176.dl1.h5 --pattern-signal=gamma_theta_30.390_az_266.360_runs121-180.dl1.h5 --pattern-signal=gamma_theta_30.390_az_93.640_runs121-180.dl1.h5 --pattern-signal=gamma_theta_30.390_az_93.640_runs1-60.dl1.h5 --pattern-signal=gamma_theta_37.661_az_270.641_runs121-180.dl1.h5 --pattern-signal=gamma_theta_37.661_az_89.359_runs121-180.dl1.h5 --pattern-signal=gamma_theta_6.000_az_180.000_runs121-180.dl1.h5 --pattern-signal=gamma_theta_9.579_az_126.888_runs121-180.dl1.h5 --pattern-signal=gamma_theta_9.579_az_233.112_runs121-180.dl1.h5
-
-
-# --pattern-background=proton_theta_16.087_az_108.090_runs1-416.dl1.h5 --pattern-background=proton_theta_16.087_az_251.910_runs1-417.dl1.h5 --pattern-background=proton_theta_23.161_az_260.739_runs1-417.dl1.h5 --pattern-background=proton_theta_23.161_az_99.261_runs1-417.dl1.h5 --pattern-background=proton_theta_30.390_az_266.360_runs1-416.dl1.h5 --pattern-background=proton_theta_30.390_az_93.640_runs1-420.dl1.h5 --pattern-background=proton_theta_37.661_az_270.641_runs1-421.dl1.h5 --pattern-background=proton_theta_37.661_az_89.359_runs1-406.dl1.h5 --pattern-background=proton_theta_6.000_az_180.000_runs1-416.dl1.h5 --pattern-background=proton_theta_9.579_az_126.888_runs1-417.dl1.h5 --pattern-background=proton_theta_9.579_az_233.112_runs1-417.dl1.h5
-
-
-
-# Type 
-# nohup python -m ctlearn.tools.train_model --framework=pytorch --output ./output_dir3 --signal /storage/ctlearn_data/h5_files/mc/gamma-diffuse/ --background /storage/ctlearn_data/h5_files/mc/protons/ --pattern-signal=gamma_theta_16.087_az_108.090_runs123-182.dl1.h5 --pattern-signal=gamma_theta_16.087_az_251.910_runs121-180.dl1.h5 --pattern-signal=gamma_theta_23.161_az_260.739_runs129-187.dl1.h5 --pattern-signal=gamma_theta_23.161_az_99.261_runs118-176.dl1.h5 --pattern-signal=gamma_theta_30.390_az_266.360_runs121-180.dl1.h5 --pattern-signal=gamma_theta_30.390_az_93.640_runs121-180.dl1.h5 --pattern-signal=gamma_theta_30.390_az_93.640_runs1-60.dl1.h5 --pattern-signal=gamma_theta_37.661_az_270.641_runs121-180.dl1.h5 --pattern-signal=gamma_theta_37.661_az_89.359_runs121-180.dl1.h5 --pattern-signal=gamma_theta_6.000_az_180.000_runs121-180.dl1.h5 --pattern-signal=gamma_theta_9.579_az_126.888_runs121-180.dl1.h5 --pattern-signal=gamma_theta_9.579_az_233.112_runs121-180.dl1.h5 --pattern-background=proton_theta_16.087_az_108.090_runs1-416.dl1.h5 --pattern-background=proton_theta_16.087_az_251.910_runs1-417.dl1.h5 --pattern-background=proton_theta_23.161_az_260.739_runs1-417.dl1.h5 --pattern-background=proton_theta_23.161_az_99.261_runs1-417.dl1.h5 --pattern-background=proton_theta_30.390_az_266.360_runs1-416.dl1.h5 --pattern-background=proton_theta_30.390_az_93.640_runs1-420.dl1.h5 --pattern-background=proton_theta_37.661_az_270.641_runs1-421.dl1.h5 --pattern-background=proton_theta_37.661_az_89.359_runs1-406.dl1.h5 --pattern-background=proton_theta_6.000_az_180.000_runs1-416.dl1.h5 --pattern-background=proton_theta_9.579_az_126.888_runs1-417.dl1.h5 --pattern-background=proton_theta_9.579_az_233.112_runs1-417.dl1.h5 --reco type --overwrite --config_file ./ctlearn/tools/train/pytorch/config/training_config_iaa_neutron_training.yml> nohup_type_training.out 2>&1 &
-
-# Direction 
-# nohup python -m ctlearn.tools.train_model --framework=pytorch --output ./output_dir3 --signal /storage/ctlearn_data/h5_files/mc/gamma-diffuse/ --pattern-signal=gamma_theta_16.087_az_108.090_runs123-182.dl1.h5 --pattern-signal=gamma_theta_16.087_az_251.910_runs121-180.dl1.h5 --pattern-signal=gamma_theta_23.161_az_260.739_runs129-187.dl1.h5 --pattern-signal=gamma_theta_23.161_az_99.261_runs118-176.dl1.h5 --pattern-signal=gamma_theta_30.390_az_266.360_runs121-180.dl1.h5 --pattern-signal=gamma_theta_30.390_az_93.640_runs121-180.dl1.h5 --pattern-signal=gamma_theta_30.390_az_93.640_runs1-60.dl1.h5 --pattern-signal=gamma_theta_37.661_az_270.641_runs121-180.dl1.h5 --pattern-signal=gamma_theta_37.661_az_89.359_runs121-180.dl1.h5 --pattern-signal=gamma_theta_6.000_az_180.000_runs121-180.dl1.h5 --pattern-signal=gamma_theta_9.579_az_126.888_runs121-180.dl1.h5 --pattern-signal=gamma_theta_9.579_az_233.112_runs121-180.dl1.h5 --reco cameradirection --overwrite --config_file ./ctlearn/tools/train/pytorch/config/training_config_iaa_neutron_training.yml> nohup_direction_training.out 2>&1 &
-
-# nohup python -m ctlearn.tools.train_model --framework=pytorch --output ./output_dir3 --signal /storage/ctlearn_data/h5_files/mc/gamma-diffuse/ --pattern-signal gamma_theta_23.161_az_260.739_runs7-65*.dl1.h5 --reco cameradirection --overwrite --config_file ./ctlearn/tools/train/pytorch/config/training_config_iaa_neutron_training.yml> nohup_direction_training.out 2>&1 &
-
-
-
-# Energy 
-# nohup python -m ctlearn.tools.train_model --framework=pytorch --output ./output_dir3 --signal /storage/ctlearn_data/h5_files/mc/gamma-diffuse/ --pattern-signal=gamma_theta_16.087_az_108.090_runs123-182.dl1.h5 --pattern-signal=gamma_theta_16.087_az_251.910_runs121-180.dl1.h5 --pattern-signal=gamma_theta_23.161_az_260.739_runs129-187.dl1.h5 --pattern-signal=gamma_theta_23.161_az_99.261_runs118-176.dl1.h5 --pattern-signal=gamma_theta_30.390_az_266.360_runs121-180.dl1.h5 --pattern-signal=gamma_theta_30.390_az_93.640_runs121-180.dl1.h5 --pattern-signal=gamma_theta_30.390_az_93.640_runs1-60.dl1.h5 --pattern-signal=gamma_theta_37.661_az_270.641_runs121-180.dl1.h5 --pattern-signal=gamma_theta_37.661_az_89.359_runs121-180.dl1.h5 --pattern-signal=gamma_theta_6.000_az_180.000_runs121-180.dl1.h5 --pattern-signal=gamma_theta_9.579_az_126.888_runs121-180.dl1.h5 --pattern-signal=gamma_theta_9.579_az_233.112_runs121-180.dl1.h5 --reco energy --overwrite --config_file ./ctlearn/tools/train/pytorch/config/training_config_iaa_neutron_training_v5_1.yml> nohup_energy_training.out 2>&1 &
-
-
-#  nohup python -m ctlearn.tools.train_model --framework=pytorch --output ./output_dir3 --signal /storage/ctlearn_data/h5_files/mc/gamma-diffuse/ --pattern-signal=gamma_theta_16.087_az_108.090_runs123-182.dl1.h5 --pattern-signal=gamma_theta_16.087_az_108.090_runs1-62.dl1.h5 --pattern-signal=gamma_theta_16.087_az_108.090_runs183-242.dl1.h5 --pattern-signal=gamma_theta_16.087_az_108.090_runs243-302.dl1.h5 --pattern-signal=gamma_theta_16.087_az_108.090_runs303-362.dl1.h5 --pattern-signal=gamma_theta_16.087_az_108.090_runs363-422.dl1.h5 --pattern-signal=gamma_theta_16.087_az_108.090_runs423-482.dl1.h5 --pattern-signal=gamma_theta_16.087_az_108.090_runs483-541.dl1.h5 --pattern-signal=gamma_theta_16.087_az_108.090_runs542-600.dl1.h5 --pattern-signal=gamma_theta_16.087_az_108.090_runs63-122.dl1.h5 --reco energy --overwrite --config_file ./ctlearn/tools/train/pytorch/config/training_config_iaa_neutron_training.yml> nohup_energy_training.out 2>&1 &
-
-# nohup python -m ctlearn.tools.train_model --framework=pytorch --output ./output_dir3 --signal /storage/ctlearn_data/h5_files/mc/gamma-diffuse/ --pattern-signal=gamma_theta_16.087_az_108.090_runs123-182.dl1.h5  --pattern-signal=gamma_theta_16.087_az_108.090_runs63-122.dl1.h5 --reco energy --overwrite --config_file ./ctlearn/tools/train/pytorch/config/training_config_iaa_neutron_training.yml> nohup_energy_training.out 2>&1 &
-
-# nohup python -m ctlearn.tools.train_model --framework=pytorch --output ./output_dir3 --signal /storage/ctlearn_data/h5_files/mc/gamma-diffuse/ --pattern-signal=gamma_theta_6.000_az_*.dl1.h5 --reco energy --overwrite --config_file ./ctlearn/tools/train/pytorch/config/training_config_iaa_neutron_training.yml> nohup_energy_training.out 2>&1 &
-
-# nohup python -m ctlearn.tools.train_model --framework=pytorch --output ./output_dir3 --signal /storage/ctlearn_data/h5_files/mc/gamma-diffuse/ --pattern-signal=gamma_theta_16.087_az_108.090_runs123-182.dl1.h5 --pattern-signal=gamma_theta_16.087_az_108.090_runs1-62.dl1.h5 --pattern-signal=gamma_theta_16.087_az_108.090_runs183-242.dl1.h5 --reco energy --overwrite --config_file ./ctlearn/tools/train/pytorch/config/training_config_iaa_neutron_training.yml> nohup_energy_training.out 2>&1 &
-# nohup python -m ctlearn.tools.train_model --framework=pytorch --output ./output_dir3 --signal /storage/ctlearn_data/h5_files/mc/gamma-diffuse/ --pattern-signal=gamma_theta_16.087_az_108.090_runs123-182.dl1.h5 --pattern-signal=gamma_theta_16.087_az_108.090_runs1-62.dl1.h5 --pattern-signal=gamma_theta_16.087_az_108.090_runs183-242.dl1.h5 --reco energy --overwrite --config_file ./ctlearn/tools/train/pytorch/config/training_config_iaa_neutron_training_v5_2.yml> nohup_energy_training.out 2>&1 &
+    def finish(self):
+        self.log.info("Tool is shutting down")

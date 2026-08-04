@@ -33,6 +33,7 @@ class MultiHeadClassifier(nn.Module):
     """
     A PyTorch container module to hold the multi-task fully connected heads.
     """
+
     def __init__(self, heads_dict, single_output_task=None):
         super().__init__()
         # Sanitize keys because 'type' conflicts with nn.Module.type() method
@@ -47,26 +48,26 @@ class MultiHeadClassifier(nn.Module):
         self.single_output_task = single_output_task
 
     def forward(self, x):
-        # Flatten the backbone output if it's spatially aggregated (B, C, 1, 1) -> (B, C)
+        # Flatten backbone output if spatially aggregated (B, C, 1, 1) -> (B, C)
         if x.dim() > 2:
             x = torch.flatten(x, start_dim=1)
-            
-        classification = None
-        energy = None
-        direction = None
+
+        outputs = {}
 
         for original_task, internal_key in self._task_mapping.items():
             head = self.heads[internal_key]
             out = head(x)
-            
+
             if original_task == "type":
-                classification = F.softmax(out, dim=-1)
-            elif original_task == "energy":
-                energy = out
-            elif original_task in ["direction", "skydirection", "cameradirection"]:
-                direction = out
-                
-        return classification, energy, direction
+                outputs[original_task] = F.softmax(out, dim=-1)
+            else:
+                outputs[original_task] = out
+
+        # If only a single task is present, return a single output tensor or dictionary
+        if self.single_output_task:
+            return outputs[self.single_output_task]
+
+        return outputs
 
 
 def build_fully_connect_pytorch_head(in_features, layers, activation_function, tasks):
@@ -178,15 +179,11 @@ class PyTorchSingleCNN(SingleCNN):
                 attention_layer = SpatialSqueezeExciteBlock(in_channels=in_channels)
             modules.append(attention_layer)
 
-        # Global Average Pooling wrapper block
-        class GlobalAvgPool(nn.Module):
-            def forward(self, x):
-                return F.adaptive_avg_pool2d(x, (1, 1))
-
-        modules.append(GlobalAvgPool())
+        # Perform global 2D average pooling
+        modules.append(nn.AdaptiveAvgPool2d((1, 1)))
+        modules.append(nn.Flatten(start_dim=1))
         
-        backbone_model = nn.Sequential(*modules)
-        return backbone_model, in_channels
+        return nn.Sequential(*modules), in_channels
 
 
 class BasicBlock(nn.Module):
@@ -357,13 +354,9 @@ class PyTorchResNet(ResNet):
         )
         modules.extend(res_blocks)
 
-        # Global Average Pooling setup
-        class GlobalAvgPool(nn.Module):
-            def forward(self, x):
-                x = F.adaptive_avg_pool2d(x, (1, 1))
-                return x.view(x.size(0), -1)
-
-        modules.append(GlobalAvgPool())
+        # Perform global 2D average pooling
+        modules.append(nn.AdaptiveAvgPool2d((1, 1)))
+        modules.append(nn.Flatten(start_dim=1))
 
         return nn.Sequential(*modules), final_channels
 
@@ -443,26 +436,83 @@ class PyTorchResNet(ResNet):
 
 class PyTorchLoadedModel(LoadedModel):
     """
-    ``PyTorchLoadedModel`` handles loading a pre-saved PyTorch model weight layout.
+    ``PyTorchLoadedModel`` is a pre-trained PyTorch model wrapper.
+
+    This class loads a pre-trained PyTorch ``nn.Module`` object directly from disk
+    and uses its backbone and feature representation.
     """
 
-    def __init__(self, input_shape, tasks, config=None, parent=None, **kwargs):
-        super().__init__(tasks=tasks, config=config, parent=parent, **kwargs)
+    def __init__(
+        self,
+        input_shape,
+        tasks,
+        config=None,
+        parent=None,
+        **kwargs,
+    ):
+        super().__init__(
+            tasks=tasks,
+            config=config,
+            parent=parent,
+            **kwargs,
+        )
 
-        # In PyTorch, instead of load_model returning an arbitrary configuration blindly, 
-        # you instantiate the structure first and pass a state_dict or weights file path.
-        self.model = torch.load(self.load_model_from)
-        
+        # 1. Load object directly from disk
+        loaded_object = torch.load(self.load_model_from, map_location="cpu", weights_only=False)
+
+        # 2. Strict validation: ensure the loaded object is an nn.Module
+        if not isinstance(loaded_object, nn.Module):
+            raise TypeError(
+                f"Expected a PyTorch 'nn.Module' object at '{self.load_model_from}', "
+                f"but got '{type(loaded_object).__name__}'. "
+                "Ensure the model was saved via 'torch.save(model, path)' rather than 'torch.save(model.state_dict(), path)'."
+            )
+
+        self.loaded_model = loaded_object
+
+        # 3. Extract backbone and feature depth
+        self.backbone_model, out_features = self._build_backbone(input_shape)
+
+        # 4. Construct output pipeline
         if self.overwrite_head:
-            # Freeze/unfreeze backbone based on config choice
-            for param in self.model.backbone.parameters():
-                param.requires_grad = self.trainable_backbone
-                
-            # Fetch out_features dynamically from existing backbone configuration
-            # This is a representative placeholder pattern for your architecture
-            out_features = self.head_layers[tasks[0]][0] 
-            
             self.logits_head = build_fully_connect_pytorch_head(
                 out_features, self.head_layers, self.head_activation_function, tasks
             )
-            self.model.head = self.logits_head
+            self.model = FullModelPipeline(self.backbone_model, self.logits_head)
+        else:
+            self.model = self.loaded_model
+
+    def _build_backbone(self, input_shape):
+        """
+        Extract the backbone from the loaded nn.Module and set parameter trainability.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input data (channels, height, width).
+
+        Returns
+        -------
+        backbone_model : nn.Module
+            PyTorch module representing the backbone.
+        out_features : int
+            Number of output feature channels from the backbone.
+        """
+        # Extract backbone attribute if present, otherwise use full model
+        if hasattr(self.loaded_model, "backbone"):
+            backbone_model = self.loaded_model.backbone
+        else:
+            backbone_model = self.loaded_model
+
+        # Configure parameter trainability
+        for param in backbone_model.parameters():
+            param.requires_grad = self.trainable_backbone
+
+        # Extract output dimensions for head construction
+        if hasattr(self.loaded_model, "head") and hasattr(self.loaded_model.head, "heads"):
+            first_head = next(iter(self.loaded_model.head.heads.values()))
+            out_features = first_head[0].in_features
+        else:
+            out_features = self.head_layers[self.tasks[0]][0]
+
+        return backbone_model, out_features
