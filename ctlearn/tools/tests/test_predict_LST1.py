@@ -2,10 +2,9 @@ import shutil
 import numpy as np
 import pytest
 
-pytest.importorskip("tensorflow")
-
 from ctapipe.core import run_tool
 from ctapipe.io import TableLoader
+from ctlearn.conftest import MODEL_FILE_FORMATS
 from ctlearn.tools import LST1PredictionTool
 
 # Columns that should be present in the output DL2 file
@@ -33,8 +32,9 @@ REQUIRED_COLUMNS = [
 
 
 @pytest.mark.verifies_usecase("DPPS-UC-130-1.2.2")
+@pytest.mark.parametrize("framework", ["Keras"])
 def test_predict_mono_model_with_lst1_mock_data(
-    tmp_path, ctlearn_trained_dl1_mono_models, mock_lst1_dl1_file
+    tmp_path, ctlearn_trained_dl1_mono_models, mock_lst1_dl1_file, framework
 ):
     """
     Test LST1PredictionTool using trained mono models and mock LST-1 DL1 files.
@@ -50,7 +50,7 @@ def test_predict_mono_model_with_lst1_mock_data(
     # Hardcopy the trained models to the model directory
     telescope_type = "LST"
     for reco_task in ["type", "energy", "cameradirection"]:
-        key = f"{telescope_type}_{reco_task}"
+        key = f"{framework}_{telescope_type}_{reco_task}"
         shutil.copy(
             ctlearn_trained_dl1_mono_models[key],
             model_dir / f"ctlearn_mono_model_{key}.keras",
@@ -61,7 +61,7 @@ def test_predict_mono_model_with_lst1_mock_data(
     # Check that the mock LST1 DL1 file was created
     assert mock_lst1_dl1_file.exists(), "Mock LST1 DL1 file not found"
 
-    output_file = dl2_dir / "mock_lst1_predictions.dl2.h5"
+    output_file = dl2_dir / f"mock_lst1_{framework}_predictions.dl2.h5"
 
     # Build command-line arguments for LST1PredictionTool
     argv = [
@@ -71,9 +71,9 @@ def test_predict_mono_model_with_lst1_mock_data(
         "--LST1PredictionTool.channels=cleaned_image",
         "--LST1PredictionTool.channels=cleaned_relative_peak_time",
         "--LST1PredictionTool.image_mapper_type=BilinearMapper",
-        f"--type_model={model_dir}/ctlearn_mono_model_{telescope_type}_type.keras",
-        f"--energy_model={model_dir}/ctlearn_mono_model_{telescope_type}_energy.keras",
-        f"--cameradirection_model={model_dir}/ctlearn_mono_model_{telescope_type}_cameradirection.keras",
+        f"--type_model={model_dir}/ctlearn_mono_model_{framework}_{telescope_type}_type.{MODEL_FILE_FORMATS[framework]}",
+        f"--energy_model={model_dir}/ctlearn_mono_model_{framework}_{telescope_type}_energy.{MODEL_FILE_FORMATS[framework]}",
+        f"--cameradirection_model={model_dir}/ctlearn_mono_model_{framework}_{telescope_type}_cameradirection.{MODEL_FILE_FORMATS[framework]}",
         "--dl2-telescope",
         "--overwrite",
     ]
