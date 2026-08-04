@@ -2,10 +2,10 @@
 """
 
 from ctlearn.tools.predict_LST1 import LST1PredictionTool
-from ctlearn.tools.predict_model import MonoPredictCTLearnModel, StereoPredictCTLearnModel
+from ctlearn.tools.keras.predict_model import MonoPredictCTLearnKerasModel, StereoPredictCTLearnKerasModel
 
 __all__ = [
     "LST1PredictionTool",
-    "MonoPredictCTLearnModel",
-    "StereoPredictCTLearnModel",
+    "MonoPredictCTLearnKerasModel",
+    "StereoPredictCTLearnKerasModel",
 ]
