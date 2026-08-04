@@ -15,8 +15,8 @@ from ctlearn.core.pytorch.dataset import PyTorchDataset
     ],
     ids=["Keras", "PyTorch"],
 )
-def test_keras_sequence(dl1_gamma_file, dataloader_cls, expected_features_shape):
-    """check"""
+def test_data_loading(dl1_gamma_file, dataloader_cls, expected_features_shape):
+    """Check the data loading for the Keras and PyTorch frameworks"""
     # Create a configuration suitable for the test
     config = Config(
         {
@@ -28,7 +28,7 @@ def test_keras_sequence(dl1_gamma_file, dataloader_cls, expected_features_shape)
     )
     # Create an image reader
     dl1_reader = DLImageReader(input_url_signal=[dl1_gamma_file], config=config)
-    # Initialize the Dataset or Sequence
+    # Initialize the PyTorch Dataset or the Keras Sequence
     dl1_dataset = dataloader_cls(
         DLDataReader=dl1_reader,
         indices=[0],
@@ -42,7 +42,6 @@ def test_keras_sequence(dl1_gamma_file, dataloader_cls, expected_features_shape)
         if hasattr(features, "numpy"):
             features = features.numpy()
     else:
-        # Keras Sequence handles batching directly via __getitem__
         features, labels = dl1_dataset[0]
     #  Check that all the correct labels are present
     assert (
