@@ -94,3 +94,16 @@ def test_train_ctlearn_model(framework, model, reco_task, dl1_gamma_file, dl1_pr
         f"'val_loss' values out of range [0.0, 1.0] for {reco_task}: "
         f"{val_loss.tolist()}"
     )
+    # Check that the event file for TensorBoard is created for train and validation 
+    for subfolder in ["train", "validation"]:
+        subfolder_path = output_dir / subfolder
+        assert subfolder_path.is_dir(), f"TensorBoard '{subfolder}' directory missing in {output_dir}"
+        # Check that at least one file starting with 'events.out.tfevents.' exists
+        event_files = [
+            f for f in subfolder_path.iterdir() 
+            if f.is_file() and f.name.startswith("events.out.tfevents.")
+        ]
+        assert event_files, (
+            f"No TensorBoard event file starting with 'events.out.tfevents.' "
+            f"found in {subfolder_path}"
+        )

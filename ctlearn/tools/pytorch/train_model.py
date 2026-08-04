@@ -99,9 +99,9 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
         self.training_loader = DataLoader(
             dataset=self.training_dataset,
             batch_size=self.batch_size * self.num_devices,
-            shuffle=True,          # Enables shuffling
-            generator=g,           # Controls the shuffling seed deterministically
-            pin_memory=True        # Accelerates memory copy from host CPU to GPU
+            shuffle=True, # Enables shuffling
+            generator=g, # Controls the shuffling seed deterministically
+            pin_memory=torch.cuda.is_available() # Accelerates memory copy from host CPU to GPU
         )
         self.validation_dataset = PyTorchDataset(
             DLDataReader=self.dl1dh_reader,
@@ -113,12 +113,13 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
         self.validation_loader = DataLoader(
             dataset=self.validation_dataset,
             batch_size=self.batch_size * self.num_devices,
-            shuffle=False,         # Disables shuffling
-            pin_memory=True        # Accelerates memory copy from host CPU to GPU
+            shuffle=False, # Disables shuffling
+            pin_memory=torch.cuda.is_available() # Accelerates memory copy from host CPU to GPU
         )
 
-        # Set up TensorBoard writer and CSV logging path
-        self.writer = SummaryWriter(log_dir=str(self.output_dir))
+        # Set up TensorBoard writers for train and validation and CSV logging path
+        self.train_writer = SummaryWriter(log_dir=os.path.join(self.output_dir, "train"))
+        self.val_writer = SummaryWriter(log_dir=os.path.join(self.output_dir, "validation"))
         self.csv_log_path = os.path.join(self.output_dir, "training_log.csv")
 
         # Initialize TorchMetrics according to reconstruction tasks
@@ -214,13 +215,15 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
             with open(self.csv_log_path, "a") as f:
                 f.write(row_str + "\n")
 
-            # TensorBoard metrics
-            self.writer.add_scalar("Loss/train", train_loss, epoch_idx)
-            self.writer.add_scalar("Loss/val", val_loss, epoch_idx)
+            # TensorBoard metrics training and validation
+            self.train_writer.add_scalar("loss", train_loss, epoch_idx)
             for k, v in train_metric_vals.items():
-                self.writer.add_scalar(f"{k}/train", v, epoch_idx)
+                self.train_writer.add_scalar(k, v, epoch_idx)
+            self.train_writer.flush()
+            self.val_writer.add_scalar("loss", val_loss, epoch_idx)
             for k, v in val_metric_vals.items():
-                self.writer.add_scalar(f"{k}/val", v, epoch_idx)
+                self.val_writer.add_scalar(k, v, epoch_idx)
+            self.val_writer.flush()
 
             # Unwrap model if wrapped with DataParallel / DistributedDataParallel
             unwrapped_model = (
@@ -276,7 +279,9 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
                         unwrapped_model.load_state_dict(best_model_weights)
                     break
 
-        self.writer.close()
+        # Close the TensorBoard writers
+        self.train_writer.close()
+        self.val_writer.close()
         self.log.info("Training and evaluating finished successfully!")
 
     def _train_epoch(self):
