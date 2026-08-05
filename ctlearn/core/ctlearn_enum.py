@@ -37,10 +37,10 @@ class FrameworkType(Enum):
         >>> from ctlearn.core.ctlearn_enum import FrameworkType
         >>> framework = FrameworkType.PYTORCH
         >>> print(framework.name)  # 'PYTORCH'
-        >>> print(framework.value)  # 2
+        >>> print(framework.value)  # 'PyTorch'
     """
-    KERAS = 1
-    PYTORCH = 2
+    KERAS = "Keras"
+    PYTORCH = "PyTorch"
 
 
 class Task(Enum):

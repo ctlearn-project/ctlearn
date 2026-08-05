@@ -5,7 +5,7 @@ import pytest
 from ctapipe.core import run_tool
 from ctapipe.io import TableLoader
 from ctlearn.conftest import MODEL_FILE_FORMATS
-from ctlearn.tools.keras import MonoPredictCTLearnKerasModel, StereoPredictCTLearnKerasModel
+from ctlearn.tools import MonoPredictCTLearnModel, StereoPredictCTLearnModel
 
 # Columns that should be present in the output DL2 file
 REQUIRED_COLUMNS = [
@@ -37,7 +37,7 @@ REQUIRED_COLUMNS = [
 
 
 @pytest.mark.verifies_usecase("DPPS-UC-130-1.2")
-@pytest.mark.parametrize("framework", ["Keras"])
+@pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
 def test_predict_mono_model_with_r1_waveforms(
     tmp_path, ctlearn_trained_r1_mono_models, r1_gamma_file, framework
 ):
@@ -60,15 +60,15 @@ def test_predict_mono_model_with_r1_waveforms(
         key = f"{framework}_{telescope_type}_{reco_task}"
         shutil.copy(
             ctlearn_trained_r1_mono_models[key],
-            model_dir / f"ctlearn_mono_model_{key}.keras",
+            model_dir / f"ctlearn_mono_model_{key}.{MODEL_FILE_FORMATS[framework]}",
         )
-        model_file = model_dir / f"ctlearn_mono_model_{key}.keras"
+        model_file = model_dir / f"ctlearn_mono_model_{key}.{MODEL_FILE_FORMATS[framework]}"
         assert model_file.exists(), f"Trained mono model file not found for {key}"
     # Build command-line arguments
     argv = [
         f"--input_url={r1_gamma_file}",
-        "--PredictCTLearnKerasModel.batch_size=2",
-        "--PredictCTLearnKerasModel.dl1dh_reader_type=DLWaveformReader",
+        "--PredictCTLearnModel.batch_size=2",
+        "--PredictCTLearnModel.dl1dh_reader_type=DLWaveformReader",
         "--DLWaveformReader.sequence_length=5",
         "--DLWaveformReader.focal_length_choice=EQUIVALENT",
         "--no-r1-waveforms",
@@ -78,13 +78,13 @@ def test_predict_mono_model_with_r1_waveforms(
     # Run Prediction tool
     assert (
         run_tool(
-            MonoPredictCTLearnKerasModel(),
+            MonoPredictCTLearnModel(),
             argv=argv
             + [
                 f"--output={output_file}",
-                f"--PredictCTLearnKerasModel.load_type_model_from={model_dir}/ctlearn_mono_model_{framework}_{telescope_type}_type.{MODEL_FILE_FORMATS[framework]}",
-                f"--PredictCTLearnKerasModel.load_energy_model_from={model_dir}/ctlearn_mono_model_{framework}_{telescope_type}_energy.{MODEL_FILE_FORMATS[framework]}",
-                f"--PredictCTLearnKerasModel.load_cameradirection_model_from={model_dir}/ctlearn_mono_model_{framework}_{telescope_type}_cameradirection.{MODEL_FILE_FORMATS[framework]}",
+                f"--PredictCTLearnModel.load_type_model_from={model_dir}/ctlearn_mono_model_{framework}_{telescope_type}_type.{MODEL_FILE_FORMATS[framework]}",
+                f"--PredictCTLearnModel.load_energy_model_from={model_dir}/ctlearn_mono_model_{framework}_{telescope_type}_energy.{MODEL_FILE_FORMATS[framework]}",
+                f"--PredictCTLearnModel.load_cameradirection_model_from={model_dir}/ctlearn_mono_model_{framework}_{telescope_type}_cameradirection.{MODEL_FILE_FORMATS[framework]}",
             ],
             cwd=tmp_path,
         )
@@ -131,7 +131,7 @@ def test_predict_mono_model_with_r1_waveforms(
 
 
 @pytest.mark.verifies_usecase("DPPS-UC-130-1.2.2")
-@pytest.mark.parametrize("framework", ["Keras"])
+@pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
 @pytest.mark.parametrize("dl2_tel_flag", ["dl2-telescope", "no-dl2-telescope"])
 def test_predict_mono_model_with_dl1_images(
     tmp_path, ctlearn_trained_dl1_mono_models, dl1_gamma_file, framework, dl2_tel_flag
@@ -170,7 +170,7 @@ def test_predict_mono_model_with_dl1_images(
     # Build command-line arguments
     argv = [
         f"--input_url={dl1_gamma_file}",
-        "--PredictCTLearnKerasModel.batch_size=2",
+        "--PredictCTLearnModel.batch_size=2",
         "--DLImageReader.focal_length_choice=EQUIVALENT",
         "--no-dl1-images",
         "--no-true-images",
@@ -183,15 +183,15 @@ def test_predict_mono_model_with_dl1_images(
         # Run Prediction tool
         assert (
             run_tool(
-                MonoPredictCTLearnKerasModel(),
+                MonoPredictCTLearnModel(),
                 argv=argv
                 + [
                     f"--output={output_file}",
                     f"--DLImageReader.allowed_tels={allowed_tels}",
                     f"--DLImageReader.image_mapper_type={image_mapper_types[telescope_type]}",
-                    f"--PredictCTLearnKerasModel.load_type_model_from={model_dir}/ctlearn_mono_model_{framework}_{telescope_type}_type.{MODEL_FILE_FORMATS[framework]}",
-                    f"--PredictCTLearnKerasModel.load_energy_model_from={model_dir}/ctlearn_mono_model_{framework}_{telescope_type}_energy.{MODEL_FILE_FORMATS[framework]}",
-                    f"--PredictCTLearnKerasModel.load_cameradirection_model_from={model_dir}/ctlearn_mono_model_{framework}_{telescope_type}_cameradirection.{MODEL_FILE_FORMATS[framework]}",
+                    f"--PredictCTLearnModel.load_type_model_from={model_dir}/ctlearn_mono_model_{framework}_{telescope_type}_type.{MODEL_FILE_FORMATS[framework]}",
+                    f"--PredictCTLearnModel.load_energy_model_from={model_dir}/ctlearn_mono_model_{framework}_{telescope_type}_energy.{MODEL_FILE_FORMATS[framework]}",
+                    f"--PredictCTLearnModel.load_cameradirection_model_from={model_dir}/ctlearn_mono_model_{framework}_{telescope_type}_cameradirection.{MODEL_FILE_FORMATS[framework]}",
                 ],
                 cwd=tmp_path,
             )
@@ -240,7 +240,7 @@ def test_predict_mono_model_with_dl1_images(
 
 
 @pytest.mark.verifies_usecase("DPPS-UC-130-1.2.2")
-@pytest.mark.parametrize("framework", ["Keras"])
+@pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
 def test_predict_stereo_model_with_dl1_images(
     tmp_path, ctlearn_trained_dl1_stereo_models, dl1_gamma_file, framework
 ):
@@ -270,8 +270,8 @@ def test_predict_stereo_model_with_dl1_images(
     # Build command-line arguments
     argv = [
         f"--input_url={dl1_gamma_file}",
-        "--PredictCTLearnKerasModel.batch_size=2",
-        "--PredictCTLearnKerasModel.stack_telescope_images=True",
+        "--PredictCTLearnModel.batch_size=2",
+        "--PredictCTLearnModel.stack_telescope_images=True",
         "--DLImageReader.mode=stereo",
         "--DLImageReader.focal_length_choice=EQUIVALENT",
         f"--DLImageReader.allowed_tels={allowed_tels}",
@@ -282,13 +282,13 @@ def test_predict_stereo_model_with_dl1_images(
     # Run Prediction tool
     assert (
         run_tool(
-            StereoPredictCTLearnKerasModel(),
+            StereoPredictCTLearnModel(),
             argv=argv
             + [
                 f"--output={output_file}",
-                f"--PredictCTLearnKerasModel.load_type_model_from={model_dir}/ctlearn_stereo_model_{framework}_{telescope_type}_type.{MODEL_FILE_FORMATS[framework]}",
-                f"--PredictCTLearnKerasModel.load_energy_model_from={model_dir}/ctlearn_stereo_model_{framework}_{telescope_type}_energy.{MODEL_FILE_FORMATS[framework]}",
-                f"--PredictCTLearnKerasModel.load_skydirection_model_from={model_dir}/ctlearn_stereo_model_{framework}_{telescope_type}_skydirection.{MODEL_FILE_FORMATS[framework]}",
+                f"--PredictCTLearnModel.load_type_model_from={model_dir}/ctlearn_stereo_model_{framework}_{telescope_type}_type.{MODEL_FILE_FORMATS[framework]}",
+                f"--PredictCTLearnModel.load_energy_model_from={model_dir}/ctlearn_stereo_model_{framework}_{telescope_type}_energy.{MODEL_FILE_FORMATS[framework]}",
+                f"--PredictCTLearnModel.load_skydirection_model_from={model_dir}/ctlearn_stereo_model_{framework}_{telescope_type}_skydirection.{MODEL_FILE_FORMATS[framework]}",
             ],
             cwd=tmp_path,
         )

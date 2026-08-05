@@ -36,10 +36,12 @@ class MultiHeadClassifier(nn.Module):
 
     def __init__(self, heads_dict, single_output_task=None):
         super().__init__()
+        # Save the dict with tasks info in an attribute
+        self.heads_dict = heads_dict
         # Sanitize keys because 'type' conflicts with nn.Module.type() method
         self._task_mapping = {
             task: f"head_{task}" if hasattr(nn.Module, task) else task
-            for task in heads_dict.keys()
+            for task in self.heads_dict.keys()
         }
         sanitized_heads = {
             self._task_mapping[task]: module for task, module in heads_dict.items()
