@@ -40,13 +40,10 @@ def test_predict_mono_model_with_lst1_mock_data(
     Test LST1PredictionTool using trained mono models and mock LST-1 DL1 files.
     Each test run gets its own isolated temp directories.
     """
-
     model_dir = tmp_path / "trained_models"
     model_dir.mkdir(parents=True, exist_ok=True)
-
     dl2_dir = tmp_path / "dl2_output"
     dl2_dir.mkdir(parents=True, exist_ok=True)
-
     # Hardcopy the trained models to the model directory
     telescope_type = "LST"
     for reco_task in ["type", "energy", "cameradirection"]:
@@ -57,12 +54,9 @@ def test_predict_mono_model_with_lst1_mock_data(
         )
         model_file = model_dir / f"ctlearn_mono_model_{key}.{MODEL_FILE_FORMATS[framework]}"
         assert model_file.exists(), f"Trained mono model file not found for {key}"
-
     # Check that the mock LST1 DL1 file was created
     assert mock_lst1_dl1_file.exists(), "Mock LST1 DL1 file not found"
-
     output_file = dl2_dir / f"mock_lst1_{framework}_predictions.dl2.h5"
-
     # Build command-line arguments for LST1PredictionTool
     argv = [
         f"--input_url={mock_lst1_dl1_file}",
@@ -77,13 +71,10 @@ def test_predict_mono_model_with_lst1_mock_data(
         "--dl2-telescope",
         "--overwrite",
     ]
-
     # Run LST1PredictionTool
     assert run_tool(LST1PredictionTool(), argv=argv, cwd=tmp_path) == 0
-
     # Check that the output DL2 file was created
     assert output_file.exists(), "Output DL2 file not created"
-
     # Check that the created DL2 file can be read with the TableLoader
     allowed_tels = [1]
     with TableLoader(
@@ -109,7 +100,6 @@ def test_predict_mono_model_with_lst1_mock_data(
                 assert (
                     tel_events[tel_id][col][0] is not np.nan
                 ), f"{col} has NaN values in DL2 file {output_file.name}"
-
         # Check subarray-wise data
         subarray_events = loader.read_subarray_events(start=0, stop=2, dl2=True)
         assert len(subarray_events) > 0

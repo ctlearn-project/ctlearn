@@ -45,16 +45,13 @@ def test_predict_mono_model_with_r1_waveforms(
     Test training CTLearn mono model using the R1 gamma and proton files for all reconstruction tasks
     and predicting DL2 from R1 waveforms. Each test run gets its own isolated temp directories.
     """
-
     model_dir = tmp_path / "trained_models"
     model_dir.mkdir(parents=True, exist_ok=True)
-
     dl2_dir = tmp_path / "dl2_output"
     dl2_dir.mkdir(parents=True, exist_ok=True)
     # Define telescope types and their available telescopes
     telescope_type = "LST"
     available_tels = [1, 2]
-
     # Hardcopy the trained models to the model directory
     for reco_task in ["type", "energy", "cameradirection"]:
         key = f"{framework}_{telescope_type}_{reco_task}"
@@ -90,7 +87,6 @@ def test_predict_mono_model_with_r1_waveforms(
         )
         == 0
     )
-
     # Check that the output DL2 file was created
     assert output_file.exists(), "Output DL2 file not created"
     # Check that the created DL2 file can be read with the TableLoader
@@ -140,10 +136,8 @@ def test_predict_mono_model_with_dl1_images(
     Test training CTLearn model using the DL1 gamma and proton files for all reconstruction tasks
     and predicting DL2 from DL1 images. Each test run gets its own isolated temp directories.
     """
-
     model_dir = tmp_path / "trained_models"
     model_dir.mkdir(parents=True, exist_ok=True)
-
     dl2_dir = tmp_path / "dl2_output"
     dl2_dir.mkdir(parents=True, exist_ok=True)
     # Define telescope types and their allowed telescopes
@@ -197,7 +191,6 @@ def test_predict_mono_model_with_dl1_images(
             )
             == 0
         )
-
         # Check that the output DL2 file was created
         assert output_file.exists(), "Output DL2 file not created"
         # Check that the created DL2 file can be read with the TableLoader
@@ -248,16 +241,13 @@ def test_predict_stereo_model_with_dl1_images(
     Test training CTLearn stereo model using the DL1 gamma and proton files for all reconstruction tasks
     and predicting DL2 from DL1 images. Each test run gets its own isolated temp directories.
     """
-
     model_dir = tmp_path / "trained_models"
     model_dir.mkdir(parents=True, exist_ok=True)
-
     dl2_dir = tmp_path / "dl2_output"
     dl2_dir.mkdir(parents=True, exist_ok=True)
     # Define telescope types and their available telescopes
     telescope_type = "MST"
     allowed_tels = [7, 13, 15]
-
     # Hardcopy the trained models to the model directory
     for reco_task in ["type", "energy", "skydirection"]:
         key = f"{framework}_{telescope_type}_{reco_task}"
@@ -294,7 +284,6 @@ def test_predict_stereo_model_with_dl1_images(
         )
         == 0
     )
-
     # Check that the output DL2 file was created
     assert output_file.exists(), "Output DL2 file not created"
     # Check that the created DL2 file can be read with the TableLoader
