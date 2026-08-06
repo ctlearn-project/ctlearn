@@ -89,7 +89,12 @@ from dl1_data_handler.reader import (
 from ctlearn import __version__ as ctlearn_version
 from ctlearn.core.keras.sequence import KerasSequence
 from ctlearn.core.pytorch.dataset import PyTorchDataset
-from ctlearn.tools.utils import detect_framework, FrameworkType, validate_trait_dict
+from ctlearn.tools.utils import (
+    FrameworkType,
+    detect_framework,
+    setup_framework,
+    validate_trait_dict,
+)
 
 # Convienient constants for column names and table keys
 SUBARRAY_EVENT_KEYS = ["obs_id", "event_id"]
@@ -426,10 +431,24 @@ class PredictCTLearnModel(Tool):
             self.output_path, dl2_subarray=False, dl2_telescope=False, parent=self
         ) as merger:
             merger(self.input_url)
-
-        # Reads the model paths and set up the Keras or PyTorch framework 
-        self._setup_framework()
-
+        # Collect all configured model path attributes
+        model_paths = [
+            self.load_type_model_from,
+            self.load_energy_model_from,
+            self.load_cameradirection_model_from,
+            self.load_skydirection_model_from,
+        ]
+        # Reads the model paths and set up the Keras or PyTorch framework
+        self.framework_type, self.num_devices, self.strategy, self.device = setup_framework(model_paths)
+        self.log.info("Framework selected: %s", self.framework_type.value)
+        if self.framework_type == FrameworkType.KERAS:
+            atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore
+            self.log.info("Using Keras MirroredStrategy with %d replica(s).", self.num_devices)
+        elif self.framework_type == FrameworkType.PYTORCH:
+            if self.device == torch.device("cpu"):
+                self.log.info("Using PyTorch CPU device.")
+            else:
+                self.log.info("Using PyTorch GPU device(s). Count: %d", self.num_devices)
         # Set up the data reader
         self.log.info("Loading data reader:")
         self.log.info("For a large dataset, this may take a while...")

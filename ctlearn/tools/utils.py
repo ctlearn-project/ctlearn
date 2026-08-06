@@ -9,7 +9,11 @@ import os
 import time
 from tqdm import tqdm
 
+import tensorflow as tf
+import torch
+
 from ctapipe.core import Provenance
+from ctapipe.core.tool import ToolConfigurationError
 from ctapipe.core.traits import TraitError
 from ctapipe.instrument.optics import FocalLengthKind
 from ctapipe.instrument import SubarrayDescription
@@ -21,6 +25,7 @@ __all__ = [
     "get_lst1_subarray_description",
     "FrameworkType",
     "detect_framework",
+    "setup_framework",
 ]
 
 def monitor_progress(src_path, dst_path, stop_event, logger):
@@ -147,3 +152,68 @@ def detect_framework(path_val):
             f"Invalid model extension '{ext}' for file '{path}'. "
             "Expected '.keras' or '.h5' for Keras, or '.pt' or '.pth' for PyTorch."
         )
+
+def setup_framework(model_paths):
+    """
+    Detects the deep learning framework from model paths, ensures consistency, 
+    and configures the hardware devices for distributed or single-device execution.
+
+    This function iterates through the provided model paths, infers the framework 
+    (Keras or PyTorch) based on file extensions, and ensures all models belong 
+    to the same framework. It then initializes the appropriate hardware setup 
+    (e.g., MirroredStrategy for Keras, CUDA/CPU device for PyTorch).
+
+    Parameters
+    ----------
+    model_paths : list of str or pathlib.Path or None
+        A list of paths pointing to the saved model files. `None` values are ignored.
+
+    Returns
+    -------
+    tuple
+        A tuple containing:
+        - framework_type (FrameworkType): The identified framework enum (FrameworkType.KERAS or FrameworkType.PYTORCH).
+        - num_devices (int): The number of devices available/configured for the framework.
+        - strategy (tf.distribute.Strategy or None): The TensorFlow distribution strategy if Keras is detected, else None.
+        - device (torch.device or None): The PyTorch target device if PyTorch is detected, else None.
+
+    Raises
+    ------
+    ToolConfigurationError
+        If no valid model paths are provided, or if multiple inconsistent frameworks 
+        are detected across the provided paths.
+    """
+    # Detect frameworks from all non-None paths
+    detected_frameworks = {}
+    for path in model_paths:
+        if path is not None:
+            detected_frameworks[path] = detect_framework(path)
+    # Fail immediately if no valid model paths are provided
+    if not detected_frameworks:
+        raise ToolConfigurationError(
+            "No model paths were specified. At least one valid model path "
+            "(.keras/.h5 for Keras, or .pt/.pth for PyTorch) must be provided."
+        )
+    # Verify consistency across specified paths
+    unique_frameworks = set(detected_frameworks.values())
+    if len(unique_frameworks) > 1:
+        details = ", ".join(f"{p}: {fw.value}" for p, fw in detected_frameworks.items())
+        raise ToolConfigurationError(
+            f"Inconsistent model frameworks detected across paths: {details}. "
+            "All specified model files must belong to the same framework."
+        )
+    # Set framework directly from the detected FrameworkType enum
+    framework_type = next(iter(unique_frameworks))
+    # Configure framework-specific hardware/device setup
+    strategy, device = None, None
+    if framework_type == FrameworkType.KERAS:
+        strategy = tf.distribute.MirroredStrategy()
+        num_devices = strategy.num_replicas_in_sync
+    elif framework_type == FrameworkType.PYTORCH:
+        if torch.cuda.is_available():
+            device = torch.device("cuda")
+            num_devices = torch.cuda.device_count()
+        else:
+            device = torch.device("cpu")
+            num_devices = 1
+    return framework_type, num_devices, strategy, device
