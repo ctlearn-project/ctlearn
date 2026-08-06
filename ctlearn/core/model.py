@@ -6,7 +6,7 @@ from abc import abstractmethod
 
 from ctapipe.core import Component
 from ctapipe.core.traits import Bool, Int, CaselessStrEnum, List, Dict, Unicode, Path
-from ctlearn.utils import validate_trait_dict
+from ctlearn.tools.utils import validate_trait_dict
 
 __all__ = [
     "CTLearnModel",

@@ -16,12 +16,10 @@ from ctapipe.io import write_table
 from ctapipe.utils import get_dataset_path
 from ctlearn.tools.keras.train_model import TrainCTLearnKerasModel
 from ctlearn.tools.pytorch.train_model import TrainCTLearnPyTorchModel
-from ctlearn.utils import get_lst1_subarray_description
+from ctlearn.tools.utils import get_lst1_subarray_description
 
-# TODO: ADD PyTorch here 
 TRAINING_TOOLS = {"Keras": TrainCTLearnKerasModel, "PyTorch": TrainCTLearnPyTorchModel}
 MODEL_FILE_FORMATS = {"Keras": "keras", "PyTorch": "pth"}
-
 
 @pytest.fixture(scope="session")
 def gamma_simtel_path():

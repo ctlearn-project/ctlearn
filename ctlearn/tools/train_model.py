@@ -22,7 +22,7 @@ from ctapipe.core.traits import (
 )
 from ctlearn import __version__ as ctlearn_version
 from ctlearn.core.model import CTLearnModel
-from ctlearn.utils import validate_trait_dict
+from ctlearn.tools.utils import validate_trait_dict
 from dl1_data_handler.reader import DLDataReader
 
 

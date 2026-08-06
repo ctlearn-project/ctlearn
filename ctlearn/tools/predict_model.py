@@ -1,10 +1,9 @@
 """
-Tools to predict the gammaness, energy and arrival direction in monoscopic and stereoscopic mode using ``CTLearnModel`` on R1/DL1 data using the ``DLDataReader`` and ``KerasSequence``.
+Tools to predict the gammaness, energy and arrival direction in monoscopic and stereoscopic mode using ``CTLearnModel`` on R1/DL1 data using the ``DLDataReader`` and ``KerasSequence``/``PyTorchDataset``.
 """
 
 import atexit
 import uuid
-import pathlib
 import warnings
 
 import numpy as np
@@ -14,14 +13,11 @@ import tensorflow as tf
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from traitlets import TraitError
 
 from astropy import units as u
-from astropy.coordinates.earth import EarthLocation
 from astropy.coordinates import AltAz, SkyCoord
 from astropy.table import (
     Table,
-    hstack,
     vstack,
     join,
     setdiff,
@@ -91,10 +87,9 @@ from dl1_data_handler.reader import (
     LST_EPOCH,
 )
 from ctlearn import __version__ as ctlearn_version
-from ctlearn.core.ctlearn_enum import FrameworkType
 from ctlearn.core.keras.sequence import KerasSequence
 from ctlearn.core.pytorch.dataset import PyTorchDataset
-from ctlearn.utils import validate_trait_dict
+from ctlearn.tools.utils import detect_framework, FrameworkType, validate_trait_dict
 
 # Convienient constants for column names and table keys
 SUBARRAY_EVENT_KEYS = ["obs_id", "event_id"]
@@ -504,32 +499,24 @@ class PredictCTLearnModel(Tool):
         detected_frameworks = {}
         for path in model_paths:
             if path is not None:
-                fw = self._detect_framework(path)
-                detected_frameworks[path] = fw
+                detected_frameworks[path] = detect_framework(path)
         # Fail immediately if no valid model paths are provided
         if not detected_frameworks:
             raise ToolConfigurationError(
                 "No model paths were specified. At least one valid model path "
-                "(.keras for Keras, or .pt/.pth for PyTorch) must be provided."
+                "(.keras/.h5 for Keras, or .pt/.pth for PyTorch) must be provided."
             )
         # Verify consistency across specified paths
         unique_frameworks = set(detected_frameworks.values())
         if len(unique_frameworks) > 1:
-            details = ", ".join(f"{p}: {fw}" for p, fw in detected_frameworks.items())
+            details = ", ".join(f"{p}: {fw.value}" for p, fw in detected_frameworks.items())
             raise ToolConfigurationError(
                 f"Inconsistent model frameworks detected across paths: {details}. "
                 "All specified model files must belong to the same framework."
             )
-        # Convert detected framework string (e.g., 'Keras' / 'PyTorch') to FrameworkType enum
-        framework_str = next(iter(unique_frameworks))
-        try:
-            self.framework_type = FrameworkType[framework_str.upper()]
-        except KeyError:
-            raise ToolConfigurationError(
-                f"Unsupported framework type '{framework_str}'. "
-                "Must be either FrameworkType.KERAS or FrameworkType.PYTORCH."
-            )
-        self.log.info("Framework selected: %s", self.framework_type)
+        # Set framework directly from the detected FrameworkType enum
+        self.framework_type = next(iter(unique_frameworks))
+        self.log.info("Framework selected: %s", self.framework_type.value)
         # Configure framework-specific hardware/device setup
         self.device = None
         if self.framework_type == FrameworkType.PYTORCH:
@@ -546,28 +533,6 @@ class PredictCTLearnModel(Tool):
             atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore
             self.num_devices = self.strategy.num_replicas_in_sync
             self.log.info("Using Keras MirroredStrategy with %d replica(s).", self.num_devices)
-
-    @staticmethod
-    def _detect_framework(path_val):
-        """
-        Determines framework based on file extension.
-        Returns 'Keras', 'PyTorch', or raises TraitError.
-        """
-        if path_val is None:
-            return None
-
-        path = pathlib.Path(path_val)
-        ext = path.suffix.lower()
-
-        if ext in [".keras", ".h5"]:
-            return "Keras"
-        elif ext in [".pt", ".pth"]:
-            return "PyTorch"
-        else:
-            raise TraitError(
-                f"Invalid model extension '{ext}' for file '{path}'. "
-                "Expected '.keras' or '.h5' for Keras, or '.pt' or '.pth' for PyTorch."
-            )
 
     def _get_data_levels(self, h5file):
         """Get the data levels present in the HDF5 file."""
