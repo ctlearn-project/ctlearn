@@ -1,5 +1,5 @@
 """
-Tools to predict the gammaness, energy and arrival direction in monoscopic and stereoscopic mode using ``CTLearnModel`` on R1/DL1 data using the ``DLDataReader`` and ``DLDataLoader``.
+Tools to predict the gammaness, energy and arrival direction in monoscopic and stereoscopic mode using ``CTLearnModel`` on R1/DL1 data using the ``DLDataReader`` and ``KerasSequence``/``PyTorchDataset``.
 """
 
 import atexit
@@ -8,19 +8,15 @@ import warnings
 
 import numpy as np
 import tables
-try:
-    import tensorflow as tf
-    import keras
-except ImportError:
-    tf = None
-    keras = None
+import keras
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
 
 from astropy import units as u
-from astropy.coordinates.earth import EarthLocation
 from astropy.coordinates import AltAz, SkyCoord
 from astropy.table import (
     Table,
-    hstack,
     vstack,
     join,
     setdiff,
@@ -43,45 +39,44 @@ from ctapipe.core.traits import (
     flag,
     Dict,
     ComponentName,
-    CaselessStrEnum,
     classes_with_traits,
 )
 from ctapipe.monitoring.interpolation import PointingInterpolator
 from ctapipe.instrument import SubarrayDescription
 from ctapipe.io import read_table, write_table, HDF5Merger
 from ctapipe.io.datalevels import DataLevel
-
-DL0_TEL_POINTING_GROUP = "/dl0/event/telescope/pointing"
-DL1_SUBARRAY_GROUP = "/dl1/event/subarray"
-DL1_SUBARRAY_POINTING_GROUP = "/dl1/event/subarray/pointing"
-DL1_SUBARRAY_TRIGGER_TABLE = "/dl1/event/subarray/trigger"
-DL1_TEL_GROUP = "/dl1/event/telescope"
-DL1_TEL_CALIBRATION_GROUP = "/dl1/event/telescope/calibration"
-DL1_TEL_ILLUMINATOR_THROUGHPUT_GROUP = "/dl1/event/telescope/illuminator_throughput"
-DL1_TEL_IMAGES_GROUP = "/dl1/event/telescope/image"
-DL1_TEL_MUON_GROUP = "/dl1/event/telescope/muon"
-DL1_TEL_MUON_THROUGHPUT_GROUP = "/dl1/event/telescope/muon_throughput"
-DL1_TEL_OPTICAL_PSF_GROUP = "/dl1/event/telescope/optical_psf"
-DL1_TEL_PARAMETERS_GROUP = "/dl1/event/telescope/parameters"
-DL1_TEL_POINTING_GROUP = "/dl1/event/telescope/pointing"
-DL1_TEL_TRIGGER_TABLE = "/dl1/event/telescope/trigger"
-DL2_EVENT_STATISTICS_GROUP = "/dl2/event/subarray/statistics"
-FIXED_POINTING_GROUP = "/configuration/telescope/pointing"
-R0_TEL_GROUP = "/r0/event/telescope"
-R1_TEL_GROUP = "/r1/event/telescope"
-SIMULATION_IMAGES_GROUP = "/simulation/event/telescope/images"
-SIMULATION_IMPACT_GROUP = "/simulation/event/telescope/impact"
-SIMULATION_PARAMETERS_GROUP = "/simulation/event/telescope/parameters"
-SIMULATION_RUN_TABLE = "/simulation/run_config"
-SIMULATION_SHOWER_TABLE = "/simulation/event/subarray/shower"
-DL2_TEL_PARTICLETYPE_GROUP = "/dl2/event/telescope/classification"
-DL2_TEL_ENERGY_GROUP = "/dl2/event/telescope/energy"
-DL2_TEL_GEOMETRY_GROUP = "/dl2/event/telescope/geometry"
-DL2_SUBARRAY_GROUP = "/dl2/event/subarray"
-DL2_SUBARRAY_PARTICLETYPE_GROUP = "/dl2/event/subarray/classification"
-DL2_SUBARRAY_ENERGY_GROUP = "/dl2/event/subarray/energy"
-DL2_SUBARRAY_GEOMETRY_GROUP = "/dl2/event/subarray/geometry"
-
+from ctapipe.io.hdf5dataformat import (
+    DL0_TEL_POINTING_GROUP,
+    DL1_SUBARRAY_GROUP,
+    DL1_SUBARRAY_POINTING_GROUP,
+    DL1_SUBARRAY_TRIGGER_TABLE,
+    DL1_TEL_GROUP,
+    DL1_TEL_CALIBRATION_GROUP,
+    DL1_TEL_ILLUMINATOR_THROUGHPUT_GROUP,
+    DL1_TEL_IMAGES_GROUP,
+    DL1_TEL_MUON_GROUP,
+    DL1_TEL_MUON_THROUGHPUT_GROUP,
+    DL1_TEL_OPTICAL_PSF_GROUP,
+    DL1_TEL_PARAMETERS_GROUP,
+    DL1_TEL_POINTING_GROUP,
+    DL1_TEL_TRIGGER_TABLE,
+    DL2_EVENT_STATISTICS_GROUP,
+    FIXED_POINTING_GROUP,
+    R0_TEL_GROUP,
+    R1_TEL_GROUP,
+    SIMULATION_IMAGES_GROUP,
+    SIMULATION_IMPACT_GROUP,
+    SIMULATION_PARAMETERS_GROUP,
+    SIMULATION_RUN_TABLE,
+    SIMULATION_SHOWER_TABLE,
+    DL2_TEL_PARTICLETYPE_GROUP,
+    DL2_TEL_ENERGY_GROUP,
+    DL2_TEL_GEOMETRY_GROUP,
+    DL2_SUBARRAY_GROUP,
+    DL2_SUBARRAY_PARTICLETYPE_GROUP,
+    DL2_SUBARRAY_ENERGY_GROUP,
+    DL2_SUBARRAY_GEOMETRY_GROUP,
+)
 from ctapipe.reco.reconstructor import ReconstructionProperty
 from ctapipe.reco.stereo_combination import StereoCombiner
 from ctapipe.reco.utils import add_defaults_and_meta
@@ -91,8 +86,13 @@ from dl1_data_handler.reader import (
     LST_EPOCH,
 )
 from ctlearn import __version__ as ctlearn_version
-from ctlearn.core.data_loader.loader import DLDataLoader
-from ctlearn.utils import validate_trait_dict
+from ctlearn.core.keras.sequence import KerasSequence
+from ctlearn.core.pytorch.dataset import PyTorchDataset
+from ctlearn.tools.utils import (
+    FrameworkType,
+    setup_framework,
+    validate_trait_dict,
+)
 
 # Convienient constants for column names and table keys
 SUBARRAY_EVENT_KEYS = ["obs_id", "event_id"]
@@ -135,7 +135,8 @@ class PredictCTLearnModel(Tool):
     This class handles the prediction of the gammaness, energy and arrival direction from pixel-wise image
     or waveform data. It also supports the extraction of the feature vectors from the backbone submodel to
     store them in the output file. The input data is loaded from the input url using the
-    ``~dl1_data_handler.reader.DLDataReader`` and ``~ctlearn.core.loader.DLDataLoader``.
+    ``~dl1_data_handler.reader.DLDataReader`` and ``~ctlearn.core.keras.sequence.KerasSequence`` or
+    ``~ctlearn.core.pytorch.dataset.PyTorchDataset``.
     The prediction is performed using the CTLearn models. The data is stored in the output file
     following the ctapipe DL2 data format. The ``start`` method is implemented in the subclasses to
     handle the prediction for mono and stereo mode.
@@ -161,14 +162,14 @@ class PredictCTLearnModel(Tool):
     prefix : str
         Name of the reconstruction algorithm used to generate the dl2 data.
     load_type_model_from : pathlib.Path
-        Path to a Keras model file (Keras3) for the classification of the primary particle type.
+        Path to a Keras or PyTorch model file for the classification of the primary particle type.
     load_energy_model_from : pathlib.Path
-        Path to a Keras model file (Keras3) for the regression of the primary particle energy.
+        Path to a Keras or PyTorch model file for the regression of the primary particle energy.
     load_cameradirection_model_from : pathlib.Path
-        Path to a Keras model file (Keras3) for the regression
+        Path to a Keras or PyTorch model file for the regression
         of the primary particle arrival direction based on camera coordinate offsets.
     load_skydirection_model_from : pathlib.Path
-        Path to a Keras model file (Keras3) for the regression
+        Path to a Keras or PyTorch model file for the regression
         of the primary particle arrival direction based on spherical coordinate offsets.
     output_path : pathlib.Path
         Output path to save the dl2 prediction results.
@@ -176,8 +177,8 @@ class PredictCTLearnModel(Tool):
         Verbosity mode of Keras during the prediction.
     strategy : tf.distribute.Strategy
         MirroredStrategy to distribute the prediction.
-    data_loader : ctlearn.core.loader.DLDataLoader
-        DLDataLoader object to load the data.
+    data_loader : ctlearn.core.keras.sequence.KerasSequence
+        KerasSequence object to load the data.
     indices : list of int
         List of indices for the data loaders.
     batch_size : int
@@ -279,8 +280,8 @@ class PredictCTLearnModel(Tool):
     load_type_model_from = Path(
         default_value=None,
         help=(
-            "Path to a Keras model file (Keras3) for the classification "
-            "of the primary particle type."
+            "Path to a Keras or PyTorch model file for the classification of the primary particle type. "
+            "Requires Keras/PyTorch consistency with other model paths."
         ),
         allow_none=True,
         exists=True,
@@ -291,8 +292,8 @@ class PredictCTLearnModel(Tool):
     load_energy_model_from = Path(
         default_value=None,
         help=(
-            "Path to a Keras model file (Keras3) for the regression "
-            "of the primary particle energy."
+            "Path to a Keras or PyTorch model file for the regression of the primary particle energy. "
+            "Requires Keras/PyTorch consistency with other model paths."
         ),
         allow_none=True,
         exists=True,
@@ -303,8 +304,9 @@ class PredictCTLearnModel(Tool):
     load_cameradirection_model_from = Path(
         default_value=None,
         help=(
-            "Path to a Keras model file (Keras3) for the reconstruction "
-            "of the primary particle arrival direction based on camera coordinate offsets."
+            "Path to a Keras or PyTorch model file for the reconstruction "
+            "of the primary particle arrival direction based on camera coordinate offsets. "
+            "Requires Keras/PyTorch consistency with other model paths."
         ),
         allow_none=True,
         exists=True,
@@ -315,8 +317,9 @@ class PredictCTLearnModel(Tool):
     load_skydirection_model_from = Path(
         default_value=None,
         help=(
-            "Path to a Keras model file (Keras3) for the reconstruction "
-            "of the primary particle arrival direction based on spherical coordinate offsets."
+            "Path to a Keras or PyTorch model file for the reconstruction "
+            "of the primary particle arrival direction based on spherical coordinate offsets. "
+            "Requires Keras/PyTorch consistency with other model paths."
         ),
         allow_none=True,
         exists=True,
@@ -336,23 +339,6 @@ class PredictCTLearnModel(Tool):
         help="Output path to save the dl2 prediction results",
     ).tag(config=True)
 
-    keras_verbose = Int(
-        default_value=1,
-        min=0,
-        max=2,
-        allow_none=False,
-        help=(
-            "Verbosity mode of Keras during the prediction: "
-            "0 = silent, 1 = progress bar, 2 = one line per call."
-        ),
-    ).tag(config=True)
-
-    framework_type = CaselessStrEnum(
-        ["pytorch", "keras"],
-        default_value="keras",
-        help="Framework to use: pytorch or keras",
-    ).tag(config=True)
-
     aliases = {
         ("i", "input_url"): "PredictCTLearnModel.input_url",
         ("t", "type_model"): "PredictCTLearnModel.load_type_model_from",
@@ -363,7 +349,6 @@ class PredictCTLearnModel(Tool):
         ): "PredictCTLearnModel.load_cameradirection_model_from",
         ("s", "skydirection_model"): "PredictCTLearnModel.load_skydirection_model_from",
         ("o", "output"): "PredictCTLearnModel.output_path",
-        ("f", "framework"): "PredictCTLearnModel.framework_type",
     }
 
     flags = {
@@ -429,13 +414,7 @@ class PredictCTLearnModel(Tool):
         ),
     }
 
-    @property
-    def classes(self):
-        return [
-            type(self),
-            PredictCTLearnModel,
-            HDF5Merger,
-        ] + classes_with_traits(DLDataReader)
+    classes = classes_with_traits(DLDataReader)
 
     def setup(self):
         self.activity_start_time = Time.now()
@@ -450,15 +429,24 @@ class PredictCTLearnModel(Tool):
             self.output_path, dl2_subarray=False, dl2_telescope=False, parent=self
         ) as merger:
             merger(self.input_url)
-        
-        if tf is None:
-            raise ImportError("TensorFlow is required for prediction. Install it with 'pip install ctlearn[tf]' or 'pip install ctlearn[all]'.")
-            
-        # Create a MirroredStrategy.
-        self.strategy = tf.distribute.MirroredStrategy()
-        atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore
-        self.log.info("Number of devices: %s", self.strategy.num_replicas_in_sync)
-
+        # Collect all configured model path attributes
+        model_paths = [
+            self.load_type_model_from,
+            self.load_energy_model_from,
+            self.load_cameradirection_model_from,
+            self.load_skydirection_model_from,
+        ]
+        # Reads the model paths and set up the Keras or PyTorch framework
+        self.framework_type, self.num_devices, self.strategy, self.device = setup_framework(model_paths)
+        self.log.info("Framework selected: %s", self.framework_type.value)
+        if self.framework_type == FrameworkType.KERAS:
+            atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore
+            self.log.info("Using Keras MirroredStrategy with %d replica(s).", self.num_devices)
+        elif self.framework_type == FrameworkType.PYTORCH:
+            if self.device == torch.device("cpu"):
+                self.log.info("Using PyTorch CPU device.")
+            else:
+                self.log.info("Using PyTorch GPU device(s). Count: %d", self.num_devices)
         # Set up the data reader
         self.log.info("Loading data reader:")
         self.log.info("For a large dataset, this may take a while...")
@@ -477,7 +465,7 @@ class PredictCTLearnModel(Tool):
         # Set the indices for the data loaders
         self.indices = list(range(self.dl1dh_reader._get_n_events()))
         self.last_batch_size = len(self.indices) % (
-            self.batch_size * self.strategy.num_replicas_in_sync
+            self.batch_size * self.num_devices
         )
         # Ensure subarray consistency in the output file
         self._ensure_subarray_consistency()
@@ -697,9 +685,16 @@ class PredictCTLearnModel(Tool):
 
         return unique(t, keys=list(keys), keep="first")
 
-    def _predict_with_model(self, model_path, task):
+    def _predict_with_model(self, model_path):
+        """ Select the framework to load and predict the data. """
+        if self.framework_type == FrameworkType.KERAS:
+            return self._predict_with_keras_model(model_path)
+        elif self.framework_type == FrameworkType.PYTORCH:
+            return self._predict_with_pytorch_model(model_path)
+
+    def _predict_with_keras_model(self, model_path):
         """
-        Load and predict with a CTLearn model.
+        Load and predict with a CTLearn Keras-based model.
 
         Load a model from the specified path and predict the data using the loaded model.
         If a last batch loader is provided, predict the last batch and stack the results.
@@ -708,8 +703,6 @@ class PredictCTLearnModel(Tool):
         ----------
         model_path : str
             Path to a Keras model file (Keras3).
-        task : str
-            The task for which prediction is being made.
 
         Returns
         -------
@@ -718,13 +711,197 @@ class PredictCTLearnModel(Tool):
         feature_vectors : np.ndarray
             Feature vectors extracted from the backbone model.
         """
-        if self.framework_type == "keras":
-             from ctlearn.tools.predict.keras.predic_model_keras import predict_with_model
-             predict_data, feature_vectors = predict_with_model(self, model_path, task)
+        # Create a new KerasSequence for each task
+        # It turned out to be more robust to initialize the KerasSequence separately.
+        data_loader = KerasSequence(
+            self.dl1dh_reader,
+            self.indices,
+            tasks=[],
+            batch_size=self.batch_size * self.num_devices,
+            sort_by_intensity=self.sort_by_intensity,
+            stack_telescope_images=self.stack_telescope_images,
+        )
+        # Keras is only considering the last complete batch.
+        # In prediction mode we don't want to loose the last
+        # uncomplete batch, so we are creating an additional
+        # batch generator for the remaining events.
+        data_loader_last_batch = None
+        if self.last_batch_size > 0:
+            last_batch_indices = self.indices[-self.last_batch_size :]
+            data_loader_last_batch = KerasSequence(
+                self.dl1dh_reader,
+                last_batch_indices,
+                tasks=[],
+                batch_size=self.last_batch_size,
+                sort_by_intensity=self.sort_by_intensity,
+                stack_telescope_images=self.stack_telescope_images,
+            )
+        # Load the model from the specified path
+        model = keras.saving.load_model(model_path)
+        prediction_colname = (
+            "type"
+            if isinstance(model.layers[-1], keras.layers.Softmax)
+            else model.layers[-1].name
+        )
+        backbone_model, feature_vectors = None, None
+        if self.dl1_features:
+            # Get the backbone model which is the second layer of the model
+            backbone_model = model.get_layer(index=1)
+            # Create a new head model with the same layers as the original model.
+            # The output of the backbone model is the input of the head model.
+            backbone_output_shape = keras.Input(model.layers[2].input.shape[1:])
+            x = backbone_output_shape
+            for layer in model.layers[2:]:
+                x = layer(x)
+            head = keras.Model(inputs=backbone_output_shape, outputs=x)
+            # Apply the backbone model with the data loader to retrieve the feature vectors
+            try:
+                feature_vectors = backbone_model.predict(
+                    data_loader
+                )
+            except ValueError as err:
+                if str(err).startswith("Input 0 of layer"):
+                    raise ToolConfigurationError(
+                        "Model input shape does not match the prediction data. "
+                        "This is usually caused by selecting the wrong telescope_id. "
+                        "Please ensure the telescope configuration matches the one used for training."
+                    ) from err
+                raise
+            # Apply the head model with the feature vectors to retrieve the prediction
+            predict_data = Table(
+                {
+                    prediction_colname: head.predict(
+                        feature_vectors
+                    )
+                }
+            )
+            # Predict the last batch and stack the results to the prediction data
+            if data_loader_last_batch is not None:
+                feature_vectors_last_batch = backbone_model.predict(
+                    data_loader_last_batch
+                )
+                feature_vectors = np.concatenate(
+                    (feature_vectors, feature_vectors_last_batch)
+                )
+                predict_data = vstack(
+                    [
+                        predict_data,
+                        Table(
+                            {
+                                prediction_colname: head.predict(
+                                    feature_vectors_last_batch
+                                )
+                            }
+                        ),
+                    ]
+                )
+        else:
+            # Predict the data using the loaded model
+            try:
+                predict_data = model.predict(data_loader)
+            except ValueError as err:
+                if str(err).startswith("Input 0 of layer"):
+                    raise ToolConfigurationError(
+                        "Model input shape does not match the prediction data. "
+                        "This is usually caused by selecting the wrong telescope_id. "
+                        "Please ensure the telescope configuration matches the one used for training."
+                    ) from err
+                raise
+            # Create a astropy table with the prediction results
+            # The classification task has a softmax layer as the last layer
+            # which returns the probabilities for each class in an array, while
+            # the regression tasks have output neurons which returns the
+            # predicted value for the task in a dictionary.
+            if prediction_colname == "type":
+                predict_data = Table({prediction_colname: predict_data})
+            else:
+                predict_data = Table(predict_data)
+            # Predict the last batch and stack the results to the prediction data
+            if data_loader_last_batch is not None:
+                predict_data_last_batch = model.predict(
+                    data_loader_last_batch
+                )
+                if model.layers[-1].name == "type":
+                    predict_data_last_batch = Table(
+                        {prediction_colname: predict_data_last_batch}
+                    )
+                else:
+                    predict_data_last_batch = Table(predict_data_last_batch)
+                predict_data = vstack([predict_data, predict_data_last_batch])
+        return predict_data, feature_vectors
 
-             return predict_data, feature_vectors
-        
 
+    def _predict_with_pytorch_model(self, model_path):
+        """
+        Load and predict with a CTLearn PyTorch-based model.
+
+        Parameters
+        ----------
+        model_path : str
+            Path to a PyTorch model checkpoint/file.
+
+        Returns
+        -------
+        predict_data : astropy.table.Table
+            Table containing the prediction results.
+        feature_vectors : np.ndarray
+            Feature vectors extracted from the backbone model.
+        """        
+        # Load the model and make sure it is not a state dict
+        model = torch.load(model_path, map_location=self.device, weights_only=False)
+        if not isinstance(model, nn.Module):
+            raise TypeError(
+                f"Expected a PyTorch 'nn.Module' object at '{model_path}', "
+                f"but got '{type(model).__name__}'. "
+                "Ensure the model was saved via 'torch.save(model, path)' rather than 'torch.save(model.state_dict(), path)'."
+            )
+        model.eval()
+        # PyTorch DataLoaders natively handle drop_last=False,
+        # so we don't need a separate generator for incomplete batches.
+        # Replace 'PyTorchDataset' with your actual PyTorch Dataset implementation
+        dataset = PyTorchDataset(
+            self.dl1dh_reader,
+            self.indices,
+            tasks=[],
+            sort_by_intensity=self.sort_by_intensity,
+            stack_telescope_images=self.stack_telescope_images,
+        )
+        data_loader = DataLoader(
+            dataset,
+            batch_size=self.batch_size * self.num_devices,
+            shuffle=False,
+            pin_memory=torch.cuda.is_available(),
+            drop_last=False
+        )
+        predictions_dict, feature_vectors_list = {}, []
+        with torch.no_grad():
+            for batch in data_loader:  # Iterate over DataLoader without subscripting
+                inputs = batch[0].to(self.device)
+                predictions, features = model(inputs)
+                if self.dl1_features:
+                    feature_vectors_list.append(features.cpu().numpy())
+                # Standardize model outputs into predictions_dict using self.heads_dict
+                if isinstance(predictions, torch.Tensor):
+                    task_name = list(model.head.heads_dict.keys())[0]
+                    predictions_dict.setdefault(task_name, []).append(predictions.cpu().numpy())
+                elif isinstance(predictions, dict):
+                    for task_name, output_tensor in predictions.items():
+                        predictions_dict.setdefault(task_name, []).append(
+                            output_tensor.cpu().numpy()
+                        )
+        # Concatenate batched prediction arrays and format into Astropy Table
+        predict_data = Table(
+            {
+                task_name: np.concatenate(batches, axis=0)
+                for task_name, batches in predictions_dict.items()
+            }
+        )
+        # Concatenate features if extracted
+        feature_vectors = (
+            np.concatenate(feature_vectors_list, axis=0)
+            if self.dl1_features and feature_vectors_list
+            else None
+        )
         return predict_data, feature_vectors
 
     def _predict_particletype(self, example_identifiers):
@@ -748,7 +925,7 @@ class PredictCTLearnModel(Tool):
         )
         # Predict the data using the loaded type_model
         predict_data, feature_vectors = self._predict_with_model(
-            self.load_type_model_from, "type"
+            self.load_type_model_from
         )
         # Create prediction table and add the predicted classification score ('gammaness')
         particletype_table = example_identifiers.copy()
@@ -776,7 +953,7 @@ class PredictCTLearnModel(Tool):
         self.log.info("Predicting for the regression of the primary particle energy...")
         # Predict the data using the loaded energy_model
         predict_data, feature_vectors = self._predict_with_model(
-            self.load_energy_model_from, "energy"
+            self.load_energy_model_from
         )
         # Convert the reconstructed energy from log10(TeV) to TeV
         reco_energy = u.Quantity(
@@ -816,7 +993,7 @@ class PredictCTLearnModel(Tool):
         )
         # Predict the data using the loaded direction_model
         predict_data, feature_vectors = self._predict_with_model(
-            self.load_cameradirection_model_from, "cameradirection"
+            self.load_cameradirection_model_from
         )
         # For the direction task, the prediction is the camera coordinate offset in x and y
         # from the telescope pointing.
@@ -854,7 +1031,7 @@ class PredictCTLearnModel(Tool):
         )
         # Predict the data using the loaded direction_model
         predict_data, feature_vectors = self._predict_with_model(
-            self.load_skydirection_model_from, "skydirection"
+            self.load_skydirection_model_from
         )
         # For the direction task, the prediction is the spherical offset in fov_lon and fov_lat
         # from the telescope pointing.
@@ -1245,9 +1422,9 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
         --DLImageReader.channels=cleaned_image \\
         --DLImageReader.channels=cleaned_relative_peak_time \\
         --DLImageReader.image_mapper_type=BilinearMapper \\
-        --type_model="/path/to/your/mono/type/ctlearn_model.cpk" \\
-        --energy_model="/path/to/your/mono/energy/ctlearn_model.cpk" \\
-        --cameradirection_model="/path/to/your/mono/cameradirection/ctlearn_model.cpk" \\
+        --type_model="/path/to/your/mono/type/ctlearn_model(.keras/.pth)" \\
+        --energy_model="/path/to/your/mono/energy/ctlearn_model(.keras/.pth)" \\
+        --cameradirection_model="/path/to/your/mono/cameradirection/ctlearn_model(.keras/.pth)" \\
         --dl1-features \\
         --no-dl1-images \\
         --no-true-images \\
@@ -1259,9 +1436,9 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
         --PredictCTLearnModel.dl1dh_reader_type=DLWaveformReader \\
         --DLWaveformReader.sequnce_length=20 \\
         --DLWaveformReader.image_mapper_type=BilinearMapper \\
-        --type_model="/path/to/your/mono_waveform/type/ctlearn_model.cpk" \\
-        --energy_model="/path/to/your/mono_waveform/energy/ctlearn_model.cpk" \\
-        --cameradirection_model="/path/to/your/mono_waveform/cameradirection/ctlearn_model.cpk" \\
+        --type_model="/path/to/your/mono_waveform/type/ctlearn_model(.keras/.pth)" \\
+        --energy_model="/path/to/your/mono_waveform/energy/ctlearn_model(.keras/.pth)" \\
+        --cameradirection_model="/path/to/your/mono_waveform/cameradirection/ctlearn_model(.keras/.pth)" \\
         --no-r0-waveforms \\
         --no-r1-waveforms \\
         --no-dl1-images \\
@@ -1905,9 +2082,9 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
         --DLImageReader.mode=stereo \\
         --DLImageReader.min_telescopes=2 \\
         --PredictCTLearnModel.stack_telescope_images=True \\
-        --type_model="/path/to/your/stereo/type/ctlearn_model.cpk" \\
-        --energy_model="/path/to/your/stereo/energy/ctlearn_model.cpk" \\
-        --skydirection_model="/path/to/your/stereo/skydirection/ctlearn_model.cpk" \\
+        --type_model="/path/to/your/stereo/type/ctlearn_model(.keras/.pth)" \\
+        --energy_model="/path/to/your/stereo/energy/ctlearn_model(.keras/.pth)" \\
+        --skydirection_model="/path/to/your/stereo/skydirection/ctlearn_model(.keras/.pth)" \\
         --output output.dl2.h5 \\
     """
 
@@ -2223,14 +2400,10 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
             Table containing the subarray pointing information.
         """
         # Read the subarray pointing table
-        try:
-            pointing_info = read_table(
-                self.input_url,
-                SIMULATION_RUN_TABLE,
-            )
-        except Exception as e:
-            self.log.warning("Could not read simulation run table: %s", e)
-            return None
+        pointing_info = read_table(
+            self.input_url,
+            SIMULATION_RUN_TABLE,
+        )
         # Assuming min_az = max_az and min_alt = max_alt
         pointing_info.keep_columns(["obs_id", "min_az", "min_alt"])
         pointing_info.rename_column("min_az", "pointing_azimuth")

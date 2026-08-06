@@ -13,23 +13,18 @@ def test_train_ctlearn_model(framework, model, reco_task, dl1_gamma_file, dl1_pr
     Test training CTLearn model using the DL1 gamma and proton files for all reconstruction tasks.
     Each test run gets its own isolated temp directories.
     """
-
     # Restrict to MST array
     telescope_type = "MST"
     allowed_tels = [7, 13, 15, 16, 17, 19]
-
     # Temporary directories for signal and background
     signal_dir = tmp_path / "gamma_dl1"
     signal_dir.mkdir(parents=True, exist_ok=True)
-
     background_dir = tmp_path / "proton_dl1"
     background_dir.mkdir(parents=True, exist_ok=True)
-
     # Hardcopy DL1 gamma file to the signal directory
     shutil.copy(dl1_gamma_file, signal_dir)
     # Hardcopy DL1 proton file to the background directory
     shutil.copy(dl1_proton_file, background_dir)
-
     # Hardcopy the trained models to the model directory
     if model == "LoadedModel":
         model_dir = tmp_path / "pretrained_model"
@@ -41,10 +36,8 @@ def test_train_ctlearn_model(framework, model, reco_task, dl1_gamma_file, dl1_pr
         )
         model_file = model_dir / f"ctlearn_mono_model_{key}.{MODEL_FILE_FORMATS[framework]}"
         assert model_file.exists(), f"Trained {framework} mono model file not found for {key}"
-
     # Output directory for trained model
     output_dir = tmp_path / f"ctlearn_{framework}_{model}_{reco_task}"
-
     # Build command-line arguments
     argv = [
         f"--signal={signal_dir}",
@@ -56,7 +49,6 @@ def test_train_ctlearn_model(framework, model, reco_task, dl1_gamma_file, dl1_pr
         "--DLImageReader.focal_length_choice=EQUIVALENT",
         f"--DLImageReader.allowed_tels={allowed_tels}",
     ]
-
     # Include background only for classification task
     if reco_task == "type":
         argv.extend(
@@ -66,7 +58,6 @@ def test_train_ctlearn_model(framework, model, reco_task, dl1_gamma_file, dl1_pr
                 "--DLImageReader.enforce_subarray_equality=False",
             ]
         )
-
     argv.append(f"--TrainCTLearnModel.model_type={model}")
     if model == "LoadedModel":
         argv.append(f"--LoadedModel.load_model_from={model_file}")

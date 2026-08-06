@@ -14,34 +14,6 @@ Enumerations:
 
 from enum import Enum
 
-class FrameworkType(Enum):
-    """
-    Deep learning framework type enumeration.
-    
-    This enumeration specifies which deep learning framework to use for
-    model training and inference. CTLearn supports both Keras (TensorFlow backend)
-    and PyTorch frameworks.
-    
-    Attributes:
-        KERAS (int): Use Keras/TensorFlow framework (value: 1)
-            - Advantages: High-level API, easy to use, good for prototyping
-            - TensorFlow 2.x with Keras API
-            - Suitable for production deployment
-            
-        PYTORCH (int): Use PyTorch framework (value: 2)
-            - Advantages: Dynamic computation graphs, flexible, research-friendly
-            - PyTorch 1.x or 2.x
-            - Better for custom architectures and experimental models
-    
-    Example:
-        >>> from ctlearn.core.ctlearn_enum import FrameworkType
-        >>> framework = FrameworkType.PYTORCH
-        >>> print(framework.name)  # 'PYTORCH'
-        >>> print(framework.value)  # 2
-    """
-    KERAS = 1
-    PYTORCH = 2
-
 
 class Task(Enum):
     """

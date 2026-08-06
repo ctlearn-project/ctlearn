@@ -1,7 +1,4 @@
 import pytest
-pytest.importorskip("keras")
-import numpy as np
-import pytest
 import torch
 import keras
 import tensorflow as tf

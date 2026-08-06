@@ -1,9 +1,6 @@
 import pytest
-pytest.importorskip("keras")
-import re
-import keras
 import numpy as np
-import pytest
+import keras
 import torch
 import torch.nn as nn
 

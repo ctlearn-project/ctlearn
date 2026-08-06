@@ -2,12 +2,13 @@
 Predict the gammaness, energy and arrival direction from lstchain DL1 data.
 """
 
+import atexit
 import numpy as np
 import tables
-try:
-    import keras
-except ImportError:
-    keras = None
+import keras
+import torch
+import torch.nn as nn
+
 from astropy import units as u
 from astropy.coordinates import AltAz, SkyCoord
 from astropy.table import Table, join, setdiff, vstack
@@ -18,7 +19,6 @@ from ctapipe.containers import (
     ReconstructedGeometryContainer,
     ReconstructedEnergyContainer,
 )
-from ctapipe.coordinates import CameraFrame
 from ctapipe.coordinates import CameraFrame
 from ctapipe.core import Tool
 from ctapipe.core.tool import ToolConfigurationError
@@ -32,50 +32,31 @@ from ctapipe.core.traits import (
     ComponentName,
     Dict,
     UseEnum,
-    UseEnum,
     classes_with_traits,
 )
 from ctapipe.instrument.optics import FocalLengthKind
-from ctapipe.instrument.optics import FocalLengthKind
 from ctapipe.io import read_table, write_table
-
-DL0_TEL_POINTING_GROUP = "/dl0/event/telescope/pointing"
-DL1_SUBARRAY_GROUP = "/dl1/event/subarray"
-DL1_SUBARRAY_POINTING_GROUP = "/dl1/event/subarray/pointing"
-DL1_SUBARRAY_TRIGGER_TABLE = "/dl1/event/subarray/trigger"
-DL1_TEL_GROUP = "/dl1/event/telescope"
-DL1_TEL_CALIBRATION_GROUP = "/dl1/event/telescope/calibration"
-DL1_TEL_ILLUMINATOR_THROUGHPUT_GROUP = "/dl1/event/telescope/illuminator_throughput"
-DL1_TEL_IMAGES_GROUP = "/dl1/event/telescope/image"
-DL1_TEL_MUON_GROUP = "/dl1/event/telescope/muon"
-DL1_TEL_MUON_THROUGHPUT_GROUP = "/dl1/event/telescope/muon_throughput"
-DL1_TEL_OPTICAL_PSF_GROUP = "/dl1/event/telescope/optical_psf"
-DL1_TEL_PARAMETERS_GROUP = "/dl1/event/telescope/parameters"
-DL1_TEL_POINTING_GROUP = "/dl1/event/telescope/pointing"
-DL1_TEL_TRIGGER_TABLE = "/dl1/event/telescope/trigger"
-DL2_EVENT_STATISTICS_GROUP = "/dl2/event/subarray/statistics"
-FIXED_POINTING_GROUP = "/configuration/telescope/pointing"
-R0_TEL_GROUP = "/r0/event/telescope"
-R1_TEL_GROUP = "/r1/event/telescope"
-SIMULATION_IMAGES_GROUP = "/simulation/event/telescope/images"
-SIMULATION_IMPACT_GROUP = "/simulation/event/telescope/impact"
-SIMULATION_PARAMETERS_GROUP = "/simulation/event/telescope/parameters"
-SIMULATION_RUN_TABLE = "/simulation/run_config"
-SIMULATION_SHOWER_TABLE = "/simulation/event/subarray/shower"
-DL2_TEL_PARTICLETYPE_GROUP = "/dl2/event/telescope/classification"
-DL2_TEL_ENERGY_GROUP = "/dl2/event/telescope/energy"
-DL2_TEL_GEOMETRY_GROUP = "/dl2/event/telescope/geometry"
-DL2_SUBARRAY_GROUP = "/dl2/event/subarray"
-DL2_SUBARRAY_PARTICLETYPE_GROUP = "/dl2/event/subarray/classification"
-DL2_SUBARRAY_ENERGY_GROUP = "/dl2/event/subarray/energy"
-DL2_SUBARRAY_GEOMETRY_GROUP = "/dl2/event/subarray/geometry"
-
+from ctapipe.io.hdf5dataformat import (
+    DL1_SUBARRAY_TRIGGER_TABLE,
+    DL1_TEL_GROUP,
+    DL1_TEL_PARAMETERS_GROUP,
+    DL1_TEL_POINTING_GROUP,
+    DL1_TEL_TRIGGER_TABLE,
+    DL2_TEL_PARTICLETYPE_GROUP,
+    DL2_TEL_ENERGY_GROUP,
+    DL2_TEL_GEOMETRY_GROUP,
+    DL2_SUBARRAY_PARTICLETYPE_GROUP,
+    DL2_SUBARRAY_ENERGY_GROUP,
+    DL2_SUBARRAY_GEOMETRY_GROUP,
+)
 from ctapipe.reco.utils import add_defaults_and_meta
-
-from ctlearn.core.keras.model import LoadedModel
 from ctlearn import __version__ as ctlearn_version
-from ctlearn.utils import get_lst1_subarray_description
-from ctlearn.utils import validate_trait_dict
+from ctlearn.tools.utils import (
+    FrameworkType,
+    setup_framework,
+    get_lst1_subarray_description,
+    validate_trait_dict,
+)
 from dl1_data_handler.image_mapper import ImageMapper
 from dl1_data_handler.reader import (
     get_unmapped_image,
@@ -113,9 +94,9 @@ class LST1PredictionTool(Tool):
         --LST1PredictionTool.channels=cleaned_image \\
         --LST1PredictionTool.channels=cleaned_relative_peak_time \\
         --LST1PredictionTool.image_mapper_type=BilinearMapper \\
-        --type_model="/path/to/your/type/ctlearn_model.cpk" \\
-        --energy_model="/path/to/your/energy/ctlearn_model.cpk" \\
-        --cameradirection_model="/path/to/your/direction/ctlearn_model.cpk" \\
+        --type_model="/path/to/your/type/ctlearn_model(.keras/.pth)"" \\
+        --energy_model="/path/to/your/energy/ctlearn_model(.keras/.pth)"" \\
+        --cameradirection_model="/path/to/your/direction/ctlearn_model(.keras/.pth)"" \\
         --output output.dl2.h5 \\
         --overwrite \\
     """
@@ -210,11 +191,11 @@ class LST1PredictionTool(Tool):
                 "cleaned_image",
                 "peak_time",
                 "relative_peak_time",
-                "cleaned_peak_time", 
+                "cleaned_peak_time",
                 "cleaned_relative_peak_time",
             ]
         ),
-        default_value=["cleaned_image", "cleaned_peak_time"],
+        default_value=["cleaned_image", "cleaned_relative_peak_time"],
         allow_none=False,
         help=(
             "Set the input channels to be loaded from the DL1 event data. "
@@ -269,8 +250,6 @@ class LST1PredictionTool(Tool):
         ("e", "energy_model"): "LST1PredictionTool.load_energy_model_from",
         ("d", "cameradirection_model"): "LST1PredictionTool.load_cameradirection_model_from",
         ("o", "output"): "LST1PredictionTool.output_path",
-        ("ch", "channels"): "LST1PredictionTool.channels",
-
     }
 
     flags = {
@@ -301,13 +280,7 @@ class LST1PredictionTool(Tool):
         ),
     }
 
-
-    @property
-    def classes(self):
-        return [
-            type(self),
-            LST1PredictionTool,
-        ] + classes_with_traits(ImageMapper)
+    classes = classes_with_traits(ImageMapper)
 
     def setup(self):
         self.log.info("ctlearn version %s", ctlearn_version)
@@ -319,39 +292,36 @@ class LST1PredictionTool(Tool):
         self.image_table_path = "/dl1/event/telescope/image/LST_LSTCam"
         self.parameter_table_name = "/dl1/event/telescope/parameters/LST_LSTCam"
         self.tel_id = 1
-
+        # Collect all configured model path attributes
+        model_paths = [
+            self.load_type_model_from,
+            self.load_energy_model_from,
+            self.load_cameradirection_model_from,
+        ]
+        # Reads the model paths and set up the Keras or PyTorch framework
+        self.framework_type, self.num_devices, self.strategy, self.device = setup_framework(model_paths)
+        self.log.info("Framework selected: %s", self.framework_type.value)
+        if self.framework_type == FrameworkType.KERAS:
+            atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore
+            self.log.info("Using Keras MirroredStrategy with %d replica(s).", self.num_devices)
+        elif self.framework_type == FrameworkType.PYTORCH:
+            if self.device == torch.device("cpu"):
+                self.log.info("Using PyTorch CPU device.")
+            else:
+                self.log.info("Using PyTorch GPU device(s). Count: %d", self.num_devices)
+        # Load the models from the specified paths
+        input_shape_type, self.backbone_type, self.head_type = self._load_model(
+            self.load_type_model_from
+        )
+        input_shape_energy, self.backbone_energy, self.head_energy = self._load_model(
+            self.load_energy_model_from
+        )
+        input_shape_direction, self.backbone_direction, self.head_direction = self._load_model(
+            self.load_cameradirection_model_from
+        )
         # Get the number of rows in the table
         with tables.open_file(self.input_url) as input_file:
             self.table_length = len(input_file.get_node(self.image_table_path))
-            
-        if keras is None:
-            raise ImportError("TensorFlow/Keras is required for prediction. Install it with 'pip install ctlearn[tf]' or 'pip install ctlearn[all]'.")
-
-        # Load the models from the specified paths
-        if self.load_type_model_from is not None:
-            self.log.info("Loading the type model from %s.", self.load_type_model_from)
-            model_type = keras.saving.load_model(self.load_type_model_from)
-            input_shape = model_type.input_shape[1:]
-            self.backbone_type, self.head_type = self._split_model(model_type)
-        if self.load_energy_model_from is not None:
-            self.log.info(
-                "Loading the energy model from %s.", self.load_energy_model_from
-            )
-            model_energy = keras.saving.load_model(
-                self.load_energy_model_from
-            )
-            input_shape = model_energy.input_shape[1:]
-            self.backbone_energy, self.head_energy = self._split_model(model_energy)
-        if self.load_cameradirection_model_from is not None:
-            self.log.info(
-                "Loading the cameradirection model from %s.", self.load_cameradirection_model_from
-            )
-            model_direction = keras.saving.load_model(
-                self.load_cameradirection_model_from
-            )
-            input_shape = model_direction.input_shape[1:]
-            self.backbone_direction, self.head_direction = self._split_model(model_direction)
-
         # Get the SubarrayDescription of the LST-1 telescope
         self.subarray = get_lst1_subarray_description(focal_length_choice=self.focal_length_choice)
         # Write the SubarrayDescription to the output file
@@ -372,13 +342,13 @@ class LST1PredictionTool(Tool):
             parent=self,
         )
         # Check if the input shape of the model matches the image shape of the ImageMapper
-        if input_shape[0] != self.image_mapper.image_shape:
-            raise ToolConfigurationError(
-                f"The input shape of the model ('{input_shape[0]}') does not match "
-                f"the image shape of the ImageMapper ('{self.image_mapper.image_shape}'). "
-                f"Use e.g. '--BilinearMapper.interpolation_image_shape={input_shape[0]}' ."
-            )
-
+        for input_shape in [input_shape_type, input_shape_energy, input_shape_direction]:
+            if input_shape is not None and input_shape[0] != self.image_mapper.image_shape:
+                raise ToolConfigurationError(
+                    f"The input shape of the model ('{input_shape[0]}') does not match "
+                    f"the image shape of the ImageMapper ('{self.image_mapper.image_shape}'). "
+                    f"Use e.g. '--BilinearMapper.interpolation_image_shape={input_shape[0]}' ."
+                )
         # Get offset and scaling of images
         self.transforms = {}
         self.transforms["image_scale"] = 0.0
@@ -388,7 +358,6 @@ class LST1PredictionTool(Tool):
         # Get the number of rows in the table
         with tables.open_file(self.input_url) as input_file:
             img_table_v_attrs = input_file.get_node(self.image_table_path)._v_attrs
-
         # Check the transform value used for the file compression
         if "CTAFIELD_3_TRANSFORM_SCALE" in img_table_v_attrs:
             self.transforms["image_scale"] = img_table_v_attrs[
@@ -406,7 +375,6 @@ class LST1PredictionTool(Tool):
             ]
 
     def start(self):
-
         all_identifiers = read_table(self.input_url, self.parameter_table_name)
         all_identifiers.meta = {}
         if self.override_obs_id is not None:
@@ -578,21 +546,20 @@ class LST1PredictionTool(Tool):
             tel_altitude.extend(dl1_table["tel_alt"].data)
             trigger_time.extend(dl1_table["time"].mjd)
             if self.load_type_model_from is not None:
-                classification_feature_vectors = self.backbone_type.predict_on_batch(input_data)
-                classification_fvs.extend(classification_feature_vectors)
-                predict_data = self.head_type.predict_on_batch(classification_feature_vectors)
-                prediction.extend(predict_data[:, 1])
+                fvs, preds = self._predict_batch(self.backbone_type, self.head_type, input_data)
+                classification_fvs.extend(fvs)
+                prediction.extend(preds[:, 1])
+
             if self.load_energy_model_from is not None:
-                energy_feature_vectors = self.backbone_energy.predict_on_batch(input_data)
-                energy_fvs.extend(energy_feature_vectors)
-                predict_data = self.head_energy.predict_on_batch(energy_feature_vectors)
-                energy.extend(predict_data.T[0])
+                fvs, preds = self._predict_batch(self.backbone_energy, self.head_energy, input_data)
+                energy_fvs.extend(fvs)
+                energy.extend(preds[:, 0])
+
             if self.load_cameradirection_model_from is not None:
-                direction_feature_vectors = self.backbone_direction.predict_on_batch(input_data)
-                direction_fvs.extend(direction_feature_vectors)
-                predict_data = self.head_direction.predict_on_batch(direction_feature_vectors)
-                cam_coord_offset_x.extend(predict_data.T[0])
-                cam_coord_offset_y.extend(predict_data.T[1])
+                fvs, preds = self._predict_batch(self.backbone_direction, self.head_direction, input_data)
+                direction_fvs.extend(fvs)
+                cam_coord_offset_x.extend(preds[:, 0])
+                cam_coord_offset_y.extend(preds[:, 1])
 
         # Create the prediction tables
         example_identifiers = Table(
@@ -923,36 +890,119 @@ class LST1PredictionTool(Tool):
     def finish(self):
         self.log.info("Tool is shutting down")
 
-    def _split_model(self, model):
+    def _predict_batch(self, backbone, head, input_data):
         """
-        Split the model into backbone and head.
+        Run batch inference through a backbone and head model using Keras or PyTorch.
 
-        This method splits the model into backbone and head. The backbone is summarized
-        into a single layer which can be retrieved by the layer index 1. The model input
-        has layer index 0 and the head is the rest of the model with layer index 2 and above.
+        Dispatches model execution based on ``self.framework_type``. For PyTorch,
+        converts input data to Tensors, transposes to channels-first format (NCHW),
+        places inputs on the targeted device, runs inference without gradient tracking
+        (``torch.no_grad()``), and returns NumPy outputs on CPU.
 
-        Parameters:
-        -----------
-        model : keras.Model
-            Keras model to split into backbone and head.
+        Parameters
+        ----------
+        backbone : keras.Model or torch.nn.Module
+            The feature extractor network that processes raw input data into
+            feature representations.
+        head : keras.Model or torch.nn.Module
+            The task-specific head network that computes final predictions
+            from feature vectors.
+        input_data : np.ndarray
+            Batch of image data following the Keras convention.
 
-        Returns:
-        --------
-        backbone : keras.Model
-            Backbone model of the original model.
-        head : keras.Model
-            Head model of the original model.
+        Returns
+        -------
+        fvs : np.ndarray
+            Extracted feature vectors for the batch.
+        preds : np.ndarray
+            Model output predictions for the batch.
         """
-        # Get the backbone model which is the second layer of the model
-        backbone = model.get_layer(index=1)
-        # Create a new head model with the same layers as the original model.
-        # The output of the backbone model is the input of the head model.
-        backbone_output_shape = keras.Input(model.layers[2].input.shape[1:])
-        x = backbone_output_shape
-        for layer in model.layers[2:]:
-            x = layer(x)
-        head = keras.Model(inputs=backbone_output_shape, outputs=x)
-        return backbone, head
+        if self.framework_type == FrameworkType.KERAS:
+            fvs = backbone.predict_on_batch(input_data)
+            preds = head.predict_on_batch(fvs)
+            return fvs, preds
+        if self.framework_type == FrameworkType.PYTORCH:
+            tensor_data = torch.from_numpy(input_data).float()
+            # Convert Channels-Last (N, H, W, C) to Channels-First (N, C, H, W)
+            if tensor_data.ndim == 4:
+                tensor_data = tensor_data.permute(0, 3, 1, 2)
+            tensor_data = tensor_data.to(self.device)
+
+            def _to_numpy(val):
+                if isinstance(val, dict):
+                    # Extract the tensor value from the dictionary (e.g., {'energy': tensor(...)})
+                    val = next(iter(val.values()))
+                if isinstance(val, torch.Tensor):
+                    return val.cpu().numpy()
+                return np.asarray(val)
+
+            with torch.no_grad():
+                fvs = backbone(tensor_data)
+                preds = head(fvs)
+                return fvs.cpu().numpy(), _to_numpy(preds)
+
+    def _load_model(self, path):
+        """
+        Load a trained model and extract its input shape, backbone, and head.
+
+        Supports both Keras and PyTorch frameworks based on ``self.framework_type``.
+        For PyTorch models, the model is set to evaluation mode (``.eval()``) and its
+        ``backbone`` and ``head`` submodules are extracted.
+
+        Parameters
+        ----------
+        path : str, pathlib.Path, or None
+            Path to the saved model file. If ``None``, the function immediately returns ``None`` elements.
+
+        Returns
+        -------
+        input_shape : tuple of int or None
+            Input feature tensor shape (excluding batch dimension), or ``None`` if ``path`` 
+            is ``None`` or framework is PyTorch.
+        backbone : keras.Model, torch.nn.Module, or None
+            Feature extraction backbone of the model, or ``None`` if ``path`` is ``None``.
+        head : keras.Model, torch.nn.Module, or None
+            Output prediction head of the model, or ``None`` if ``path`` is ``None``.
+
+        Raises
+        ------
+        TypeError
+            If the loaded PyTorch object is not an instance of ``torch.nn.Module`` 
+            (e.g., when a ``state_dict`` is loaded instead of the full model).
+        """
+        if path is None:
+            return None, None, None
+        self.log.info("Loading the model from %s.", path)
+
+        def _split_keras_model(model):
+            """Split the Keras model into backbone and head."""
+            # Get the backbone model which is the second layer of the model
+            backbone = model.get_layer(index=1)
+            # Create a new head model with the same layers as the original model.
+            # The output of the backbone model is the input of the head model.
+            backbone_output_shape = keras.Input(model.layers[2].input.shape[1:])
+            x = backbone_output_shape
+            for layer in model.layers[2:]:
+                x = layer(x)
+            head = keras.Model(inputs=backbone_output_shape, outputs=x)
+            return backbone, head
+
+        if self.framework_type == FrameworkType.KERAS:
+            model = keras.saving.load_model(path)
+            input_shape = model.input_shape[1:]
+            backbone, head = _split_keras_model(model)
+            return input_shape, backbone, head
+        if self.framework_type == FrameworkType.PYTORCH:
+            model = torch.load(path, map_location=self.device, weights_only=False)
+            if not isinstance(model, nn.Module):
+                raise TypeError(
+                    f"Expected a PyTorch 'nn.Module' object at '{path}', "
+                    f"but got '{type(model).__name__}'. "
+                    "Ensure the model was saved via 'torch.save(model, path)' "
+                    "rather than 'torch.save(model.state_dict(), path)'."
+                )
+            model.eval()
+            return None, model.backbone, model.head
 
     def _create_nan_table(self, nonexample_identifiers, columns, shapes):
         """

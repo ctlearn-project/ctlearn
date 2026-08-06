@@ -21,7 +21,7 @@ from ctlearn.core.pytorch.attention import (
 __all__ = [
     "BasicBlock",
     "BottleneckBlock",
-    "MultiHeadClassifier",
+    "MultiFullyConnectedHead",
     "build_fully_connect_pytorch_head",
     "PyTorchSingleCNN",
     "PyTorchResNet",
@@ -29,17 +29,19 @@ __all__ = [
 ]
 
 
-class MultiHeadClassifier(nn.Module):
+class MultiFullyConnectedHead(nn.Module):
     """
     A PyTorch container module to hold the multi-task fully connected heads.
     """
 
     def __init__(self, heads_dict, single_output_task=None):
         super().__init__()
+        # Save the dict with tasks info in an attribute
+        self.heads_dict = heads_dict
         # Sanitize keys because 'type' conflicts with nn.Module.type() method
         self._task_mapping = {
             task: f"head_{task}" if hasattr(nn.Module, task) else task
-            for task in heads_dict.keys()
+            for task in self.heads_dict.keys()
         }
         sanitized_heads = {
             self._task_mapping[task]: module for task, module in heads_dict.items()
@@ -97,7 +99,7 @@ def build_fully_connect_pytorch_head(in_features, layers, activation_function, t
         heads[task] = nn.Sequential(*task_layers)
 
     single_output_task = tasks[0] if (len(tasks) == 1 and tasks[0] == "type") else None
-    return MultiHeadClassifier(heads, single_output_task=single_output_task)
+    return MultiFullyConnectedHead(heads, single_output_task=single_output_task)
 
 
 class FullModelPipeline(nn.Module):
@@ -111,7 +113,7 @@ class FullModelPipeline(nn.Module):
 
     def forward(self, x):
         features = self.backbone(x)
-        return self.head(features)
+        return self.head(features), features
 
 
 class PyTorchSingleCNN(SingleCNN):
