@@ -91,7 +91,6 @@ from ctlearn.core.keras.sequence import KerasSequence
 from ctlearn.core.pytorch.dataset import PyTorchDataset
 from ctlearn.tools.utils import (
     FrameworkType,
-    detect_framework,
     setup_framework,
     validate_trait_dict,
 )
@@ -502,57 +501,6 @@ class PredictCTLearnModel(Tool):
                 h5_file.root._v_attrs["CTA PRODUCT ID"] = str(uuid.uuid4())
                 h5_file.flush()
 
-    def _setup_framework(self):
-        """
-        Detect framework from model paths, check consistency, and configure hardware devices.
-        Raises an error if no valid framework (Keras or PyTorch) is identified.
-        """
-        # Collect all configured model path attributes
-        model_paths = [
-            self.load_type_model_from,
-            self.load_energy_model_from,
-            self.load_cameradirection_model_from,
-            self.load_skydirection_model_from,
-        ]
-        # Detect frameworks from all non-None paths
-        detected_frameworks = {}
-        for path in model_paths:
-            if path is not None:
-                detected_frameworks[path] = detect_framework(path)
-        # Fail immediately if no valid model paths are provided
-        if not detected_frameworks:
-            raise ToolConfigurationError(
-                "No model paths were specified. At least one valid model path "
-                "(.keras/.h5 for Keras, or .pt/.pth for PyTorch) must be provided."
-            )
-        # Verify consistency across specified paths
-        unique_frameworks = set(detected_frameworks.values())
-        if len(unique_frameworks) > 1:
-            details = ", ".join(f"{p}: {fw.value}" for p, fw in detected_frameworks.items())
-            raise ToolConfigurationError(
-                f"Inconsistent model frameworks detected across paths: {details}. "
-                "All specified model files must belong to the same framework."
-            )
-        # Set framework directly from the detected FrameworkType enum
-        self.framework_type = next(iter(unique_frameworks))
-        self.log.info("Framework selected: %s", self.framework_type.value)
-        # Configure framework-specific hardware/device setup
-        self.device = None
-        if self.framework_type == FrameworkType.PYTORCH:
-            if torch.cuda.is_available():
-                self.device = torch.device("cuda")
-                self.num_devices = torch.cuda.device_count()
-                self.log.info("Using PyTorch GPU device(s). Count: %d", self.num_devices)
-            else:
-                self.device = torch.device("cpu")
-                self.num_devices = 1
-                self.log.info("Using PyTorch CPU device.")
-        elif self.framework_type == FrameworkType.KERAS:
-            self.strategy = tf.distribute.MirroredStrategy()
-            atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore
-            self.num_devices = self.strategy.num_replicas_in_sync
-            self.log.info("Using Keras MirroredStrategy with %d replica(s).", self.num_devices)
-
     def _get_data_levels(self, h5file):
         """Get the data levels present in the HDF5 file."""
         data_levels = {
@@ -742,7 +690,7 @@ class PredictCTLearnModel(Tool):
         """ Select the framework to load and predict the data. """
         if self.framework_type == FrameworkType.KERAS:
             return self._predict_with_keras_model(model_path)
-        else:
+        elif self.framework_type == FrameworkType.PYTORCH:
             return self._predict_with_pytorch_model(model_path)
 
     def _predict_with_keras_model(self, model_path):

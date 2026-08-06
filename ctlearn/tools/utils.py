@@ -24,7 +24,6 @@ __all__ = [
     "validate_trait_dict",
     "get_lst1_subarray_description",
     "FrameworkType",
-    "detect_framework",
     "setup_framework",
 ]
 
@@ -132,26 +131,6 @@ class FrameworkType(Enum):
     KERAS = "Keras"
     PYTORCH = "PyTorch"
 
-def detect_framework(path_val):
-    """
-    Determines framework based on file extension.
-    Returns 'Keras', 'PyTorch', or raises TraitError.
-    """
-    if path_val is None:
-        return None
-
-    path = pathlib.Path(path_val)
-    ext = path.suffix.lower()
-
-    if ext in [".keras", ".h5"]:
-        return FrameworkType["KERAS"]
-    elif ext in [".pt", ".pth"]:
-        return FrameworkType["PYTORCH"]
-    else:
-        raise TraitError(
-            f"Invalid model extension '{ext}' for file '{path}'. "
-            "Expected '.keras' or '.h5' for Keras, or '.pt' or '.pth' for PyTorch."
-        )
 
 def setup_framework(model_paths):
     """
@@ -183,11 +162,27 @@ def setup_framework(model_paths):
         If no valid model paths are provided, or if multiple inconsistent frameworks 
         are detected across the provided paths.
     """
+    def _detect_framework(path_val):
+        """
+        Determines framework based on file extension.
+        Returns 'Keras', 'PyTorch', or raises TraitError.
+        """
+        path = pathlib.Path(path_val)
+        ext = path.suffix.lower()
+        if ext in [".keras", ".h5"]:
+            return FrameworkType["KERAS"]
+        elif ext in [".pt", ".pth"]:
+            return FrameworkType["PYTORCH"]
+        else:
+            raise TraitError(
+                f"Invalid model extension '{ext}' for file '{path}'. "
+                "Expected '.keras' or '.h5' for Keras, or '.pt' or '.pth' for PyTorch."
+            )
     # Detect frameworks from all non-None paths
     detected_frameworks = {}
     for path in model_paths:
         if path is not None:
-            detected_frameworks[path] = detect_framework(path)
+            detected_frameworks[path] = _detect_framework(path)
     # Fail immediately if no valid model paths are provided
     if not detected_frameworks:
         raise ToolConfigurationError(
