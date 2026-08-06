@@ -9,7 +9,6 @@ import warnings
 import numpy as np
 import tables
 import keras
-import tensorflow as tf
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader

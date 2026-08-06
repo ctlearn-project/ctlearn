@@ -162,6 +162,7 @@ def setup_framework(model_paths):
         If no valid model paths are provided, or if multiple inconsistent frameworks 
         are detected across the provided paths.
     """
+
     def _detect_framework(path_val):
         """
         Determines framework based on file extension.
@@ -178,6 +179,7 @@ def setup_framework(model_paths):
                 f"Invalid model extension '{ext}' for file '{path}'. "
                 "Expected '.keras' or '.h5' for Keras, or '.pt' or '.pth' for PyTorch."
             )
+
     # Detect frameworks from all non-None paths
     detected_frameworks = {}
     for path in model_paths:

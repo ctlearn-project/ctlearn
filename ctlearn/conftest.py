@@ -7,13 +7,14 @@ from pathlib import Path
 import numpy as np
 import pytest
 import shutil
-from astropy import units as u
 from astropy.table import Column, Table
 from traitlets.config.loader import Config
 
 from ctapipe.core import run_tool
 from ctapipe.io import write_table
+from ctapipe.tools.process import ProcessorTool
 from ctapipe.utils import get_dataset_path
+
 from ctlearn.tools.keras.train_model import TrainCTLearnKerasModel
 from ctlearn.tools.pytorch.train_model import TrainCTLearnPyTorchModel
 from ctlearn.tools.utils import get_lst1_subarray_description
@@ -136,8 +137,6 @@ def dl1_gamma_file(dl1_tmp_path, gamma_simtel_path):
     """
     DL1 file containing both images and parameters from a gamma simulation set.
     """
-    from ctapipe.tools.process import ProcessorTool
-
     output = dl1_tmp_path / "gamma.dl1.h5"
     argv = [
         f"--input={gamma_simtel_path}",
@@ -172,10 +171,7 @@ def r1_gamma_file(r1_tmp_path, gamma_simtel_path):
     """
     R1 file containing both waveforms and parameters from a gamma simulation set.
     """
-    from ctapipe.tools.process import ProcessorTool
-
     output = r1_tmp_path / "gamma.r1.h5"
-
     allowed_tels = [1, 2]
     argv = [
         f"--input={gamma_simtel_path}",
@@ -193,8 +189,6 @@ def r1_proton_file(r1_tmp_path, proton_simtel_path):
     """
     R1 file containing both waveforms and parameters from a proton simulation set.
     """
-    from ctapipe.tools.process import ProcessorTool
-
     # Restrict to two LSTs for R1 tests to reduce computational load
     allowed_tels = [1, 2]
     output = r1_tmp_path / "proton.r1.h5"

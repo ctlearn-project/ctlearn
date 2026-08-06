@@ -32,7 +32,7 @@ REQUIRED_COLUMNS = [
 
 
 @pytest.mark.verifies_usecase("DPPS-UC-130-1.2.2")
-@pytest.mark.parametrize("framework", ["Keras"])
+@pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
 def test_predict_mono_model_with_lst1_mock_data(
     tmp_path, ctlearn_trained_dl1_mono_models, mock_lst1_dl1_file, framework
 ):
