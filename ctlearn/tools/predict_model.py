@@ -925,7 +925,6 @@ class PredictCTLearnModel(Tool):
                 "Ensure the model was saved via 'torch.save(model, path)' rather than 'torch.save(model.state_dict(), path)'."
             )
         model.eval()
-
         # PyTorch DataLoaders natively handle drop_last=False,
         # so we don't need a separate generator for incomplete batches.
         # Replace 'PyTorchDataset' with your actual PyTorch Dataset implementation
@@ -936,7 +935,6 @@ class PredictCTLearnModel(Tool):
             sort_by_intensity=self.sort_by_intensity,
             stack_telescope_images=self.stack_telescope_images,
         )
-
         data_loader = DataLoader(
             dataset,
             batch_size=self.batch_size * self.num_devices,
@@ -944,86 +942,35 @@ class PredictCTLearnModel(Tool):
             pin_memory=torch.cuda.is_available(),
             drop_last=False
         )
-
-        feature_vectors_list = []
-        predictions_dict = {}
+        predictions_dict, feature_vectors_list = {}, []
         with torch.no_grad():
             for batch in data_loader:  # Iterate over DataLoader without subscripting
-                inputs = (
-                    batch[0].to(self.device)
-                    if isinstance(batch, (tuple, list))
-                    else batch.to(self.device)
-                )
-
-                try:
-                    if self.dl1_features:
-                        # Extract features from backbone
-                        features = (
-                            model.backbone(inputs)
-                            if hasattr(model, "backbone")
-                            else model.extract_features(inputs)
-                        )
-                        # Retrieve classifier / head module
-                        head_model = (
-                            model.head
-                            if hasattr(model, "head")
-                            else model.classifier
-                        )
-                        preds = head_model(features)
-
-                        feature_vectors_list.append(features.cpu().numpy())
-                    else:
-                        preds = model(inputs)
-
-                except RuntimeError as err:
-                    if "shape" in str(err).lower() or "mat1 and mat2" in str(err).lower():
-                        raise ToolConfigurationError(
-                            "Model input shape does not match the prediction data. "
-                            "This is usually caused by selecting the wrong telescope_id. "
-                            "Please ensure the telescope configuration matches the one used for training."
-                        ) from err
-                    raise
-
+                inputs = batch[0].to(self.device)
+                predictions, features = model(inputs)
+                if self.dl1_features:
+                    feature_vectors_list.append(features.cpu().numpy())
                 # Standardize model outputs into predictions_dict using self.heads_dict
-                if isinstance(preds, torch.Tensor):
-                    # Check for heads_dict on model or head_model, fallback to single_output_task or default
-                    heads_dict = (
-                        getattr(model, "heads_dict", None)
-                        or getattr(getattr(model, "head", None), "heads_dict", None)
-                        or getattr(getattr(model, "classifier", None), "heads_dict", None)
-                    )
-
-                    if heads_dict:
-                        task_name = list(heads_dict.keys())[0]
-                    elif hasattr(model, "single_output_task") and model.single_output_task:
-                        task_name = model.single_output_task
-                    else:
-                        task_name = getattr(self, "prediction_type", "type")
-
-                    predictions_dict.setdefault(task_name, []).append(preds.cpu().numpy())
-
-                elif isinstance(preds, dict):
-                    for task_name, output_tensor in preds.items():
+                if isinstance(predictions, torch.Tensor):
+                    task_name = list(model.head.heads_dict.keys())[0]
+                    predictions_dict.setdefault(task_name, []).append(predictions.cpu().numpy())
+                elif isinstance(predictions, dict):
+                    for task_name, output_tensor in predictions.items():
                         predictions_dict.setdefault(task_name, []).append(
                             output_tensor.cpu().numpy()
                         )
-
-        # Concatenate batched prediction arrays
-        formatted_predictions = {
-            task_name: np.concatenate(batches, axis=0)
-            for task_name, batches in predictions_dict.items()
-        }
-
-        # Format into Astropy Table
-        predict_data = Table(formatted_predictions)
-
+        # Concatenate batched prediction arrays and format into Astropy Table
+        predict_data = Table(
+            {
+                task_name: np.concatenate(batches, axis=0)
+                for task_name, batches in predictions_dict.items()
+            }
+        )
         # Concatenate features if extracted
         feature_vectors = (
             np.concatenate(feature_vectors_list, axis=0)
             if self.dl1_features and feature_vectors_list
             else None
         )
-
         return predict_data, feature_vectors
 
     def _predict_particletype(self, example_identifiers):

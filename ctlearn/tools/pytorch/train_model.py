@@ -296,7 +296,7 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
             batch_y = self._to_device(batch_y)
 
             self.opt.zero_grad()
-            outputs = self.model(batch_x)
+            outputs, _ = self.model(batch_x)
 
             loss = self._compute_combined_loss(outputs, batch_y)
             loss.backward()
@@ -321,7 +321,7 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
                 batch_x = self._to_device(batch_x)
                 batch_y = self._to_device(batch_y)
 
-                outputs = self.model(batch_x)
+                outputs, _ = self.model(batch_x)
                 loss = self._compute_combined_loss(outputs, batch_y)
 
                 total_loss += loss.item()
