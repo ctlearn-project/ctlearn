@@ -187,9 +187,4 @@ autodoc_mock_imports = [
     "torchmetrics",
     "tensorflow",
     "tensorboard",
-    "ctapipe",
-    "dl1_data_handler",
-    "astropy",
-    "numexpr",
-    "numba",
 ]
