@@ -28,7 +28,7 @@ View training progress in real time with TensorBoard:
 Prediction tools 
 ----------------
 
-To predict with a trained model, use the `ctlearn-predict-mono-model` or `ctlearn-predict-stereo-model` command. The following command will display all available options for predicting with a CTLearn model:
+To predict with a trained Keras or PyTorch model, use the `ctlearn-predict-mono-model` or `ctlearn-predict-stereo-model` command. The following command will display all available options for predicting with a CTLearn model:
 
 .. code-block:: bash
 
