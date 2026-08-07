@@ -2,6 +2,8 @@
 Tool to train a PyTorch-based ``CTLearnModel`` on R1/DL1a data using the ``DLDataReader`` and ``PyTorchDataLoader``.
 """
 
+__all__ = ["TrainCTLearnPyTorchModel"] 
+
 import os
 import torch
 import torch.nn as nn
@@ -290,10 +292,13 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
             m.reset()
 
         total_loss = 0.0
+        total_samples = 0
 
         for batch_x, batch_y in self.training_loader:
             batch_x = self._to_device(batch_x)
             batch_y = self._to_device(batch_y)
+
+            batch_size = batch_x.size(0) if isinstance(batch_x, torch.Tensor) else next(iter(batch_x.values())).size(0)
 
             self.opt.zero_grad()
             outputs, _ = self.model(batch_x)
@@ -302,34 +307,64 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
             loss.backward()
             self.opt.step()
 
-            total_loss += loss.item()
+            total_loss += loss.item() * batch_size
+            total_samples += batch_size
             self._update_metrics(self.train_metrics, outputs, batch_y)
 
-        avg_loss = total_loss / len(self.training_loader)
+        avg_loss = total_loss / total_samples
         metric_results = {k: m.compute().item() for k, m in self.train_metrics.items()}
         return avg_loss, metric_results
 
     def _validate_epoch(self):
         self.model.eval()
-        for m in self.val_metrics.values():
-            m.reset()
+        self._reset_metrics(self.val_metrics)
 
         total_loss = 0.0
+        total_samples = 0
 
         with torch.no_grad():
             for batch_x, batch_y in self.validation_loader:
                 batch_x = self._to_device(batch_x)
                 batch_y = self._to_device(batch_y)
 
+                # Dynamically determine batch size (works for Tensors or dicts of Tensors)
+                batch_size = (
+                    batch_x.size(0)
+                    if isinstance(batch_x, torch.Tensor)
+                    else next(iter(batch_x.values())).size(0)
+                )
+
                 outputs, _ = self.model(batch_x)
                 loss = self._compute_combined_loss(outputs, batch_y)
 
-                total_loss += loss.item()
+                total_loss += loss.item() * batch_size
+                total_samples += batch_size
+                
                 self._update_metrics(self.val_metrics, outputs, batch_y)
 
-        avg_loss = total_loss / len(self.validation_loader)
-        metric_results = {k: m.compute().item() for k, m in self.val_metrics.items()}
+        avg_loss = total_loss / total_samples if total_samples > 0 else 0.0
+        metric_results = self._compute_metrics(self.val_metrics)
         return avg_loss, metric_results
+
+
+    # Helper methods to safely handle flat or task-nested metric dictionaries
+    def _reset_metrics(self, metrics):
+        for m in metrics.values():
+            if isinstance(m, dict):
+                for sub_m in m.values():
+                    sub_m.reset()
+            else:
+                m.reset()
+
+    def _compute_metrics(self, metrics):
+        results = {}
+        for k, v in metrics.items():
+            if isinstance(v, dict):
+                for sub_k, sub_v in v.items():
+                    results[f"{k}_{sub_k}"] = sub_v.compute().item()
+            else:
+                results[k] = v.compute().item()
+        return results
 
     def _get_task_metrics(self):
         """Instantiates TorchMetrics matching Keras metric definitions."""
@@ -359,8 +394,17 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
             task_metrics = metrics[task] if task in metrics else metrics
 
             if task == "type":
+                # Ensure target is 1D LongTensor for classification
+                if tgt.ndim > 1:
+                    tgt = tgt.squeeze(-1)
+                tgt = tgt.long()
+
+                # Convert 2-class logits to class 1 probabilities for binary metrics
                 if out.ndim > 1 and out.shape[-1] > 1:
-                    out = out[:, 1]  # Positive class probability for binary metrics
+                    probs = torch.softmax(out, dim=-1)
+                    out = probs[:, 1]
+                elif out.ndim > 1 and out.shape[-1] == 1:
+                    out = torch.sigmoid(out.squeeze(-1))
             else:
                 if out.ndim > 1 and out.shape[-1] == 1:
                     out = out.squeeze(-1)
@@ -377,12 +421,14 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
         total_loss = 0.0
 
         for task in self.reco_tasks:
-            # Extract output tensor safely
             task_output = outputs[task] if isinstance(outputs, dict) else outputs
             task_target = targets[task] if isinstance(targets, dict) else targets
 
-            # Align shapes for regression tasks (energy, direction)
-            if task != "type":
+            if task == "type":
+                if task_target.ndim > 1:
+                    task_target = task_target.squeeze(-1)
+                task_target = task_target.long()
+            else:
                 if task_output.ndim > 1 and task_output.shape[-1] == 1:
                     task_output = task_output.squeeze(-1)
                 if task_target.ndim > 1 and task_target.shape[-1] == 1:

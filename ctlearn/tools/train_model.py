@@ -2,6 +2,8 @@
 Base tool to train a ``CTLearnModel``on R1/DL1a data using the ``DLDataReader`` and ``DLDataLoader``.
 """
 
+__all__ = ["TrainCTLearnModel"] 
+
 from abc import abstractmethod
 import numpy as np
 

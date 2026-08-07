@@ -1,3 +1,7 @@
+""" Keras sequence for data loading."""
+
+__all__ = ["KerasSequence"]
+
 import numpy as np
 from keras.utils import Sequence, to_categorical
 

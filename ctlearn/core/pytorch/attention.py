@@ -2,15 +2,16 @@
 This module defines the squeeze-excite blocks for channel-wise and/or spatial-wise attention mechanisms in PyTorch.
 """
 
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-
 __all__ = [
     "DualSqueezeExciteBlock",
     "ChannelSqueezeExciteBlock",
     "SpatialSqueezeExciteBlock",
 ]
+
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
 
 class DualSqueezeExciteBlock(nn.Module):
     """

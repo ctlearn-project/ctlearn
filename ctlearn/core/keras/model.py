@@ -2,6 +2,13 @@
 This module defines the ``CTLearnModel`` classes, which holds the basic functionality for creating a Keras model to be used in CTLearn.
 """
 
+__all__ = [
+    "build_fully_connect_keras_head",
+    "KerasSingleCNN",
+    "KerasResNet",
+    "KerasLoadedModel",
+]
+
 import keras
 
 from ctlearn.core.model import (
@@ -14,13 +21,6 @@ from ctlearn.core.keras.attention import (
     channel_squeeze_excite_block,
     spatial_squeeze_excite_block,
 )
-
-__all__ = [
-    "build_fully_connect_keras_head",
-    "KerasSingleCNN",
-    "KerasResNet",
-    "KerasLoadedModel",
-]
 
 
 def build_fully_connect_keras_head(inputs, layers, activation_function, tasks):

@@ -2,13 +2,13 @@
 This module defines the squeeze-excite blocks for channel-wise and/or spatial-wise attention mechanisms.
 """
 
-import keras
-
 __all__ = [
     "dual_squeeze_excite_block",
     "channel_squeeze_excite_block",
     "spatial_squeeze_excite_block",
 ]
+
+import keras
 
 def dual_squeeze_excite_block(inputs, ratio=16, name=None):
     """

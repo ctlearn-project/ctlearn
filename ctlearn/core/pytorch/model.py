@@ -2,6 +2,16 @@
 This module defines the ``CTLearnModel`` classes, which holds the basic functionality for creating a PyTorch model to be used in CTLearn.
 """
 
+__all__ = [
+    "BasicBlock",
+    "BottleneckBlock",
+    "MultiFullyConnectedHead",
+    "build_fully_connect_pytorch_head",
+    "PyTorchSingleCNN",
+    "PyTorchResNet",
+    "PyTorchLoadedModel",
+]
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -17,16 +27,6 @@ from ctlearn.core.pytorch.attention import (
     ChannelSqueezeExciteBlock,
     SpatialSqueezeExciteBlock,
 )
-
-__all__ = [
-    "BasicBlock",
-    "BottleneckBlock",
-    "MultiFullyConnectedHead",
-    "build_fully_connect_pytorch_head",
-    "PyTorchSingleCNN",
-    "PyTorchResNet",
-    "PyTorchLoadedModel",
-]
 
 
 class MultiFullyConnectedHead(nn.Module):

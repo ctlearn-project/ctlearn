@@ -2,6 +2,12 @@
 Tools to predict the gammaness, energy and arrival direction in monoscopic and stereoscopic mode using ``CTLearnModel`` on R1/DL1 data using the ``DLDataReader`` and ``KerasSequence``/``PyTorchDataset``.
 """
 
+__all__ = [
+    "PredictCTLearnModel",
+    "MonoPredictCTLearnModel",
+    "StereoPredictCTLearnModel",
+] 
+
 import atexit
 import uuid
 import warnings
@@ -122,11 +128,6 @@ DATALEVEL_TO_GROUP = {
     DataLevel.DL1_MUON: DL1_TEL_MUON_GROUP,
     DataLevel.DL2: DL2_SUBARRAY_GROUP,
 }
-
-
-class CannotPredict(OSError):
-    """Raised when trying to predict an incompatible file"""
-
 
 class PredictCTLearnModel(Tool):
     """
