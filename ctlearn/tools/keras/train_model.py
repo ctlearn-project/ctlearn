@@ -2,6 +2,8 @@
 Tool to train a Keras-based ``CTLearnModel``on R1/DL1a data using the ``DLDataReader`` and ``DLDataLoader``.
 """
 
+__all__ = ["TrainCTLearnKerasModel"] 
+
 import atexit
 import tensorflow as tf
 import keras

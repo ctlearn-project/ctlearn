@@ -2,6 +2,8 @@
 Tool to train a PyTorch-based ``CTLearnModel`` on R1/DL1a data using the ``DLDataReader`` and ``PyTorchDataLoader``.
 """
 
+__all__ = ["TrainCTLearnPyTorchModel"] 
+
 import os
 import torch
 import torch.nn as nn

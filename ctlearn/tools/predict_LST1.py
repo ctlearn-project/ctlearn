@@ -2,6 +2,8 @@
 Predict the gammaness, energy and arrival direction from lstchain DL1 data.
 """
 
+__all__ = ["LST1PredictionTool"] 
+
 import atexit
 import numpy as np
 import tables

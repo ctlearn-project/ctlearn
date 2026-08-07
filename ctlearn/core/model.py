@@ -2,18 +2,18 @@
 This module defines the ``CTLearnModel`` classes, which holds the basic functionality for creating a Keras model to be used in CTLearn.
 """
 
-from abc import abstractmethod
-
-from ctapipe.core import Component
-from ctapipe.core.traits import Bool, Int, CaselessStrEnum, List, Dict, Unicode, Path
-from ctlearn.tools.utils import validate_trait_dict
-
 __all__ = [
     "CTLearnModel",
     "SingleCNN",
     "ResNet",
     "LoadedModel",
 ]
+
+from abc import abstractmethod
+
+from ctapipe.core import Component
+from ctapipe.core.traits import Bool, Int, CaselessStrEnum, List, Dict, Unicode, Path
+from ctlearn.tools.utils import validate_trait_dict
 
 
 class CTLearnModel(Component):
