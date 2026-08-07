@@ -47,48 +47,6 @@ The lastest version fo this package can be installed as a pip package:
 
 See the documentation for further information like `installation instructions for the IT-cluster <https://ctlearn.readthedocs.io/en/latest/installation.html#install-a-released-version>`_, `installation instructions for developers <https://ctlearn.readthedocs.io/en/latest/installation.html#installing-with-pip-setuptools-from-source-for-development>`_, `package usage <https://ctlearn.readthedocs.io/en/stable/usage.html>`_, and `dependencies <https://ctlearn.readthedocs.io/en/stable/installation.html#dependencies>`_ among other topics.
 
-Running CTLearn Training and Prediction
----------------------------------------
-
-CTLearn provides a unified command line interface (CLI) using `ctapipe`'s ``Tool`` and ``Component`` systems, supporting both the **Keras** and **PyTorch** deep learning frameworks.
-
-Launching training
-~~~~~~~~~~~~~~~~~~
-
-You can launch a training run using the unified tool ``ctlearn-train``. To run with a specific framework, set the ``--framework`` option (choices: ``keras``, ``pytorch``):
-
-.. code-block:: bash
-
-   # Launch training with PyTorch
-   ctlearn-train --framework=pytorch --output ./my_output_dir --signal /path/to/signal/h5/ --pattern-signal "*.dl1.h5" --reco energy --n_epochs=10 --batch_size=32
-
-   # Launch training with Keras
-   ctlearn-train --framework=keras --output ./my_output_dir --signal /path/to/signal/h5/ --pattern-signal "*.dl1.h5" --reco energy --n_epochs=10 --batch_size=32
-
-Common Training Command Options:
-* ``--framework``: Deep learning framework to use (``keras`` or ``pytorch``).
-* ``-o``, ``--output``: Directory to save experiment checkpoints, parameters, and logs.
-* ``--signal``: Directory containing signal HDF5 data files.
-* ``--pattern-signal``: File name pattern for signal files (e.g. ``*.dl1.h5``).
-* ``--reco``: Tasks to train (e.g. ``type``, ``energy``, ``cameradirection``, ``skydirection``). Multiple tasks can be provided.
-* ``--n_epochs``: Number of epochs to train.
-* ``--batch_size``: Batch size for training.
-* ``--save_onnx=True``: Export the trained model to ONNX format.
-* ``--load_onnx_model=PATH``: Load an existing ONNX model to train/fine-tune.
-* ``--overwrite``: Overwrite the output directory if it already exists.
-
-Launching prediction
-~~~~~~~~~~~~~~~~~~~~
-
-Similarly, predictions on test/observation data can be executed using the unified prediction tools (for monoscopic or stereoscopic mode):
-
-.. code-block:: bash
-
-   # Monoscopic prediction with PyTorch
-   ctlearn-predict-mono-model --framework=pytorch --output ./pred_results --signal /path/to/test/h5/ --pattern-signal "*.dl1.h5" --energy_checkpoint /path/to/checkpoint.pth
-
-   # Monoscopic prediction with Keras
-   ctlearn-predict-mono-model --framework=keras --output ./pred_results --signal /path/to/test/h5/ --pattern-signal "*.dl1.h5" --energy_checkpoint /path/to/keras_model/
 
 Citing this software
 --------------------

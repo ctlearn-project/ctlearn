@@ -188,6 +188,10 @@ class TrainCTLearnModel(Tool):
         "pattern-signal": "TrainCTLearnModel.file_pattern_signal",
         "pattern-background": "TrainCTLearnModel.file_pattern_background",
         "reco": "TrainCTLearnModel.reco_tasks",
+        "n-epochs": "TrainCTLearnModel.n_epochs",
+        "batch-size": "TrainCTLearnModel.batch_size",
+        "random-seed": "TrainCTLearnModel.random_seed",
+        "save-best-val": "TrainCTLearnModel.save_best_validation_only",
         ("o", "output"): "TrainCTLearnModel.output_dir",
     }
 
