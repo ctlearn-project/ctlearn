@@ -178,3 +178,18 @@ epub_exclude_files = ['search.html']
 
 
 # -- Extension configuration -------------------------------------------------
+
+
+autodoc_mock_imports = [
+    "torch",
+    "torchvision",
+    "pytorch_lightning",
+    "torchmetrics",
+    "tensorflow",
+    "tensorboard",
+    "ctapipe",
+    "dl1_data_handler",
+    "astropy",
+    "numexpr",
+    "numba",
+]

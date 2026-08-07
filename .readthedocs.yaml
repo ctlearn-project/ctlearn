@@ -13,3 +13,4 @@ python:
       - requirements: docs/requirements.txt
       - method: pip
         path: .
+        extra_requirements: [] # Do not pull heavy ML dependencies
