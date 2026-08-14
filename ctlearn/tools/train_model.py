@@ -182,6 +182,24 @@ class TrainCTLearnModel(Tool):
 	)
     ).tag(config=True)
 
+    num_workers = Int(
+        default_value=0,
+        allow_none=False,
+        help="Number of worker processes to use for data loading (0 means data will be loaded in the main process).",
+    ).tag(config=True)
+
+    persistent_workers = Bool(
+        default_value=False,
+        allow_none=False,
+        help="Set whether to keep data loader worker processes alive between epochs.",
+    ).tag(config=True)
+
+    pin_memory = Bool(
+        default_value=True,
+        allow_none=False,
+        help="Set whether to pin memory in PyTorch DataLoader for faster transfers from host CPU to GPU.",
+    ).tag(config=True)
+
     aliases = {
         "signal": "TrainCTLearnModel.input_dir_signal",
         "background": "TrainCTLearnModel.input_dir_background",

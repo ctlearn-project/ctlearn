@@ -103,8 +103,10 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
             batch_size=self.batch_size * self.num_devices,
             shuffle=True, # Enables shuffling
             generator=g, # Controls the shuffling seed deterministically
-            pin_memory=torch.cuda.is_available() # Accelerates memory copy from host CPU to GPU
-        )
+            num_workers=self.num_workers,
+            persistent_workers=self.persistent_workers if self.num_workers > 0 else False,
+            pin_memory=self.pin_memory and torch.cuda.is_available() # Accelerates memory copy from host CPU to GPU
+        ) 
         self.validation_dataset = PyTorchDataset(
             DLDataReader=self.dl1dh_reader,
             indices=self.validation_indices,
@@ -116,7 +118,9 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
             dataset=self.validation_dataset,
             batch_size=self.batch_size * self.num_devices,
             shuffle=False, # Disables shuffling
-            pin_memory=torch.cuda.is_available() # Accelerates memory copy from host CPU to GPU
+            num_workers=self.num_workers,
+            persistent_workers=self.persistent_workers if self.num_workers > 0 else False,
+            pin_memory=self.pin_memory and torch.cuda.is_available() # Accelerates memory copy from host CPU to GPU
         )
 
         # Set up TensorBoard writers for train and validation and CSV logging path
