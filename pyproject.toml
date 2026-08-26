@@ -75,9 +75,13 @@ docs = [
   "sphinx",
   "sphinx-rtd-theme",
 ]
+# Hexagonal convolution support (HexCNN + HexagdlyMapper) built on keras-hexagdly.
+hexagdly = [
+  "keras-hexagdly>=0.3.0",
+]
 
 dev = [
-    "ctlearn[all,docs,tests]",
+    "ctlearn[all,doc,hexagdlys,tests]",
     "setuptools_scm[toml]",
 ]
 

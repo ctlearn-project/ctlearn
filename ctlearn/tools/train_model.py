@@ -27,6 +27,17 @@ from ctlearn.core.model import CTLearnModel
 from ctlearn.tools.utils import validate_trait_dict
 from dl1_data_handler.reader import DLDataReader
 
+# Optional hex-native convolution support (the ``ctlearn[hexagdly]`` extra).
+# Importing these registers ``HexagdlyMapper``/``HexCNN`` with ctapipe's
+# Component factories (``ImageMapper.from_name``/``CTLearnModel.from_name``),
+# making ``image_mapper_type=HexagdlyMapper``/``model_type=HexCNN`` selectable
+# from the command line. A no-op if ``keras-hexagdly`` isn't installed.
+try:
+    import ctlearn.core.hexagdly_mapper  # noqa: F401
+    import ctlearn.core.hexagdly_model  # noqa: F401
+except ImportError:
+    pass
+
 
 class TrainCTLearnModel(Tool):
     """
