@@ -56,6 +56,16 @@ from dl1_data_handler.reader import (
     TableQualityQuery,
 )
 
+# Optional hex-native convolution support (the ``ctlearn[hexagdly]`` extra).
+# Importing registers ``HexagdlyMapper`` with ``ImageMapper.from_name`` and
+# makes ``keras_hexagdly``'s custom layers available when deserializing a
+# saved ``HexCNN`` model. A no-op if ``keras-hexagdly`` isn't installed.
+try:
+    import ctlearn.core.hexagdly_mapper  # noqa: F401
+    import ctlearn.core.hexagdly_model  # noqa: F401
+except ImportError:
+    pass
+
 SUBARRAY_EVENT_KEYS = ["obs_id", "event_id"]
 TELESCOPE_EVENT_KEYS = ["obs_id", "event_id", "tel_id"]
 

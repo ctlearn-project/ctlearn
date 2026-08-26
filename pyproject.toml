@@ -53,8 +53,12 @@ doc = [
   "sphinx",
   "sphinx-rtd-theme",
 ]
+# Hexagonal convolution support (HexCNN + HexagdlyMapper) built on keras-hexagdly.
+hexagdly = [
+  "keras-hexagdly>=0.3.0",
+]
 # self reference allows all to be defined in terms of other extras
-all = ["ctlearn[doc]"]
+all = ["ctlearn[doc,hexagdly]"]
 
 [project.urls]
 repository = "https://github.com/ctlearn-project/ctlearn"
