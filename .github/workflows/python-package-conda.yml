@@ -48,7 +48,7 @@ jobs:
       - name: Create Python environment
         run: |
           source $HOME/miniconda/etc/profile.d/conda.sh
-          mamba create -y -n ctlearn python==${{ matrix.python-version }} -c conda-forge
+          mamba create -y -n ctlearn python==${{ matrix.python-version }} -c conda-forge llvmlite triton
           conda activate ctlearn
 
       - name: Install dependencies
