@@ -8,10 +8,6 @@ from importlib.resources import files, as_file
 import os
 import time
 from tqdm import tqdm
-
-import tensorflow as tf
-import torch
-
 from ctapipe.core import Provenance
 from ctapipe.core.tool import ToolConfigurationError
 from ctapipe.core.traits import TraitError
@@ -204,9 +200,11 @@ def setup_framework(model_paths):
     # Configure framework-specific hardware/device setup
     strategy, device = None, None
     if framework_type == FrameworkType.KERAS:
+        import tensorflow as tf
         strategy = tf.distribute.MirroredStrategy()
         num_devices = strategy.num_replicas_in_sync
     elif framework_type == FrameworkType.PYTORCH:
+        import torch
         if torch.cuda.is_available():
             device = torch.device("cuda")
             num_devices = torch.cuda.device_count()

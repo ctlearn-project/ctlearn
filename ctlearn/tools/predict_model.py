@@ -14,10 +14,7 @@ import warnings
 
 import numpy as np
 import tables
-import keras
-import torch
-import torch.nn as nn
-from torch.utils.data import DataLoader
+
 
 from astropy import units as u
 from astropy.coordinates import AltAz, SkyCoord
@@ -92,8 +89,7 @@ from dl1_data_handler.reader import (
     LST_EPOCH,
 )
 from ctlearn import __version__ as ctlearn_version
-from ctlearn.core.keras.sequence import KerasSequence
-from ctlearn.core.pytorch.dataset import PyTorchDataset
+
 from ctlearn.tools.utils import (
     FrameworkType,
     setup_framework,
@@ -696,7 +692,7 @@ class PredictCTLearnModel(Tool):
     def _predict_with_keras_model(self, model_path):
         """
         Load and predict with a CTLearn Keras-based model.
-
+        
         Load a model from the specified path and predict the data using the loaded model.
         If a last batch loader is provided, predict the last batch and stack the results.
 
@@ -712,6 +708,8 @@ class PredictCTLearnModel(Tool):
         feature_vectors : np.ndarray
             Feature vectors extracted from the backbone model.
         """
+        import keras
+        from ctlearn.core.keras.sequence import KerasSequence
         # Create a new KerasSequence for each task
         # It turned out to be more robust to initialize the KerasSequence separately.
         data_loader = KerasSequence(

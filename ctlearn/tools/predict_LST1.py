@@ -7,9 +7,6 @@ __all__ = ["LST1PredictionTool"]
 import atexit
 import numpy as np
 import tables
-import keras
-import torch
-import torch.nn as nn
 
 from astropy import units as u
 from astropy.coordinates import AltAz, SkyCoord
@@ -307,6 +304,7 @@ class LST1PredictionTool(Tool):
             atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore
             self.log.info("Using Keras MirroredStrategy with %d replica(s).", self.num_devices)
         elif self.framework_type == FrameworkType.PYTORCH:
+            import torch
             if self.device == torch.device("cpu"):
                 self.log.info("Using PyTorch CPU device.")
             else:
@@ -924,6 +922,7 @@ class LST1PredictionTool(Tool):
             preds = head.predict_on_batch(fvs)
             return fvs, preds
         if self.framework_type == FrameworkType.PYTORCH:
+            import torch
             tensor_data = torch.from_numpy(input_data).float()
             # Convert Channels-Last (N, H, W, C) to Channels-First (N, C, H, W)
             if tensor_data.ndim == 4:
@@ -978,6 +977,7 @@ class LST1PredictionTool(Tool):
 
         def _split_keras_model(model):
             """Split the Keras model into backbone and head."""
+            import keras
             # Get the backbone model which is the second layer of the model
             backbone = model.get_layer(index=1)
             # Create a new head model with the same layers as the original model.
@@ -990,11 +990,14 @@ class LST1PredictionTool(Tool):
             return backbone, head
 
         if self.framework_type == FrameworkType.KERAS:
+            import keras
             model = keras.saving.load_model(path)
             input_shape = model.input_shape[1:]
             backbone, head = _split_keras_model(model)
             return input_shape, backbone, head
         if self.framework_type == FrameworkType.PYTORCH:
+            import torch
+            import torch.nn as nn
             model = torch.load(path, map_location=self.device, weights_only=False)
             if not isinstance(model, nn.Module):
                 raise TypeError(
@@ -1004,7 +1007,13 @@ class LST1PredictionTool(Tool):
                     "rather than 'torch.save(model.state_dict(), path)'."
                 )
             model.eval()
-            return None, model.backbone, model.head
+            
+            backbone, head = model.backbone, model.head
+            if self.num_devices > 1:
+                backbone = nn.DataParallel(backbone)
+                head = nn.DataParallel(head)
+                
+            return None, backbone, head
 
     def _create_nan_table(self, nonexample_identifiers, columns, shapes):
         """
