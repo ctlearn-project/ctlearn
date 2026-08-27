@@ -65,7 +65,6 @@ all = [
 tests = [
     # at the moment, essentially all tests rely on test data from simtel
     # it doesn't make sense to skip all of these.
-    "ctlearn",
     "pytest >=9.0",
     "pytest-cov",
     "pytest-xdist",
