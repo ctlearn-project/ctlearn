@@ -11,6 +11,8 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 import torchmetrics
 
+from ctapipe.core.tool import ToolConfigurationError
+from ctapipe.core.traits import Int, Bool
 from ctlearn.core.pytorch.dataset import PyTorchDataset
 from ctlearn.core.model import CTLearnModel
 from ctlearn.tools.train_model import TrainCTLearnModel
@@ -72,7 +74,26 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
         --reco skydirection \\
     """
 
+    num_workers = Int(
+        default_value=0,
+        allow_none=False,
+        help="Number of worker processes to use for data loading (0 means data will be loaded in the main process).",
+    ).tag(config=True)
+
+    persistent_workers = Bool(
+        default_value=False,
+        allow_none=False,
+        help="Set whether to keep data loader worker processes alive between epochs.",
+    ).tag(config=True)
+
     def setup_framework(self):
+        if self.persistent_workers and self.num_workers == 0:
+            raise ToolConfigurationError(
+                "Cannot set persistent_workers=True when num_workers=0. "
+                "PyTorch requires num_workers > 0 to keep worker processes alive. "
+                "Please set num_workers > 0 or persistent_workers=False."
+            )
+
         # Determine available hardware device (Multi-GPU / Single GPU / CPU)
         if torch.cuda.is_available():
             self.device = torch.device("cuda")
@@ -104,8 +125,8 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
             shuffle=True, # Enables shuffling
             generator=g, # Controls the shuffling seed deterministically
             num_workers=self.num_workers,
-            persistent_workers=self.persistent_workers if self.num_workers > 0 else False,
-            pin_memory=self.pin_memory and torch.cuda.is_available() # Accelerates memory copy from host CPU to GPU
+            persistent_workers=self.persistent_workers,
+            pin_memory=torch.cuda.is_available() # Accelerates memory copy from host CPU to GPU
         ) 
         self.validation_dataset = PyTorchDataset(
             DLDataReader=self.dl1dh_reader,
@@ -119,8 +140,8 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
             batch_size=self.batch_size * self.num_devices,
             shuffle=False, # Disables shuffling
             num_workers=self.num_workers,
-            persistent_workers=self.persistent_workers if self.num_workers > 0 else False,
-            pin_memory=self.pin_memory and torch.cuda.is_available() # Accelerates memory copy from host CPU to GPU
+            persistent_workers=self.persistent_workers,
+            pin_memory=torch.cuda.is_available() # Accelerates memory copy from host CPU to GPU
         )
 
         # Set up TensorBoard writers for train and validation and CSV logging path
