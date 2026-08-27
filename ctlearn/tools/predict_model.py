@@ -440,6 +440,7 @@ class PredictCTLearnModel(Tool):
             atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore
             self.log.info("Using Keras MirroredStrategy with %d replica(s).", self.num_devices)
         elif self.framework_type == FrameworkType.PYTORCH:
+            import torch
             if self.device == torch.device("cpu"):
                 self.log.info("Using PyTorch CPU device.")
             else:
@@ -847,6 +848,10 @@ class PredictCTLearnModel(Tool):
             Feature vectors extracted from the backbone model.
         """        
         # Load the model and make sure it is not a state dict
+        import torch
+        import torch.nn as nn
+        from torch.utils.data import DataLoader
+        from ctlearn.core.pytorch.dataset import PyTorchDataset
         model = torch.load(model_path, map_location=self.device, weights_only=False)
         if not isinstance(model, nn.Module):
             raise TypeError(
