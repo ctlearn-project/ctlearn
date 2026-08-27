@@ -416,8 +416,12 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
         for task in self.reco_tasks:
             out = outputs[task] if isinstance(outputs, dict) else outputs
             tgt = targets[task] if isinstance(targets, dict) else targets
-            task_metrics = metrics[task] if task in metrics else metrics
-
+            task_metrics = {
+                "type": {k: metrics[k] for k in ("accuracy", "auc") if k in metrics},
+                "energy": metrics.get("mae_energy"),
+                "cameradirection": metrics.get("mae_cameradirection"),
+                "skydirection": metrics.get("mae_skydirection"),
+            }[task]
             if task == "type":
                 # Ensure target is 1D LongTensor for classification
                 if tgt.ndim > 1:
