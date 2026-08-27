@@ -59,13 +59,13 @@ def monitor_progress(src_path, dst_path, stop_event, logger):
         except OSError:
             logger.warning("Could not get final size of output file.")
             
-def validate_trait_dict(dict, required_keys):
+def validate_trait_dict(trait_dict, required_keys):
     """
     Validate that a dictionary contains all required keys.
 
     Parameters
     ----------
-    dict : dict
+    trait_dict : dict
         Dictionary to validate.
     required_keys : set
         Set of required keys.
@@ -75,9 +75,11 @@ def validate_trait_dict(dict, required_keys):
     bool
         True if the dictionary contains all required keys.  Otherwise, raises a TraitError.
     """
-    missing_keys = required_keys - dict.keys()
+    missing_keys = required_keys - trait_dict.keys()
     if missing_keys:
-        raise TraitError(f"Dict is missing required key(s): {', '.join(missing_keys)}")
+        raise TraitError(
+            f"Dict is missing required key(s): {', '.join(missing_keys)}"
+        )
     return True
 
 def get_lst1_subarray_description(focal_length_choice=FocalLengthKind.EFFECTIVE):
