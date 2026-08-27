@@ -1,6 +1,12 @@
 """
-Tools to predict the gammaness, energy and arrival direction in monoscopic and stereoscopic mode using ``CTLearnModel`` on R1/DL1 data using the ``DLDataReader`` and ``DLDataLoader``.
+Tools to predict the gammaness, energy and arrival direction in monoscopic and stereoscopic mode using ``CTLearnModel`` on R1/DL1 data using the ``DLDataReader`` and ``KerasSequence``/``PyTorchDataset``.
 """
+
+__all__ = [
+    "PredictCTLearnModel",
+    "MonoPredictCTLearnModel",
+    "StereoPredictCTLearnModel",
+] 
 
 import atexit
 import uuid
@@ -8,15 +14,12 @@ import warnings
 
 import numpy as np
 import tables
-import tensorflow as tf
-import keras
+
 
 from astropy import units as u
-from astropy.coordinates.earth import EarthLocation
 from astropy.coordinates import AltAz, SkyCoord
 from astropy.table import (
     Table,
-    hstack,
     vstack,
     join,
     setdiff,
@@ -86,8 +89,12 @@ from dl1_data_handler.reader import (
     LST_EPOCH,
 )
 from ctlearn import __version__ as ctlearn_version
-from ctlearn.core.loader import DLDataLoader
-from ctlearn.utils import validate_trait_dict
+
+from ctlearn.tools.utils import (
+    FrameworkType,
+    setup_framework,
+    validate_trait_dict,
+)
 
 # Convienient constants for column names and table keys
 SUBARRAY_EVENT_KEYS = ["obs_id", "event_id"]
@@ -118,11 +125,6 @@ DATALEVEL_TO_GROUP = {
     DataLevel.DL2: DL2_SUBARRAY_GROUP,
 }
 
-
-class CannotPredict(OSError):
-    """Raised when trying to predict an incompatible file"""
-
-
 class PredictCTLearnModel(Tool):
     """
     Base tool to predict the gammaness, energy and arrival direction from R1/DL1 data using CTLearn models.
@@ -130,7 +132,8 @@ class PredictCTLearnModel(Tool):
     This class handles the prediction of the gammaness, energy and arrival direction from pixel-wise image
     or waveform data. It also supports the extraction of the feature vectors from the backbone submodel to
     store them in the output file. The input data is loaded from the input url using the
-    ``~dl1_data_handler.reader.DLDataReader`` and ``~ctlearn.core.loader.DLDataLoader``.
+    ``~dl1_data_handler.reader.DLDataReader`` and ``~ctlearn.core.keras.sequence.KerasSequence`` or
+    ``~ctlearn.core.pytorch.dataset.PyTorchDataset``.
     The prediction is performed using the CTLearn models. The data is stored in the output file
     following the ctapipe DL2 data format. The ``start`` method is implemented in the subclasses to
     handle the prediction for mono and stereo mode.
@@ -156,14 +159,14 @@ class PredictCTLearnModel(Tool):
     prefix : str
         Name of the reconstruction algorithm used to generate the dl2 data.
     load_type_model_from : pathlib.Path
-        Path to a Keras model file (Keras3) for the classification of the primary particle type.
+        Path to a Keras or PyTorch model file for the classification of the primary particle type.
     load_energy_model_from : pathlib.Path
-        Path to a Keras model file (Keras3) for the regression of the primary particle energy.
+        Path to a Keras or PyTorch model file for the regression of the primary particle energy.
     load_cameradirection_model_from : pathlib.Path
-        Path to a Keras model file (Keras3) for the regression
+        Path to a Keras or PyTorch model file for the regression
         of the primary particle arrival direction based on camera coordinate offsets.
     load_skydirection_model_from : pathlib.Path
-        Path to a Keras model file (Keras3) for the regression
+        Path to a Keras or PyTorch model file for the regression
         of the primary particle arrival direction based on spherical coordinate offsets.
     output_path : pathlib.Path
         Output path to save the dl2 prediction results.
@@ -171,8 +174,8 @@ class PredictCTLearnModel(Tool):
         Verbosity mode of Keras during the prediction.
     strategy : tf.distribute.Strategy
         MirroredStrategy to distribute the prediction.
-    data_loader : ctlearn.core.loader.DLDataLoader
-        DLDataLoader object to load the data.
+    data_loader : ctlearn.core.keras.sequence.KerasSequence
+        KerasSequence object to load the data.
     indices : list of int
         List of indices for the data loaders.
     batch_size : int
@@ -274,8 +277,8 @@ class PredictCTLearnModel(Tool):
     load_type_model_from = Path(
         default_value=None,
         help=(
-            "Path to a Keras model file (Keras3) for the classification "
-            "of the primary particle type."
+            "Path to a Keras or PyTorch model file for the classification of the primary particle type. "
+            "Requires Keras/PyTorch consistency with other model paths."
         ),
         allow_none=True,
         exists=True,
@@ -286,8 +289,8 @@ class PredictCTLearnModel(Tool):
     load_energy_model_from = Path(
         default_value=None,
         help=(
-            "Path to a Keras model file (Keras3) for the regression "
-            "of the primary particle energy."
+            "Path to a Keras or PyTorch model file for the regression of the primary particle energy. "
+            "Requires Keras/PyTorch consistency with other model paths."
         ),
         allow_none=True,
         exists=True,
@@ -298,8 +301,9 @@ class PredictCTLearnModel(Tool):
     load_cameradirection_model_from = Path(
         default_value=None,
         help=(
-            "Path to a Keras model file (Keras3) for the reconstruction "
-            "of the primary particle arrival direction based on camera coordinate offsets."
+            "Path to a Keras or PyTorch model file for the reconstruction "
+            "of the primary particle arrival direction based on camera coordinate offsets. "
+            "Requires Keras/PyTorch consistency with other model paths."
         ),
         allow_none=True,
         exists=True,
@@ -310,8 +314,9 @@ class PredictCTLearnModel(Tool):
     load_skydirection_model_from = Path(
         default_value=None,
         help=(
-            "Path to a Keras model file (Keras3) for the reconstruction "
-            "of the primary particle arrival direction based on spherical coordinate offsets."
+            "Path to a Keras or PyTorch model file for the reconstruction "
+            "of the primary particle arrival direction based on spherical coordinate offsets. "
+            "Requires Keras/PyTorch consistency with other model paths."
         ),
         allow_none=True,
         exists=True,
@@ -329,17 +334,6 @@ class PredictCTLearnModel(Tool):
         default_value="./output.dl2.h5",
         allow_none=False,
         help="Output path to save the dl2 prediction results",
-    ).tag(config=True)
-
-    keras_verbose = Int(
-        default_value=1,
-        min=0,
-        max=2,
-        allow_none=False,
-        help=(
-            "Verbosity mode of Keras during the prediction: "
-            "0 = silent, 1 = progress bar, 2 = one line per call."
-        ),
     ).tag(config=True)
 
     aliases = {
@@ -432,11 +426,25 @@ class PredictCTLearnModel(Tool):
             self.output_path, dl2_subarray=False, dl2_telescope=False, parent=self
         ) as merger:
             merger(self.input_url)
-        # Create a MirroredStrategy.
-        self.strategy = tf.distribute.MirroredStrategy()
-        atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore
-        self.log.info("Number of devices: %s", self.strategy.num_replicas_in_sync)
-
+        # Collect all configured model path attributes
+        model_paths = [
+            self.load_type_model_from,
+            self.load_energy_model_from,
+            self.load_cameradirection_model_from,
+            self.load_skydirection_model_from,
+        ]
+        # Reads the model paths and set up the Keras or PyTorch framework
+        self.framework_type, self.num_devices, self.strategy, self.device = setup_framework(model_paths)
+        self.log.info("Framework selected: %s", self.framework_type.value)
+        if self.framework_type == FrameworkType.KERAS:
+            atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore
+            self.log.info("Using Keras MirroredStrategy with %d replica(s).", self.num_devices)
+        elif self.framework_type == FrameworkType.PYTORCH:
+            import torch
+            if self.device == torch.device("cpu"):
+                self.log.info("Using PyTorch CPU device.")
+            else:
+                self.log.info("Using PyTorch GPU device(s). Count: %d", self.num_devices)
         # Set up the data reader
         self.log.info("Loading data reader:")
         self.log.info("For a large dataset, this may take a while...")
@@ -455,7 +463,7 @@ class PredictCTLearnModel(Tool):
         # Set the indices for the data loaders
         self.indices = list(range(self.dl1dh_reader._get_n_events()))
         self.last_batch_size = len(self.indices) % (
-            self.batch_size * self.strategy.num_replicas_in_sync
+            self.batch_size * self.num_devices
         )
         # Ensure subarray consistency in the output file
         self._ensure_subarray_consistency()
@@ -676,9 +684,16 @@ class PredictCTLearnModel(Tool):
         return unique(t, keys=list(keys), keep="first")
 
     def _predict_with_model(self, model_path):
-        """
-        Load and predict with a CTLearn model.
+        """ Select the framework to load and predict the data. """
+        if self.framework_type == FrameworkType.KERAS:
+            return self._predict_with_keras_model(model_path)
+        elif self.framework_type == FrameworkType.PYTORCH:
+            return self._predict_with_pytorch_model(model_path)
 
+    def _predict_with_keras_model(self, model_path):
+        """
+        Load and predict with a CTLearn Keras-based model.
+        
         Load a model from the specified path and predict the data using the loaded model.
         If a last batch loader is provided, predict the last batch and stack the results.
 
@@ -694,13 +709,15 @@ class PredictCTLearnModel(Tool):
         feature_vectors : np.ndarray
             Feature vectors extracted from the backbone model.
         """
-        # Create a new DLDataLoader for each task
-        # It turned out to be more robust to initialize the DLDataLoader separately.
-        data_loader = DLDataLoader(
+        import keras
+        from ctlearn.core.keras.sequence import KerasSequence
+        # Create a new KerasSequence for each task
+        # It turned out to be more robust to initialize the KerasSequence separately.
+        data_loader = KerasSequence(
             self.dl1dh_reader,
             self.indices,
             tasks=[],
-            batch_size=self.batch_size * self.strategy.num_replicas_in_sync,
+            batch_size=self.batch_size * self.num_devices,
             sort_by_intensity=self.sort_by_intensity,
             stack_telescope_images=self.stack_telescope_images,
         )
@@ -711,7 +728,7 @@ class PredictCTLearnModel(Tool):
         data_loader_last_batch = None
         if self.last_batch_size > 0:
             last_batch_indices = self.indices[-self.last_batch_size :]
-            data_loader_last_batch = DLDataLoader(
+            data_loader_last_batch = KerasSequence(
                 self.dl1dh_reader,
                 last_batch_indices,
                 tasks=[],
@@ -740,7 +757,7 @@ class PredictCTLearnModel(Tool):
             # Apply the backbone model with the data loader to retrieve the feature vectors
             try:
                 feature_vectors = backbone_model.predict(
-                    data_loader, verbose=self.keras_verbose
+                    data_loader
                 )
             except ValueError as err:
                 if str(err).startswith("Input 0 of layer"):
@@ -754,14 +771,14 @@ class PredictCTLearnModel(Tool):
             predict_data = Table(
                 {
                     prediction_colname: head.predict(
-                        feature_vectors, verbose=self.keras_verbose
+                        feature_vectors
                     )
                 }
             )
             # Predict the last batch and stack the results to the prediction data
             if data_loader_last_batch is not None:
                 feature_vectors_last_batch = backbone_model.predict(
-                    data_loader_last_batch, verbose=self.keras_verbose
+                    data_loader_last_batch
                 )
                 feature_vectors = np.concatenate(
                     (feature_vectors, feature_vectors_last_batch)
@@ -772,8 +789,7 @@ class PredictCTLearnModel(Tool):
                         Table(
                             {
                                 prediction_colname: head.predict(
-                                    feature_vectors_last_batch,
-                                    verbose=self.keras_verbose,
+                                    feature_vectors_last_batch
                                 )
                             }
                         ),
@@ -782,7 +798,7 @@ class PredictCTLearnModel(Tool):
         else:
             # Predict the data using the loaded model
             try:
-                predict_data = model.predict(data_loader, verbose=self.keras_verbose)
+                predict_data = model.predict(data_loader)
             except ValueError as err:
                 if str(err).startswith("Input 0 of layer"):
                     raise ToolConfigurationError(
@@ -803,7 +819,7 @@ class PredictCTLearnModel(Tool):
             # Predict the last batch and stack the results to the prediction data
             if data_loader_last_batch is not None:
                 predict_data_last_batch = model.predict(
-                    data_loader_last_batch, verbose=self.keras_verbose
+                    data_loader_last_batch
                 )
                 if model.layers[-1].name == "type":
                     predict_data_last_batch = Table(
@@ -812,6 +828,84 @@ class PredictCTLearnModel(Tool):
                 else:
                     predict_data_last_batch = Table(predict_data_last_batch)
                 predict_data = vstack([predict_data, predict_data_last_batch])
+        return predict_data, feature_vectors
+
+
+    def _predict_with_pytorch_model(self, model_path):
+        """
+        Load and predict with a CTLearn PyTorch-based model.
+
+        Parameters
+        ----------
+        model_path : str
+            Path to a PyTorch model checkpoint/file.
+
+        Returns
+        -------
+        predict_data : astropy.table.Table
+            Table containing the prediction results.
+        feature_vectors : np.ndarray
+            Feature vectors extracted from the backbone model.
+        """        
+        # Load the model and make sure it is not a state dict
+        import torch
+        import torch.nn as nn
+        from torch.utils.data import DataLoader
+        from ctlearn.core.pytorch.dataset import PyTorchDataset
+        model = torch.load(model_path, map_location=self.device, weights_only=False)
+        if not isinstance(model, nn.Module):
+            raise TypeError(
+                f"Expected a PyTorch 'nn.Module' object at '{model_path}', "
+                f"but got '{type(model).__name__}'. "
+                "Ensure the model was saved via 'torch.save(model, path)' rather than 'torch.save(model.state_dict(), path)'."
+            )
+        model.eval()
+        # PyTorch DataLoaders natively handle drop_last=False,
+        # so we don't need a separate generator for incomplete batches.
+        # Replace 'PyTorchDataset' with your actual PyTorch Dataset implementation
+        dataset = PyTorchDataset(
+            self.dl1dh_reader,
+            self.indices,
+            tasks=[],
+            sort_by_intensity=self.sort_by_intensity,
+            stack_telescope_images=self.stack_telescope_images,
+        )
+        data_loader = DataLoader(
+            dataset,
+            batch_size=self.batch_size * self.num_devices,
+            shuffle=False,
+            pin_memory=torch.cuda.is_available(),
+            drop_last=False
+        )
+        predictions_dict, feature_vectors_list = {}, []
+        with torch.no_grad():
+            for batch in data_loader:  # Iterate over DataLoader without subscripting
+                inputs = batch[0].to(self.device)
+                predictions, features = model(inputs)
+                if self.dl1_features:
+                    feature_vectors_list.append(features.cpu().numpy())
+                # Standardize model outputs into predictions_dict using self.heads_dict
+                if isinstance(predictions, torch.Tensor):
+                    task_name = list(model.head.heads_dict.keys())[0]
+                    predictions_dict.setdefault(task_name, []).append(predictions.cpu().numpy())
+                elif isinstance(predictions, dict):
+                    for task_name, output_tensor in predictions.items():
+                        predictions_dict.setdefault(task_name, []).append(
+                            output_tensor.cpu().numpy()
+                        )
+        # Concatenate batched prediction arrays and format into Astropy Table
+        predict_data = Table(
+            {
+                task_name: np.concatenate(batches, axis=0)
+                for task_name, batches in predictions_dict.items()
+            }
+        )
+        # Concatenate features if extracted
+        feature_vectors = (
+            np.concatenate(feature_vectors_list, axis=0)
+            if self.dl1_features and feature_vectors_list
+            else None
+        )
         return predict_data, feature_vectors
 
     def _predict_particletype(self, example_identifiers):
@@ -1332,9 +1426,9 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
         --DLImageReader.channels=cleaned_image \\
         --DLImageReader.channels=cleaned_relative_peak_time \\
         --DLImageReader.image_mapper_type=BilinearMapper \\
-        --type_model="/path/to/your/mono/type/ctlearn_model.cpk" \\
-        --energy_model="/path/to/your/mono/energy/ctlearn_model.cpk" \\
-        --cameradirection_model="/path/to/your/mono/cameradirection/ctlearn_model.cpk" \\
+        --type_model="/path/to/your/mono/type/ctlearn_model(.keras/.pth)" \\
+        --energy_model="/path/to/your/mono/energy/ctlearn_model(.keras/.pth)" \\
+        --cameradirection_model="/path/to/your/mono/cameradirection/ctlearn_model(.keras/.pth)" \\
         --dl1-features \\
         --no-dl1-images \\
         --no-true-images \\
@@ -1346,9 +1440,9 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
         --PredictCTLearnModel.dl1dh_reader_type=DLWaveformReader \\
         --DLWaveformReader.sequnce_length=20 \\
         --DLWaveformReader.image_mapper_type=BilinearMapper \\
-        --type_model="/path/to/your/mono_waveform/type/ctlearn_model.cpk" \\
-        --energy_model="/path/to/your/mono_waveform/energy/ctlearn_model.cpk" \\
-        --cameradirection_model="/path/to/your/mono_waveform/cameradirection/ctlearn_model.cpk" \\
+        --type_model="/path/to/your/mono_waveform/type/ctlearn_model(.keras/.pth)" \\
+        --energy_model="/path/to/your/mono_waveform/energy/ctlearn_model(.keras/.pth)" \\
+        --cameradirection_model="/path/to/your/mono_waveform/cameradirection/ctlearn_model(.keras/.pth)" \\
         --no-r0-waveforms \\
         --no-r1-waveforms \\
         --no-dl1-images \\
@@ -1992,9 +2086,9 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
         --DLImageReader.mode=stereo \\
         --DLImageReader.min_telescopes=2 \\
         --PredictCTLearnModel.stack_telescope_images=True \\
-        --type_model="/path/to/your/stereo/type/ctlearn_model.cpk" \\
-        --energy_model="/path/to/your/stereo/energy/ctlearn_model.cpk" \\
-        --skydirection_model="/path/to/your/stereo/skydirection/ctlearn_model.cpk" \\
+        --type_model="/path/to/your/stereo/type/ctlearn_model(.keras/.pth)" \\
+        --energy_model="/path/to/your/stereo/energy/ctlearn_model(.keras/.pth)" \\
+        --skydirection_model="/path/to/your/stereo/skydirection/ctlearn_model(.keras/.pth)" \\
         --output output.dl2.h5 \\
     """
 

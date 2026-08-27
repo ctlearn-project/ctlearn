@@ -1,5 +1,5 @@
 ctlearn/_version.py
-
+output_dir2/
 *.swp
 *.swo
 *.gemini
@@ -12,13 +12,34 @@ ctlearn/_version.py
 *.png
 *.csv
 *~
+*.log
+.vscode/
+launcher_workspace/
+*.h5
 
+output_dir2/
+output_dir/
+.vscode/
 # Compiled Python files
 __pycache__/
 *.py[cod]
 .DS_Store
 *.egg-info/
 dist
-
+.pytest_cache/*.log
 # Sphinx documentation
 docs/build/
+build/
+# Default pytorch output
+run/
+test/
+*.se2
+*.jar
+*.puml
+mc_tjark/
+calibration/
+test_local_cristian/
+
+test/prepare_file.py
+test_local_cristian/
+*.txt

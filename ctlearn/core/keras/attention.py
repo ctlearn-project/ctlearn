@@ -2,13 +2,13 @@
 This module defines the squeeze-excite blocks for channel-wise and/or spatial-wise attention mechanisms.
 """
 
-import keras
-
 __all__ = [
     "dual_squeeze_excite_block",
     "channel_squeeze_excite_block",
     "spatial_squeeze_excite_block",
 ]
+
+import keras
 
 def dual_squeeze_excite_block(inputs, ratio=16, name=None):
     """
@@ -73,17 +73,13 @@ def channel_squeeze_excite_block(inputs, ratio=4, name=None):
         Output tensor for the channel squeeze-excite block.
     """
 
-    # Temp fix for supporting keras2 & keras3
-    if int(keras.__version__.split(".")[0]) >= 3:
-        filters = inputs.shape[-1]
-    else:
-        filters = inputs.get_shape().as_list()[-1]
+    filters = inputs.shape[-1]
     cse = keras.layers.GlobalAveragePooling2D(
         keepdims=True, name=name + "_avgpool"
     )(inputs)
 
     cse = keras.layers.Dense(
-        units=filters // ratio,
+        units=max(1, filters // ratio),
         activation="relu",
         name=name + "_1_dense",
     )(cse)

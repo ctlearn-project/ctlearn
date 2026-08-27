@@ -7,16 +7,20 @@ from pathlib import Path
 import numpy as np
 import pytest
 import shutil
-from astropy import units as u
 from astropy.table import Column, Table
 from traitlets.config.loader import Config
 
 from ctapipe.core import run_tool
 from ctapipe.io import write_table
+from ctapipe.tools.process import ProcessorTool
 from ctapipe.utils import get_dataset_path
-from ctlearn.tools import TrainCTLearnModel
-from ctlearn.utils import get_lst1_subarray_description
 
+from ctlearn.tools.keras.train_model import TrainCTLearnKerasModel
+from ctlearn.tools.pytorch.train_model import TrainCTLearnPyTorchModel
+from ctlearn.tools.utils import get_lst1_subarray_description
+
+TRAINING_TOOLS = {"Keras": TrainCTLearnKerasModel, "PyTorch": TrainCTLearnPyTorchModel}
+MODEL_FILE_FORMATS = {"Keras": "keras", "PyTorch": "pth"}
 
 @pytest.fixture(scope="session")
 def gamma_simtel_path():
@@ -133,8 +137,6 @@ def dl1_gamma_file(dl1_tmp_path, gamma_simtel_path):
     """
     DL1 file containing both images and parameters from a gamma simulation set.
     """
-    from ctapipe.tools.process import ProcessorTool
-
     output = dl1_tmp_path / "gamma.dl1.h5"
     argv = [
         f"--input={gamma_simtel_path}",
@@ -169,10 +171,7 @@ def r1_gamma_file(r1_tmp_path, gamma_simtel_path):
     """
     R1 file containing both waveforms and parameters from a gamma simulation set.
     """
-    from ctapipe.tools.process import ProcessorTool
-
     output = r1_tmp_path / "gamma.r1.h5"
-
     allowed_tels = [1, 2]
     argv = [
         f"--input={gamma_simtel_path}",
@@ -190,8 +189,6 @@ def r1_proton_file(r1_tmp_path, proton_simtel_path):
     """
     R1 file containing both waveforms and parameters from a proton simulation set.
     """
-    from ctapipe.tools.process import ProcessorTool
-
     # Restrict to two LSTs for R1 tests to reduce computational load
     allowed_tels = [1, 2]
     output = r1_tmp_path / "proton.r1.h5"
@@ -241,14 +238,10 @@ def ctlearn_trained_r1_mono_models(r1_gamma_file, r1_proton_file, tmp_path_facto
     # Loop over reconstruction tasks and train models for each combination
     ctlearn_trained_r1_mono_models = {}
     for reco_task in ["type", "energy", "cameradirection"]:
-        # Output directory for trained model
-        output_dir = tmp_path / f"ctlearn_{telescope_type}_{reco_task}"
-
         # Build command-line arguments
         argv = [
             f"--signal={signal_dir}",
             "--pattern-signal=*.r1.h5",
-            f"--output={output_dir}",
             f"--reco={reco_task}",
             "--TrainCTLearnModel.n_epochs=1",
             "--TrainCTLearnModel.batch_size=2",
@@ -267,14 +260,20 @@ def ctlearn_trained_r1_mono_models(r1_gamma_file, r1_proton_file, tmp_path_facto
                 ]
             )
 
-        # Run training
-        assert run_tool(TrainCTLearnModel(config=config), argv=argv, cwd=tmp_path) == 0
+        # Run training tools
+        for framework, training_tool in TRAINING_TOOLS.items():
+            framework_argv = argv.copy()
+            output_dir = tmp_path / f"ctlearn_{framework}_{telescope_type}_{reco_task}"
+            framework_argv.append(f"--output={output_dir}")
+            if framework == "PyTorch":
+                framework_argv.append("--TrainCTLearnPyTorchModel.num_workers=2")
 
-        ctlearn_trained_r1_mono_models[f"{telescope_type}_{reco_task}"] = (
-            output_dir / "ctlearn_model.keras"
-        )
-        # Check that the trained model exists
-        assert ctlearn_trained_r1_mono_models[f"{telescope_type}_{reco_task}"].exists()
+            assert run_tool(training_tool(config=config), argv=framework_argv, cwd=tmp_path) == 0
+            ctlearn_trained_r1_mono_models[f"{framework}_{telescope_type}_{reco_task}"] = (
+                output_dir / f"ctlearn_model.{MODEL_FILE_FORMATS[framework]}"
+            )
+            # Check that the trained model exists
+            assert ctlearn_trained_r1_mono_models[f"{framework}_{telescope_type}_{reco_task}"].exists()
     return ctlearn_trained_r1_mono_models
 
 
@@ -324,21 +323,16 @@ def ctlearn_trained_dl1_mono_models(dl1_gamma_file, dl1_proton_file, tmp_path_fa
     ctlearn_trained_dl1_mono_models = {}
     for telescope_type, allowed_tels in telescope_types.items():
         for reco_task in ["type", "energy", "cameradirection"]:
-            # Output directory for trained model
-            output_dir = tmp_path / f"ctlearn_{telescope_type}_{reco_task}"
-
             # Build command-line arguments
             argv = [
                 f"--signal={signal_dir}",
                 "--pattern-signal=*.dl1.h5",
-                f"--output={output_dir}",
                 f"--reco={reco_task}",
                 "--TrainCTLearnModel.n_epochs=1",
                 "--TrainCTLearnModel.batch_size=2",
                 "--DLImageReader.focal_length_choice=EQUIVALENT",
                 f"--DLImageReader.allowed_tels={allowed_tels}",
             ]
-
             # Include background only for classification task
             if reco_task == "type":
                 argv.extend(
@@ -349,20 +343,20 @@ def ctlearn_trained_dl1_mono_models(dl1_gamma_file, dl1_proton_file, tmp_path_fa
                         f"--DLImageReader.image_mapper_type={image_mapper_types[telescope_type]}",
                     ]
                 )
-
-            # Run training
-            assert (
-                run_tool(TrainCTLearnModel(config=config), argv=argv, cwd=tmp_path) == 0
-            )
-
-            ctlearn_trained_dl1_mono_models[f"{telescope_type}_{reco_task}"] = (
-                output_dir / "ctlearn_model.keras"
-            )
-            # Check that the trained model exists
-            assert ctlearn_trained_dl1_mono_models[
-                f"{telescope_type}_{reco_task}"
-            ].exists()
-    return ctlearn_trained_dl1_mono_models
+            # Run training tools
+            for framework, training_tool in TRAINING_TOOLS.items():
+                framework_argv = argv.copy()
+                output_dir = tmp_path / f"ctlearn_{framework}_{telescope_type}_{reco_task}"
+                framework_argv.append(f"--output={output_dir}")
+                assert run_tool(training_tool(config=config), argv=framework_argv, cwd=tmp_path) == 0
+                ctlearn_trained_dl1_mono_models[f"{framework}_{telescope_type}_{reco_task}"] = (
+                    output_dir / f"ctlearn_model.{MODEL_FILE_FORMATS[framework]}"
+                )
+                # Check that the trained model exists
+                assert ctlearn_trained_dl1_mono_models[
+                    f"{framework}_{telescope_type}_{reco_task}"
+                ].exists()
+    return ctlearn_trained_dl1_mono_models 
 
 
 @pytest.fixture(scope="session")
@@ -404,14 +398,10 @@ def ctlearn_trained_dl1_stereo_models(
     # Loop over reconstruction tasks and train models for each combination
     ctlearn_trained_dl1_stereo_models = {}
     for reco_task in ["type", "energy", "skydirection"]:
-        # Output directory for trained model
-        output_dir = tmp_path / f"ctlearn_{telescope_type}_{reco_task}"
-
         # Build command-line arguments
         argv = [
             f"--signal={signal_dir}",
             "--pattern-signal=*.dl1.h5",
-            f"--output={output_dir}",
             f"--reco={reco_task}",
             "--TrainCTLearnModel.n_epochs=1",
             "--TrainCTLearnModel.batch_size=2",
@@ -431,14 +421,17 @@ def ctlearn_trained_dl1_stereo_models(
                 ]
             )
 
-        # Run training
-        assert run_tool(TrainCTLearnModel(config=config), argv=argv, cwd=tmp_path) == 0
-
-        ctlearn_trained_dl1_stereo_models[f"{telescope_type}_{reco_task}"] = (
-            output_dir / "ctlearn_model.keras"
-        )
-        # Check that the trained model exists
-        assert ctlearn_trained_dl1_stereo_models[
-            f"{telescope_type}_{reco_task}"
-        ].exists()
+        # Run training tools
+        for framework, training_tool in TRAINING_TOOLS.items():
+            framework_argv = argv.copy()
+            output_dir = tmp_path / f"ctlearn_{framework}_{telescope_type}_{reco_task}"
+            framework_argv.append(f"--output={output_dir}")
+            assert run_tool(training_tool(config=config), argv=framework_argv, cwd=tmp_path) == 0
+            ctlearn_trained_dl1_stereo_models[f"{framework}_{telescope_type}_{reco_task}"] = (
+                output_dir / f"ctlearn_model.{MODEL_FILE_FORMATS[framework]}"
+            )
+            # Check that the trained model exists
+            assert ctlearn_trained_dl1_stereo_models[
+                f"{framework}_{telescope_type}_{reco_task}"
+            ].exists()
     return ctlearn_trained_dl1_stereo_models
