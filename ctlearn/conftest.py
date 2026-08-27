@@ -265,6 +265,9 @@ def ctlearn_trained_r1_mono_models(r1_gamma_file, r1_proton_file, tmp_path_facto
             framework_argv = argv.copy()
             output_dir = tmp_path / f"ctlearn_{framework}_{telescope_type}_{reco_task}"
             framework_argv.append(f"--output={output_dir}")
+            if framework == "PyTorch":
+                framework_argv.append("--TrainCTLearnPyTorchModel.num_workers=2")
+
             assert run_tool(training_tool(config=config), argv=framework_argv, cwd=tmp_path) == 0
             ctlearn_trained_r1_mono_models[f"{framework}_{telescope_type}_{reco_task}"] = (
                 output_dir / f"ctlearn_model.{MODEL_FILE_FORMATS[framework]}"
