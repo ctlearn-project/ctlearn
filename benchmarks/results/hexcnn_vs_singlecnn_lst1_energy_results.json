@@ -1,0 +1,40 @@
+{
+  "training": [
+    {
+      "name": "SingleCNN(square) + BilinearMapper (baseline)",
+      "conv_backend": "square",
+      "image_mapper_type": "BilinearMapper",
+      "n_params": 299841,
+      "wall_time_s": 17.54945127600149,
+      "final_train_mae_energy": 0.5154209733009338,
+      "final_val_mae_energy": 0.2681165933609009,
+      "best_val_mae_energy": 0.2672444880008697,
+      "history_csv": "/tmp/hexcnn_benchmark_nurju1n9/square/training_log.csv"
+    },
+    {
+      "name": "SingleCNN(hexagdly) + HexagdlyMapper (hex-native)",
+      "conv_backend": "hexagdly",
+      "image_mapper_type": "HexagdlyMapper",
+      "n_params": 617025,
+      "wall_time_s": 41.31391173099837,
+      "final_train_mae_energy": 1.3511617183685305,
+      "final_val_mae_energy": 0.5911867618560791,
+      "best_val_mae_energy": 0.4305348098278045,
+      "history_csv": "/tmp/hexcnn_benchmark_nurju1n9/hexagdly/training_log.csv"
+    }
+  ],
+  "init_scale_diagnostic": {
+    "square": {
+      "image_shape": 110,
+      "n_params": 299841,
+      "gap_feature_std": 0.2931078374385834,
+      "gap_feature_mean_abs": 0.23257875442504883
+    },
+    "hexagdly": {
+      "image_shape": 55,
+      "n_params": 617025,
+      "gap_feature_std": 5.786104202270508,
+      "gap_feature_mean_abs": 7.786894798278809
+    }
+  }
+}

@@ -41,6 +41,7 @@ dependencies = [
     "pydot",
     "setuptools",
     "ctapipe[all]>=0.29",
+    "keras-hexagdly>=0.4.1",
 ]
 
 dynamic = ["version"]
