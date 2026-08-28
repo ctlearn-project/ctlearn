@@ -26,18 +26,7 @@ from dl1_data_handler.reader import DLDataReader
 from ctlearn import __version__ as ctlearn_version
 from ctlearn.core.loader import DLDataLoader
 from ctlearn.core.model import CTLearnModel
-from ctlearn.utils import validate_trait_dict
-
-# Optional hex-native convolution support (the ``ctlearn[hexagdly]`` extra).
-# Importing these registers ``HexagdlyMapper``/``HexCNN`` with ctapipe's
-# Component factories (``ImageMapper.from_name``/``CTLearnModel.from_name``),
-# making ``image_mapper_type=HexagdlyMapper``/``model_type=HexCNN`` selectable
-# from the command line. A no-op if ``keras-hexagdly`` isn't installed.
-try:
-    import ctlearn.core.hexagdly_mapper  # noqa: F401
-    import ctlearn.core.hexagdly_model  # noqa: F401
-except ImportError:
-    pass
+from ctlearn.utils import validate_trait_dict, validate_conv_backend
 
 
 class TrainCTLearnModel(Tool):
@@ -423,12 +412,18 @@ class TrainCTLearnModel(Tool):
         with self.strategy.scope():
             # Construct the model
             self.log.info("Setting up the model.")
-            self.model = CTLearnModel.from_name(
+            self.model_component = CTLearnModel.from_name(
                 self.model_type,
                 input_shape=self.training_loader.input_shape,
                 tasks=self.reco_tasks,
                 parent=self,
-            ).model
+            )
+            # Validate that the image mapper(s) and the model's conv backend agree
+            validate_conv_backend(
+                self.dl1dh_reader.image_mappers,
+                getattr(self.model_component, "conv_backend", "square"),
+            )
+            self.model = self.model_component.model
             # Validate the optimizer parameters
             validate_trait_dict(self.optimizer, ["name", "base_learning_rate"])
             # Set the learning rate for the optimizer

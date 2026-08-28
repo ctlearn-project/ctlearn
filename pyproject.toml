@@ -41,6 +41,7 @@ dependencies = [
     "pydot",
     "setuptools",
     "ctapipe[all]>=0.29",
+    "keras-hexagdly>=0.4.1",
 ]
 
 dynamic = ["version"]
@@ -53,12 +54,8 @@ doc = [
   "sphinx",
   "sphinx-rtd-theme",
 ]
-# Hexagonal convolution support (HexCNN + HexagdlyMapper) built on keras-hexagdly.
-hexagdly = [
-  "keras-hexagdly>=0.3.0",
-]
 # self reference allows all to be defined in terms of other extras
-all = ["ctlearn[doc,hexagdly]"]
+all = ["ctlearn[doc]"]
 
 [project.urls]
 repository = "https://github.com/ctlearn-project/ctlearn"

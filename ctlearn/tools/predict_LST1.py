@@ -48,23 +48,18 @@ from ctapipe.io.hdf5dataformat import (
 from ctapipe.reco.utils import add_defaults_and_meta
 
 from ctlearn import __version__ as ctlearn_version
-from ctlearn.utils import get_lst1_subarray_description, validate_trait_dict
+from ctlearn.utils import (
+    get_lst1_subarray_description,
+    validate_trait_dict,
+    validate_conv_backend,
+    model_conv_backend,
+)
 
 from dl1_data_handler.image_mapper import ImageMapper
 from dl1_data_handler.reader import (
     get_unmapped_image,
     TableQualityQuery,
 )
-
-# Optional hex-native convolution support (the ``ctlearn[hexagdly]`` extra).
-# Importing registers ``HexagdlyMapper`` with ``ImageMapper.from_name`` and
-# makes ``keras_hexagdly``'s custom layers available when deserializing a
-# saved ``HexCNN`` model. A no-op if ``keras-hexagdly`` isn't installed.
-try:
-    import ctlearn.core.hexagdly_mapper  # noqa: F401
-    import ctlearn.core.hexagdly_model  # noqa: F401
-except ImportError:
-    pass
 
 SUBARRAY_EVENT_KEYS = ["obs_id", "event_id"]
 TELESCOPE_EVENT_KEYS = ["obs_id", "event_id", "tel_id"]
@@ -352,6 +347,15 @@ class LST1PredictionTool(Tool):
                 f"the image shape of the ImageMapper ('{self.image_mapper.image_shape}'). "
                 f"Use e.g. '--BilinearMapper.interpolation_image_shape={input_shape[0]}' ."
             )
+        # Validate that the ImageMapper and each loaded model's conv backend agree
+        image_mappers = {self.image_mapper_type: self.image_mapper}
+        for loaded_model in (
+            model_type if self.load_type_model_from is not None else None,
+            model_energy if self.load_energy_model_from is not None else None,
+            model_direction if self.load_cameradirection_model_from is not None else None,
+        ):
+            if loaded_model is not None:
+                validate_conv_backend(image_mappers, model_conv_backend(loaded_model))
 
         # Get offset and scaling of images
         self.transforms = {}

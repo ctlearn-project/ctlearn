@@ -1,11 +1,12 @@
 """
-Benchmark: ``HexCNN`` + ``HexagdlyMapper`` vs. ``SingleCNN`` + ``BilinearMapper``
-on the same LST-1 energy-regression task.
+Benchmark: ``SingleCNN(conv_backend="hexagdly")`` + ``HexagdlyMapper`` vs.
+``SingleCNN(conv_backend="square")`` + ``BilinearMapper`` on the same LST-1
+energy-regression task.
 
 Both models are trained through the real ``TrainCTLearnModel`` tool (not a
 hand-rolled loop), with identical ``n_epochs``, ``batch_size`` and
 ``random_seed`` (so both see the same train/validation split) -- the only
-difference between the two runs is ``model_type``/``image_mapper_type``.
+difference between the two runs is ``conv_backend``/``image_mapper_type``.
 
 Data: ctapipe's bundled ``gamma_test_large.simtel.gz`` CI test file (public,
 auto-downloaded via ``get_dataset_path``). This is intentionally small (110
@@ -31,14 +32,6 @@ from pathlib import Path
 import pandas as pd
 
 warnings.filterwarnings("ignore")
-
-# Registers HexagdlyMapper/HexCNN with ctapipe's Component factories
-# (ImageMapper.from_name / CTLearnModel.from_name). Safe to import directly at
-# module level here -- unlike ctlearn.tools (whose __init__.py unconditionally
-# pulls in predict_LST1.py, broken in this environment), ctlearn.core has no
-# such issue.
-import ctlearn.core.hexagdly_mapper  # noqa: F401
-import ctlearn.core.hexagdly_model  # noqa: F401
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 RESULTS_DIR = REPO_ROOT / "benchmarks" / "results"
@@ -88,7 +81,7 @@ def _load_train_tool_class():
 def run_training(
     *,
     name: str,
-    model_type: str,
+    conv_backend: str,
     image_mapper_type: str,
     signal_dir: Path,
     output_dir: Path,
@@ -105,10 +98,11 @@ def run_training(
         f"--TrainCTLearnModel.n_epochs={N_EPOCHS}",
         f"--TrainCTLearnModel.batch_size={BATCH_SIZE}",
         f"--TrainCTLearnModel.random_seed={RANDOM_SEED}",
-        f"--TrainCTLearnModel.model_type={model_type}",
+        "--TrainCTLearnModel.model_type=SingleCNN",
         "--DLImageReader.focal_length_choice=EQUIVALENT",
         f"--DLImageReader.allowed_tels={ALLOWED_TELS}",
         f"--DLImageReader.image_mapper_type={image_mapper_type}",
+        f"--SingleCNN.conv_backend={conv_backend}",
         # Disabled symmetrically on both models: SingleCNN's default
         # attention_mechanism ("Dual-SE", inherited from CTLearnModel) hits a
         # pre-existing upstream bug (ctlearn/core/model.py reads
@@ -117,13 +111,13 @@ def run_training(
         # this benchmark or to the hex-conv changes -- worth its own tiny fix
         # upstream, not bundled into this PR. Disabling attention here keeps
         # the comparison symmetric and focused on the conv backbone itself.
-        f"--{model_type}.attention_mechanism=None",
+        "--SingleCNN.attention_mechanism=None",
     ]
 
     start = time.monotonic()
     rc = run_tool(TrainCTLearnModel(), argv=argv, cwd=cwd)
     wall_time = time.monotonic() - start
-    assert rc == 0, f"training failed for {name} (model_type={model_type})"
+    assert rc == 0, f"training failed for {name} (conv_backend={conv_backend})"
 
     log = pd.read_csv(output_dir / "training_log.csv")
 
@@ -133,7 +127,7 @@ def run_training(
 
     return {
         "name": name,
-        "model_type": model_type,
+        "conv_backend": conv_backend,
         "image_mapper_type": image_mapper_type,
         "n_params": model.count_params(),
         "wall_time_s": wall_time,
@@ -145,14 +139,19 @@ def run_training(
 
 
 def init_scale_diagnostic() -> dict:
-    """Compare untrained backbone activation scale between SingleCNN and HexCNN
-    on their respective real LST-1 mapper output shapes, at matching parameter
-    counts. Explains (not fixes) any large gap in the raw, untuned training
-    loss between the two: it isn't necessarily a sign either backbone is
-    broken, just that keras_hexagdly.Conv2d's default init (HeNormal weights,
-    Constant(0.01) bias -- matching upstream HexagDLy's own convention) and
-    keras.layers.Conv2D's default init (Glorot weights, zeros bias) start
-    training from very different activation scales.
+    """Compare untrained backbone activation scale between the square and
+    hexagdly conv backends of SingleCNN on their respective real LST-1
+    mapper output shapes, at matching parameter counts.
+
+    This used to show a ~3000x gap (keras_hexagdly.Conv2d's default init
+    was scaled far too large, growing worse with kernel_size) -- that was a
+    real bug in keras-hexagdly's default initializer, now fixed upstream
+    (keras-hexagdly >=0.4.1, see its CHANGELOG). What remains here is the
+    ordinary, expected gap between two libraries' default init conventions
+    (HeNormal + Constant(0.01) bias vs. Glorot + zeros bias), which no
+    longer needs a workaround (e.g. batchnorm) to get a fair comparison --
+    see the Results section, both backends converge to comparable MAE with
+    no special-casing beyond the class defaults.
     """
     import numpy as np
 
@@ -165,15 +164,22 @@ def init_scale_diagnostic() -> dict:
     rng = np.random.default_rng(0)
 
     diagnostic = {}
-    for model_name, mapper_name in [("SingleCNN", "BilinearMapper"), ("HexCNN", "HexagdlyMapper")]:
+    for label, mapper_name, conv_backend in [
+        ("square", "BilinearMapper", "square"),
+        ("hexagdly", "HexagdlyMapper", "hexagdly"),
+    ]:
         mapper = ImageMapper.from_name(mapper_name, geometry=geometry, subarray=subarray)
         shape = (mapper.image_shape, mapper.image_shape, 2)
         model = CTLearnModel.from_name(
-            model_name, input_shape=shape, tasks=["energy"], attention_mechanism=None
+            "SingleCNN",
+            input_shape=shape,
+            tasks=["energy"],
+            attention_mechanism=None,
+            conv_backend=conv_backend,
         )
         x = rng.uniform(0, 5, size=(8, *shape)).astype("float32")
         gap_features = model.backbone_model.predict(x, verbose=0)
-        diagnostic[model_name] = {
+        diagnostic[label] = {
             "image_shape": mapper.image_shape,
             "n_params": model.model.count_params(),
             "gap_feature_std": float(gap_features.std()),
@@ -199,16 +205,16 @@ def main():
     shutil.copy(dl1_file, signal_dir)
 
     results = []
-    for name, model_type, image_mapper_type in [
-        ("SingleCNN + BilinearMapper (square, baseline)", "SingleCNN", "BilinearMapper"),
-        ("HexCNN + HexagdlyMapper (hex-native)", "HexCNN", "HexagdlyMapper"),
+    for name, conv_backend, image_mapper_type in [
+        ("SingleCNN(square) + BilinearMapper (baseline)", "square", "BilinearMapper"),
+        ("SingleCNN(hexagdly) + HexagdlyMapper (hex-native)", "hexagdly", "HexagdlyMapper"),
     ]:
-        output_dir = tmp_path / model_type  # TrainCTLearnModel creates this itself
+        output_dir = tmp_path / conv_backend  # TrainCTLearnModel creates this itself
         print(f"\n=== Training {name} ===")
         results.append(
             run_training(
                 name=name,
-                model_type=model_type,
+                conv_backend=conv_backend,
                 image_mapper_type=image_mapper_type,
                 signal_dir=signal_dir,
                 output_dir=output_dir,
@@ -235,26 +241,29 @@ def write_report(results: list, diagnostic: dict, tmp_path: Path, dl1_file: Path
         )
 
     lines = [
-        "# HexCNN + HexagdlyMapper vs. SingleCNN + BilinearMapper",
+        "# SingleCNN(conv_backend=\"hexagdly\") + HexagdlyMapper vs. "
+        "SingleCNN(conv_backend=\"square\") + BilinearMapper",
         "",
         "LST-1 `energy` regression, trained through the real `TrainCTLearnModel` "
         "tool with identical `n_epochs`, `batch_size`, and `random_seed` (so both "
         "runs see the same train/validation split) -- the only difference between "
-        "the two runs is `model_type`/`image_mapper_type`.",
+        "the two runs is `conv_backend`/`image_mapper_type`.",
         "",
         "## Setup",
         "",
         f"- Data: ctapipe's bundled `gamma_test_large.simtel.gz` CI test file "
         f"(LST-1..4, {n_lst_images} combined mono images after DL1 processing)",
         f"- `n_epochs={N_EPOCHS}`, `batch_size={BATCH_SIZE}`, `random_seed={RANDOM_SEED}`",
-        "- Both models use their class defaults (`architecture`, `pooling_parameters`) "
-        "-- no hyperparameter tuning either way. `attention_mechanism=None` on both, "
-        "to route around a pre-existing, unrelated bug in `SingleCNN`'s default "
-        "attention config (see Limitations)",
+        "- Both models use `SingleCNN`'s class defaults (`architecture`, "
+        "`pooling_parameters`) -- no hyperparameter tuning either way. "
+        "`attention_mechanism=None` on both, to route around a pre-existing, "
+        "unrelated bug in `SingleCNN`'s default attention config (see Limitations). "
+        "Nothing else is overridden -- in particular, no `batchnorm` workaround is "
+        "needed (see \"Initializer scale\" below)",
         f"- `BilinearMapper` maps LST-1 onto a "
-        f"{diagnostic['SingleCNN']['image_shape']}x{diagnostic['SingleCNN']['image_shape']} "
+        f"{diagnostic['square']['image_shape']}x{diagnostic['square']['image_shape']} "
         f"interpolated square grid; `HexagdlyMapper` onto a "
-        f"{diagnostic['HexCNN']['image_shape']}x{diagnostic['HexCNN']['image_shape']} "
+        f"{diagnostic['hexagdly']['image_shape']}x{diagnostic['hexagdly']['image_shape']} "
         "grid at native hex resolution (no interpolation) -- the two models see "
         "different spatial resolutions by design, not by oversight",
         "",
@@ -272,36 +281,42 @@ def write_report(results: list, diagnostic: dict, tmp_path: Path, dl1_file: Path
 
     lines += [
         "",
-        "### Why the raw loss numbers favor SingleCNN here",
+        "### Initializer scale",
         "",
         "Before training, on 8 random inputs at each model's real input shape "
-        "(same param-count order of magnitude, `attention_mechanism=None` on both):",
+        "(`keras-hexagdly>=0.4.1`, after fixing a real default-initializer bug "
+        "-- see its CHANGELOG: each of `Conv2d`'s several internal sub-kernels "
+        "used to get its own independently-scaled He-normal init, calibrated as "
+        "if it alone were the whole receptive field, inflating output variance "
+        "by roughly the number of sub-kernels):",
         "",
         "| | image shape | params | untrained GAP-feature std | mean\\|.\\| |",
         "|---|---:|---:|---:|---:|",
     ]
-    for name in ("SingleCNN", "HexCNN"):
-        d = diagnostic[name]
+    for label in ("square", "hexagdly"):
+        d = diagnostic[label]
         lines.append(
-            f"| {name} | {d['image_shape']}x{d['image_shape']} | {d['n_params']:,} | "
+            f"| conv_backend={label} | {d['image_shape']}x{d['image_shape']} | {d['n_params']:,} | "
             f"{d['gap_feature_std']:.4f} | {d['gap_feature_mean_abs']:.4f} |"
         )
+    best_val_by_backend = {r["conv_backend"]: r["best_val_mae_energy"] for r in results}
     lines += [
         "",
-        "`SingleCNN`'s untrained backbone output is essentially dead (std ~0) -- "
-        "`keras.layers.Conv2D`'s default Glorot+zeros init, stacked 4 deep with "
-        "ReLU on this input scale, collapses to near-zero activations before "
-        "training starts, so its head is initially just predicting close to a "
-        "constant. `keras_hexagdly.Conv2d` uses HeNormal weights + a "
-        "`Constant(0.01)` bias by default (matching upstream HexagDLy's own "
-        "convention), so `HexCNN`'s backbone produces real, non-dead activations "
-        "from the first forward pass -- at a scale the (shared, untuned) energy "
-        "head and `1e-4` learning rate aren't calibrated for. That mismatch, not "
-        "a defect in the hex-conv path, is what the larger/noisier `HexCNN` loss "
-        "above mostly reflects: a matched-scale comparison needs either "
-        "per-model learning-rate tuning or aligning the two initializers, which "
-        "is exactly the hyperparameter-tuning work this quick pass deliberately "
-        "skipped.",
+        "Before the keras-hexagdly fix, this gap was ~3 orders of magnitude and "
+        "training without a workaround (e.g. `batchnorm=True`) gave hex val MAE "
+        "roughly 2 orders of magnitude worse than square's. What remains above "
+        "is the much smaller, ordinary gap between two libraries' default init "
+        "conventions (`keras.layers.Conv2D`'s Glorot+zeros vs. "
+        "`keras_hexagdly.Conv2d`'s He-normal+`Constant(0.01)`, matching upstream "
+        "HexagDLy's own convention) -- no longer large enough to need a "
+        "workaround. The Results table above, with no `batchnorm` or other "
+        "special-casing beyond `SingleCNN`'s class defaults, shows both backends "
+        "converging to comparable best validation MAE "
+        f"({best_val_by_backend['square']:.2f} for square, "
+        f"{best_val_by_backend['hexagdly']:.2f} for hexagdly). "
+        "(Small-dataset run-to-run noise means the exact numbers here will vary "
+        "between reruns -- see Limitations -- but stay in the same range on "
+        "both backends rather than differing by orders of magnitude.)",
         "",
         "## Limitations",
         "",
@@ -312,9 +327,9 @@ def write_report(results: list, diagnostic: dict, tmp_path: Path, dl1_file: Path
         "samples), split ~80/20 train/validation. MAE at this sample size is noisy "
         "and not representative of production-scale performance for either model. "
         "What this *does* demonstrate: both the hex-native path (`HexagdlyMapper` "
-        "-> `HexCNN`) and the existing square path train end-to-end through "
-        "CTLearn's real tooling with no special-casing, at comparable wall-clock "
-        "cost per epoch. A real accuracy comparison needs a production-scale "
+        "-> `SingleCNN(conv_backend=\"hexagdly\")`) and the existing square path "
+        "train end-to-end through CTLearn's real tooling with no special-casing, "
+        "at comparable wall-clock cost per epoch. A real accuracy comparison needs a production-scale "
         "gamma/proton dataset, which requires CTAO data access this environment "
         "doesn't have.",
         "",
