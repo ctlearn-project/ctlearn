@@ -46,6 +46,7 @@ dependencies = [
     "torchvision",
     "torchmetrics",
     "opencv-python",
+    "keras-hexagdly>=0.4.1",
 ]
 
 dynamic = ["version"]
@@ -75,13 +76,9 @@ docs = [
   "sphinx",
   "sphinx-rtd-theme",
 ]
-# Hexagonal convolution support (HexCNN + HexagdlyMapper) built on keras-hexagdly.
-hexagdly = [
-  "keras-hexagdly>=0.3.0",
-]
 
 dev = [
-    "ctlearn[all,doc,hexagdlys,tests]",
+    "ctlearn[all,docs,tests]",
     "setuptools_scm[toml]",
 ]
 

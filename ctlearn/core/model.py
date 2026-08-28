@@ -2,6 +2,19 @@
 This module defines the ``CTLearnModel`` classes, which holds the basic functionality for creating a Keras model to be used in CTLearn.
 """
 
+from abc import abstractmethod
+import keras
+import keras_hexagdly as hgly
+
+from ctapipe.core import Component
+from ctapipe.core.traits import Bool, Int, CaselessStrEnum, List, Dict, Unicode, Path
+from ctlearn.core.attention import (
+    dual_squeeze_excite_block,
+    channel_squeeze_excite_block,
+    spatial_squeeze_excite_block,
+)
+from ctlearn.utils import validate_trait_dict
+
 __all__ = [
     "CTLearnModel",
     "SingleCNN",
@@ -75,6 +88,19 @@ class CTLearnModel(Component):
         allow_none=True,
         min=1,
         help="Reduction ratio for the squeeze and excitation attention mechanism.",
+    ).tag(config=True)
+
+    conv_backend = CaselessStrEnum(
+        ["square", "hexagdly"],
+        default_value="square",
+        allow_none=False,
+        help=(
+            "Convolution backend for the model backbone. 'square' uses plain "
+            "keras.layers.Conv2D/MaxPool2D (default, expects a square-mapped "
+            "input, e.g. from BilinearMapper). 'hexagdly' uses "
+            "keras_hexagdly.Conv2d/MaxPool2d for hex-native convolution "
+            "(expects hex-addressed input, e.g. from HexagdlyMapper)."
+        ),
     ).tag(config=True)
 
     def __init__(
@@ -201,11 +227,132 @@ class SingleCNN(CTLearnModel):
             validate_trait_dict(layer, ["filters", "kernel_size", "number"])
         # Validate the pooling parameters trait
         validate_trait_dict(self.pooling_parameters, ["size", "strides"])
+        # keras_hexagdly does not provide a hexagonal average pooling layer
+        if self.conv_backend == "hexagdly" and self.pooling_type == "average":
+            raise ValueError(
+                "pooling_type='average' is not supported with "
+                "conv_backend='hexagdly' -- keras_hexagdly does not provide "
+                "a hexagonal average pooling layer. Use pooling_type='max'."
+            )
         # Validate the head trait with the provided tasks
         validate_trait_dict(self.head_layers, tasks)
         validate_trait_dict(self.head_activation_function, tasks)
-        # Construct the name of the backbone model by appending "_block" to the model name
-        self.backbone_name = self.name + "_block"
+        # Build the fully connected head depending on the tasks
+        self.logits = build_fully_connect_head(
+            backbone_output, self.head_layers, self.head_activation_function, tasks
+        )
+
+        self.model = keras.Model(self.input_layer, self.logits, name="CTLearn_model")
+
+    def _build_backbone(self, input_shape):
+        """
+        Build the SingleCNN model backbone.
+
+        Function to build the backbone of the SingleCNN model using the specified parameters.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input data (batch_size, height, width, channels).
+
+        Returns
+        -------
+        backbone_model : keras.Model
+            Keras model object representing the backbone of the SingleCNN model.
+        network_input : keras.Input
+            Keras input layer object for the backbone model.
+        """
+
+        # Define the input layer from the input shape
+        network_input = keras.Input(shape=input_shape)
+        # Get model arcihtecture parameters for the backbone
+        filters_list = [layer["filters"] for layer in self.architecture]
+        kernel_sizes = [layer["kernel_size"] for layer in self.architecture]
+        numbers_list = [layer["number"] for layer in self.architecture]
+
+        x = network_input
+        if self.batchnorm:
+            x = keras.layers.BatchNormalization(momentum=0.99)(x)
+
+        for i, (filters, kernel_size, number) in enumerate(
+            zip(filters_list, kernel_sizes, numbers_list)
+        ):
+            for nr in range(number):
+                if self.conv_backend == "hexagdly":
+                    x = hgly.Conv2d(
+                        filters,
+                        kernel_size=kernel_size,
+                        name=f"{self.backbone_name}_conv_{i+1}_{nr+1}",
+                    )(x)
+                    x = keras.layers.ReLU(
+                        name=f"{self.backbone_name}_conv_{i+1}_{nr+1}_relu"
+                    )(x)
+                else:
+                    x = keras.layers.Conv2D(
+                        filters=filters,
+                        kernel_size=kernel_size,
+                        padding="same",
+                        activation="relu",
+                        name=f"{self.backbone_name}_conv_{i+1}_{nr+1}",
+                    )(x)
+            if self.pooling_type is not None:
+                if self.conv_backend == "hexagdly":
+                    x = hgly.MaxPool2d(
+                        kernel_size=self.pooling_parameters["size"],
+                        strides=self.pooling_parameters["strides"],
+                        name=f"{self.backbone_name}_pool_{i+1}",
+                    )(x)
+                elif self.pooling_type == "max":
+                    x = keras.layers.MaxPool2D(
+                        pool_size=self.pooling_parameters["size"],
+                        strides=self.pooling_parameters["strides"],
+                        name=f"{self.backbone_name}_pool_{i+1}",
+                    )(x)
+                elif self.pooling_type == "average":
+                    x = keras.layers.AveragePooling2D(
+                        pool_size=self.pooling_parameters["size"],
+                        strides=self.pooling_parameters["strides"],
+                        name=f"{self.backbone_name}_pool_{i+1}",
+                    )(x)
+            if self.batchnorm:
+                x = keras.layers.BatchNormalization(momentum=0.99)(x)
+
+        # bottleneck layer -- a 1x1 conv is purely a per-cell channel
+        # projection with no spatial mixing, so a plain square Conv2D is
+        # geometry-agnostic and used for both conv backends.
+        if self.bottleneck_filters is not None:
+            x = keras.layers.Conv2D(
+                filters=self.bottleneck_filters,
+                kernel_size=1,
+                padding="same",
+                activation="relu",
+                name=f"{self.backbone_name}_bottleneck",
+            )(x)
+            if self.batchnorm:
+                x = keras.layers.BatchNormalization(momentum=0.99)(x)
+
+        # Attention mechanism
+        if self.attention is not None:
+            if self.attention["mechanism"] == "Dual-SE":
+                x = dual_squeeze_excite_block(
+                    x, self.attention["ratio"], name=f"{self.backbone_name}_dse"
+                )
+            elif self.attention["mechanism"] == "Channel-SE":
+                x = channel_squeeze_excite_block(
+                    x, self.attention["ratio"], name=f"{self.backbone_name}_cse"
+                )
+            elif self.attention["mechanism"] == "Spatial-SE":
+                x = spatial_squeeze_excite_block(x, name=f"{self.backbone_name}_sse")
+
+        # Apply global average pooling as the final layer of the backbone
+        network_output = keras.layers.GlobalAveragePooling2D(
+            name=self.backbone_name + "_global_avgpool"
+        )(x)
+        # Create the backbone model
+        backbone_model = keras.Model(
+            network_input, network_output, name=self.backbone_name
+        )
+        return backbone_model, network_input
 
 
 class ResNet(CTLearnModel):
