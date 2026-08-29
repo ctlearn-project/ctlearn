@@ -133,6 +133,21 @@ def mock_lst1_dl1_file(tmp_path_factory):
 
 
 @pytest.fixture(scope="session")
+def dl1_real_data_file(dl1_tmp_path, converted_lst1_dl0):
+    """
+    DL1 file containing both images and parameters from a DL0 real test data.
+    """
+    output = dl1_tmp_path / "real_data.dl1.h5"
+    argv = [
+        f"--input={converted_lst1_dl0}",
+        f"--output={output}",
+        "--write-images",
+    ]
+    assert run_tool(ProcessorTool(), argv=argv, cwd=dl1_tmp_path) == 0
+    return output
+
+
+@pytest.fixture(scope="session")
 def dl1_gamma_file(dl1_tmp_path, gamma_simtel_path):
     """
     DL1 file containing both images and parameters from a gamma simulation set.
@@ -165,6 +180,19 @@ def dl1_proton_file(dl1_tmp_path, proton_simtel_path):
     assert run_tool(ProcessorTool(), argv=argv, cwd=dl1_tmp_path) == 0
     return output
 
+@pytest.fixture(scope="session")
+def r1_real_data_file(r1_tmp_path, converted_lst1_dl0):
+    """
+    R1 file containing both waveforms and parameters from a DL0 real test data.
+    """
+    output = r1_tmp_path / "real_data.r1.h5"
+    argv = [
+        f"--input={converted_lst1_dl0}",
+        f"--output={output}",
+        f"--DataWriter.write_r1_waveforms=True",
+    ]
+    assert run_tool(ProcessorTool(), argv=argv, cwd=r1_tmp_path) == 0
+    return output
 
 @pytest.fixture(scope="session")
 def r1_gamma_file(r1_tmp_path, gamma_simtel_path):
