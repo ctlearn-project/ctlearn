@@ -4,6 +4,7 @@ This module defines the ``CTLearnModel`` classes, which holds the basic function
 
 from abc import abstractmethod
 import keras
+import keras_hexagdly as hgly
 
 from ctapipe.core import Component
 from ctapipe.core.traits import Bool, Int, CaselessStrEnum, List, Dict, Unicode, Path
@@ -126,6 +127,19 @@ class CTLearnModel(Component):
         help="Reduction ratio for the squeeze and excitation attention mechanism.",
     ).tag(config=True)
 
+    conv_backend = CaselessStrEnum(
+        ["square", "hexagdly"],
+        default_value="square",
+        allow_none=False,
+        help=(
+            "Convolution backend for the model backbone. 'square' uses plain "
+            "keras.layers.Conv2D/MaxPool2D (default, expects a square-mapped "
+            "input, e.g. from BilinearMapper). 'hexagdly' uses "
+            "keras_hexagdly.Conv2d/MaxPool2d for hex-native convolution "
+            "(expects hex-addressed input, e.g. from HexagdlyMapper)."
+        ),
+    ).tag(config=True)
+
     def __init__(
         self,
         config=None,
@@ -152,6 +166,91 @@ class CTLearnModel(Component):
                 "mechanism": self.attention_mechanism,
                 "reduction_ratio": self.attention_reduction_ratio,
             }
+
+    def _conv(
+        self,
+        inputs,
+        filters,
+        kernel_size,
+        strides=1,
+        padding="same",
+        activation=None,
+        name=None,
+    ):
+        """
+        Apply a convolution using the model's configured ``conv_backend``.
+
+        ``keras_hexagdly.Conv2d`` takes no ``padding`` argument -- it always
+        pads to preserve the grid -- and has no fused activation, so the
+        activation is applied as a separate layer in that branch.
+
+        Parameters
+        ----------
+        inputs : keras.KerasTensor
+            Input tensor.
+        filters : int
+            Number of output channels.
+        kernel_size : int
+            Kernel size. For ``conv_backend="hexagdly"`` this counts
+            hexagonal rings rather than square cells.
+        strides : int
+            Convolution stride.
+        padding : str
+            Padding mode, ``"square"`` backend only (see above).
+        activation : str or None
+            Activation to apply after the convolution, if any.
+        name : str or None
+            Name of the convolution layer.
+
+        Returns
+        -------
+        keras.KerasTensor
+            Output tensor.
+        """
+        if self.conv_backend == "hexagdly":
+            x = hgly.Conv2d(
+                filters, kernel_size=kernel_size, strides=strides, name=name
+            )(inputs)
+            if activation is not None:
+                x = keras.layers.Activation(activation, name=f"{name}_{activation}")(x)
+            return x
+        return keras.layers.Conv2D(
+            filters=filters,
+            kernel_size=kernel_size,
+            strides=strides,
+            padding=padding,
+            activation=activation,
+            name=name,
+        )(inputs)
+
+    def _max_pool(self, inputs, pool_size, strides, name=None):
+        """
+        Apply max pooling using the model's configured ``conv_backend``.
+
+        Parameters
+        ----------
+        inputs : keras.KerasTensor
+            Input tensor.
+        pool_size : int
+            Pooling size. For ``conv_backend="hexagdly"`` this counts
+            hexagonal rings rather than square cells.
+        strides : int
+            Pooling stride.
+        name : str or None
+            Name of the pooling layer.
+
+        Returns
+        -------
+        keras.KerasTensor
+            Output tensor.
+        """
+        if self.conv_backend == "hexagdly":
+            return hgly.MaxPool2d(kernel_size=pool_size, strides=strides, name=name)(
+                inputs
+            )
+        return keras.layers.MaxPool2D(pool_size=pool_size, strides=strides, name=name)(
+            inputs
+        )
 
 
 @abstractmethod
@@ -251,6 +350,13 @@ class SingleCNN(CTLearnModel):
             validate_trait_dict(layer, ["filters", "kernel_size", "number"])
         # Validate the pooling parameters trait
         validate_trait_dict(self.pooling_parameters, ["size", "strides"])
+        # keras_hexagdly does not provide a hexagonal average pooling layer
+        if self.conv_backend == "hexagdly" and self.pooling_type == "average":
+            raise ValueError(
+                "pooling_type='average' is not supported with "
+                "conv_backend='hexagdly' -- keras_hexagdly does not provide "
+                "a hexagonal average pooling layer. Use pooling_type='max'."
+            )
 
         # Construct the name of the backbone model by appending "_block" to the model name
         self.backbone_name = self.name + "_block"
@@ -302,20 +408,21 @@ class SingleCNN(CTLearnModel):
             zip(filters_list, kernel_sizes, numbers_list)
         ):
             for nr in range(number):
-                x = keras.layers.Conv2D(
+                x = self._conv(
+                    x,
                     filters=filters,
                     kernel_size=kernel_size,
-                    padding="same",
                     activation="relu",
                     name=f"{self.backbone_name}_conv_{i+1}_{nr+1}",
-                )(x)
+                )
             if self.pooling_type is not None:
                 if self.pooling_type == "max":
-                    x = keras.layers.MaxPool2D(
+                    x = self._max_pool(
+                        x,
                         pool_size=self.pooling_parameters["size"],
                         strides=self.pooling_parameters["strides"],
                         name=f"{self.backbone_name}_pool_{i+1}",
-                    )(x)
+                    )
                 elif self.pooling_type == "average":
                     x = keras.layers.AveragePooling2D(
                         pool_size=self.pooling_parameters["size"],
@@ -325,7 +432,9 @@ class SingleCNN(CTLearnModel):
             if self.batchnorm:
                 x = keras.layers.BatchNormalization(momentum=0.99)(x)
 
-        # bottleneck layer
+        # bottleneck layer -- a 1x1 conv is purely a per-cell channel
+        # projection with no spatial mixing, so a plain square Conv2D is
+        # geometry-agnostic and used for both conv backends.
         if self.bottleneck_filters is not None:
             x = keras.layers.Conv2D(
                 filters=self.bottleneck_filters,
@@ -483,19 +592,22 @@ class ResNet(CTLearnModel):
             )(network_input)
         # Apply initial convolutional layer if specified
         if self.init_layer is not None:
-            network_input = keras.layers.Conv2D(
+            network_input = self._conv(
+                network_input,
                 filters=self.init_layer["filters"],
                 kernel_size=self.init_layer["kernel_size"],
                 strides=self.init_layer["strides"],
+                padding="valid",
                 name=self.backbone_name + "_conv1_conv",
-            )(network_input)
+            )
         # Apply max pooling if specified
         if self.init_max_pool is not None:
-            network_input = keras.layers.MaxPool2D(
+            network_input = self._max_pool(
+                network_input,
                 pool_size=self.init_max_pool["size"],
                 strides=self.init_max_pool["strides"],
                 name=self.backbone_name + "_pool1_pool",
-            )(network_input)
+            )
         # Build the residual blocks
         engine_output = self._stacked_res_blocks(
             network_input,
@@ -671,27 +783,31 @@ class ResNet(CTLearnModel):
         """
 
         if conv_shortcut:
-            shortcut = keras.layers.Conv2D(
-                filters=filters, kernel_size=1, strides=stride, name=name + "_0_conv"
-            )(inputs)
+            shortcut = self._conv(
+                inputs,
+                filters=filters,
+                kernel_size=1,
+                strides=stride,
+                name=name + "_0_conv",
+            )
         else:
             shortcut = inputs
 
-        x = keras.layers.Conv2D(
+        x = self._conv(
+            inputs,
             filters=filters,
             kernel_size=kernel_size,
             strides=stride,
-            padding="same",
             activation="relu",
             name=name + "_1_conv",
-        )(inputs)
-        x = keras.layers.Conv2D(
+        )
+        x = self._conv(
+            x,
             filters=filters,
             kernel_size=kernel_size,
-            padding="same",
             activation="relu",
             name=name + "_2_conv",
-        )(x)
+        )
 
         # Attention mechanism
         if attention is not None:
@@ -753,32 +869,32 @@ class ResNet(CTLearnModel):
         """
 
         if conv_shortcut:
-            shortcut = keras.layers.Conv2D(
+            shortcut = self._conv(
+                inputs,
                 filters=4 * filters,
                 kernel_size=1,
                 strides=stride,
                 name=name + "_0_conv",
-            )(inputs)
+            )
         else:
             shortcut = inputs
 
-        x = keras.layers.Conv2D(
+        x = self._conv(
+            inputs,
             filters=filters,
             kernel_size=1,
             strides=stride,
             activation="relu",
             name=name + "_1_conv",
-        )(inputs)
-        x = keras.layers.Conv2D(
+        )
+        x = self._conv(
+            x,
             filters=filters,
             kernel_size=kernel_size,
-            padding="same",
             activation="relu",
             name=name + "_2_conv",
-        )(x)
-        x = keras.layers.Conv2D(
-            filters=4 * filters, kernel_size=1, name=name + "_3_conv"
-        )(x)
+        )
+        x = self._conv(x, filters=4 * filters, kernel_size=1, name=name + "_3_conv")
 
         # Attention mechanism
         if attention is not None:

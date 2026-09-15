@@ -87,7 +87,7 @@ from dl1_data_handler.reader import (
 )
 from ctlearn import __version__ as ctlearn_version
 from ctlearn.core.loader import DLDataLoader
-from ctlearn.utils import validate_trait_dict
+from ctlearn.utils import validate_trait_dict, validate_conv_backend, model_conv_backend
 
 # Convienient constants for column names and table keys
 SUBARRAY_EVENT_KEYS = ["obs_id", "event_id"]
@@ -721,6 +721,10 @@ class PredictCTLearnModel(Tool):
             )
         # Load the model from the specified path
         model = keras.saving.load_model(model_path)
+        # Validate that the image mapper(s) and the loaded model's conv backend agree
+        validate_conv_backend(
+            self.dl1dh_reader.image_mappers, model_conv_backend(model)
+        )
         prediction_colname = (
             "type"
             if isinstance(model.layers[-1], keras.layers.Softmax)

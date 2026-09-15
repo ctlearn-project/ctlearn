@@ -26,7 +26,7 @@ from dl1_data_handler.reader import DLDataReader
 from ctlearn import __version__ as ctlearn_version
 from ctlearn.core.loader import DLDataLoader
 from ctlearn.core.model import CTLearnModel
-from ctlearn.utils import validate_trait_dict
+from ctlearn.utils import validate_trait_dict, validate_conv_backend, model_conv_backend
 
 
 class TrainCTLearnModel(Tool):
@@ -418,6 +418,14 @@ class TrainCTLearnModel(Tool):
                 tasks=self.reco_tasks,
                 parent=self,
             ).model
+            # Validate that the image mapper(s) and the model's conv backend
+            # agree. This inspects the built model's layers rather than reading
+            # the conv_backend trait, because LoadedModel wraps an already
+            # trained model whose trait keeps its default value regardless of
+            # what that model was actually built with.
+            validate_conv_backend(
+                self.dl1dh_reader.image_mappers, model_conv_backend(self.model)
+            )
             # Validate the optimizer parameters
             validate_trait_dict(self.optimizer, ["name", "base_learning_rate"])
             # Set the learning rate for the optimizer
