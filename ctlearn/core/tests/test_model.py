@@ -1,3 +1,4 @@
+import keras
 import numpy as np
 import pytest
 
@@ -201,6 +202,19 @@ class TestValidateConvBackend:
         with pytest.raises(ValueError, match="conv_backend"):
             validate_conv_backend({"LSTCam": mapper}, "hexagdly")
 
+    @requires_hexagdly_mapper
+    @pytest.mark.parametrize("conv_backend", ["hexagdly", "square"])
+    def test_mixed_mappers_raise_for_either_backend(self, conv_backend):
+        """image_mapper_type is a TelescopeParameter, so telescope types can
+        be given different mappers. No single conv_backend can serve a mix of
+        hex-addressed and square-mapped inputs, so both are rejected."""
+        hex_mapper, _ = _lst1_input_shape("HexagdlyMapper")
+        square_mapper, _ = _lst1_input_shape("BilinearMapper")
+        with pytest.raises(ValueError, match="[Mm]ixed"):
+            validate_conv_backend(
+                {"LSTCam": hex_mapper, "CHEC": square_mapper}, conv_backend
+            )
+
 
 class TestModelConvBackend:
     """ctlearn.utils.model_conv_backend -- detects the conv backend of a
@@ -226,3 +240,30 @@ class TestModelConvBackend:
             attention_mechanism=None,
         )
         assert model_conv_backend(model.model) == "square"
+
+    @requires_hexagdly_mapper
+    def test_detects_hexagdly_backend_after_save_load_round_trip(self, tmp_path):
+        """The prediction tools call this on a model restored by
+        keras.saving.load_model, and LoadedModel keeps conv_backend at its
+        default whatever it wraps -- so the restored layers, not the trait,
+        have to be what identifies the backend.
+        """
+        _, input_shape = _lst1_input_shape("HexagdlyMapper")
+        model = SingleCNN(
+            input_shape=input_shape,
+            tasks=["type"],
+            conv_backend="hexagdly",
+            architecture=[{"filters": 4, "kernel_size": 1, "number": 1}],
+            attention_mechanism=None,
+        )
+        path = tmp_path / "hexagdly_model.keras"
+        model.model.save(path)
+
+        restored = keras.saving.load_model(path)
+        assert model_conv_backend(restored) == "hexagdly"
+
+        mapper, _ = _lst1_input_shape("HexagdlyMapper")
+        assert (
+            validate_conv_backend({"LSTCam": mapper}, model_conv_backend(restored))
+            is True
+        )

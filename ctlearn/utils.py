@@ -66,11 +66,16 @@ def validate_conv_backend(image_mappers, conv_backend):
     so a mismatch would otherwise silently train/predict on geometrically
     meaningless input.
 
+    Since ``image_mapper_type`` is a ``TelescopeParameter``, each telescope
+    type can be given a different mapper. A model has a single
+    ``conv_backend``, so mixing hex-addressed and square-mapped telescope
+    types in one run cannot be valid either way and is rejected explicitly.
+
     Parameters
     ----------
     image_mappers : dict
         Dictionary of ``dl1_data_handler.image_mapper.ImageMapper`` instances,
-        as built by ``DLDataReader.image_mappers``.
+        keyed by camera name, as built by ``DLDataReader.image_mappers``.
     conv_backend : str
         The model's ``conv_backend`` trait value (``"square"`` or
         ``"hexagdly"``).
@@ -81,9 +86,21 @@ def validate_conv_backend(image_mappers, conv_backend):
         True if the mapper(s) and conv backend agree. Otherwise, raises a
         ValueError.
     """
-    mapper_is_hex = any(
-        type(mapper).__name__ == "HexagdlyMapper" for mapper in image_mappers.values()
+    hex_cameras = sorted(
+        camera
+        for camera, mapper in image_mappers.items()
+        if type(mapper).__name__ == "HexagdlyMapper"
     )
+    square_cameras = sorted(set(image_mappers) - set(hex_cameras))
+    if hex_cameras and square_cameras:
+        raise ValueError(
+            "Mixed hex-addressed and square-mapped image mappers are not "
+            f"supported by a single model: HexagdlyMapper is used for "
+            f"{hex_cameras}, but {square_cameras} use a square mapper. A model "
+            "has one conv_backend, so every telescope type must use the same "
+            "kind of mapper."
+        )
+    mapper_is_hex = bool(hex_cameras)
     model_is_hex = conv_backend == "hexagdly"
     if mapper_is_hex != model_is_hex:
         raise ValueError(
