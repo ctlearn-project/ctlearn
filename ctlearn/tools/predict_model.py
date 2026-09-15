@@ -420,6 +420,9 @@ class PredictCTLearnModel(Tool):
         validate_trait_dict(
             self.prefixes, ["type", "energy", "cameradirection", "skydirection", "all"]
         )
+        # Set default HDF5Merger options (disable image copying by default for standard DL2 output)
+        self.config.setdefault("HDF5Merger", {}).setdefault("dl1_images", False)
+        self.config.setdefault("HDF5Merger", {}).setdefault("true_images", False)
         # Copy selected tables from the input file to the output file
         self.log.info("Copying to output destination.")
         with HDF5Merger(
