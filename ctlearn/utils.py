@@ -53,6 +53,7 @@ def validate_trait_dict(dict, required_keys):
         raise TraitError(f"Dict is missing required key(s): {', '.join(missing_keys)}")
     return True
 
+
 def validate_conv_backend(image_mappers, conv_backend):
     """
     Validate that the image mapper(s) used to build the input and the
@@ -93,6 +94,7 @@ def validate_conv_backend(image_mappers, conv_backend):
             "BilinearMapper) must be paired with conv_backend='square'."
         )
     return True
+
 
 def model_conv_backend(model):
     """
