@@ -167,6 +167,91 @@ class CTLearnModel(Component):
                 "reduction_ratio": self.attention_reduction_ratio,
             }
 
+    def _conv(
+        self,
+        inputs,
+        filters,
+        kernel_size,
+        strides=1,
+        padding="same",
+        activation=None,
+        name=None,
+    ):
+        """
+        Apply a convolution using the model's configured ``conv_backend``.
+
+        ``keras_hexagdly.Conv2d`` takes no ``padding`` argument -- it always
+        pads to preserve the grid -- and has no fused activation, so the
+        activation is applied as a separate layer in that branch.
+
+        Parameters
+        ----------
+        inputs : keras.KerasTensor
+            Input tensor.
+        filters : int
+            Number of output channels.
+        kernel_size : int
+            Kernel size. For ``conv_backend="hexagdly"`` this counts
+            hexagonal rings rather than square cells.
+        strides : int
+            Convolution stride.
+        padding : str
+            Padding mode, ``"square"`` backend only (see above).
+        activation : str or None
+            Activation to apply after the convolution, if any.
+        name : str or None
+            Name of the convolution layer.
+
+        Returns
+        -------
+        keras.KerasTensor
+            Output tensor.
+        """
+        if self.conv_backend == "hexagdly":
+            x = hgly.Conv2d(
+                filters, kernel_size=kernel_size, strides=strides, name=name
+            )(inputs)
+            if activation is not None:
+                x = keras.layers.Activation(activation, name=f"{name}_{activation}")(x)
+            return x
+        return keras.layers.Conv2D(
+            filters=filters,
+            kernel_size=kernel_size,
+            strides=strides,
+            padding=padding,
+            activation=activation,
+            name=name,
+        )(inputs)
+
+    def _max_pool(self, inputs, pool_size, strides, name=None):
+        """
+        Apply max pooling using the model's configured ``conv_backend``.
+
+        Parameters
+        ----------
+        inputs : keras.KerasTensor
+            Input tensor.
+        pool_size : int
+            Pooling size. For ``conv_backend="hexagdly"`` this counts
+            hexagonal rings rather than square cells.
+        strides : int
+            Pooling stride.
+        name : str or None
+            Name of the pooling layer.
+
+        Returns
+        -------
+        keras.KerasTensor
+            Output tensor.
+        """
+        if self.conv_backend == "hexagdly":
+            return hgly.MaxPool2d(kernel_size=pool_size, strides=strides, name=name)(
+                inputs
+            )
+        return keras.layers.MaxPool2D(pool_size=pool_size, strides=strides, name=name)(
+            inputs
+        )
+
 
 @abstractmethod
 def _build_backbone(self, input_shape):
@@ -323,36 +408,21 @@ class SingleCNN(CTLearnModel):
             zip(filters_list, kernel_sizes, numbers_list)
         ):
             for nr in range(number):
-                if self.conv_backend == "hexagdly":
-                    x = hgly.Conv2d(
-                        filters,
-                        kernel_size=kernel_size,
-                        name=f"{self.backbone_name}_conv_{i+1}_{nr+1}",
-                    )(x)
-                    x = keras.layers.ReLU(
-                        name=f"{self.backbone_name}_conv_{i+1}_{nr+1}_relu"
-                    )(x)
-                else:
-                    x = keras.layers.Conv2D(
-                        filters=filters,
-                        kernel_size=kernel_size,
-                        padding="same",
-                        activation="relu",
-                        name=f"{self.backbone_name}_conv_{i+1}_{nr+1}",
-                    )(x)
+                x = self._conv(
+                    x,
+                    filters=filters,
+                    kernel_size=kernel_size,
+                    activation="relu",
+                    name=f"{self.backbone_name}_conv_{i+1}_{nr+1}",
+                )
             if self.pooling_type is not None:
-                if self.conv_backend == "hexagdly":
-                    x = hgly.MaxPool2d(
-                        kernel_size=self.pooling_parameters["size"],
-                        strides=self.pooling_parameters["strides"],
-                        name=f"{self.backbone_name}_pool_{i+1}",
-                    )(x)
-                elif self.pooling_type == "max":
-                    x = keras.layers.MaxPool2D(
+                if self.pooling_type == "max":
+                    x = self._max_pool(
+                        x,
                         pool_size=self.pooling_parameters["size"],
                         strides=self.pooling_parameters["strides"],
                         name=f"{self.backbone_name}_pool_{i+1}",
-                    )(x)
+                    )
                 elif self.pooling_type == "average":
                     x = keras.layers.AveragePooling2D(
                         pool_size=self.pooling_parameters["size"],
@@ -522,34 +592,22 @@ class ResNet(CTLearnModel):
             )(network_input)
         # Apply initial convolutional layer if specified
         if self.init_layer is not None:
-            if self.conv_backend == "hexagdly":
-                network_input = hgly.Conv2d(
-                    self.init_layer["filters"],
-                    kernel_size=self.init_layer["kernel_size"],
-                    strides=self.init_layer["strides"],
-                    name=self.backbone_name + "_conv1_conv",
-                )(network_input)
-            else:
-                network_input = keras.layers.Conv2D(
-                    filters=self.init_layer["filters"],
-                    kernel_size=self.init_layer["kernel_size"],
-                    strides=self.init_layer["strides"],
-                    name=self.backbone_name + "_conv1_conv",
-                )(network_input)
+            network_input = self._conv(
+                network_input,
+                filters=self.init_layer["filters"],
+                kernel_size=self.init_layer["kernel_size"],
+                strides=self.init_layer["strides"],
+                padding="valid",
+                name=self.backbone_name + "_conv1_conv",
+            )
         # Apply max pooling if specified
         if self.init_max_pool is not None:
-            if self.conv_backend == "hexagdly":
-                network_input = hgly.MaxPool2d(
-                    kernel_size=self.init_max_pool["size"],
-                    strides=self.init_max_pool["strides"],
-                    name=self.backbone_name + "_pool1_pool",
-                )(network_input)
-            else:
-                network_input = keras.layers.MaxPool2D(
-                    pool_size=self.init_max_pool["size"],
-                    strides=self.init_max_pool["strides"],
-                    name=self.backbone_name + "_pool1_pool",
-                )(network_input)
+            network_input = self._max_pool(
+                network_input,
+                pool_size=self.init_max_pool["size"],
+                strides=self.init_max_pool["strides"],
+                name=self.backbone_name + "_pool1_pool",
+            )
         # Build the residual blocks
         engine_output = self._stacked_res_blocks(
             network_input,
@@ -724,45 +782,32 @@ class ResNet(CTLearnModel):
             Output tensor after applying the residual block.
         """
 
-        if self.conv_backend == "hexagdly":
-            if conv_shortcut:
-                shortcut = hgly.Conv2d(
-                    filters, kernel_size=1, strides=stride, name=name + "_0_conv"
-                )(inputs)
-            else:
-                shortcut = inputs
-
-            x = hgly.Conv2d(
-                filters, kernel_size=kernel_size, strides=stride, name=name + "_1_conv"
-            )(inputs)
-            x = keras.layers.ReLU(name=name + "_1_relu")(x)
-            x = hgly.Conv2d(
-                filters, kernel_size=kernel_size, strides=1, name=name + "_2_conv"
-            )(x)
-            x = keras.layers.ReLU(name=name + "_2_relu")(x)
-        else:
-            if conv_shortcut:
-                shortcut = keras.layers.Conv2D(
-                    filters=filters, kernel_size=1, strides=stride, name=name + "_0_conv"
-                )(inputs)
-            else:
-                shortcut = inputs
-
-            x = keras.layers.Conv2D(
+        if conv_shortcut:
+            shortcut = self._conv(
+                inputs,
                 filters=filters,
-                kernel_size=kernel_size,
+                kernel_size=1,
                 strides=stride,
-                padding="same",
-                activation="relu",
-                name=name + "_1_conv",
-            )(inputs)
-            x = keras.layers.Conv2D(
-                filters=filters,
-                kernel_size=kernel_size,
-                padding="same",
-                activation="relu",
-                name=name + "_2_conv",
-            )(x)
+                name=name + "_0_conv",
+            )
+        else:
+            shortcut = inputs
+
+        x = self._conv(
+            inputs,
+            filters=filters,
+            kernel_size=kernel_size,
+            strides=stride,
+            activation="relu",
+            name=name + "_1_conv",
+        )
+        x = self._conv(
+            x,
+            filters=filters,
+            kernel_size=kernel_size,
+            activation="relu",
+            name=name + "_2_conv",
+        )
 
         # Attention mechanism
         if attention is not None:
@@ -823,53 +868,33 @@ class ResNet(CTLearnModel):
             Output layer of the residual block.
         """
 
-        if self.conv_backend == "hexagdly":
-            if conv_shortcut:
-                shortcut = hgly.Conv2d(
-                    4 * filters, kernel_size=1, strides=stride, name=name + "_0_conv"
-                )(inputs)
-            else:
-                shortcut = inputs
-
-            x = hgly.Conv2d(
-                filters, kernel_size=1, strides=stride, name=name + "_1_conv"
-            )(inputs)
-            x = keras.layers.ReLU(name=name + "_1_relu")(x)
-            x = hgly.Conv2d(
-                filters, kernel_size=kernel_size, strides=1, name=name + "_2_conv"
-            )(x)
-            x = keras.layers.ReLU(name=name + "_2_relu")(x)
-            x = hgly.Conv2d(
-                4 * filters, kernel_size=1, strides=1, name=name + "_3_conv"
-            )(x)
-        else:
-            if conv_shortcut:
-                shortcut = keras.layers.Conv2D(
-                    filters=4 * filters,
-                    kernel_size=1,
-                    strides=stride,
-                    name=name + "_0_conv",
-                )(inputs)
-            else:
-                shortcut = inputs
-
-            x = keras.layers.Conv2D(
-                filters=filters,
+        if conv_shortcut:
+            shortcut = self._conv(
+                inputs,
+                filters=4 * filters,
                 kernel_size=1,
                 strides=stride,
-                activation="relu",
-                name=name + "_1_conv",
-            )(inputs)
-            x = keras.layers.Conv2D(
-                filters=filters,
-                kernel_size=kernel_size,
-                padding="same",
-                activation="relu",
-                name=name + "_2_conv",
-            )(x)
-            x = keras.layers.Conv2D(
-                filters=4 * filters, kernel_size=1, name=name + "_3_conv"
-            )(x)
+                name=name + "_0_conv",
+            )
+        else:
+            shortcut = inputs
+
+        x = self._conv(
+            inputs,
+            filters=filters,
+            kernel_size=1,
+            strides=stride,
+            activation="relu",
+            name=name + "_1_conv",
+        )
+        x = self._conv(
+            x,
+            filters=filters,
+            kernel_size=kernel_size,
+            activation="relu",
+            name=name + "_2_conv",
+        )
+        x = self._conv(x, filters=4 * filters, kernel_size=1, name=name + "_3_conv")
 
         # Attention mechanism
         if attention is not None:
