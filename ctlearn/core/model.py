@@ -130,6 +130,91 @@ class CTLearnModel(Component):
                 "reduction_ratio": self.attention_reduction_ratio,
             }
 
+    def _conv(
+        self,
+        inputs,
+        filters,
+        kernel_size,
+        strides=1,
+        padding="same",
+        activation=None,
+        name=None,
+    ):
+        """
+        Apply a convolution using the model's configured ``conv_backend``.
+
+        ``keras_hexagdly.Conv2d`` takes no ``padding`` argument -- it always
+        pads to preserve the grid -- and has no fused activation, so the
+        activation is applied as a separate layer in that branch.
+
+        Parameters
+        ----------
+        inputs : keras.KerasTensor
+            Input tensor.
+        filters : int
+            Number of output channels.
+        kernel_size : int
+            Kernel size. For ``conv_backend="hexagdly"`` this counts
+            hexagonal rings rather than square cells.
+        strides : int
+            Convolution stride.
+        padding : str
+            Padding mode, ``"square"`` backend only (see above).
+        activation : str or None
+            Activation to apply after the convolution, if any.
+        name : str or None
+            Name of the convolution layer.
+
+        Returns
+        -------
+        keras.KerasTensor
+            Output tensor.
+        """
+        if self.conv_backend == "hexagdly":
+            x = hgly.Conv2d(
+                filters, kernel_size=kernel_size, strides=strides, name=name
+            )(inputs)
+            if activation is not None:
+                x = keras.layers.Activation(activation, name=f"{name}_{activation}")(x)
+            return x
+        return keras.layers.Conv2D(
+            filters=filters,
+            kernel_size=kernel_size,
+            strides=strides,
+            padding=padding,
+            activation=activation,
+            name=name,
+        )(inputs)
+
+    def _max_pool(self, inputs, pool_size, strides, name=None):
+        """
+        Apply max pooling using the model's configured ``conv_backend``.
+
+        Parameters
+        ----------
+        inputs : keras.KerasTensor
+            Input tensor.
+        pool_size : int
+            Pooling size. For ``conv_backend="hexagdly"`` this counts
+            hexagonal rings rather than square cells.
+        strides : int
+            Pooling stride.
+        name : str or None
+            Name of the pooling layer.
+
+        Returns
+        -------
+        keras.KerasTensor
+            Output tensor.
+        """
+        if self.conv_backend == "hexagdly":
+            return hgly.MaxPool2d(kernel_size=pool_size, strides=strides, name=name)(
+                inputs
+            )
+        return keras.layers.MaxPool2D(pool_size=pool_size, strides=strides, name=name)(
+            inputs
+        )
+
 
     @abstractmethod
     def _build_backbone(self, input_shape):
@@ -278,36 +363,21 @@ class SingleCNN(CTLearnModel):
             zip(filters_list, kernel_sizes, numbers_list)
         ):
             for nr in range(number):
-                if self.conv_backend == "hexagdly":
-                    x = hgly.Conv2d(
-                        filters,
-                        kernel_size=kernel_size,
-                        name=f"{self.backbone_name}_conv_{i+1}_{nr+1}",
-                    )(x)
-                    x = keras.layers.ReLU(
-                        name=f"{self.backbone_name}_conv_{i+1}_{nr+1}_relu"
-                    )(x)
-                else:
-                    x = keras.layers.Conv2D(
-                        filters=filters,
-                        kernel_size=kernel_size,
-                        padding="same",
-                        activation="relu",
-                        name=f"{self.backbone_name}_conv_{i+1}_{nr+1}",
-                    )(x)
+                x = self._conv(
+                    x,
+                    filters=filters,
+                    kernel_size=kernel_size,
+                    activation="relu",
+                    name=f"{self.backbone_name}_conv_{i+1}_{nr+1}",
+                )
             if self.pooling_type is not None:
-                if self.conv_backend == "hexagdly":
-                    x = hgly.MaxPool2d(
-                        kernel_size=self.pooling_parameters["size"],
-                        strides=self.pooling_parameters["strides"],
-                        name=f"{self.backbone_name}_pool_{i+1}",
-                    )(x)
-                elif self.pooling_type == "max":
-                    x = keras.layers.MaxPool2D(
+                if self.pooling_type == "max":
+                    x = self._max_pool(
+                        x,
                         pool_size=self.pooling_parameters["size"],
                         strides=self.pooling_parameters["strides"],
                         name=f"{self.backbone_name}_pool_{i+1}",
-                    )(x)
+                    )
                 elif self.pooling_type == "average":
                     x = keras.layers.AveragePooling2D(
                         pool_size=self.pooling_parameters["size"],
@@ -432,8 +502,364 @@ class ResNet(CTLearnModel):
         # Validate the head traits with the provided tasks
         validate_trait_dict(self.head_layers, tasks)
         validate_trait_dict(self.head_activation_function, tasks)
-        # Construct the name of the backbone model by appending "_block" to the model name
-        self.backbone_name = self.name + "_block"
+        # Build the fully connected head depending on the tasks
+        self.logits = build_fully_connect_head(
+            backbone_output, self.head_layers, self.head_activation_function, tasks
+        )
+
+        self.model = keras.Model(self.input_layer, self.logits, name="CTLearn_model")
+
+    def _build_backbone(self, input_shape):
+        """
+        Build the ResNet model backbone.
+
+        Function to build the backbone of the ResNet model using the specified parameters.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Shape of the input data (batch_size, height, width, channels).
+
+        Returns
+        -------
+        backbone_model : keras.Model
+            Keras model object representing the ResNet backbone.
+        network_input : keras.Input
+            Keras input layer object for the backbone model.
+        """
+        # Define the input layer from the input shape
+        network_input = keras.Input(shape=input_shape)
+        # Apply initial padding if specified
+        if self.init_padding > 0:
+            network_input = keras.layers.ZeroPadding2D(
+                padding=self.init_padding,
+                kernel_size=self.init_layer["kernel_size"],
+                strides=self.init_layer["strides"],
+                name=self.backbone_name + "_padding",
+            )(network_input)
+        # Apply initial convolutional layer if specified
+        if self.init_layer is not None:
+            network_input = self._conv(
+                network_input,
+                filters=self.init_layer["filters"],
+                kernel_size=self.init_layer["kernel_size"],
+                strides=self.init_layer["strides"],
+                padding="valid",
+                name=self.backbone_name + "_conv1_conv",
+            )
+        # Apply max pooling if specified
+        if self.init_max_pool is not None:
+            network_input = self._max_pool(
+                network_input,
+                pool_size=self.init_max_pool["size"],
+                strides=self.init_max_pool["strides"],
+                name=self.backbone_name + "_pool1_pool",
+            )
+        # Build the residual blocks
+        engine_output = self._stacked_res_blocks(
+            network_input,
+            architecture=self.architecture,
+            residual_block_type=self.residual_block_type,
+            attention=self.attention,
+            name=self.backbone_name,
+        )
+        # Apply global average pooling as the final layer of the backbone
+        network_output = keras.layers.GlobalAveragePooling2D(
+            name=self.backbone_name + "_global_avgpool"
+        )(engine_output)
+        # Create the backbone model
+        backbone_model = keras.Model(
+            network_input, network_output, name=self.backbone_name
+        )
+        return backbone_model, network_input
+
+    def _stacked_res_blocks(
+        self, inputs, architecture, residual_block_type, attention, name=None
+    ):
+        """
+        Build a stack of residual blocks for the CTLearn model.
+
+        This function constructs a stack of residual blocks, which are used to build the backbone of the CTLearn model.
+        Each residual block consists of a series of convolutional layers with skip connections.
+
+        Parameters
+        ----------
+        inputs : keras.layers.Layer
+            Input Keras layer to the residual blocks.
+        architecture : list of dict
+            List of dictionaries containing the architecture of the ResNet model, which includes:
+            - Number of filters for the convolutional layers in the residual blocks.
+            - Number of residual blocks to stack.
+        residual_block_type : str
+            Type of residual block to use. Options are 'basic' or 'bottleneck'.
+        attention : dict
+            Dictionary containing the configuration parameters for the attention mechanism.
+        name : str, optional
+            Label for the model.
+
+        Returns
+        -------
+        x : keras.layers.Layer
+            Output Keras layer after passing through the stack of residual blocks.
+        """
+
+        # Get hyperparameters for the model architecture
+        filters_list = [layer["filters"] for layer in architecture]
+        blocks_list = [layer["blocks"] for layer in architecture]
+        # Build the ResNet model
+        x = self._stack_fn(
+            inputs,
+            filters_list[0],
+            blocks_list[0],
+            residual_block_type,
+            stride=1,
+            attention=attention,
+            name=name + "_conv2",
+        )
+        for i, (filters, blocks) in enumerate(zip(filters_list[1:], blocks_list[1:])):
+            x = self._stack_fn(
+                x,
+                filters,
+                blocks,
+                residual_block_type,
+                attention=attention,
+                name=name + "_conv" + str(i + 3),
+            )
+        return x
+
+    def _stack_fn(
+        self,
+        inputs,
+        filters,
+        blocks,
+        residual_block_type,
+        stride=2,
+        attention=None,
+        name=None,
+    ):
+        """
+        Stack residual blocks for the CTLearn model.
+
+        This function constructs a stack of residual blocks, which are used to build the backbone of the CTLearn model.
+        Each residual block can be of different types (e.g., basic or bottleneck) and can include attention mechanisms.
+
+        Parameters
+        ----------
+        inputs : keras.layers.Layer
+            Input tensor to the residual blocks.
+        filters : int
+            Number of filters for the bottleneck layer in a block.
+        blocks : int
+            Number of residual blocks to stack.
+        residual_block_type : str
+            Type of residual block ('basic' or 'bottleneck').
+        stride : int, optional
+            Stride for the first layer in the first block. Default is 2.
+        attention : dict, optional
+            Configuration parameters for the attention mechanism. Default is None.
+        name : str, optional
+            Label for the stack. Default is None.
+
+        Returns
+        -------
+        keras.layers.Layer
+            Output tensor for the stacked blocks.
+        """
+
+        res_blocks = {
+            "basic": self._basic_residual_block,
+            "bottleneck": self._bottleneck_residual_block,
+        }
+
+        x = res_blocks[residual_block_type](
+            inputs,
+            filters,
+            stride=stride,
+            attention=attention,
+            name=name + "_block1",
+        )
+        for i in range(2, blocks + 1):
+            x = res_blocks[residual_block_type](
+                x,
+                filters,
+                conv_shortcut=False,
+                attention=attention,
+                name=name + "_block" + str(i),
+            )
+
+        return x
+
+    def _basic_residual_block(
+        self,
+        inputs,
+        filters,
+        kernel_size=3,
+        stride=1,
+        conv_shortcut=True,
+        attention=None,
+        name=None,
+    ):
+        """
+        Build a basic residual block for the CTLearn model.
+
+        This function constructs a basic residual block, which is a fundamental building block
+        of ResNet architectures. The block consists of two convolutional layers with an optional
+        convolutional shortcut, and can include attention mechanisms.
+
+        Parameters
+        ----------
+        inputs : keras.layers.Layer
+            Input tensor to the residual block.
+        filters : int
+            Number of filters for the convolutional layers.
+        kernel_size : int, optional
+            Size of the convolutional kernel. Default is 3.
+        stride : int, optional
+            Stride for the convolutional layers. Default is 1.
+        conv_shortcut : bool, optional
+            Whether to use a convolutional layer for the shortcut connection. Default is True.
+        attention : dict, optional
+            Configuration parameters for the attention mechanism. Default is None.
+        name : str, optional
+            Name for the residual block. Default is None.
+
+        Returns
+        -------
+        keras.layers.Layer
+            Output tensor after applying the residual block.
+        """
+
+        if conv_shortcut:
+            shortcut = self._conv(
+                inputs,
+                filters=filters,
+                kernel_size=1,
+                strides=stride,
+                name=name + "_0_conv",
+            )
+        else:
+            shortcut = inputs
+
+        x = self._conv(
+            inputs,
+            filters=filters,
+            kernel_size=kernel_size,
+            strides=stride,
+            activation="relu",
+            name=name + "_1_conv",
+        )
+        x = self._conv(
+            x,
+            filters=filters,
+            kernel_size=kernel_size,
+            activation="relu",
+            name=name + "_2_conv",
+        )
+
+        # Attention mechanism
+        if attention is not None:
+            if attention["mechanism"] == "Dual-SE":
+                x = dual_squeeze_excite_block(
+                    x, attention["reduction_ratio"], name=name + "_dse"
+                )
+            elif attention["mechanism"] == "Channel-SE":
+                x = channel_squeeze_excite_block(
+                    x, attention["reduction_ratio"], name=name + "_cse"
+                )
+            elif attention["mechanism"] == "Spatial-SE":
+                x = spatial_squeeze_excite_block(x, name=name + "_sse")
+
+        x = keras.layers.Add(name=name + "_add")([shortcut, x])
+        x = keras.layers.ReLU(name=name + "_out")(x)
+
+        return x
+
+    def _bottleneck_residual_block(
+        self,
+        inputs,
+        filters,
+        kernel_size=3,
+        stride=1,
+        conv_shortcut=True,
+        attention=None,
+        name=None,
+    ):
+        """
+        Build a bottleneck residual block for the CTLearn model.
+
+        This function constructs a bottleneck residual block, which is a fundamental building block of
+        ResNet architectures. The block consists of three convolutional layers: a 1x1 convolution to reduce
+        dimensionality, a 3x3 convolution for main computation, and another 1x1 convolution to restore dimensionality.
+        It also includes an optional shortcut connection and can include attention mechanisms.
+
+        Parameters
+        ----------
+        inputs : keras.layers.Layer
+            Input tensor to the residual block.
+        filters : int
+            Number of filters for the convolutional layers.
+        kernel_size : int, optional
+            Size of the convolutional kernel. Default is 3.
+        stride : int, optional
+            Stride for the convolutional layers. Default is 1.
+        conv_shortcut : bool, optional
+            Whether to use a convolutional layer for the shortcut connection. Default is True.
+        attention : dict, optional
+            Configuration parameters for the attention mechanism. Default is None.
+        name : str, optional
+            Name for the residual block. Default is None.
+
+        Returns
+        -------
+        output : keras.layers.Layer
+            Output layer of the residual block.
+        """
+
+        if conv_shortcut:
+            shortcut = self._conv(
+                inputs,
+                filters=4 * filters,
+                kernel_size=1,
+                strides=stride,
+                name=name + "_0_conv",
+            )
+        else:
+            shortcut = inputs
+
+        x = self._conv(
+            inputs,
+            filters=filters,
+            kernel_size=1,
+            strides=stride,
+            activation="relu",
+            name=name + "_1_conv",
+        )
+        x = self._conv(
+            x,
+            filters=filters,
+            kernel_size=kernel_size,
+            activation="relu",
+            name=name + "_2_conv",
+        )
+        x = self._conv(x, filters=4 * filters, kernel_size=1, name=name + "_3_conv")
+
+        # Attention mechanism
+        if attention is not None:
+            if attention["mechanism"] == "Dual-SE":
+                x = dual_squeeze_excite_block(
+                    x, attention["reduction_ratio"], name=name + "_dse"
+                )
+            elif attention["mechanism"] == "Channel-SE":
+                x = channel_squeeze_excite_block(
+                    x, attention["reduction_ratio"], name=name + "_cse"
+                )
+            elif attention["mechanism"] == "Spatial-SE":
+                x = spatial_squeeze_excite_block(x, name=name + "_sse")
+
+        x = keras.layers.Add(name=name + "_add")([shortcut, x])
+        x = keras.layers.ReLU(name=name + "_out")(x)
+
+        return x
 
 
 class LoadedModel(CTLearnModel):
