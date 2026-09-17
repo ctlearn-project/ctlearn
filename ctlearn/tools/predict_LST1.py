@@ -547,6 +547,9 @@ class LST1PredictionTool(Tool):
             trigger_time.extend(dl1_table["time"].mjd)
             if self.load_type_model_from is not None:
                 fvs, preds = self._predict_batch(self.backbone_type, self.head_type, input_data)
+                if self.framework_type == FrameworkType.PYTORCH:
+                    from scipy.special import softmax
+                    preds = softmax(preds, axis=1)
                 classification_fvs.extend(fvs)
                 prediction.extend(preds[:, 1])
 
@@ -1048,5 +1051,5 @@ def main():
     tool.run()
 
 
-if __name__ == "main":
+if __name__ == "__main__":
     main()

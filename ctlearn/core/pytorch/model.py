@@ -60,10 +60,9 @@ class MultiFullyConnectedHead(nn.Module):
             head = self.heads[internal_key]
             out = head(x)
 
-            if original_task == "type":
-                outputs[original_task] = F.softmax(out, dim=-1)
-            else:
-                outputs[original_task] = out
+            # Return raw logits for all tasks, including 'type', 
+            # because CrossEntropyLoss expects logits during training.
+            outputs[original_task] = out
 
         # If only a single task is present, return a single output tensor or dictionary
         if self.single_output_task:

@@ -936,8 +936,14 @@ class PredictCTLearnModel(Tool):
         )
         # Create prediction table and add the predicted classification score ('gammaness')
         particletype_table = example_identifiers.copy()
+        
+        preds = predict_data["type"]
+        if self.framework_type == FrameworkType.PYTORCH:
+            from scipy.special import softmax
+            preds = softmax(preds, axis=1)
+            
         particletype_table.add_column(
-            predict_data["type"].T[1], name=f"{self.prefixes['type']}_tel_prediction"
+            preds.T[1], name=f"{self.prefixes['type']}_tel_prediction"
         )
         return particletype_table, feature_vectors
 
@@ -2459,8 +2465,10 @@ def stereo_tool():
     stereo_tool.run()
 
 
-if __name__ == "mono_tool":
-    mono_tool()
-
-if __name__ == "stereo_tool":
-    stereo_tool()
+if __name__ == "__main__":
+    import sys
+    if "--stereo" in sys.argv:
+        sys.argv.remove("--stereo")
+        stereo_tool()
+    else:
+        mono_tool()
