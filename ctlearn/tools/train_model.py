@@ -1,12 +1,12 @@
 """
-Tool to train a ``CTLearnModel`` on R1/DL1a data using the ``DLDataReader`` and ``DLDataLoader``.
+Base tool to train a ``CTLearnModel``on R1/DL1a data using the ``DLDataReader`` and ``DLDataLoader``.
 """
 
-import atexit
-import keras
-import pandas as pd
+__all__ = ["TrainCTLearnModel"] 
+
+from abc import abstractmethod
 import numpy as np
-import tensorflow as tf
+
 
 from ctapipe.core import Tool
 from ctapipe.core.tool import ToolConfigurationError
@@ -22,67 +22,18 @@ from ctapipe.core.traits import (
     ComponentName,
     Unicode,
 )
-from dl1_data_handler.reader import DLDataReader
 from ctlearn import __version__ as ctlearn_version
-from ctlearn.core.loader import DLDataLoader
 from ctlearn.core.model import CTLearnModel
-from ctlearn.utils import validate_trait_dict
+from ctlearn.tools.utils import validate_trait_dict
+from dl1_data_handler.reader import DLDataReader
 
 
 class TrainCTLearnModel(Tool):
     """
-    Tool to train a ``~ctlearn.core.model.CTLearnModel`` on R1/DL1a data.
+    Base tool to train a ``~ctlearn.core.model.CTLearnModel`` on R1/DL1a data.
 
-    The tool trains a CTLearn model on the input data (R1 calibrated waveforms or DL1a images) and
-    saves the trained model in the output directory. The input data is loaded from the input directories
-    for signal and background events using the ``~dl1_data_handler.reader.DLDataReader`` and
-    ``~dl1_data_handler.loader.DLDataLoader``. The tool supports the following reconstruction tasks:
-    - Classification of the primary particle type (gamma/proton)
-    - Regression of the primary particle energy
-    - Regression of the primary particle arrival direction based on the offsets in camera coordinates
-    - Regression of the primary particle arrival direction based on the offsets in sky coordinates
-    """
-
-    name = "ctlearn-train-model"
-    description = __doc__
-
-    examples = """
-    To train a CTLearn model for the classification of the primary particle type:
-    > ctlearn-train-model \\
-        --signal /path/to/your/gammas_dl1_dir/ \\
-        --pattern-signal "gamma_*_run1.dl1.h5" \\
-        --pattern-signal "gamma_*_run10.dl1.h5" \\
-        --background /path/to/your/protons_dl1_dir/ \\
-        --pattern-background "proton_*_run1.dl1.h5" \\
-        --pattern-background "proton_*_run10.dl1.h5" \\
-        --output /path/to/your/type/ \\
-        --reco type \\
-
-    To train a CTLearn model for the regression of the primary particle energy:
-    > ctlearn-train-model \\
-        --signal /path/to/your/gammas_dl1_dir/ \\
-        --pattern-signal "gamma_*_run1.dl1.h5" \\
-        --pattern-signal "gamma_*_run10.dl1.h5" \\
-        --output /path/to/your/energy/ \\
-        --reco energy \\
-
-    To train a CTLearn model for the regression of the primary particle
-    arrival direction based on the offsets in camera coordinates:
-    > ctlearn-train-model \\
-        --signal /path/to/your/gammas_dl1_dir/ \\
-        --pattern-signal "gamma_*_run1.dl1.h5" \\
-        --pattern-signal "gamma_*_run10.dl1.h5" \\
-        --output /path/to/your/direction/ \\
-        --reco cameradirection \\
-
-    To train a CTLearn model for the regression of the primary particle
-    arrival direction based on the offsets in sky coordinates:
-    > ctlearn-train-model \\
-        --signal /path/to/your/gammas_dl1_dir/ \\
-        --pattern-signal "gamma_*_run1.dl1.h5" \\
-        --pattern-signal "gamma_*_run10.dl1.h5" \\
-        --output /path/to/your/direction/ \\
-        --reco skydirection \\
+    The tool holds configurations and set up functions.
+   
     """
 
     input_dir_signal = Path(
@@ -136,7 +87,15 @@ class TrainCTLearnModel(Tool):
         ),
     ).tag(config=True)
 
-    model_type = ComponentName(CTLearnModel, default_value="ResNet").tag(config=True)
+    model_type = CaselessStrEnum(
+        ["SingleCNN", "ResNet", "LoadedModel"],
+        default_value="ResNet",
+        allow_none=False,
+        help=(
+            "Model type to be used in the Keras or PyTorch framework. "
+            "The framework is determined by the inherited tools being used."
+        ),
+    ).tag(config=True)
 
     output_dir = Path(
         exits=False,
@@ -178,12 +137,6 @@ class TrainCTLearnModel(Tool):
         max=0.99,
     ).tag(config=True)
 
-    save_best_validation_only = Bool(
-        default_value=True,
-        allow_none=False,
-        help="Set whether to save the best validation checkpoint only.",
-    ).tag(config=True)
-
     optimizer = Dict(
         default_value={
             "name": "Adam",
@@ -196,20 +149,6 @@ class TrainCTLearnModel(Tool):
         ),
     ).tag(config=True)
 
-    lr_reducing = Dict(
-        default_value={
-            "factor": 0.5,
-            "patience": 5,
-            "min_delta": 0.01,
-            "min_lr": 0.000001,
-        },
-        allow_none=True,
-        help=(
-            "Learning rate reducing parameters for the Keras callback. "
-            "E.g. {'factor': 0.5, 'patience': 5, 'min_delta': 0.01, 'min_lr': 0.000001}. "
-        ),
-    ).tag(config=True)
-
     random_seed = Int(
         default_value=0,
         help=(
@@ -219,20 +158,30 @@ class TrainCTLearnModel(Tool):
         ),
     ).tag(config=True)
 
-    save_onnx = Bool(
-        default_value=False,
+    save_best_validation_only = Bool(
+        default_value=True,
         allow_none=False,
-        help="Set whether to save model in an ONNX file.",
+        help="Set whether to save the best validation checkpoint only.",
+    ).tag(config=True)
+
+    lr_reducing = Dict(
+        default_value={"factor": 0.5, "patience": 5, "min_delta": 0.01, "min_lr": 0.000001},
+        allow_none=True,
+	help=(
+	    "Learning rate reducing parameters for the Keras callback or the PyTorch scheduler. "
+	    "E.g. {'factor': 0.5, 'patience': 5, 'min_delta': 0.01, 'min_lr': 0.000001}. "
+	)
     ).tag(config=True)
 
     early_stopping = Dict(
         default_value=None,
         allow_none=True,
-        help=(
-            "Early stopping parameters for the Keras callback. "
-            "E.g. {'monitor': 'val_loss', 'patience': 4, 'verbose': 1, 'restore_best_weights': True}. "
-        ),
+	help=(
+	    "Early stopping parameters for the Keras callback or the PyTorch scheduler. "
+	    "E.g. {'monitor': 'val_loss', 'patience': 4, 'verbose': 1, 'restore_best_weights': True}. "
+	)
     ).tag(config=True)
+
 
     aliases = {
         "signal": "TrainCTLearnModel.input_dir_signal",
@@ -240,6 +189,10 @@ class TrainCTLearnModel(Tool):
         "pattern-signal": "TrainCTLearnModel.file_pattern_signal",
         "pattern-background": "TrainCTLearnModel.file_pattern_background",
         "reco": "TrainCTLearnModel.reco_tasks",
+        "n-epochs": "TrainCTLearnModel.n_epochs",
+        "batch-size": "TrainCTLearnModel.batch_size",
+        "random-seed": "TrainCTLearnModel.random_seed",
+        "save-best-val": "TrainCTLearnModel.save_best_validation_only",
         ("o", "output"): "TrainCTLearnModel.output_dir",
     }
 
@@ -252,10 +205,6 @@ class TrainCTLearnModel(Tool):
             raise ToolConfigurationError(
                 f"Output directory {self.output_dir} already exists."
             )
-        # Create a MirroredStrategy.
-        self.strategy = tf.distribute.MirroredStrategy()
-        atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore
-        self.log.info("Number of devices: %s", self.strategy.num_replicas_in_sync)
         # Get signal input files
         self.input_url_signal = []
         for signal_pattern in self.file_pattern_signal:
@@ -321,235 +270,40 @@ class TrainCTLearnModel(Tool):
             )
 
         # Set up the data loaders for training and validation
-        indices = list(range(self.dl1dh_reader._get_n_events()))
+        self.indices = list(range(self.dl1dh_reader._get_n_events()))
         # Shuffle the indices before the training/validation split
         np.random.seed(self.random_seed)
-        np.random.shuffle(indices)
-        n_validation_examples = int(
+        np.random.shuffle(self.indices)
+        self.n_validation_examples = int(
             self.validation_split * self.dl1dh_reader._get_n_events()
         )
-        training_indices = indices[n_validation_examples:]
-        validation_indices = indices[:n_validation_examples]
-        self.training_loader = DLDataLoader(
-            self.dl1dh_reader,
-            training_indices,
-            tasks=self.reco_tasks,
-            batch_size=self.batch_size * self.strategy.num_replicas_in_sync,
-            random_seed=self.random_seed,
-            sort_by_intensity=self.sort_by_intensity,
-            stack_telescope_images=self.stack_telescope_images,
-        )
-        self.validation_loader = DLDataLoader(
-            self.dl1dh_reader,
-            validation_indices,
-            tasks=self.reco_tasks,
-            batch_size=self.batch_size * self.strategy.num_replicas_in_sync,
-            random_seed=self.random_seed,
-            sort_by_intensity=self.sort_by_intensity,
-            stack_telescope_images=self.stack_telescope_images,
-        )
+        self.training_indices = self.indices[self.n_validation_examples:]
+        self.validation_indices = self.indices[:self.n_validation_examples]
 
-        # Set up the callbacks
-        monitor = "val_loss"
-        monitor_mode = "min"
-        # Model checkpoint callback
-        model_path = f"{self.output_dir}/ctlearn_model.keras"
-        model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
-            filepath=model_path,
-            monitor=monitor,
-            verbose=1,
-            mode=monitor_mode,
-            save_best_only=self.save_best_validation_only,
-        )
-        # Tensorboard callback
-        tensorboard_callback = keras.callbacks.TensorBoard(
-            log_dir=self.output_dir, histogram_freq=1
-        )
-        # CSV logger callback
-        csv_logger_callback = keras.callbacks.CSVLogger(
-            filename=f"{self.output_dir}/training_log.csv", append=True
-        )
-        self.callbacks = [
-            model_checkpoint_callback,
-            tensorboard_callback,
-            csv_logger_callback,
-        ]
+        # Validate the optimizer parameters
+        validate_trait_dict(self.optimizer, ["name", "base_learning_rate"])
+        self.learning_rate = self.optimizer["base_learning_rate"]
+        self.adam_epsilon = self.optimizer.get("adam_epsilon", 1e-8)
 
+        # Validate the learning rate reducing parameters
+        if self.lr_reducing is not None:
+            validate_trait_dict(
+                self.lr_reducing, ["factor", "patience", "min_delta", "min_lr"]
+            )
+        # Validate the early stopping parameters
         if self.early_stopping is not None:
-            # EarlyStopping callback
             validate_trait_dict(
                 self.early_stopping,
                 ["monitor", "patience", "verbose", "restore_best_weights"],
             )
-            early_stopping_callback = keras.callbacks.EarlyStopping(
-                monitor=self.early_stopping["monitor"],
-                patience=self.early_stopping["patience"],
-                verbose=self.early_stopping["verbose"],
-                restore_best_weights=self.early_stopping["restore_best_weights"],
-            )
-            self.callbacks.append(early_stopping_callback)
 
-        # Learning rate reducing callback
-        if self.lr_reducing is not None:
-            # Validate the learning rate reducing parameters
-            validate_trait_dict(
-                self.lr_reducing, ["factor", "patience", "min_delta", "min_lr"]
-            )
-            lr_reducing_callback = keras.callbacks.ReduceLROnPlateau(
-                monitor=monitor,
-                factor=self.lr_reducing["factor"],
-                patience=self.lr_reducing["patience"],
-                mode=monitor_mode,
-                verbose=1,
-                min_delta=self.lr_reducing["min_delta"],
-                min_lr=self.lr_reducing["min_lr"],
-            )
-            self.callbacks.append(lr_reducing_callback)
-
-    def start(self):
-
-        # Open a strategy scope.
-        with self.strategy.scope():
-            # Construct the model
-            self.log.info("Setting up the model.")
-            self.model = CTLearnModel.from_name(
-                self.model_type,
-                input_shape=self.training_loader.input_shape,
-                tasks=self.reco_tasks,
-                parent=self,
-            ).model
-            # Validate the optimizer parameters
-            validate_trait_dict(self.optimizer, ["name", "base_learning_rate"])
-            # Set the learning rate for the optimizer
-            learning_rate = self.optimizer["base_learning_rate"]
-            # Set the epsilon for the Adam optimizer
-            adam_epsilon = None
-            if self.optimizer["name"] == "Adam":
-                # Validate the epsilon for the Adam optimizer
-                validate_trait_dict(self.optimizer, ["adam_epsilon"])
-                # Set the epsilon for the Adam optimizer
-                adam_epsilon = self.optimizer["adam_epsilon"]
-            # Select optimizer with appropriate arguments
-            # Dict of optimizer_name: (optimizer_fn, optimizer_args)
-            optimizers = {
-                "Adadelta": (
-                    keras.optimizers.Adadelta,
-                    dict(learning_rate=learning_rate),
-                ),
-                "Adam": (
-                    keras.optimizers.Adam,
-                    dict(learning_rate=learning_rate, epsilon=adam_epsilon),
-                ),
-                "RMSProp": (
-                    keras.optimizers.RMSprop,
-                    dict(learning_rate=learning_rate),
-                ),
-                "SGD": (keras.optimizers.SGD, dict(learning_rate=learning_rate)),
-            }
-            # Get the optimizer function and arguments
-            optimizer_fn, optimizer_args = optimizers[self.optimizer["name"]]
-            # Get the losses and metrics for the model
-            losses, metrics = self._get_losses_and_mertics(self.reco_tasks)
-            # Compile the model
-            self.log.info("Compiling CTLearn model.")
-            self.model.compile(
-                optimizer=optimizer_fn(**optimizer_args), loss=losses, metrics=metrics
-            )
-
-        # Train and evaluate the model
-        self.log.info("Training and evaluating...")
-        self.model.fit(
-            self.training_loader,
-            validation_data=self.validation_loader,
-            epochs=self.n_epochs,
-            class_weight=self.dl1dh_reader.class_weight,
-            callbacks=self.callbacks,
-            verbose=2,
-        )
-        self.log.info("Training and evaluating finished succesfully!")
+        # Set up framework-specific training tool
+        self.setup_framework()
+     
+    @abstractmethod
+    def setup_framework():
+        """ This is an abstract method for the setup of the framework-specific training tool."""
+        pass
 
     def finish(self):
-
-        # Saving model weights in onnx format
-        if self.save_onnx:
-            self.log.info("Converting Keras model into ONNX format...")
-            self.log.info("Make sure tf2onnx is installed in your enviroment!")
-            try:
-                import tf2onnx
-            except ImportError:
-                raise ImportError("tf2onnx is not installed in your environment!")
-
-            output_path = f"{self.output_dir}/ctlearn_model.onnx"
-            tf2onnx.convert.from_keras(
-                self.model,
-                input_signature=self.model.input_layer.input._type_spec,
-                output_path=output_path,
-            )
-            self.log.info("ONNX model saved in %s", self.output_dir)
-
         self.log.info("Tool is shutting down")
-
-    def _get_losses_and_mertics(self, tasks):
-        """
-        Build the fully connected head for the CTLearn model.
-
-        Function to build the fully connected head of the CTLearn model using the specified parameters.
-
-        Parameters
-        ----------
-        inputs : keras.layers.Layer
-            Keras layer of the model.
-        layers : dict
-            Dictionary containing the number of neurons (as value) in the fully connected head for each task (as key).
-        tasks : list
-            List of tasks to build the head for.
-
-        Returns
-        -------
-        logits : dict
-            Dictionary containing the logits for each task.
-        """
-        losses, metrics = {}, {}
-        if "type" in self.reco_tasks:
-            losses["type"] = keras.losses.CategoricalCrossentropy(
-                reduction="sum_over_batch_size"
-            )
-            metrics["type"] = [
-                keras.metrics.CategoricalAccuracy(name="accuracy"),
-                keras.metrics.AUC(name="auc"),
-            ]
-            # Temp fix till keras support class weights for multiple outputs or I wrote custom loss
-            # https://github.com/keras-team/keras/issues/11735
-            if len(tasks) == 1:
-                losses = losses["type"]
-                metrics = metrics["type"]
-        if "energy" in self.reco_tasks:
-            losses["energy"] = keras.losses.MeanAbsoluteError(
-                reduction="sum_over_batch_size"
-            )
-            metrics["energy"] = keras.metrics.MeanAbsoluteError(name="mae_energy")
-        if "cameradirection" in self.reco_tasks:
-            losses["cameradirection"] = keras.losses.MeanAbsoluteError(
-                reduction="sum_over_batch_size"
-            )
-            metrics["cameradirection"] = keras.metrics.MeanAbsoluteError(
-                name="mae_cameradirection"
-            )
-        if "skydirection" in self.reco_tasks:
-            losses["skydirection"] = keras.losses.MeanAbsoluteError(
-                reduction="sum_over_batch_size"
-            )
-            metrics["skydirection"] = keras.metrics.MeanAbsoluteError(
-                name="mae_skydirection"
-            )
-        return losses, metrics
-
-
-def main():
-    # Run the tool
-    tool = TrainCTLearnModel()
-    tool.run()
-
-
-if __name__ == "main":
-    main()

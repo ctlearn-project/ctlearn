@@ -2,12 +2,12 @@ name: CI
 
 on:
   push:
-    branches:
-      - "**"
-    tags:
-      - "**"
+    branches: ["**"]
+    tags: ["**"]
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * *"  # Daily at 02:00 UTC
 
 jobs:
   build:
@@ -17,14 +17,22 @@ jobs:
         python-version: ['3.12', '3.13', '3.14']
         dl1dh-version: ['latest', 'nightly']
         tensorflow-version: ['latest', '2.16.*']
+        torch-version: ['latest', '2.4.*']
         exclude:
           - python-version: '3.13'
             tensorflow-version: '2.16.*'
           - python-version: '3.14'
             tensorflow-version: '2.16.*'
+          - python-version: '3.13'
+            torch-version: '2.4.*'
+          - python-version: '3.14'
+            torch-version: '2.4.*'
       max-parallel: 6
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.dl1dh-version == 'nightly' || matrix.python-version == '3.14' }}
+    env:
+      PIP_NO_CACHE_DIR: "1"
+      PIP_EXTRA_INDEX_URL: "https://download.pytorch.org/whl/cpu"
     steps:
       - uses: actions/checkout@v4
 
@@ -40,7 +48,7 @@ jobs:
       - name: Create Python environment
         run: |
           source $HOME/miniconda/etc/profile.d/conda.sh
-          mamba create -y -n ctlearn python==${{ matrix.python-version }} -c conda-forge
+          mamba create -y -n ctlearn python==${{ matrix.python-version }} -c conda-forge llvmlite triton
           conda activate ctlearn
 
       - name: Install dependencies
@@ -61,6 +69,11 @@ jobs:
           else
             pip install "tensorflow==${{ matrix.tensorflow-version }}"
           fi
+          if [ "${{ matrix.torch-version }}" = "latest" ]; then
+            pip install --upgrade torch torchvision
+          else
+            pip install "torch==${{ matrix.torch-version }}" torchvision
+          fi
 
       - name: Add MKL_THREADING_LAYER variable
         run: echo "MKL_THREADING_LAYER=GNU" >> $GITHUB_ENV
@@ -76,8 +89,8 @@ jobs:
         run: |
           source $HOME/miniconda/etc/profile.d/conda.sh
           conda activate ctlearn
-          pip install -e .
-
+          pip install -e .[tests]
+          
       - name: Run pytest
         run: |
           source $HOME/miniconda/etc/profile.d/conda.sh
