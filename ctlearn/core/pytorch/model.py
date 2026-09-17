@@ -461,6 +461,22 @@ class PyTorchLoadedModel(LoadedModel):
         # 1. Load object directly from disk
         loaded_object = torch.load(self.load_model_from, map_location="cpu", weights_only=False)
 
+        # Extract model and check config if it's a checkpoint dictionary
+        if isinstance(loaded_object, dict) and 'model' in loaded_object:
+            saved_config = loaded_object.get('ctlearn_config', {})
+            current_config = dict(self.config) if self.config else {}
+            
+            if 'DLDataReader' in saved_config and 'DLDataReader' in current_config:
+                for key, saved_val in saved_config['DLDataReader'].items():
+                    current_val = current_config['DLDataReader'].get(key)
+                    if current_val is not None and current_val != saved_val:
+                        raise ValueError(
+                            f"Configuration mismatch: The model was trained with DLDataReader.{key}={saved_val}, "
+                            f"but you are trying to load it with {key}={current_val}. "
+                            "Adjust the configuration to match."
+                        )
+            loaded_object = loaded_object['model']
+
         # 2. Strict validation: ensure the loaded object is an nn.Module
         if not isinstance(loaded_object, nn.Module):
             raise TypeError(

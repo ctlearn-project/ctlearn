@@ -856,6 +856,23 @@ class PredictCTLearnModel(Tool):
         from torch.utils.data import DataLoader
         from ctlearn.core.pytorch.dataset import PyTorchDataset
         model = torch.load(model_path, map_location=self.device, weights_only=False)
+        
+        # Extract model and check config if it's a checkpoint dictionary
+        if isinstance(model, dict) and 'model' in model:
+            saved_config = model.get('ctlearn_config', {})
+            current_config = dict(self.config) if self.config else {}
+            
+            if 'DLDataReader' in saved_config and 'DLDataReader' in current_config:
+                for key, saved_val in saved_config['DLDataReader'].items():
+                    current_val = current_config['DLDataReader'].get(key)
+                    if current_val is not None and current_val != saved_val:
+                        raise ValueError(
+                            f"Configuration mismatch: The model was trained with DLDataReader.{key}={saved_val}, "
+                            f"but you are trying to predict with {key}={current_val}. "
+                            "Adjust the prediction configuration to match."
+                        )
+            model = model['model']
+            
         if not isinstance(model, nn.Module):
             raise TypeError(
                 f"Expected a PyTorch 'nn.Module' object at '{model_path}', "

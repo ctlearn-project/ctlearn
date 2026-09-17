@@ -272,8 +272,13 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
                 if self.save_best_validation_only:
                     # Save state_dict (tensors only)
                     torch.save(state_dict, state_dict_save_path)
-                    # Save full model (nn.Module object)
-                    torch.save(unwrapped_model, model_save_path)
+                    # Save full model and config
+                    checkpoint = {
+                        'model': unwrapped_model,
+                        'model_state_dict': state_dict,
+                        'ctlearn_config': dict(self.config) if self.config else {}
+                    }
+                    torch.save(checkpoint, model_save_path)
             else:
                 patience_counter += 1
 
@@ -285,8 +290,13 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
                 )
                 # Save state_dict (tensors only)
                 torch.save(state_dict, state_dict_save_path)
-                # Save full model (nn.Module object)
-                torch.save(unwrapped_model, model_save_path)
+                # Save full model and config
+                checkpoint = {
+                    'model': unwrapped_model,
+                    'model_state_dict': state_dict,
+                    'ctlearn_config': dict(self.config) if self.config else {}
+                }
+                torch.save(checkpoint, model_save_path)
 
             if self.scheduler is not None:
                 self.scheduler.step(val_loss)
