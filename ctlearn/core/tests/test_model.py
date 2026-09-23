@@ -9,22 +9,6 @@ from ctlearn.utils import (
     model_conv_backend,
 )
 
-try:
-    from dl1_data_handler.image_mapper import HexagdlyMapper  # noqa: F401
-
-    HEXAGDLY_MAPPER_AVAILABLE = True
-except ImportError:
-    HEXAGDLY_MAPPER_AVAILABLE = False
-
-requires_hexagdly_mapper = pytest.mark.skipif(
-    not HEXAGDLY_MAPPER_AVAILABLE,
-    reason=(
-        "dl1_data_handler.image_mapper.HexagdlyMapper not available -- needs "
-        "dl1-data-handler with hex mapper support merged/released "
-        "(cta-observatory/dl1-data-handler PR pending)"
-    ),
-)
-
 
 def _lst1_input_shape(mapper_name, n_channels=2):
     from dl1_data_handler.image_mapper import ImageMapper
@@ -41,7 +25,6 @@ class TestSingleCNNConvBackend:
     def test_default_backend_is_square(self):
         assert SingleCNN.class_traits()["conv_backend"].default_value == "square"
 
-    @requires_hexagdly_mapper
     def test_hexagdly_backend_builds_and_predicts_single_task(self):
         _, input_shape = _lst1_input_shape("HexagdlyMapper")
         model = SingleCNN(
@@ -63,7 +46,6 @@ class TestSingleCNNConvBackend:
         assert output.shape == (2, 2)
         np.testing.assert_allclose(output.sum(axis=-1), np.ones(2), rtol=1e-4)
 
-    @requires_hexagdly_mapper
     def test_hexagdly_backend_multi_task_with_batchnorm_and_bottleneck(self):
         _, input_shape = _lst1_input_shape("HexagdlyMapper")
         model = SingleCNN(
@@ -105,7 +87,6 @@ class TestSingleCNNConvBackend:
         output = model.model.predict(batch, verbose=0)
         assert output.shape == (2, 2)
 
-    @requires_hexagdly_mapper
     def test_hexagdly_backend_rejects_average_pooling(self):
         """keras_hexagdly has no hexagonal average-pool layer."""
         _, input_shape = _lst1_input_shape("HexagdlyMapper")
@@ -122,7 +103,6 @@ class TestSingleCNNConvBackend:
 class TestResNetConvBackend:
     """ResNet's conv_backend trait: both residual_block_type variants."""
 
-    @requires_hexagdly_mapper
     @pytest.mark.parametrize("residual_block_type", ["bottleneck", "basic"])
     def test_hexagdly_backend_builds_and_predicts(self, residual_block_type):
         _, input_shape = _lst1_input_shape("HexagdlyMapper")
@@ -141,7 +121,6 @@ class TestResNetConvBackend:
         assert output.shape == (2, 2)
         np.testing.assert_allclose(output.sum(axis=-1), np.ones(2), rtol=1e-4)
 
-    @requires_hexagdly_mapper
     @pytest.mark.parametrize("residual_block_type", ["bottleneck", "basic"])
     def test_hexagdly_backend_with_attention(self, residual_block_type):
         """ResNet's residual blocks already use the correct
@@ -182,7 +161,6 @@ class TestValidateConvBackend:
     """ctlearn.utils.validate_conv_backend -- the mapper<->model conv
     backend consistency check requested in review."""
 
-    @requires_hexagdly_mapper
     def test_matched_hexagdly_pairing_passes(self):
         mapper, _ = _lst1_input_shape("HexagdlyMapper")
         assert validate_conv_backend({"LSTCam": mapper}, "hexagdly") is True
@@ -191,7 +169,6 @@ class TestValidateConvBackend:
         mapper, _ = _lst1_input_shape("BilinearMapper")
         assert validate_conv_backend({"LSTCam": mapper}, "square") is True
 
-    @requires_hexagdly_mapper
     def test_hexagdly_mapper_with_square_backend_raises(self):
         mapper, _ = _lst1_input_shape("HexagdlyMapper")
         with pytest.raises(ValueError, match="conv_backend"):
@@ -202,7 +179,6 @@ class TestValidateConvBackend:
         with pytest.raises(ValueError, match="conv_backend"):
             validate_conv_backend({"LSTCam": mapper}, "hexagdly")
 
-    @requires_hexagdly_mapper
     @pytest.mark.parametrize("conv_backend", ["hexagdly", "square"])
     def test_mixed_mappers_raise_for_either_backend(self, conv_backend):
         """image_mapper_type is a TelescopeParameter, so telescope types can
@@ -221,7 +197,6 @@ class TestModelConvBackend:
     (possibly loaded-from-disk) keras.Model by inspecting its layers, used
     at prediction time where no conv_backend trait is available."""
 
-    @requires_hexagdly_mapper
     def test_detects_hexagdly_backend(self):
         _, input_shape = _lst1_input_shape("HexagdlyMapper")
         model = SingleCNN(
@@ -241,7 +216,6 @@ class TestModelConvBackend:
         )
         assert model_conv_backend(model.model) == "square"
 
-    @requires_hexagdly_mapper
     def test_detects_hexagdly_backend_after_save_load_round_trip(self, tmp_path):
         """The prediction tools call this on a model restored by
         keras.saving.load_model, and LoadedModel keeps conv_backend at its
