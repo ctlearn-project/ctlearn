@@ -1332,9 +1332,9 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
         --DLImageReader.channels=cleaned_image \\
         --DLImageReader.channels=cleaned_relative_peak_time \\
         --DLImageReader.image_mapper_type=BilinearMapper \\
-        --type_model="/path/to/your/mono/type/ctlearn_model.cpk" \\
-        --energy_model="/path/to/your/mono/energy/ctlearn_model.cpk" \\
-        --cameradirection_model="/path/to/your/mono/cameradirection/ctlearn_model.cpk" \\
+        --type_model="/path/to/your/mono/type/ctlearn_model.keras" \\
+        --energy_model="/path/to/your/mono/energy/ctlearn_model.keras" \\
+        --cameradirection_model="/path/to/your/mono/cameradirection/ctlearn_model.keras" \\
         --dl1-features \\
         --no-dl1-images \\
         --no-true-images \\
@@ -1346,9 +1346,9 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
         --PredictCTLearnModel.dl1dh_reader_type=DLWaveformReader \\
         --DLWaveformReader.sequnce_length=20 \\
         --DLWaveformReader.image_mapper_type=BilinearMapper \\
-        --type_model="/path/to/your/mono_waveform/type/ctlearn_model.cpk" \\
-        --energy_model="/path/to/your/mono_waveform/energy/ctlearn_model.cpk" \\
-        --cameradirection_model="/path/to/your/mono_waveform/cameradirection/ctlearn_model.cpk" \\
+        --type_model="/path/to/your/mono_waveform/type/ctlearn_model.keras" \\
+        --energy_model="/path/to/your/mono_waveform/energy/ctlearn_model.keras" \\
+        --cameradirection_model="/path/to/your/mono_waveform/cameradirection/ctlearn_model.keras" \\
         --no-r0-waveforms \\
         --no-r1-waveforms \\
         --no-dl1-images \\
@@ -1992,9 +1992,9 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
         --DLImageReader.mode=stereo \\
         --DLImageReader.min_telescopes=2 \\
         --PredictCTLearnModel.stack_telescope_images=True \\
-        --type_model="/path/to/your/stereo/type/ctlearn_model.cpk" \\
-        --energy_model="/path/to/your/stereo/energy/ctlearn_model.cpk" \\
-        --skydirection_model="/path/to/your/stereo/skydirection/ctlearn_model.cpk" \\
+        --type_model="/path/to/your/stereo/type/ctlearn_model.keras" \\
+        --energy_model="/path/to/your/stereo/energy/ctlearn_model.keras" \\
+        --skydirection_model="/path/to/your/stereo/skydirection/ctlearn_model.keras" \\
         --output output.dl2.h5 \\
     """
 
