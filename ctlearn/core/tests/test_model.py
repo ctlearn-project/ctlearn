@@ -125,7 +125,14 @@ class TestResNetConvBackend:
     def test_hexagdly_backend_with_attention(self, residual_block_type):
         """ResNet's residual blocks already use the correct
         'reduction_ratio' key (unlike SingleCNN's pre-existing, out-of-scope
-        bug), so attention should work out of the box on the hex path too."""
+        bug), so attention should work out of the box on the hex path too.
+
+        The squeeze-excite block sizes its bottleneck as
+        ``filters // reduction_ratio``, and the basic block applies attention
+        at ``filters`` rather than the bottleneck block's ``4 * filters``, so
+        the ratio has to stay below this deliberately tiny filter count or
+        that division floors to a zero-unit Dense.
+        """
         _, input_shape = _lst1_input_shape("HexagdlyMapper")
         model = ResNet(
             input_shape=input_shape,
@@ -133,6 +140,7 @@ class TestResNetConvBackend:
             conv_backend="hexagdly",
             residual_block_type=residual_block_type,
             architecture=[{"filters": 4, "blocks": 1}],
+            attention_reduction_ratio=2,
         )
 
         rng = np.random.default_rng(4)
