@@ -28,7 +28,7 @@ classifiers = [
 
 requires-python = ">=3.12"
 dependencies = [
-    "dl1_data_handler>=0.14.8",
+    "dl1-data-handler @ git+https://github.com/cta-observatory/dl1-data-handler.git@4fc78aa9ff8d11bf8bd0f5381eb050981d263587",
     "astropy",
     "numpy",
     "pandas",
