@@ -69,6 +69,7 @@ tests = [
     "pytest-cov",
     "pytest-xdist",
     "pytest_astropy_header",
+    "ctao-pytest-dpps @ git+https://gitlab.cta-observatory.org/cta-computing/dpps/pytest-dpps@main",
 ]
 
 docs = [

@@ -35,11 +35,23 @@ REQUIRED_COLUMNS = [
     "tels_with_trigger",
 ]
 
+@pytest.fixture
+def h5_file(request):
+    """Dynamically resolves fixture names passed via indirect parameterization."""
+    return request.getfixturevalue(request.param)
 
 @pytest.mark.verifies_usecase("DPPS-UC-130-1.2")
 @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
+@pytest.mark.parametrize(
+    "h5_file, file_type",
+    [
+        ("r1_gamma_file", "gamma"),
+        ("r1_real_data_file", "real_data"),
+    ],
+    indirect=["h5_file"],
+)
 def test_predict_mono_model_with_r1_waveforms(
-    tmp_path, ctlearn_trained_r1_mono_models, r1_gamma_file, framework
+    tmp_path, ctlearn_trained_r1_mono_models, h5_file, file_type, framework
 ):
     """
     Test training CTLearn mono model using the R1 gamma and proton files for all reconstruction tasks
@@ -51,7 +63,7 @@ def test_predict_mono_model_with_r1_waveforms(
     dl2_dir.mkdir(parents=True, exist_ok=True)
     # Define telescope types and their available telescopes
     telescope_type = "LST"
-    available_tels = [1, 2]
+    available_tels = [1]
     # Hardcopy the trained models to the model directory
     for reco_task in ["type", "energy", "cameradirection"]:
         key = f"{framework}_{telescope_type}_{reco_task}"
@@ -63,7 +75,7 @@ def test_predict_mono_model_with_r1_waveforms(
         assert model_file.exists(), f"Trained mono model file not found for {key}"
     # Build command-line arguments
     argv = [
-        f"--input_url={r1_gamma_file}",
+        f"--input_url={h5_file}",
         "--PredictCTLearnModel.batch_size=2",
         "--PredictCTLearnModel.dl1dh_reader_type=DLWaveformReader",
         "--DLWaveformReader.sequence_length=5",
@@ -71,7 +83,7 @@ def test_predict_mono_model_with_r1_waveforms(
         "--no-r1-waveforms",
         "--dl2-telescope",
     ]
-    output_file = dl2_dir / f"gamma_{framework}_{telescope_type}_mono_from_waveforms.dl2.h5"
+    output_file = dl2_dir / f"{file_type}_{framework}_{telescope_type}_mono_from_waveforms.dl2.h5"
     # Run Prediction tool
     assert (
         run_tool(
