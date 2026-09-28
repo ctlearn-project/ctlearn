@@ -30,7 +30,7 @@ requires-python = ">=3.12"
 dependencies = [
     "astropy",
     "ctapipe[all]>=0.29",
-    "dl1-data-handler @ git+https://github.com/cta-observatory/dl1-data-handler.git@4fc78aa9ff8d11bf8bd0f5381eb050981d263587",
+    "dl1-data-handler @ git+https://github.com/cta-observatory/dl1-data-handler.git@829e7ffbb604e79aa3c35fa1c90fa16ebc17878a",
     "numba",
     "numpy",
     "pandas",
