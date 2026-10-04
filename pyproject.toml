@@ -28,7 +28,7 @@ classifiers = [
 
 requires-python = ">=3.12"
 dependencies = [
-    "dl1-data-handler @ git+https://github.com/cta-observatory/dl1-data-handler.git@829e7ffbb604e79aa3c35fa1c90fa16ebc17878a",
+    "dl1_data_handler>=0.14.10",
     "astropy",
     "numpy",
     "pandas",
@@ -41,7 +41,7 @@ dependencies = [
     "pydot",
     "setuptools",
     "ctapipe[all]>=0.29",
-    "keras-hexagdly>=0.4.1",
+    "keras-hexagdly>=0.5.0",
 ]
 
 dynamic = ["version"]
