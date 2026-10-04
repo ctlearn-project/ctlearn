@@ -92,9 +92,9 @@ class LST1PredictionTool(Tool):
         --LST1PredictionTool.channels=cleaned_image \\
         --LST1PredictionTool.channels=cleaned_relative_peak_time \\
         --LST1PredictionTool.image_mapper_type=BilinearMapper \\
-        --type_model="/path/to/your/type/ctlearn_model.cpk" \\
-        --energy_model="/path/to/your/energy/ctlearn_model.cpk" \\
-        --cameradirection_model="/path/to/your/direction/ctlearn_model.cpk" \\
+        --type_model="/path/to/your/type/ctlearn_model.keras" \\
+        --energy_model="/path/to/your/energy/ctlearn_model.keras" \\
+        --cameradirection_model="/path/to/your/direction/ctlearn_model.keras" \\
         --output output.dl2.h5 \\
         --overwrite \\
     """
