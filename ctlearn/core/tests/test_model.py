@@ -1,4 +1,5 @@
 import keras
+import keras_hexagdly as hgly
 import numpy as np
 import pytest
 
@@ -55,11 +56,6 @@ class TestSingleCNNConvBackend:
             architecture=[{"filters": 4, "kernel_size": 1, "number": 1}],
             batchnorm=True,
             bottleneck_filters=6,
-            # attention_mechanism left at None: SingleCNN._build_backbone has
-            # a pre-existing, out-of-scope bug (reads self.attention["ratio"]
-            # instead of "reduction_ratio") unrelated to conv_backend --
-            # see ResNet's tests below for attention + hexagdly coverage,
-            # since ResNet's residual blocks already use the correct key.
             attention_mechanism=None,
             head_layers={"type": [8, 2], "energy": [8, 1]},
         )
@@ -87,17 +83,38 @@ class TestSingleCNNConvBackend:
         output = model.model.predict(batch, verbose=0)
         assert output.shape == (2, 2)
 
-    def test_hexagdly_backend_rejects_average_pooling(self):
-        """keras_hexagdly has no hexagonal average-pool layer."""
+    def test_hexagdly_backend_supports_average_pooling(self):
         _, input_shape = _lst1_input_shape("HexagdlyMapper")
-        with pytest.raises(ValueError, match="average"):
-            SingleCNN(
-                input_shape=input_shape,
-                tasks=["type"],
-                conv_backend="hexagdly",
-                pooling_type="average",
-                attention_mechanism=None,
-            )
+        model = SingleCNN(
+            input_shape=input_shape,
+            tasks=["type"],
+            conv_backend="hexagdly",
+            pooling_type="average",
+            attention_mechanism=None,
+        )
+        assert any(isinstance(layer, hgly.AvgPool2d) for layer in model.backbone_model.layers)
+
+        rng = np.random.default_rng(6)
+        batch = rng.uniform(size=(2, *input_shape)).astype(np.float32)
+        assert model.model.predict(batch, verbose=0).shape == (2, 2)
+
+    def test_hexagdly_convs_apply_the_activation_themselves(self):
+        """The ReLU is passed to hgly.Conv2d as for keras.layers.Conv2D, not
+        added as a separate layer."""
+        _, input_shape = _lst1_input_shape("HexagdlyMapper")
+        model = SingleCNN(
+            input_shape=input_shape,
+            tasks=["type"],
+            conv_backend="hexagdly",
+            attention_mechanism=None,
+        )
+        convs = [layer for layer in model.backbone_model.layers if isinstance(layer, hgly.Conv2d)]
+        assert convs
+        assert all(layer.activation is keras.activations.relu for layer in convs)
+        assert not any(
+            isinstance(layer, (keras.layers.ReLU, keras.layers.Activation))
+            for layer in model.backbone_model.layers
+        )
 
 
 class TestResNetConvBackend:
@@ -123,9 +140,7 @@ class TestResNetConvBackend:
 
     @pytest.mark.parametrize("residual_block_type", ["bottleneck", "basic"])
     def test_hexagdly_backend_with_attention(self, residual_block_type):
-        """ResNet's residual blocks already use the correct
-        'reduction_ratio' key (unlike SingleCNN's pre-existing, out-of-scope
-        bug), so attention should work out of the box on the hex path too.
+        """Attention on the hex path.
 
         The squeeze-excite block sizes its bottleneck as
         ``filters // reduction_ratio``, and the basic block applies attention
