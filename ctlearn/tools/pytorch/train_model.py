@@ -94,11 +94,7 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
                 "PyTorch requires num_workers > 0 to keep worker processes alive. "
                 "Please set num_workers > 0 or persistent_workers=False."
             )
-        if sys.platform == "darwin" and self.num_workers != 0:
-            raise ToolConfigurationError(
-                "Multiprocessing is not supported on MacOS. "
-                "Please set num_workers=0."
-            )
+
         # Determine available hardware device (Multi-GPU / Single GPU / CPU)
         if torch.cuda.is_available():
             self.device = torch.device("cuda")
@@ -115,6 +111,15 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
         # Create a dedicated Generator for the DataLoader
         g = torch.Generator()
         g.manual_seed(self.random_seed)
+        dataloader_kwargs = {
+            "batch_size": self.batch_size * self.num_devices,
+            "num_workers": self.num_workers,
+            "persistent_workers": self.persistent_workers,
+            "pin_memory": torch.cuda.is_available(),
+        }
+
+        if self.num_workers > 0:
+            dataloader_kwargs["multiprocessing_context"] = "fork"
 
         # Init the PyTorchDataLoader
         self.training_dataset = PyTorchDataset(
@@ -126,12 +131,9 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
         )
         self.training_loader = DataLoader(
             dataset=self.training_dataset,
-            batch_size=self.batch_size * self.num_devices,
             shuffle=True, # Enables shuffling
             generator=g, # Controls the shuffling seed deterministically
-            num_workers=self.num_workers,
-            persistent_workers=self.persistent_workers,
-            pin_memory=torch.cuda.is_available() # Accelerates memory copy from host CPU to GPU
+            **dataloader_kwargs,
         ) 
         self.validation_dataset = PyTorchDataset(
             DLDataReader=self.dl1dh_reader,
@@ -142,11 +144,8 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
         )
         self.validation_loader = DataLoader(
             dataset=self.validation_dataset,
-            batch_size=self.batch_size * self.num_devices,
             shuffle=False, # Disables shuffling
-            num_workers=self.num_workers,
-            persistent_workers=self.persistent_workers,
-            pin_memory=torch.cuda.is_available() # Accelerates memory copy from host CPU to GPU
+            **dataloader_kwargs,
         )
 
         # Set up TensorBoard writers for train and validation and CSV logging path
