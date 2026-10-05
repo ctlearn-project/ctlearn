@@ -27,19 +27,6 @@ from ctlearn.core.model import CTLearnModel
 from ctlearn.tools.utils import validate_trait_dict
 from dl1_data_handler.reader import DLDataReader
 
-# Optional hex-native convolution support (the ``ctlearn[hexagdly]`` extra).
-# Importing these registers ``HexagdlyMapper``/``HexCNN`` with ctapipe's
-# Component factories (``ImageMapper.from_name``/``CTLearnModel.from_name``),
-# making ``image_mapper_type=HexagdlyMapper``/``model_type=HexCNN`` selectable
-# from the command line. A no-op if ``keras-hexagdly`` isn't installed.
-try:
-    import ctlearn.core.hexagdly_mapper  # noqa: F401
-    import ctlearn.core.hexagdly_model  # noqa: F401
-except ImportError:
-    pass
-from ctlearn.utils import validate_trait_dict, validate_conv_backend, model_conv_backend
-
-
 class TrainCTLearnModel(Tool):
     """
     Base tool to train a ``~ctlearn.core.model.CTLearnModel`` on R1/DL1a data.
@@ -303,16 +290,6 @@ class TrainCTLearnModel(Tool):
             validate_trait_dict(
                 self.lr_reducing, ["factor", "patience", "min_delta", "min_lr"]
             )
-            lr_reducing_callback = keras.callbacks.ReduceLROnPlateau(
-                monitor=monitor,
-                factor=self.lr_reducing["factor"],
-                patience=self.lr_reducing["patience"],
-                mode=monitor_mode,
-                verbose=1,
-                min_delta=self.lr_reducing["min_delta"],
-                min_lr=self.lr_reducing["min_lr"],
-            )
-            self.callbacks.append(lr_reducing_callback)
        
         # Validate the early stopping parameters
         if self.early_stopping is not None:
@@ -328,77 +305,6 @@ class TrainCTLearnModel(Tool):
     def setup_framework():
         """ This is an abstract method for the setup of the framework-specific training tool."""
         pass
-
-
-    def start(self):
-
-        # Open a strategy scope.
-        with self.strategy.scope():
-            # Construct the model
-            self.log.info("Setting up the model.")
-            self.model = CTLearnModel.from_name(
-                self.model_type,
-                input_shape=self.training_loader.input_shape,
-                tasks=self.reco_tasks,
-                parent=self,
-            ).model
-            # Validate that the image mapper(s) and the model's conv backend
-            # agree. This inspects the built model's layers rather than reading
-            # the conv_backend trait, because LoadedModel wraps an already
-            # trained model whose trait keeps its default value regardless of
-            # what that model was actually built with.
-            validate_conv_backend(
-                self.dl1dh_reader.image_mappers, model_conv_backend(self.model)
-            )
-            # Validate the optimizer parameters
-            validate_trait_dict(self.optimizer, ["name", "base_learning_rate"])
-            # Set the learning rate for the optimizer
-            learning_rate = self.optimizer["base_learning_rate"]
-            # Set the epsilon for the Adam optimizer
-            adam_epsilon = None
-            if self.optimizer["name"] == "Adam":
-                # Validate the epsilon for the Adam optimizer
-                validate_trait_dict(self.optimizer, ["adam_epsilon"])
-                # Set the epsilon for the Adam optimizer
-                adam_epsilon = self.optimizer["adam_epsilon"]
-            # Select optimizer with appropriate arguments
-            # Dict of optimizer_name: (optimizer_fn, optimizer_args)
-            optimizers = {
-                "Adadelta": (
-                    keras.optimizers.Adadelta,
-                    dict(learning_rate=learning_rate),
-                ),
-                "Adam": (
-                    keras.optimizers.Adam,
-                    dict(learning_rate=learning_rate, epsilon=adam_epsilon),
-                ),
-                "RMSProp": (
-                    keras.optimizers.RMSprop,
-                    dict(learning_rate=learning_rate),
-                ),
-                "SGD": (keras.optimizers.SGD, dict(learning_rate=learning_rate)),
-            }
-            # Get the optimizer function and arguments
-            optimizer_fn, optimizer_args = optimizers[self.optimizer["name"]]
-            # Get the losses and metrics for the model
-            losses, metrics = self._get_losses_and_mertics(self.reco_tasks)
-            # Compile the model
-            self.log.info("Compiling CTLearn model.")
-            self.model.compile(
-                optimizer=optimizer_fn(**optimizer_args), loss=losses, metrics=metrics
-            )
-
-        # Train and evaluate the model
-        self.log.info("Training and evaluating...")
-        self.model.fit(
-            self.training_loader,
-            validation_data=self.validation_loader,
-            epochs=self.n_epochs,
-            class_weight=self.dl1dh_reader.class_weight,
-            callbacks=self.callbacks,
-            verbose=2,
-        )
-        self.log.info("Training and evaluating finished succesfully!")
 
     def finish(self):
         self.log.info("Tool is shutting down")

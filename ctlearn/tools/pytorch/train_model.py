@@ -4,6 +4,7 @@ Tool to train a PyTorch-based ``CTLearnModel`` on R1/DL1a data using the ``DLDat
 
 __all__ = ["TrainCTLearnPyTorchModel"] 
 
+import sys
 import os
 import torch
 import torch.nn as nn
@@ -93,7 +94,11 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
                 "PyTorch requires num_workers > 0 to keep worker processes alive. "
                 "Please set num_workers > 0 or persistent_workers=False."
             )
-
+        if sys.platform == "darwin" and self.num_workers != 0:
+            raise ToolConfigurationError(
+                "Multiprocessing is not supported on MacOS. "
+                "Please set num_workers=0."
+            )
         # Determine available hardware device (Multi-GPU / Single GPU / CPU)
         if torch.cuda.is_available():
             self.device = torch.device("cuda")

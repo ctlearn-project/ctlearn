@@ -3,6 +3,7 @@ common pytest fixtures for tests in ctlearn.
 """
 
 from pathlib import Path
+import sys
 
 import numpy as np
 import pytest
@@ -266,7 +267,10 @@ def ctlearn_trained_r1_mono_models(r1_gamma_file, r1_proton_file, tmp_path_facto
             output_dir = tmp_path / f"ctlearn_{framework}_{telescope_type}_{reco_task}"
             framework_argv.append(f"--output={output_dir}")
             if framework == "PyTorch":
-                framework_argv.append("--TrainCTLearnPyTorchModel.num_workers=2")
+                num_workers = 0 if sys.platform == "darwin" else 2
+                framework_argv.append(
+                    f"--TrainCTLearnPyTorchModel.num_workers={num_workers}"
+                )
 
             assert run_tool(training_tool(config=config), argv=framework_argv, cwd=tmp_path) == 0
             ctlearn_trained_r1_mono_models[f"{framework}_{telescope_type}_{reco_task}"] = (

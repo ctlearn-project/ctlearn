@@ -3,8 +3,8 @@ import keras_hexagdly as hgly
 import numpy as np
 import pytest
 
-from ctlearn.core.model import SingleCNN, ResNet
-from ctlearn.utils import (
+from ctlearn.core.keras.model import KerasSingleCNN, KerasResNet
+from ctlearn.tools.utils import (
     get_lst1_subarray_description,
     validate_conv_backend,
     model_conv_backend,
@@ -24,11 +24,11 @@ class TestSingleCNNConvBackend:
     """SingleCNN's conv_backend trait, replacing the old standalone HexCNN class."""
 
     def test_default_backend_is_square(self):
-        assert SingleCNN.class_traits()["conv_backend"].default_value == "square"
+        assert KerasSingleCNN.class_traits()["conv_backend"].default_value == "square"
 
     def test_hexagdly_backend_builds_and_predicts_single_task(self):
         _, input_shape = _lst1_input_shape("HexagdlyMapper")
-        model = SingleCNN(
+        model = KerasSingleCNN(
             input_shape=input_shape,
             tasks=["type"],
             conv_backend="hexagdly",
@@ -49,7 +49,7 @@ class TestSingleCNNConvBackend:
 
     def test_hexagdly_backend_multi_task_with_batchnorm_and_bottleneck(self):
         _, input_shape = _lst1_input_shape("HexagdlyMapper")
-        model = SingleCNN(
+        model = KerasSingleCNN(
             input_shape=input_shape,
             tasks=["type", "energy"],
             conv_backend="hexagdly",
@@ -71,7 +71,7 @@ class TestSingleCNNConvBackend:
         """Sanity check that merging HexCNN's logic into SingleCNN didn't
         regress the pre-existing square conv path."""
         _, input_shape = _lst1_input_shape("BilinearMapper")
-        model = SingleCNN(
+        model = KerasSingleCNN(
             input_shape=input_shape,
             tasks=["type"],
             architecture=[{"filters": 4, "kernel_size": 3, "number": 1}],
@@ -85,7 +85,7 @@ class TestSingleCNNConvBackend:
 
     def test_hexagdly_backend_supports_average_pooling(self):
         _, input_shape = _lst1_input_shape("HexagdlyMapper")
-        model = SingleCNN(
+        model = KerasSingleCNN(
             input_shape=input_shape,
             tasks=["type"],
             conv_backend="hexagdly",
@@ -102,7 +102,7 @@ class TestSingleCNNConvBackend:
         """The ReLU is passed to hgly.Conv2d as for keras.layers.Conv2D, not
         added as a separate layer."""
         _, input_shape = _lst1_input_shape("HexagdlyMapper")
-        model = SingleCNN(
+        model = KerasSingleCNN(
             input_shape=input_shape,
             tasks=["type"],
             conv_backend="hexagdly",
@@ -123,7 +123,7 @@ class TestResNetConvBackend:
     @pytest.mark.parametrize("residual_block_type", ["bottleneck", "basic"])
     def test_hexagdly_backend_builds_and_predicts(self, residual_block_type):
         _, input_shape = _lst1_input_shape("HexagdlyMapper")
-        model = ResNet(
+        model = KerasResNet(
             input_shape=input_shape,
             tasks=["type"],
             conv_backend="hexagdly",
@@ -149,7 +149,7 @@ class TestResNetConvBackend:
         that division floors to a zero-unit Dense.
         """
         _, input_shape = _lst1_input_shape("HexagdlyMapper")
-        model = ResNet(
+        model = KerasResNet(
             input_shape=input_shape,
             tasks=["type"],
             conv_backend="hexagdly",
@@ -167,7 +167,7 @@ class TestResNetConvBackend:
         """Sanity check that the conv_backend branching didn't regress the
         pre-existing square ResNet path."""
         _, input_shape = _lst1_input_shape("BilinearMapper")
-        model = ResNet(
+        model = KerasResNet(
             input_shape=input_shape,
             tasks=["type"],
             architecture=[{"filters": 4, "blocks": 1}],
@@ -222,7 +222,7 @@ class TestModelConvBackend:
 
     def test_detects_hexagdly_backend(self):
         _, input_shape = _lst1_input_shape("HexagdlyMapper")
-        model = SingleCNN(
+        model = KerasSingleCNN(
             input_shape=input_shape,
             tasks=["type"],
             conv_backend="hexagdly",
@@ -232,7 +232,7 @@ class TestModelConvBackend:
 
     def test_detects_square_backend(self):
         _, input_shape = _lst1_input_shape("BilinearMapper")
-        model = SingleCNN(
+        model = KerasSingleCNN(
             input_shape=input_shape,
             tasks=["type"],
             attention_mechanism=None,
@@ -246,7 +246,7 @@ class TestModelConvBackend:
         have to be what identifies the backend.
         """
         _, input_shape = _lst1_input_shape("HexagdlyMapper")
-        model = SingleCNN(
+        model = KerasSingleCNN(
             input_shape=input_shape,
             tasks=["type"],
             conv_backend="hexagdly",

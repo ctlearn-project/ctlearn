@@ -94,20 +94,9 @@ from ctlearn.tools.utils import (
     FrameworkType,
     setup_framework,
     validate_trait_dict,
+    validate_conv_backend,
+    model_conv_backend,
 )
-
-# Optional hex-native convolution support (the ``ctlearn[hexagdly]`` extra).
-# Importing registers ``HexagdlyMapper`` with ``ImageMapper.from_name`` (so
-# ``image_mapper_type=HexagdlyMapper`` is selectable here) and makes
-# ``keras_hexagdly``'s custom layers available when deserializing a saved
-# ``HexCNN`` model. A no-op if ``keras-hexagdly`` isn't installed.
-try:
-    import ctlearn.core.hexagdly_mapper  # noqa: F401
-    import ctlearn.core.hexagdly_model  # noqa: F401
-except ImportError:
-    pass
-from ctlearn.core.loader import DLDataLoader
-from ctlearn.utils import validate_trait_dict, validate_conv_backend, model_conv_backend
 
 # Convienient constants for column names and table keys
 SUBARRAY_EVENT_KEYS = ["obs_id", "event_id"]
