@@ -88,7 +88,7 @@ class TrainCTLearnModel(Tool):
     ).tag(config=True)
 
     model_type = CaselessStrEnum(
-        ["SingleCNN", "ResNet", "LoadedModel"],
+        ["SingleCNN", "ResNet", "DBBResNet", "LoadedModel"],
         default_value="ResNet",
         allow_none=False,
         help=(

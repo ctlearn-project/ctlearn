@@ -9,6 +9,8 @@ __all__ = [
     "build_fully_connect_pytorch_head",
     "PyTorchSingleCNN",
     "PyTorchResNet",
+    "DBBBackboneModule",
+    "PyTorchDBBResNet",
     "PyTorchLoadedModel",
 ]
 
@@ -20,6 +22,7 @@ import torch.nn.functional as F
 from ctlearn.core.model import (
     SingleCNN,
     ResNet,
+    DBBResNet,
     LoadedModel,
 )
 from ctlearn.core.pytorch.attention import (
@@ -311,6 +314,9 @@ class PyTorchResNet(ResNet):
         self.model = FullModelPipeline(self.backbone_model, self.logits_head)
 
     def _build_backbone(self, input_shape):
+        return self._build_single_backbone(input_shape)
+
+    def _build_single_backbone(self, input_shape):
         in_channels = input_shape[0]
         modules = []
 
@@ -433,6 +439,83 @@ class PyTorchResNet(ResNet):
             stack.append(build_block(out_channels, s=1))
             
         return stack
+
+
+class DBBBackboneModule(nn.Module):
+    """
+    A PyTorch container module for Double Backbone (DBB) models.
+
+    Splits input tensors along the channel dimension, passes each branch through its
+    respective backbone (or a shared backbone), and concatenates the resulting feature vectors.
+    """
+
+    def __init__(self, branch1_backbone, branch2_backbone=None, split_channel_index=1):
+        super().__init__()
+        self.branch1_backbone = branch1_backbone
+        self.branch2_backbone = (
+            branch2_backbone if branch2_backbone is not None else branch1_backbone
+        )
+        self.split_channel_index = split_channel_index
+
+    def forward(self, x):
+        # x shape: (B, C, H, W)
+        x1 = x[:, : self.split_channel_index, :, :]
+        x2 = x[:, self.split_channel_index :, :, :]
+
+        feat1 = self.branch1_backbone(x1)
+        feat2 = self.branch2_backbone(x2)
+
+        return torch.cat([feat1, feat2], dim=1)
+
+
+class PyTorchDBBResNet(DBBResNet, PyTorchResNet):
+    """
+    ``PyTorchDBBResNet`` is a PyTorch implementation of the Double Backbone (DBB) ResNet model.
+
+    It splits multi-channel inputs (e.g., charge and peak time) along the channel dimension,
+    processes each branch through a ThinResNet backbone, concatenates the resulting feature vectors,
+    and feeds them to the MultiFullyConnectedHead.
+    """
+
+    def __init__(self, input_shape, tasks, config=None, parent=None, **kwargs):
+        DBBResNet.__init__(self, tasks=tasks, config=config, parent=parent, **kwargs)
+
+        self.backbone_model, out_features = self._build_backbone(input_shape)
+        self.logits_head = build_fully_connect_pytorch_head(
+            out_features, self.head_layers, self.head_activation_function, tasks
+        )
+        self.model = FullModelPipeline(self.backbone_model, self.logits_head)
+
+    def _build_backbone(self, input_shape):
+        total_channels = input_shape[0]
+        split_idx = self.split_channel_index
+        if split_idx >= total_channels:
+            raise ValueError(
+                f"split_channel_index ({split_idx}) must be less than total channels ({total_channels})."
+            )
+
+        shape_b1 = (split_idx, input_shape[1], input_shape[2])
+        shape_b2 = (total_channels - split_idx, input_shape[1], input_shape[2])
+
+        branch1_backbone, out_f1 = self._build_single_backbone(shape_b1)
+
+        if self.share_weights:
+            if shape_b1[0] != shape_b2[0]:
+                raise ValueError(
+                    f"Weight sharing (`share_weights=True`) requires both branches to have the same number of input channels, "
+                    f"but branch 1 has {shape_b1[0]} channels and branch 2 has {shape_b2[0]} channels."
+                )
+            branch2_backbone = None
+            out_f2 = out_f1
+        else:
+            branch2_backbone, out_f2 = self._build_single_backbone(shape_b2)
+
+        dbb_backbone = DBBBackboneModule(
+            branch1_backbone=branch1_backbone,
+            branch2_backbone=branch2_backbone,
+            split_channel_index=split_idx,
+        )
+        return dbb_backbone, out_f1 + out_f2
 
 
 class PyTorchLoadedModel(LoadedModel):

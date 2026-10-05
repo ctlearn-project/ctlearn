@@ -6,6 +6,7 @@ __all__ = [
     "CTLearnModel",
     "SingleCNN",
     "ResNet",
+    "DBBResNet",
     "LoadedModel",
 ]
 
@@ -287,6 +288,35 @@ class ResNet(CTLearnModel):
         validate_trait_dict(self.head_activation_function, tasks)
         # Construct the name of the backbone model by appending "_block" to the model name
         self.backbone_name = self.name + "_block"
+
+
+class DBBResNet(ResNet):
+    """
+    ``DBBResNet`` is a Double Backbone (DBB) residual neural network model.
+
+    This class extends the functionality of ``ResNet`` by defining configuration
+    parameters for a double backbone architecture, processing separate input channel
+    subsets (e.g. charge and peak time) before feature concatenation.
+    """
+
+    name = Unicode(
+        "DBBResNet",
+        help="Name of the model backbone.",
+    ).tag(config=True)
+
+    share_weights = Bool(
+        default_value=False,
+        allow_none=False,
+        help="Set to True to share backbone weights between input branches.",
+    ).tag(config=True)
+
+    split_channel_index = Int(
+        default_value=1,
+        allow_none=False,
+        min=1,
+        help="Index along channel dimension to split input channels (default: 1).",
+    ).tag(config=True)
+
 
 
 class LoadedModel(CTLearnModel):

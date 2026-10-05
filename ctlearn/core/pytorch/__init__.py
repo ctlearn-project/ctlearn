@@ -9,6 +9,8 @@ from .model import (
     build_fully_connect_pytorch_head,
     PyTorchSingleCNN,
     PyTorchResNet,
+    DBBBackboneModule,
+    PyTorchDBBResNet,
     PyTorchLoadedModel,
 )
 from .attention import (
@@ -26,6 +28,8 @@ __all__ = [
     "build_fully_connect_pytorch_head",
     "PyTorchSingleCNN",
     "PyTorchResNet",
+    "DBBBackboneModule",
+    "PyTorchDBBResNet",
     "PyTorchLoadedModel",
     "DualSqueezeExciteBlock",
     "ChannelSqueezeExciteBlock",

@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 
 from ctlearn.core.keras.model import KerasResNet, KerasSingleCNN
-from ctlearn.core.pytorch.model import PyTorchResNet, PyTorchSingleCNN
+from ctlearn.core.pytorch.model import PyTorchResNet, PyTorchSingleCNN, PyTorchDBBResNet
 
 rng = np.random.default_rng(42)
 
@@ -221,3 +221,49 @@ def test_ResNet_model_structure_parity(common_config, block_type, first_layers, 
             assert k_shape == p_shape, (
                 f"Shape mismatch at layer {idx}: Keras shape {k_shape} vs PyTorch mapped shape {p_shape}"
             )
+
+
+@pytest.mark.parametrize("share_weights", [False, True])
+@pytest.mark.parametrize("split_idx", [1, 2])
+def test_DBBResNet_forward_pass(common_config, share_weights, split_idx):
+    """Verify PyTorchDBBResNet forward pass with 2 input channels (charge + peak time)."""
+    tasks = common_config["tasks"]
+    kwargs = common_config["kwargs"].copy()
+    kwargs["share_weights"] = share_weights
+    kwargs["split_channel_index"] = split_idx
+    kwargs["architecture"] = [
+        {"filters": 16, "blocks": 1},
+        {"filters": 32, "blocks": 1},
+    ]
+
+    total_channels = split_idx + 1  # Branch 1 has split_idx channels, Branch 2 has 1 channel
+    input_shape = (total_channels, 32, 32)
+    batch_size = 4
+
+    # If share_weights is True and branches have different channel counts, expect ValueError
+    if share_weights and split_idx != 1:
+        with pytest.raises(ValueError, match="Weight sharing"):
+            PyTorchDBBResNet(input_shape=input_shape, tasks=tasks, **kwargs)
+        return
+
+    model_wrapper = PyTorchDBBResNet(
+        input_shape=input_shape,
+        tasks=tasks,
+        **kwargs
+    )
+
+    x = torch.randn(batch_size, *input_shape)
+    outputs, features = model_wrapper.model(x)
+
+    # Verify features shape (concatenated features from both backbones)
+    assert features.shape[0] == batch_size
+    assert features.dim() == 2
+
+    # Verify output tasks
+    assert "type" in outputs
+    assert outputs["type"].shape == (batch_size, 2)
+    assert "energy" in outputs
+    assert outputs["energy"].shape == (batch_size, 1)
+    assert "cameradirection" in outputs
+    assert outputs["cameradirection"].shape == (batch_size, 2)
+
