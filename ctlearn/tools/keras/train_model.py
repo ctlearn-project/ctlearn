@@ -11,6 +11,7 @@ import keras
 from ctlearn.core.keras.sequence import KerasSequence
 from ctlearn.core.model import CTLearnModel
 from ctlearn.tools.train_model import TrainCTLearnModel
+from ctlearn.tools.utils import validate_conv_backend, model_conv_backend
 
 
 class TrainCTLearnKerasModel(TrainCTLearnModel):
@@ -156,6 +157,15 @@ class TrainCTLearnKerasModel(TrainCTLearnModel):
                 tasks=self.reco_tasks,
                 parent=self,
             ).model
+
+            # Validate that the image mapper(s) and the model's conv backend
+            # agree. This inspects the built model's layers rather than reading
+            # the conv_backend trait, because LoadedModel wraps an already
+            # trained model whose trait keeps its default value regardless of
+            # what that model was actually built with.
+            validate_conv_backend(
+                self.dl1dh_reader.image_mappers, model_conv_backend(self.model)
+            )
 
             # Select optimizer with appropriate arguments
             optimizers = {

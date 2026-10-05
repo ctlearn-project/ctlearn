@@ -10,6 +10,7 @@ __all__ = [
 ]
 
 import keras
+import keras_hexagdly as hgly
 
 from ctlearn.core.model import (
     SingleCNN,
@@ -98,6 +99,30 @@ class KerasSingleCNN(SingleCNN):
         # Build the full pipeline model∫
         self.model = keras.Model(self.input_layer, self.logits, name="CTLearn_model")
 
+
+    @property
+    def _conv_layer(self):
+        """Convolution layer class for ``conv_backend``.
+
+        Both classes are built with the same keyword arguments. With
+        ``"hexagdly"``, ``kernel_size`` counts hexagonal rings, and the hex
+        grid is always padded (``"same"``), including where the square call
+        leaves Keras' default ``"valid"``.
+        """
+        return hgly.Conv2d if self.conv_backend == "hexagdly" else keras.layers.Conv2D
+
+    @property
+    def _pool_layer(self):
+        """Max-pooling layer class for ``conv_backend``."""
+        return hgly.MaxPool2d if self.conv_backend == "hexagdly" else keras.layers.MaxPool2D
+
+    @property
+    def _avg_pool_layer(self):
+        """Average-pooling layer class for ``conv_backend``."""
+        return (
+            hgly.AvgPool2d if self.conv_backend == "hexagdly" else keras.layers.AveragePooling2D
+        )
+
     def _build_backbone(self, input_shape):
         """
         Build the SingleCNN model backbone.
@@ -132,7 +157,7 @@ class KerasSingleCNN(SingleCNN):
             zip(filters_list, kernel_sizes, numbers_list)
         ):
             for nr in range(number):
-                x = keras.layers.Conv2D(
+                x = self._conv_layer(
                     filters=filters,
                     kernel_size=kernel_size,
                     padding="same",
@@ -141,13 +166,13 @@ class KerasSingleCNN(SingleCNN):
                 )(x)
             if self.pooling_type is not None:
                 if self.pooling_type == "max":
-                    x = keras.layers.MaxPool2D(
+                    x = self._pool_layer(
                         pool_size=self.pooling_parameters["size"],
                         strides=self.pooling_parameters["strides"],
                         name=f"{self.backbone_name}_pool_{i+1}",
                     )(x)
                 elif self.pooling_type == "average":
-                    x = keras.layers.AveragePooling2D(
+                    x = self._avg_pool_layer(
                         pool_size=self.pooling_parameters["size"],
                         strides=self.pooling_parameters["strides"],
                         name=f"{self.backbone_name}_pool_{i+1}",
@@ -155,9 +180,11 @@ class KerasSingleCNN(SingleCNN):
             if self.batchnorm:
                 x = keras.layers.BatchNormalization(momentum=0.99)(x)
 
-        # bottleneck layer
+        # bottleneck layer -- a 1x1 conv is purely a per-cell channel
+        # projection with no spatial mixing, so a plain square Conv2D is
+        # geometry-agnostic and used for both conv backends.
         if self.bottleneck_filters is not None:
-            x = keras.layers.Conv2D(
+            x = self._conv_layer(
                 filters=self.bottleneck_filters,
                 kernel_size=1,
                 padding="same",
@@ -223,6 +250,29 @@ class KerasResNet(ResNet):
 
         self.model = keras.Model(self.input_layer, self.logits, name="CTLearn_model")
 
+    @property
+    def _conv_layer(self):
+        """Convolution layer class for ``conv_backend``.
+
+        Both classes are built with the same keyword arguments. With
+        ``"hexagdly"``, ``kernel_size`` counts hexagonal rings, and the hex
+        grid is always padded (``"same"``), including where the square call
+        leaves Keras' default ``"valid"``.
+        """
+        return hgly.Conv2d if self.conv_backend == "hexagdly" else keras.layers.Conv2D
+
+    @property
+    def _pool_layer(self):
+        """Max-pooling layer class for ``conv_backend``."""
+        return hgly.MaxPool2d if self.conv_backend == "hexagdly" else keras.layers.MaxPool2D
+
+    @property
+    def _avg_pool_layer(self):
+        """Average-pooling layer class for ``conv_backend``."""
+        return (
+            hgly.AvgPool2d if self.conv_backend == "hexagdly" else keras.layers.AveragePooling2D
+        )
+
     def _build_backbone(self, input_shape):
         """
         Build the ResNet model backbone.
@@ -252,7 +302,7 @@ class KerasResNet(ResNet):
             )(x)
         # Apply initial convolutional layer if specified
         if self.init_layer is not None:
-            x = keras.layers.Conv2D(
+            x = self._conv_layer(
                 filters=self.init_layer["filters"],
                 kernel_size=self.init_layer["kernel_size"],
                 strides=self.init_layer["strides"],
@@ -260,7 +310,7 @@ class KerasResNet(ResNet):
             )(x)
         # Apply max pooling if specified
         if self.init_max_pool is not None:
-            x = keras.layers.MaxPool2D(
+            x = self._pool_layer(
                 pool_size=self.init_max_pool["size"],
                 strides=self.init_max_pool["strides"],
                 name=self.backbone_name + "_pool1_pool",
@@ -440,13 +490,13 @@ class KerasResNet(ResNet):
         """
 
         if conv_shortcut:
-            shortcut = keras.layers.Conv2D(
+            shortcut = self._conv_layer(
                 filters=filters, kernel_size=1, strides=stride, name=name + "_0_conv"
             )(inputs)
         else:
             shortcut = inputs
 
-        x = keras.layers.Conv2D(
+        x = self._conv_layer(
             filters=filters,
             kernel_size=kernel_size,
             strides=stride,
@@ -454,7 +504,7 @@ class KerasResNet(ResNet):
             activation="relu",
             name=name + "_1_conv",
         )(inputs)
-        x = keras.layers.Conv2D(
+        x = self._conv_layer(
             filters=filters,
             kernel_size=kernel_size,
             padding="same",
@@ -522,7 +572,7 @@ class KerasResNet(ResNet):
         """
 
         if conv_shortcut:
-            shortcut = keras.layers.Conv2D(
+            shortcut = self._conv_layer(
                 filters=4 * filters,
                 kernel_size=1,
                 strides=stride,
@@ -531,21 +581,21 @@ class KerasResNet(ResNet):
         else:
             shortcut = inputs
 
-        x = keras.layers.Conv2D(
+        x = self._conv_layer(
             filters=filters,
             kernel_size=1,
             strides=stride,
             activation="relu",
             name=name + "_1_conv",
         )(inputs)
-        x = keras.layers.Conv2D(
+        x = self._conv_layer(
             filters=filters,
             kernel_size=kernel_size,
             padding="same",
             activation="relu",
             name=name + "_2_conv",
         )(x)
-        x = keras.layers.Conv2D(
+        x = self._conv_layer(
             filters=4 * filters, kernel_size=1, name=name + "_3_conv"
         )(x)
 

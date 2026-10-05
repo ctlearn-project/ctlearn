@@ -27,7 +27,6 @@ from ctlearn.core.model import CTLearnModel
 from ctlearn.tools.utils import validate_trait_dict
 from dl1_data_handler.reader import DLDataReader
 
-
 class TrainCTLearnModel(Tool):
     """
     Base tool to train a ``~ctlearn.core.model.CTLearnModel`` on R1/DL1a data.
@@ -285,11 +284,13 @@ class TrainCTLearnModel(Tool):
         self.learning_rate = self.optimizer["base_learning_rate"]
         self.adam_epsilon = self.optimizer.get("adam_epsilon", 1e-8)
 
-        # Validate the learning rate reducing parameters
+        # Learning rate reducing callback
         if self.lr_reducing is not None:
+            # Validate the learning rate reducing parameters
             validate_trait_dict(
                 self.lr_reducing, ["factor", "patience", "min_delta", "min_lr"]
             )
+       
         # Validate the early stopping parameters
         if self.early_stopping is not None:
             validate_trait_dict(

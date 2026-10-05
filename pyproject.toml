@@ -30,7 +30,7 @@ requires-python = ">=3.12"
 dependencies = [
     "astropy",
     "ctapipe[all]>=0.29",
-    "dl1_data_handler>=0.14.8",
+    "dl1_data_handler>=0.14.10",
     "numba",
     "numpy",
     "pandas",
@@ -46,6 +46,7 @@ dependencies = [
     "torchvision",
     "torchmetrics",
     "opencv-python",
+    "keras-hexagdly>=0.5.0",
 ]
 
 dynamic = ["version"]

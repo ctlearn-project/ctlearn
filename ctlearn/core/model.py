@@ -2,6 +2,13 @@
 This module defines the ``CTLearnModel`` classes, which holds the basic functionality for creating a Keras model to be used in CTLearn.
 """
 
+from abc import abstractmethod
+
+
+from ctapipe.core import Component
+from ctapipe.core.traits import Bool, Int, CaselessStrEnum, List, Dict, Unicode, Path
+from ctlearn.tools.utils import validate_trait_dict
+
 __all__ = [
     "CTLearnModel",
     "SingleCNN",
@@ -75,6 +82,19 @@ class CTLearnModel(Component):
         allow_none=True,
         min=1,
         help="Reduction ratio for the squeeze and excitation attention mechanism.",
+    ).tag(config=True)
+
+    conv_backend = CaselessStrEnum(
+        ["square", "hexagdly"],
+        default_value="square",
+        allow_none=False,
+        help=(
+            "Convolution backend for the model backbone. 'square' uses plain "
+            "keras.layers.Conv2D/MaxPool2D/AveragePooling2D (default, expects a "
+            "square-mapped input, e.g. from BilinearMapper). 'hexagdly' uses "
+            "keras_hexagdly.Conv2d/MaxPool2d/AvgPool2d for hex-native convolution "
+            "(expects hex-addressed input, e.g. from HexagdlyMapper)."
+        ),
     ).tag(config=True)
 
     def __init__(
