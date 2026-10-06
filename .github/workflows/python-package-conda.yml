@@ -13,7 +13,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-22.04]
+        os: [ubuntu-24.04]
         python-version: ['3.12', '3.13', '3.14']
         dl1dh-version: ['latest', 'nightly']
         tensorflow-version: ['latest', '2.16.*']
