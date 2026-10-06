@@ -36,10 +36,8 @@ test/
 *.se2
 *.jar
 *.puml
-mc_tjark/
-calibration/
-test_local_cristian/
 
-test/prepare_file.py
-test_local_cristian/
 *.txt
+*.sh
+output*
+config*
