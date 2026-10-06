@@ -27,6 +27,10 @@ jobs:
             torch-version: '2.4.*'
           - python-version: '3.14'
             torch-version: '2.4.*'
+          - dl1dh-version: 'nightly'
+            tensorflow-version: '2.16.*'
+          - dl1dh-version: 'nightly'
+            torch-version: '2.4.*'
       max-parallel: 6
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.dl1dh-version == 'nightly' }}
