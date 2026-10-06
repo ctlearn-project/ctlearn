@@ -11,6 +11,7 @@ The following command will set up a conda virtual environment, add the
 necessary package channels, and install CTLearn specified version and its dependencies:
 
 .. code-block:: bash
+
    mamba create -n ctlearn -c conda-forge python==3.12 llvmlite
    conda activate ctlearn
    pip install ctlearn
@@ -18,6 +19,7 @@ necessary package channels, and install CTLearn specified version and its depend
 For working on the IT-cluster:
 
 .. code-block:: bash
+
    mamba create -n ctlearn-it-cluster -c conda-forge python==3.12 h5py scipy llvmlite gcc_linux-64 gxx_linux-64 openblas gfortran_linux-64
    conda activate ctlearn-it-cluster
    export CC=$(which x86_64-conda-linux-gnu-gcc)

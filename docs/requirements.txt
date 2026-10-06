@@ -1,2 +1,6 @@
 sphinx
 sphinx_rtd_theme
+# Light-weight runtime dependencies needed by autodoc to import ctlearn.
+# The heavy ML frameworks (TensorFlow, PyTorch, ...) are mocked in conf.py.
+ctapipe>=0.29
+dl1_data_handler>=0.14.10
