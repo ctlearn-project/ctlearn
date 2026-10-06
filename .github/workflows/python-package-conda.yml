@@ -29,7 +29,7 @@ jobs:
             torch-version: '2.4.*'
       max-parallel: 6
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.dl1dh-version == 'nightly' || matrix.python-version == '3.14' }}
+    continue-on-error: ${{ matrix.dl1dh-version == 'nightly' }}
     env:
       PIP_NO_CACHE_DIR: "1"
       PIP_EXTRA_INDEX_URL: "https://download.pytorch.org/whl/cpu"
