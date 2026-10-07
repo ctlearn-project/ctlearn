@@ -41,6 +41,7 @@ dependencies = [
     "setuptools",
     "tensorboard",
     "tensorflow>=2.16",
+    "keras>=3.0",
     "torch>=2.4.0",
     "torchvision",
     "torchmetrics",
