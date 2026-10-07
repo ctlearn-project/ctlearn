@@ -2475,23 +2475,18 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
         )
         return pointing_info
 
-
 def mono_tool():
     # Run the tool
     mono_tool = MonoPredictCTLearnModel()
     mono_tool.run()
-
 
 def stereo_tool():
     # Run the tool
     stereo_tool = StereoPredictCTLearnModel()
     stereo_tool.run()
 
+if __name__ == "mono_tool":
+    mono_tool()
 
-if __name__ == "__main__":
-    import sys
-    if "--stereo" in sys.argv:
-        sys.argv.remove("--stereo")
-        stereo_tool()
-    else:
-        mono_tool()
+if __name__ == "stereo_tool":
+    stereo_tool()
