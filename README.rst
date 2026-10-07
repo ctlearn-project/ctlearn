@@ -36,9 +36,13 @@ First, create and activate a fresh conda environment:
 
 .. code-block:: bash
 
+   # Linux:
    mamba create -n ctlearn -c conda-forge python==3.12 llvmlite triton
+   # macOS/Windows:
+   mamba create -n ctlearn -c conda-forge python==3.12 llvmlite
    conda activate ctlearn
 
+Note for macOS and Windows, please remove triton
 The lastest version fo this package can be installed as a pip package:
 
 .. code-block:: bash

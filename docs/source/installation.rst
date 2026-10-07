@@ -12,6 +12,9 @@ necessary package channels, and install CTLearn specified version and its depend
 
 .. code-block:: bash
 
+   # Linux:
+   mamba create -n ctlearn -c conda-forge python==3.12 llvmlite triton
+   # macOS/Windows:
    mamba create -n ctlearn -c conda-forge python==3.12 llvmlite
    conda activate ctlearn
    pip install ctlearn
@@ -53,19 +56,13 @@ Core dependencies
 * torch>=2.4.0
 * tensorflow>=2.16
 * keras>=3.0
+* astropy
 * ctapipe>=0.29.0
 * dl1_data_handler>=0.14.10
 * numba
 * numpy
 * pandas
 * pyyaml
-
-* Libraries used only in plotting scripts
-
-  * matplotlib
-  * scikit-learn
-  * ctaplot
-  * pyirf
 
 Uninstall CTLearn
 -----------------
