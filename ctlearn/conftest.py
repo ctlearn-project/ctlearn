@@ -9,6 +9,7 @@ import numpy as np
 import pytest
 import shutil
 from astropy.table import Column, Table
+from filelock import FileLock
 from traitlets.config.loader import Config
 
 from ctapipe.core import run_tool
@@ -24,15 +25,19 @@ TRAINING_TOOLS = {"Keras": TrainCTLearnKerasModel, "PyTorch": TrainCTLearnPyTorc
 MODEL_FILE_FORMATS = {"Keras": "keras", "PyTorch": "pth"}
 
 @pytest.fixture(scope="session")
-def gamma_simtel_path():
-    return get_dataset_path("gamma_test_large.simtel.gz")
+def gamma_simtel_path(tmp_path_factory):
+    root_tmp_dir = tmp_path_factory.getbasetemp().parent
+    with FileLock(str(root_tmp_dir / "gamma_test_large.simtel.gz.lock")):
+        return get_dataset_path("gamma_test_large.simtel.gz")
 
 
 @pytest.fixture(scope="session")
-def proton_simtel_path():
-    return get_dataset_path(
-        "proton_20deg_0deg_run4___cta-prod5-paranal_desert-2147m-Paranal-dark-100evts.simtel.zst"
-    )
+def proton_simtel_path(tmp_path_factory):
+    root_tmp_dir = tmp_path_factory.getbasetemp().parent
+    with FileLock(str(root_tmp_dir / "proton_test.simtel.zst.lock")):
+        return get_dataset_path(
+            "proton_20deg_0deg_run4___cta-prod5-paranal_desert-2147m-Paranal-dark-100evts.simtel.zst"
+        )
 
 
 @pytest.fixture(scope="session")
