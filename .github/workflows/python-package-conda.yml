@@ -10,7 +10,33 @@ on:
     - cron: "0 2 * * *"  # Daily at 02:00 UTC
 
 jobs:
+  prepare-data:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Cache ctapipe data
+        id: cache-ctapipe
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ctapipe
+          key: ctapipe-data-${{ runner.os }}-v1
+          
+      - name: Set up Python
+        if: steps.cache-ctapipe.outputs.cache-hit != 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          
+      - name: Install ctapipe
+        if: steps.cache-ctapipe.outputs.cache-hit != 'true'
+        run: pip install "ctapipe[all]>=0.29"
+
+      - name: Download test data
+        if: steps.cache-ctapipe.outputs.cache-hit != 'true'
+        run: |
+          python -c "from ctapipe.utils import get_dataset_path; get_dataset_path('gamma_test_large.simtel.gz'); get_dataset_path('proton_20deg_0deg_run4___cta-prod5-paranal_desert-2147m-Paranal-dark-100evts.simtel.zst')"
+
   build:
+    needs: prepare-data
     strategy:
       matrix:
         os: [ubuntu-24.04]
@@ -39,6 +65,12 @@ jobs:
       PIP_EXTRA_INDEX_URL: "https://download.pytorch.org/whl/cpu"
     steps:
       - uses: actions/checkout@v4
+
+      - name: Restore ctapipe data cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ctapipe
+          key: ctapipe-data-${{ runner.os }}-v1
 
       - name: Set up Miniconda
         run: |
