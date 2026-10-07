@@ -54,17 +54,16 @@ Core dependencies
 * tensorflow>=2.16
 * keras>=3.0
 * ctapipe>=0.29.0
-* ctaplot
 * dl1_data_handler>=0.14.10
 * numba
 * numpy
 * pandas
 * pyyaml
 
-* Libraries used only in plotting scripts (optional)
+* Libraries used only in plotting scripts
 
-  * Matplotlib
-  * Scikit-learn
+  * matplotlib
+  * scikit-learn
   * ctaplot
   * pyirf
 
