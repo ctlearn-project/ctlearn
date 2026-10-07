@@ -28,7 +28,7 @@ jobs:
           
       - name: Install ctapipe
         if: steps.cache-ctapipe.outputs.cache-hit != 'true'
-        run: pip install "ctapipe[all]>=0.29"
+        run: pip install "ctapipe>=0.29"
 
       - name: Download test data
         if: steps.cache-ctapipe.outputs.cache-hit != 'true'
