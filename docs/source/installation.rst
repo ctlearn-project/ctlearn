@@ -46,14 +46,15 @@ First, install Anaconda by following the instructions above. Create a new conda 
    pip install -e .
 
 
-Dependencies
-------------
+Core dependencies
+-----------------
 
 * Python>=3.12
 * TensorFlow>=2.16
+* Torch>=2.4.0
 * ctapipe>=0.29.0
 * ctaplot
-* DL1DataHandler>=0.14.8
+* DL1DataHandler>=0.14.10
 * numba
 * NumPy
 * Pandas
@@ -64,6 +65,7 @@ Dependencies
   * Matplotlib
   * Scikit-learn
   * ctaplot
+  * pyirf
 
 Uninstall CTLearn
 -----------------
