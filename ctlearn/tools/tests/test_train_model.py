@@ -3,6 +3,7 @@ import pytest
 import shutil
 
 from ctapipe.core import run_tool
+from ctapipe.core.tool import ToolConfigurationError
 from ctlearn.conftest import TRAINING_TOOLS, MODEL_FILE_FORMATS
 
 @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
@@ -98,3 +99,15 @@ def test_train_ctlearn_model(framework, model, reco_task, dl1_gamma_file, dl1_pr
             f"No TensorBoard event file starting with 'events.out.tfevents.' "
             f"found in {subfolder_path}"
         )
+
+def test_pytorch_workers_configuration_error():
+    """
+    Test that TrainCTLearnPyTorchModel raises a ToolConfigurationError 
+    when persistent_workers=True and num_workers=0.
+    """
+    tool = TRAINING_TOOLS["PyTorch"]()
+    tool.num_workers = 0
+    tool.persistent_workers = True
+    
+    with pytest.raises(ToolConfigurationError, match="Cannot set persistent_workers=True when num_workers=0"):
+        tool.setup_framework()
