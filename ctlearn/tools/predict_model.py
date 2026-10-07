@@ -137,7 +137,8 @@ class PredictCTLearnModel(Tool):
     ``~dl1_data_handler.reader.DLDataReader`` and ``~ctlearn.core.keras.sequence.KerasSequence`` or
     ``~ctlearn.core.pytorch.dataset.PyTorchDataset``.
     The prediction is performed using the CTLearn models. The data is stored in the output file
-    following the ctapipe DL2 data format. The ``start`` method is implemented in the subclasses to
+    following the ctapipe DL2 data format. By default, waveforms and images are not copied to the DL2 output file
+    unless explicitly enabled in the configuration. The ``start`` method is implemented in the subclasses to
     handle the prediction for mono and stereo mode.
 
     Attributes
@@ -422,9 +423,14 @@ class PredictCTLearnModel(Tool):
         validate_trait_dict(
             self.prefixes, ["type", "energy", "cameradirection", "skydirection", "all"]
         )
-        # Set default HDF5Merger options (disable image copying by default for standard DL2 output)
-        self.config.setdefault("HDF5Merger", {}).setdefault("dl1_images", False)
-        self.config.setdefault("HDF5Merger", {}).setdefault("true_images", False)
+        # Set default HDF5Merger options (disable waveform/image copying by default for standard DL2 output)
+        self.log.info(
+            "HDF5Merger: waveforms and images will not be copied to the DL2 output by default; "
+            "set 'r0_waveforms', 'r1_waveforms', 'dl1_images' and/or 'true_images' to true in the "
+            "configuration to enable waveform and/or image copying."
+        )
+        for merger_default in ["r0_waveforms", "r1_waveforms", "dl1_images", "true_images"]:
+            self.config.setdefault("HDF5Merger", {}).setdefault(merger_default, False)
         # Copy selected tables from the input file to the output file
         self.log.info("Copying to output destination.")
         with HDF5Merger(
@@ -1428,6 +1434,7 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
     This tool extends the ``PredictCTLearnModel`` to specifically handle monoscopic R1/DL1 data. The prediction
     is performed using the CTLearn models. The data is stored in the output file following the ctapipe DL2 data format.
     It also stores the telescope pointing monitoring and DL1 feature vectors (if selected) in the output file.
+    By default, waveforms and images are not copied to the DL2 output file unless explicitly enabled in the configuration.
 
     Attributes
     ----------
@@ -2085,6 +2092,7 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
     This tool extends the ``PredictCTLearnModel`` to specifically handle stereoscopic R1/DL1 data. The prediction
     is performed using the CTLearn models. The data is stored in the output file following the ctapipe DL2 data format.
     It also stores the telescope/subarray pointing monitoring and DL1 feature vectors (if selected) in the output file.
+    By default, waveforms and images are not copied to the DL2 output file unless explicitly enabled in the configuration.
 
     Attributes
     ----------
