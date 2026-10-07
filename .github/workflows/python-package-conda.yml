@@ -28,7 +28,7 @@ jobs:
           
       - name: Install ctapipe
         if: steps.cache-ctapipe.outputs.cache-hit != 'true'
-        run: pip install "ctapipe>=0.29"
+        run: pip install ctapipe
 
       - name: Download test data
         if: steps.cache-ctapipe.outputs.cache-hit != 'true'
@@ -63,6 +63,9 @@ jobs:
     env:
       PIP_NO_CACHE_DIR: "1"
       PIP_EXTRA_INDEX_URL: "https://download.pytorch.org/whl/cpu"
+    defaults:
+      run:
+        shell: bash -el {0}
     steps:
       - uses: actions/checkout@v4
 
@@ -72,27 +75,29 @@ jobs:
           path: ~/.cache/ctapipe
           key: ctapipe-data-${{ runner.os }}-v1
 
-      - name: Set up Miniconda
-        run: |
-          wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
-          bash miniconda.sh -b -p $HOME/miniconda
-          echo "$HOME/miniconda/bin" >> $GITHUB_PATH
-          source $HOME/miniconda/etc/profile.d/conda.sh
-          conda config --add channels conda-forge
-          conda install -y mamba
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ matrix.tensorflow-version }}-${{ matrix.torch-version }}
+          restore-keys: |
+            ${{ runner.os }}-pip-${{ matrix.python-version }}-
 
-      - name: Create Python environment
-        run: |
-          source $HOME/miniconda/etc/profile.d/conda.sh
-          mamba create -y -n ctlearn python==${{ matrix.python-version }} -c conda-forge llvmlite triton
-          conda activate ctlearn
+      - name: Set up Miniconda and Python environment
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniforge-version: "latest"
+          use-mamba: true
+          activate-environment: ctlearn
+          python-version: ${{ matrix.python-version }}
+          channels: conda-forge,defaults
+          channel-priority: strict
 
-      - name: Install dependencies
+      - name: Install Conda dependencies
+        run: mamba install -y llvmlite triton
+
+      - name: Install pip dependencies
         run: |
-          source $HOME/miniconda/etc/profile.d/conda.sh
-          conda activate ctlearn
-          sudo apt-get update
-          sudo apt-get install -y git
           pip install --upgrade pip
           pip install pylint pylint-exit anybadge eventio pytest flake8
           if [ "${{ matrix.dl1dh-version }}" = "nightly" ]; then
@@ -116,19 +121,11 @@ jobs:
 
       - name: Lint with flake8
         run: |
-          source $HOME/miniconda/etc/profile.d/conda.sh
-          conda activate ctlearn
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
       - name: Install package with pip
-        run: |
-          source $HOME/miniconda/etc/profile.d/conda.sh
-          conda activate ctlearn
-          pip install -e .[tests]
+        run: pip install -e .[tests]
           
       - name: Run pytest
-        run: |
-          source $HOME/miniconda/etc/profile.d/conda.sh
-          conda activate ctlearn
-          pytest
+        run: pytest
