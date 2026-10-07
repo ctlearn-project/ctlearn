@@ -49,16 +49,17 @@ First, install Anaconda by following the instructions above. Create a new conda 
 Core dependencies
 -----------------
 
-* Python>=3.12
-* TensorFlow>=2.16
-* Torch>=2.4.0
+* python>=3.12
+* torch>=2.4.0
+* tensorflow>=2.16
+* keras>=3.0
 * ctapipe>=0.29.0
 * ctaplot
-* DL1DataHandler>=0.14.10
+* dl1_data_handler>=0.14.10
 * numba
-* NumPy
-* Pandas
-* PyYAML
+* numpy
+* pandas
+* pyyaml
 
 * Libraries used only in plotting scripts (optional)
 
