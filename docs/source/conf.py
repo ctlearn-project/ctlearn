@@ -14,7 +14,15 @@
 #
 import os
 import sys
+
+# Point Sphinx to the root directory where `ctlearn` lives
+sys.path.insert(0, os.path.abspath('../..'))
+
 import ctlearn
+
+# Import ctapipe.reco before autodoc mocks torch: it walks all scikit-learn
+# submodules, and the scikit-learn torch compatibility layer fails on a mock.
+import ctapipe.reco  # noqa: F401
 
 # -- Project information -----------------------------------------------------
 
@@ -178,3 +186,16 @@ epub_exclude_files = ['search.html']
 
 
 # -- Extension configuration -------------------------------------------------
+
+# The heavy ML frameworks are not installed in the docs build environment
+# (see .readthedocs.yaml), so they are mocked to let autodoc import ctlearn.
+autodoc_mock_imports = [
+    "torch",
+    "torchvision",
+    "torchmetrics",
+    "pytorch_lightning",
+    "tensorflow",
+    "tensorboard",
+    "keras",
+    "keras_hexagdly",
+]

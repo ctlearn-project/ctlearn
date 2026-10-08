@@ -1,12 +1,14 @@
+""" Keras sequence for data loading."""
+
+__all__ = ["KerasSequence"]
+
 import numpy as np
-import astropy.units as u
-import keras
 from keras.utils import Sequence, to_categorical
 
 from dl1_data_handler.reader import ProcessType
 
 
-class DLDataLoader(Sequence):
+class KerasSequence(Sequence):
     """
     Generates batches for Keras application.
 

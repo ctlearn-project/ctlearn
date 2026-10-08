@@ -11,6 +11,10 @@ The following command will set up a conda virtual environment, add the
 necessary package channels, and install CTLearn specified version and its dependencies:
 
 .. code-block:: bash
+
+   # Linux:
+   mamba create -n ctlearn -c conda-forge python==3.12 llvmlite triton
+   # macOS/Windows:
    mamba create -n ctlearn -c conda-forge python==3.12 llvmlite
    conda activate ctlearn
    pip install ctlearn
@@ -18,6 +22,7 @@ necessary package channels, and install CTLearn specified version and its depend
 For working on the IT-cluster:
 
 .. code-block:: bash
+
    mamba create -n ctlearn-it-cluster -c conda-forge python==3.12 h5py scipy llvmlite gcc_linux-64 gxx_linux-64 openblas gfortran_linux-64
    conda activate ctlearn-it-cluster
    export CC=$(which x86_64-conda-linux-gnu-gcc)
@@ -44,24 +49,20 @@ First, install Anaconda by following the instructions above. Create a new conda 
    pip install -e .
 
 
-Dependencies
-------------
+Core dependencies
+-----------------
 
-* Python>=3.12
-* TensorFlow>=2.16
+* python>=3.12
+* torch>=2.4.0
+* tensorflow>=2.16
+* keras>=3.0
+* astropy
 * ctapipe>=0.29.0
-* ctaplot
-* DL1DataHandler>=0.14.8
+* dl1_data_handler>=0.14.10
 * numba
-* NumPy
-* Pandas
-* PyYAML
-
-* Libraries used only in plotting scripts (optional)
-
-  * Matplotlib
-  * Scikit-learn
-  * ctaplot
+* numpy
+* pandas
+* pyyaml
 
 Uninstall CTLearn
 -----------------

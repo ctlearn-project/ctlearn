@@ -2,53 +2,102 @@ name: CI
 
 on:
   push:
-    branches:
-      - "**"
-    tags:
-      - "**"
+    branches: ["**"]
+    tags: ["**"]
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * *"  # Daily at 02:00 UTC
 
 jobs:
+  cache-test-data:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Cache ctapipe data
+        id: cache-ctapipe
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ctapipe
+          key: ctapipe-data-${{ runner.os }}-v1
+          
+      - name: Set up Python
+        if: steps.cache-ctapipe.outputs.cache-hit != 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          
+      - name: Install ctapipe
+        if: steps.cache-ctapipe.outputs.cache-hit != 'true'
+        run: pip install ctapipe
+
+      - name: Download test data
+        if: steps.cache-ctapipe.outputs.cache-hit != 'true'
+        run: |
+          python -c "from ctapipe.utils import get_dataset_path; get_dataset_path('gamma_test_large.simtel.gz'); get_dataset_path('proton_20deg_0deg_run4___cta-prod5-paranal_desert-2147m-Paranal-dark-100evts.simtel.zst')"
+
   build:
+    needs: cache-test-data
     strategy:
       matrix:
-        os: [ubuntu-22.04]
+        os: [ubuntu-24.04]
         python-version: ['3.12', '3.13', '3.14']
         dl1dh-version: ['latest', 'nightly']
         tensorflow-version: ['latest', '2.16.*']
+        torch-version: ['latest', '2.4.*']
         exclude:
           - python-version: '3.13'
             tensorflow-version: '2.16.*'
           - python-version: '3.14'
             tensorflow-version: '2.16.*'
+          - python-version: '3.13'
+            torch-version: '2.4.*'
+          - python-version: '3.14'
+            torch-version: '2.4.*'
+          - dl1dh-version: 'nightly'
+            tensorflow-version: '2.16.*'
+          - dl1dh-version: 'nightly'
+            torch-version: '2.4.*'
       max-parallel: 6
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.dl1dh-version == 'nightly' || matrix.python-version == '3.14' }}
+    continue-on-error: ${{ matrix.dl1dh-version == 'nightly' }}
+    env:
+      PIP_NO_CACHE_DIR: "1"
+      PIP_EXTRA_INDEX_URL: "https://download.pytorch.org/whl/cpu"
+    defaults:
+      run:
+        shell: bash -el {0}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Miniconda
-        run: |
-          wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
-          bash miniconda.sh -b -p $HOME/miniconda
-          echo "$HOME/miniconda/bin" >> $GITHUB_PATH
-          source $HOME/miniconda/etc/profile.d/conda.sh
-          conda config --add channels conda-forge
-          conda install -y mamba
+      - name: Restore ctapipe data cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ctapipe
+          key: ctapipe-data-${{ runner.os }}-v1
 
-      - name: Create Python environment
-        run: |
-          source $HOME/miniconda/etc/profile.d/conda.sh
-          mamba create -y -n ctlearn python==${{ matrix.python-version }} -c conda-forge
-          conda activate ctlearn
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ matrix.tensorflow-version }}-${{ matrix.torch-version }}
+          restore-keys: |
+            ${{ runner.os }}-pip-${{ matrix.python-version }}-
 
-      - name: Install dependencies
+      - name: Set up Miniconda and Python environment
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniforge-version: "latest"
+          use-mamba: true
+          activate-environment: ctlearn
+          python-version: ${{ matrix.python-version }}
+          channels: conda-forge,defaults
+          channel-priority: strict
+
+      - name: Install Conda dependencies
+        run: mamba install -y llvmlite triton
+
+      - name: Install pip dependencies
         run: |
-          source $HOME/miniconda/etc/profile.d/conda.sh
-          conda activate ctlearn
-          sudo apt-get update
-          sudo apt-get install -y git
           pip install --upgrade pip
           pip install pylint pylint-exit anybadge eventio pytest flake8
           if [ "${{ matrix.dl1dh-version }}" = "nightly" ]; then
@@ -61,25 +110,22 @@ jobs:
           else
             pip install "tensorflow==${{ matrix.tensorflow-version }}"
           fi
+          if [ "${{ matrix.torch-version }}" = "latest" ]; then
+            pip install --upgrade torch torchvision
+          else
+            pip install "torch==${{ matrix.torch-version }}" torchvision
+          fi
 
       - name: Add MKL_THREADING_LAYER variable
         run: echo "MKL_THREADING_LAYER=GNU" >> $GITHUB_ENV
 
       - name: Lint with flake8
         run: |
-          source $HOME/miniconda/etc/profile.d/conda.sh
-          conda activate ctlearn
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
       - name: Install package with pip
-        run: |
-          source $HOME/miniconda/etc/profile.d/conda.sh
-          conda activate ctlearn
-          pip install -e .
-
+        run: pip install -e .[tests]
+          
       - name: Run pytest
-        run: |
-          source $HOME/miniconda/etc/profile.d/conda.sh
-          conda activate ctlearn
-          pytest
+        run: pytest
