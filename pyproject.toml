@@ -58,13 +58,13 @@ packages = ["ctlearn"]
 # all is with all optional *runtime* dependencies
 # use `dev` to get really all dependencies
 all = [
+    "ctlearn",
     "matplotlib ~=3.0",
     "pyirf ~=0.14.0",
 ]
 
 tests = [
-    # at the moment, essentially all tests rely on test data from simtel
-    # it doesn't make sense to skip all of these.
+    "ctlearn",
     "pytest >=9.0",
     "pytest-cov",
     "pytest-xdist",
@@ -73,6 +73,7 @@ tests = [
 ]
 
 docs = [
+  "ctlearn[all]",
   "sphinx",
   "sphinx-rtd-theme",
 ]
