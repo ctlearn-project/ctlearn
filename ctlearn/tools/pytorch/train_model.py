@@ -38,41 +38,41 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
 
     examples = """
     To train a PyTorch-based CTLearn model for the classification of the primary particle type:
-    > ctlearn-train-pytorch-model \\
-        --signal /path/to/your/gammas_dl1_dir/ \\
-        --pattern-signal "gamma_*_run1.dl1.h5" \\
-        --pattern-signal "gamma_*_run10.dl1.h5" \\
-        --background /path/to/your/protons_dl1_dir/ \\
-        --pattern-background "proton_*_run1.dl1.h5" \\
-        --pattern-background "proton_*_run10.dl1.h5" \\
-        --output /path/to/your/type/ \\
-        --reco type \\
+    > ctlearn-train-pytorch-model \
+        --signal /path/to/your/gammas_dl1_dir/ \
+        --pattern-signal "gamma_*_run1.dl1.h5" \
+        --pattern-signal "gamma_*_run10.dl1.h5" \
+        --background /path/to/your/protons_dl1_dir/ \
+        --pattern-background "proton_*_run1.dl1.h5" \
+        --pattern-background "proton_*_run10.dl1.h5" \
+        --output /path/to/your/type/ \
+        --reco type \
 
     To train a PyTorch-based CTLearn model for the regression of the primary particle energy:
-    > ctlearn-train-pytorch-model \\
-        --signal /path/to/your/gammas_dl1_dir/ \\
-        --pattern-signal "gamma_*_run1.dl1.h5" \\
-        --pattern-signal "gamma_*_run10.dl1.h5" \\
-        --output /path/to/your/energy/ \\
-        --reco energy \\
+    > ctlearn-train-pytorch-model \
+        --signal /path/to/your/gammas_dl1_dir/ \
+        --pattern-signal "gamma_*_run1.dl1.h5" \
+        --pattern-signal "gamma_*_run10.dl1.h5" \
+        --output /path/to/your/energy/ \
+        --reco energy \
     
     To train a PyTorch-based CTLearn model for the regression of the primary particle
     arrival direction based on the offsets in camera coordinates:
-    > ctlearn-train-pytorch-model \\
-        --signal /path/to/your/gammas_dl1_dir/ \\
-        --pattern-signal "gamma_*_run1.dl1.h5" \\
-        --pattern-signal "gamma_*_run10.dl1.h5" \\
-        --output /path/to/your/direction/ \\
-        --reco cameradirection \\
+    > ctlearn-train-pytorch-model \
+        --signal /path/to/your/gammas_dl1_dir/ \
+        --pattern-signal "gamma_*_run1.dl1.h5" \
+        --pattern-signal "gamma_*_run10.dl1.h5" \
+        --output /path/to/your/direction/ \
+        --reco cameradirection \
 
     To train a PyTorch-based CTLearn model for the regression of the primary particle
     arrival direction based on the offsets in sky coordinates:
-    > ctlearn-train-pytorch-model \\
-        --signal /path/to/your/gammas_dl1_dir/ \\
-        --pattern-signal "gamma_*_run1.dl1.h5" \\
-        --pattern-signal "gamma_*_run10.dl1.h5" \\
-        --output /path/to/your/direction/ \\
-        --reco skydirection \\
+    > ctlearn-train-pytorch-model \
+        --signal /path/to/your/gammas_dl1_dir/ \
+        --pattern-signal "gamma_*_run1.dl1.h5" \
+        --pattern-signal "gamma_*_run10.dl1.h5" \
+        --output /path/to/your/direction/ \
+        --reco skydirection \
     """
 
     num_workers = Int(
