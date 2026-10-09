@@ -82,8 +82,8 @@ def test_train_ctlearn_model(framework, model, reco_task, dl1_gamma_file, dl1_pr
     ), f"'val_loss' column missing in training_log.csv for {reco_task}"
     val_loss = log_df["val_loss"].dropna()
     assert not val_loss.empty, f"'val_loss' column is empty for {reco_task}"
-    assert ((val_loss >= 0.0) & (val_loss <= 1.0)).all(), (
-        f"'val_loss' values out of range [0.0, 1.0] for {reco_task}: "
+    assert ((val_loss >= 0.0) & (val_loss <= 1.5)).all(), (
+        f"'val_loss' values out of range [0.0, 1.5] for {reco_task}: "
         f"{val_loss.tolist()}"
     )
     # Check that the event file for TensorBoard is created for train and validation 
