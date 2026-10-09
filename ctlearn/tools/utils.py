@@ -26,6 +26,20 @@ __all__ = [
 ]
 
 def monitor_progress(src_path, dst_path, stop_event, logger):
+    """
+    Monitor and log the progress of a file copy process.
+
+    Parameters
+    ----------
+    src_path : str or pathlib.Path
+        Path to the source file being copied.
+    dst_path : str or pathlib.Path
+        Path to the destination file being written.
+    stop_event : threading.Event
+        Event flag used to signal when copying is finished and monitoring should stop.
+    logger : logging.Logger
+        Logger instance used to output copy progress notifications.
+    """
     try:
         total_size = os.path.getsize(src_path)
     except OSError:
@@ -299,6 +313,9 @@ def model_conv_backend(model):
         sub-models) is a ``keras_hexagdly`` layer, otherwise ``"square"``.
     """
     def _uses_hexagdly(layer):
+        """
+    Determine if Hexagdly is used within the neural network model architecture.
+    """
         if isinstance(layer, (hgly.Conv2d, hgly.MaxPool2d)):
             return True
         sublayers = getattr(layer, "layers", None)

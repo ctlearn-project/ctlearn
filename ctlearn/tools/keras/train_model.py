@@ -71,6 +71,12 @@ class TrainCTLearnKerasModel(TrainCTLearnModel):
     """
 
     def setup_framework(self):
+        """
+        Initialize the backend-specific parameters (e.g., PyTorch or Keras devices and distributed strategies).
+
+        This method ensures that the hardware accelerators (like GPUs) are properly allocated 
+        and configures things like precision mixed-training and multi-processing workers.
+        """
         # Create a MirroredStrategy.
         self.strategy = tf.distribute.MirroredStrategy()
         atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore
@@ -146,6 +152,13 @@ class TrainCTLearnKerasModel(TrainCTLearnModel):
             self.callbacks.append(lr_reducing_callback)
 
     def start(self):
+        """
+        Execute the core logic of the tool.
+
+        Depending on the tool, this method either orchestrates the training and validation 
+        loops across epochs, or it iterates through the input dataset to generate 
+        and save model predictions to the output file.
+        """
 
         # Open a strategy scope.
         with self.strategy.scope():
@@ -255,6 +268,12 @@ class TrainCTLearnKerasModel(TrainCTLearnModel):
 
 
 def main():
+    """
+    Main entry point for the command-line tool.
+
+    This function instantiates the Tool class and invokes its `run()` method, 
+    which sequentially executes the `setup()`, `start()`, and `finish()` methods.
+    """
     # Run the tool
     tool = TrainCTLearnKerasModel()
     tool.run()

@@ -284,6 +284,13 @@ class LST1PredictionTool(Tool):
     classes = classes_with_traits(ImageMapper)
 
     def setup(self):
+        """
+        Initialize the tool configuration, validate parameters, and setup data handlers.
+
+        This method is the first part of the tool execution lifecycle. It validates input arguments, 
+        sets up the configuration dictionary, configures the output file, and prepares the DataReader 
+        to ensure everything is ready before the core processing begins.
+        """
         self.log.info("ctlearn version %s", ctlearn_version)
         # Validate the prefixes trait dictionary
         validate_trait_dict(
@@ -388,6 +395,13 @@ class LST1PredictionTool(Tool):
             ]
 
     def start(self):
+        """
+        Execute the core logic of the tool.
+
+        Depending on the tool, this method either orchestrates the training and validation 
+        loops across epochs, or it iterates through the input dataset to generate 
+        and save model predictions to the output file.
+        """
         all_identifiers = read_table(self.input_url, self.parameter_table_name)
         all_identifiers.meta = {}
         if self.override_obs_id is not None:
@@ -904,6 +918,12 @@ class LST1PredictionTool(Tool):
             )
 
     def finish(self):
+        """
+        Perform final cleanup and save metadata after the core logic completes.
+
+        This method writes provenance data (such as configuration and execution context) 
+        to the output file, finalizes tables, and ensures all file handlers are safely closed.
+        """
         self.log.info("Tool is shutting down")
 
     def _predict_batch(self, backbone, head, input_data):
@@ -946,6 +966,9 @@ class LST1PredictionTool(Tool):
             tensor_data = tensor_data.to(self.device)
 
             def _to_numpy(val):
+                """
+                Convert Astropy columns or arrays to native NumPy format for prediction.
+                """
                 if isinstance(val, dict):
                     # Extract the tensor value from the dictionary (e.g., {'energy': tensor(...)})
                     val = next(iter(val.values()))
@@ -1076,6 +1099,12 @@ class LST1PredictionTool(Tool):
 
 
 def main():
+    """
+    Main entry point for the command-line tool.
+
+    This function instantiates the Tool class and invokes its `run()` method, 
+    which sequentially executes the `setup()`, `start()`, and `finish()` methods.
+    """
     # Run the tool
     tool = LST1PredictionTool()
     tool.run()

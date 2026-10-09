@@ -394,6 +394,13 @@ class PredictCTLearnModel(Tool):
     classes = classes_with_traits(DLDataReader)
 
     def setup(self):
+        """
+        Initialize the tool configuration, validate parameters, and setup data handlers.
+
+        This method is the first part of the tool execution lifecycle. It validates input arguments, 
+        sets up the configuration dictionary, configures the output file, and prepares the DataReader 
+        to ensure everything is ready before the core processing begins.
+        """
         self.activity_start_time = Time.now()
         self.log.info("ctlearn version %s", ctlearn_version)
         # Validate the prefixes trait dictionary
@@ -457,6 +464,12 @@ class PredictCTLearnModel(Tool):
         self._ensure_subarray_consistency()
 
     def finish(self):
+        """
+        Perform final cleanup and save metadata after the core logic completes.
+
+        This method writes provenance data (such as configuration and execution context) 
+        to the output file, finalizes tables, and ensures all file handlers are safely closed.
+        """
         # Overwrite CTAO reference metadata to the output file
         self._overwrite_meta()
         self.log.info("Tool is shutting down")
@@ -601,6 +614,9 @@ class PredictCTLearnModel(Tool):
         with tables.open_file(self.output_path, mode="r+") as h5_file:
 
             def prune_group(group, valid_ids):
+                """
+        Prune unnecessary tables from the HDF5 group to save space and clean up predictions.
+        """
                 for table in group._f_iter_nodes("Table"):
                     idx = int(table._v_name.split("_")[-1])
                     if idx not in valid_ids:
@@ -663,6 +679,20 @@ class PredictCTLearnModel(Tool):
 
         For each group defined by `keys`, keep the first row where
         `valid_col` is True. If none are valid, keep the first row.
+
+        Parameters
+        ----------
+        table : astropy.table.Table
+            The table to deduplicate.
+        keys : tuple or list of str, optional
+            Column names defining groups for deduplication. Default is ("obs_id", "event_id").
+        valid_col : str, optional
+            Column name indicating row validity. Default is "CTLearn_is_valid".
+
+        Returns
+        -------
+        deduplicated_table : astropy.table.Table
+            Deduplicated table containing first valid entry per group.
         """
 
         t = table.copy()

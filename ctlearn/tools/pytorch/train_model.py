@@ -88,6 +88,12 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
     ).tag(config=True)
 
     def setup_framework(self):
+        """
+        Initialize the backend-specific parameters (e.g., PyTorch or Keras devices and distributed strategies).
+
+        This method ensures that the hardware accelerators (like GPUs) are properly allocated 
+        and configures things like precision mixed-training and multi-processing workers.
+        """
         if self.persistent_workers and self.num_workers == 0:
             raise ToolConfigurationError(
                 "Cannot set persistent_workers=True when num_workers=0. "
@@ -186,6 +192,13 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
                 f.write(",".join(self.csv_headers) + "\n")
 
     def start(self):
+        """
+        Execute the core logic of the tool.
+
+        Depending on the tool, this method either orchestrates the training and validation 
+        loops across epochs, or it iterates through the input dataset to generate 
+        and save model predictions to the output file.
+        """
         self.log.info("Setting up the PyTorch model.")
         base_model = CTLearnModel.from_name(
             f"PyTorch{self.model_type}",
@@ -326,6 +339,17 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
         self.log.info("Training and evaluating finished successfully!")
 
     def _train_epoch(self):
+        """
+        Execute a single training epoch.
+
+        This method iterates over the training data loader, performs the forward pass, calculates the loss, 
+        and updates the model weights using backpropagation.
+
+        Returns
+        -------
+        tuple
+            The average training loss and a dictionary of computed training metrics for the epoch.
+        """
         self.model.train()
         for m in self.train_metrics.values():
             m.reset()
@@ -355,6 +379,17 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
         return avg_loss, metric_results
 
     def _validate_epoch(self):
+        """
+        Execute a single validation epoch.
+
+        This method iterates over the validation data loader in evaluation mode (no gradients), 
+        computes the validation loss, and calculates the validation metrics.
+
+        Returns
+        -------
+        tuple
+            The average validation loss and a dictionary of computed validation metrics for the epoch.
+        """
         self.model.eval()
         self._reset_metrics(self.val_metrics)
 
@@ -388,6 +423,14 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
 
     # Helper methods to safely handle flat or task-nested metric dictionaries
     def _reset_metrics(self, metrics):
+        """
+        Reset all tracking metrics at the start of an epoch.
+
+        Parameters
+        ----------
+        metrics : dict
+            A dictionary containing the TorchMetrics objects to reset.
+        """
         for m in metrics.values():
             if isinstance(m, dict):
                 for sub_m in m.values():
@@ -396,6 +439,19 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
                 m.reset()
 
     def _compute_metrics(self, metrics):
+        """
+        Compute the final values for all tracked metrics at the end of an epoch.
+
+        Parameters
+        ----------
+        metrics : dict
+            A dictionary containing the tracked TorchMetrics objects.
+
+        Returns
+        -------
+        dict
+            A dictionary with the computed scalar values for each metric.
+        """
         results = {}
         for k, v in metrics.items():
             if isinstance(v, dict):
@@ -427,6 +483,18 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
         return metrics
     
     def _update_metrics(self, metrics, outputs, targets):
+        """
+        Update the running metrics with the predictions and targets from the current batch.
+
+        Parameters
+        ----------
+        metrics : dict
+            A dictionary of TorchMetrics objects.
+        outputs : dict or torch.Tensor
+            The predictions output by the model.
+        targets : dict or torch.Tensor
+            The ground truth targets.
+        """
         for task in self.reco_tasks:
             out = outputs[task] if isinstance(outputs, dict) else outputs
             tgt = targets[task] if isinstance(targets, dict) else targets
@@ -461,6 +529,24 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
                 task_metrics.update(out, tgt)
 
     def _compute_combined_loss(self, outputs, targets):
+        """
+        Compute the total combined loss for all reconstruction tasks.
+
+        If the model is multi-task, this calculates the loss for each individual task (e.g., type, energy) 
+        using their respective loss functions and sums them up.
+
+        Parameters
+        ----------
+        outputs : dict or torch.Tensor
+            The predictions output by the model.
+        targets : dict or torch.Tensor
+            The ground truth targets.
+
+        Returns
+        -------
+        torch.Tensor
+            The scalar tensor representing the total combined loss.
+        """
         total_loss = 0.0
 
         for task in self.reco_tasks:
@@ -483,6 +569,14 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
         return total_loss
 
     def _get_loss_functions(self):
+        """
+        Instantiate and retrieve the appropriate PyTorch loss functions for each active reconstruction task.
+
+        Returns
+        -------
+        dict
+            A dictionary mapping task names to their corresponding nn.Module loss functions.
+        """
         loss_fns = {}
         if "type" in self.reco_tasks:
             weight = None
@@ -509,6 +603,19 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
         return loss_fns
 
     def _to_device(self, data):
+        """
+        Recursively move tensors or collections of tensors to the target hardware device (CPU/GPU).
+
+        Parameters
+        ----------
+        data : torch.Tensor or dict or list
+            The data structure containing tensors to be moved.
+
+        Returns
+        -------
+        torch.Tensor or dict or list
+            The data structure with all tensors located on the target device.
+        """
         if isinstance(data, torch.Tensor):
             return data.to(self.device)
         elif isinstance(data, dict):
@@ -519,6 +626,12 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
 
 
 def main():
+    """
+    Main entry point for the command-line tool.
+
+    This function instantiates the Tool class and invokes its `run()` method, 
+    which sequentially executes the `setup()`, `start()`, and `finish()` methods.
+    """
     tool = TrainCTLearnPyTorchModel()
     tool.run()
 
