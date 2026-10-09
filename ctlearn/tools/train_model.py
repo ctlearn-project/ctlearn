@@ -208,12 +208,20 @@ class TrainCTLearnModel(Tool):
         self.input_url_signal = []
         for signal_pattern in self.file_pattern_signal:
             self.input_url_signal.extend(self.input_dir_signal.glob(signal_pattern))
+        if not self.input_url_signal:
+            raise ToolConfigurationError(
+                f"No signal files found in {self.input_dir_signal} matching pattern(s) {self.file_pattern_signal}."
+            )
         # Get bkg input files
         self.input_url_background = []
         if self.input_dir_background is not None:
             for background_pattern in self.file_pattern_background:
                 self.input_url_background.extend(
                     self.input_dir_background.glob(background_pattern)
+                )
+            if not self.input_url_background:
+                raise ToolConfigurationError(
+                    f"No background files found in {self.input_dir_background} matching pattern(s) {self.file_pattern_background}."
                 )
 
         # Set up the data reader
