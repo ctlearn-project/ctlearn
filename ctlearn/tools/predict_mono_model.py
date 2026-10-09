@@ -76,35 +76,35 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
 
     examples = """
     To predict from pixel-wise image data in mono mode using trained CTLearn models:
-    > ctlearn-predict-mono-model \\
-        --input_url input.dl1.h5 \\
-        --PredictCTLearnModel.batch_size=64 \\
-        --PredictCTLearnModel.dl1dh_reader_type=DLImageReader \\
-        --DLImageReader.channels=cleaned_image \\
-        --DLImageReader.channels=cleaned_relative_peak_time \\
-        --DLImageReader.image_mapper_type=BilinearMapper \\
-        --type_model="/path/to/your/mono/type/ctlearn_model(.keras/.pth)" \\
-        --energy_model="/path/to/your/mono/energy/ctlearn_model(.keras/.pth)" \\
-        --cameradirection_model="/path/to/your/mono/cameradirection/ctlearn_model(.keras/.pth)" \\
-        --dl1-features \\
-        --no-dl1-images \\
-        --no-true-images \\
-        --output output.dl2.h5 \\
+    > ctlearn-predict-mono-model \
+        --input_url input.dl1.h5 \
+        --PredictCTLearnModel.batch_size=64 \
+        --PredictCTLearnModel.dl1dh_reader_type=DLImageReader \
+        --DLImageReader.channels=cleaned_image \
+        --DLImageReader.channels=cleaned_relative_peak_time \
+        --DLImageReader.image_mapper_type=BilinearMapper \
+        --type_model="/path/to/your/mono/type/ctlearn_model(.keras/.pth)" \
+        --energy_model="/path/to/your/mono/energy/ctlearn_model(.keras/.pth)" \
+        --cameradirection_model="/path/to/your/mono/cameradirection/ctlearn_model(.keras/.pth)" \
+        --dl1-features \
+        --no-dl1-images \
+        --no-true-images \
+        --output output.dl2.h5 \
 
     To predict from pixel-wise waveform data in mono mode using trained CTLearn models:
-    > ctlearn-predict-mono-model \\
-        --input_url input.r1.h5 \\
-        --PredictCTLearnModel.dl1dh_reader_type=DLWaveformReader \\
-        --DLWaveformReader.sequnce_length=20 \\
-        --DLWaveformReader.image_mapper_type=BilinearMapper \\
-        --type_model="/path/to/your/mono_waveform/type/ctlearn_model(.keras/.pth)" \\
-        --energy_model="/path/to/your/mono_waveform/energy/ctlearn_model(.keras/.pth)" \\
-        --cameradirection_model="/path/to/your/mono_waveform/cameradirection/ctlearn_model(.keras/.pth)" \\
-        --no-r0-waveforms \\
-        --no-r1-waveforms \\
-        --no-dl1-images \\
-        --no-true-images \\
-        --output output.dl2.h5 \\
+    > ctlearn-predict-mono-model \
+        --input_url input.r1.h5 \
+        --PredictCTLearnModel.dl1dh_reader_type=DLWaveformReader \
+        --DLWaveformReader.sequnce_length=20 \
+        --DLWaveformReader.image_mapper_type=BilinearMapper \
+        --type_model="/path/to/your/mono_waveform/type/ctlearn_model(.keras/.pth)" \
+        --energy_model="/path/to/your/mono_waveform/energy/ctlearn_model(.keras/.pth)" \
+        --cameradirection_model="/path/to/your/mono_waveform/cameradirection/ctlearn_model(.keras/.pth)" \
+        --no-r0-waveforms \
+        --no-r1-waveforms \
+        --no-dl1-images \
+        --no-true-images \
+        --output output.dl2.h5 \
     """
 
     stereo_combiner_cls = ComponentName(

@@ -70,20 +70,20 @@ class StereoPredictCTLearnModel(PredictCTLearnModel):
 
     examples = """
     To predict from pixel-wise image data in stereo mode using trained CTLearn models:
-    > ctlearn-predict-stereo-model \\
-        --input_url input.dl1.h5 \\
-        --PredictCTLearnModel.batch_size=16 \\
-        --PredictCTLearnModel.dl1dh_reader_type=DLImageReader \\
-        --DLImageReader.channels=cleaned_image \\
-        --DLImageReader.channels=cleaned_relative_peak_time \\
-        --DLImageReader.image_mapper_type=BilinearMapper \\
-        --DLImageReader.mode=stereo \\
-        --DLImageReader.min_telescopes=2 \\
-        --PredictCTLearnModel.stack_telescope_images=True \\
-        --type_model="/path/to/your/stereo/type/ctlearn_model(.keras/.pth)" \\
-        --energy_model="/path/to/your/stereo/energy/ctlearn_model(.keras/.pth)" \\
-        --skydirection_model="/path/to/your/stereo/skydirection/ctlearn_model(.keras/.pth)" \\
-        --output output.dl2.h5 \\
+    > ctlearn-predict-stereo-model \
+        --input_url input.dl1.h5 \
+        --PredictCTLearnModel.batch_size=16 \
+        --PredictCTLearnModel.dl1dh_reader_type=DLImageReader \
+        --DLImageReader.channels=cleaned_image \
+        --DLImageReader.channels=cleaned_relative_peak_time \
+        --DLImageReader.image_mapper_type=BilinearMapper \
+        --DLImageReader.mode=stereo \
+        --DLImageReader.min_telescopes=2 \
+        --PredictCTLearnModel.stack_telescope_images=True \
+        --type_model="/path/to/your/stereo/type/ctlearn_model(.keras/.pth)" \
+        --energy_model="/path/to/your/stereo/energy/ctlearn_model(.keras/.pth)" \
+        --skydirection_model="/path/to/your/stereo/skydirection/ctlearn_model(.keras/.pth)" \
+        --output output.dl2.h5 \
     """
 
     def start(self):
