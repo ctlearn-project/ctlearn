@@ -111,3 +111,28 @@ def test_pytorch_workers_configuration_error():
     
     with pytest.raises(ToolConfigurationError, match="Cannot set persistent_workers=True when num_workers=0"):
         tool.setup_framework()
+
+@pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
+def test_train_model_empty_patterns(framework, tmp_path):
+    """
+    Test that TrainCTLearnModel raises a ToolConfigurationError 
+    when signal or background file patterns match 0 files.
+    """
+    tool = TRAINING_TOOLS[framework]()
+    
+    tool.input_dir_signal = tmp_path
+    tool.file_pattern_signal = ["nonexistent_*.h5"]
+    tool.output_dir = tmp_path / "output"
+    
+    with pytest.raises(ToolConfigurationError, match="No signal files found in"):
+        tool.setup()
+        
+    # Create a dummy signal file so the first check passes
+    (tmp_path / "signal_1.h5").touch()
+    tool.file_pattern_signal = ["signal_*.h5"]
+    
+    tool.input_dir_background = tmp_path
+    tool.file_pattern_background = ["nonexistent_background_*.h5"]
+    
+    with pytest.raises(ToolConfigurationError, match="No background files found in"):
+        tool.setup()
