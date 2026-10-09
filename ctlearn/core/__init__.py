@@ -29,6 +29,9 @@ __all__ = [
 ]
 
 def __getattr__(name):
+    """
+    Dynamically retrieve and return the requested attribute from the module.
+    """
     if name in ("CTLearnModel", "SingleCNN", "ResNet", "LoadedModel"):
         from .model import CTLearnModel, SingleCNN, ResNet, LoadedModel
         return locals()[name]

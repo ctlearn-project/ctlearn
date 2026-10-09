@@ -11,6 +11,9 @@ __all__ = [
 ]
 
 def __getattr__(name):
+    """
+    Dynamically retrieve and return the requested attribute from the module.
+    """
     if name == "TrainCTLearnModel":
         from .train_model import TrainCTLearnModel
         return TrainCTLearnModel

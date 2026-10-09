@@ -25,10 +25,6 @@ CTLearn is a package under active development to run deep learning models to ana
 * Documentation: https://ctlearn.readthedocs.io
 * License: BSD-3
 
-Installation for users
-----------------------
-
-
 Installation
 ------------
 
@@ -42,8 +38,8 @@ First, create and activate a fresh conda environment:
    mamba create -n ctlearn -c conda-forge python==3.12 llvmlite
    conda activate ctlearn
 
-Note for macOS and Windows, please remove triton
-The lastest version fo this package can be installed as a pip package:
+Note: For macOS and Windows, the `triton` package is not available and should be omitted from the installation.
+The latest version of this package can be installed via pip:
 
 .. code-block:: bash
 

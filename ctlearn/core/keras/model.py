@@ -82,6 +82,22 @@ class KerasSingleCNN(SingleCNN):
         parent=None,
         **kwargs,
     ):
+        """
+        Initialize the KerasSingleCNN model component.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Input image tensor dimensions (height, width, channels).
+        tasks : list of str
+            List of target prediction tasks.
+        config : traitlets.config.Config, optional
+            Configuration specified by config file or cmdline arguments.
+        parent : ctapipe.core.Component or ctapipe.core.Tool, optional
+            Parent component in hierarchy.
+        **kwargs : dict, optional
+            Additional keyword arguments.
+        """
         super().__init__(
             tasks=tasks,
             config=config,
@@ -234,6 +250,22 @@ class KerasResNet(ResNet):
         parent=None,
         **kwargs,
     ):
+        """
+        Initialize the KerasResNet model component.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Input image tensor dimensions (height, width, channels).
+        tasks : list of str
+            List of target prediction tasks.
+        config : traitlets.config.Config, optional
+            Configuration specified by config file or cmdline arguments.
+        parent : ctapipe.core.Component or ctapipe.core.Tool, optional
+            Parent component in hierarchy.
+        **kwargs : dict, optional
+            Additional keyword arguments.
+        """
         super().__init__(
             tasks=tasks,
             config=config,
@@ -635,6 +667,22 @@ class KerasLoadedModel(LoadedModel):
         parent=None,
         **kwargs,
     ):
+        """
+        Initialize the KerasLoadedModel component.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Input image tensor dimensions (height, width, channels).
+        tasks : list of str
+            List of target prediction tasks.
+        config : traitlets.config.Config, optional
+            Configuration specified by config file or cmdline arguments.
+        parent : ctapipe.core.Component or ctapipe.core.Tool, optional
+            Parent component in hierarchy.
+        **kwargs : dict, optional
+            Additional keyword arguments.
+        """
         super().__init__(
             tasks=tasks,
             config=config,

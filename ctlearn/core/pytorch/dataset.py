@@ -24,6 +24,22 @@ class PyTorchDataset(Dataset):
         sort_by_intensity=False,
         stack_telescope_images=False,
     ):
+        """
+        Initialize the PyTorchDataset.
+
+        Parameters
+        ----------
+        DLDataReader : dl1_data_handler.reader.DLDataReader
+            Data reader instance responsible for reading DL1/R1 data files.
+        indices : list or numpy.ndarray
+            List of event indices in the reader dataset to include in this PyTorch dataset instance.
+        tasks : list of str
+            List of target tasks to prepare labels for (e.g., ['type'], ['energy'], ['skydirection'], ['cameradirection']).
+        sort_by_intensity : bool, optional
+            Whether to sort telescope images by Hillas intensity in descending order (default: False).
+        stack_telescope_images : bool, optional
+            Whether to stack telescope images along the channel dimension in stereo mode (default: False).
+        """
         super().__init__()
         self.DLDataReader = DLDataReader
         self.indices = list(indices)
@@ -49,13 +65,31 @@ class PyTorchDataset(Dataset):
             self.input_shape = (c, h, w)
 
     def __len__(self):
+        """
+        Calculate and return the total number of items in the dataset.
+
+        Returns
+        -------
+        int
+            Number of event indices in the dataset.
+        """
         return len(self.indices)
 
     def __getitem__(self, idx):
         """
-        Retrieves a single data item at the given index.
-        Note: If passed a slice/list of indices via custom batching, 
-        it falls back to loading as a mini-batch.
+        Retrieves a single data item or batch slice at the given index.
+
+        Parameters
+        ----------
+        idx : int or slice or list of int
+            Index or indices of the item(s) to retrieve.
+
+        Returns
+        -------
+        features : torch.Tensor
+            Telescope image tensor(s) formatted in PyTorch channel order (C, H, W).
+        labels : torch.Tensor or dict of torch.Tensor
+            Target label tensor or dictionary of tensors corresponding to configured tasks.
         """
         # Support both single index lookup and batch slice lookup
         if isinstance(idx, (int, np.integer)):
@@ -82,6 +116,21 @@ class PyTorchDataset(Dataset):
         return features, labels
 
     def _get_mono_item(self, batch):
+        """
+        Retrieve a monoscopic data example from the dataset including images and target labels.
+
+        Parameters
+        ----------
+        batch : dict or astropy.table.Table
+            Raw mono batch retrieved from DLDataReader.
+
+        Returns
+        -------
+        features : torch.Tensor
+            Tensor of image features with shape (B, C, H, W).
+        labels : torch.Tensor or dict of torch.Tensor
+            Labels for the requested tasks.
+        """
         labels = {}
         # Transpose raw batch: (B, H, W, C) -> (B, C, H, W)
         raw_features = torch.from_numpy(batch["features"].data).float()
@@ -120,6 +169,21 @@ class PyTorchDataset(Dataset):
         return features, labels
 
     def _get_stereo_item(self, batch):
+        """
+        Retrieve a stereoscopic data example representing array events.
+
+        Parameters
+        ----------
+        batch : astropy.table.Table
+            Raw stereo batch retrieved from DLDataReader.
+
+        Returns
+        -------
+        features : torch.Tensor
+            Tensor of image features or feature vectors.
+        labels : torch.Tensor or dict of torch.Tensor
+            Target labels for the array event.
+        """
         labels = {}
         if self.DLDataReader.process_type == ProcessType.Simulation:
             batch_grouped = batch.group_by(

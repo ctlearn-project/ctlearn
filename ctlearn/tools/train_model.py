@@ -198,6 +198,13 @@ class TrainCTLearnModel(Tool):
     classes = classes_with_traits(CTLearnModel) + classes_with_traits(DLDataReader)
 
     def setup(self):
+        """
+        Initialize the tool configuration, validate parameters, and setup data handlers.
+
+        This method is the first part of the tool execution lifecycle. It validates input arguments, 
+        sets up the configuration dictionary, configures the output file, and prepares the DataReader 
+        to ensure everything is ready before the core processing begins.
+        """
         self.log.info("ctlearn version %s", ctlearn_version)
         # Check if the output directory exists
         if self.output_dir.exists():
@@ -315,4 +322,10 @@ class TrainCTLearnModel(Tool):
         pass
 
     def finish(self):
+        """
+        Perform final cleanup and save metadata after the core logic completes.
+
+        This method writes provenance data (such as configuration and execution context) 
+        to the output file, finalizes tables, and ensures all file handlers are safely closed.
+        """
         self.log.info("Tool is shutting down")
