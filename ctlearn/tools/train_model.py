@@ -5,6 +5,7 @@ Base tool to train a ``CTLearnModel``on R1/DL1a data using the ``DLDataReader`` 
 __all__ = ["TrainCTLearnModel"] 
 
 from abc import abstractmethod
+import shutil
 import numpy as np
 
 
@@ -329,3 +330,23 @@ class TrainCTLearnModel(Tool):
         to the output file, finalizes tables, and ensures all file handlers are safely closed.
         """
         self.log.info("Tool is shutting down")
+
+    def write_provenance(self):
+        """Write the provenance log and copy it to the output directory."""
+        super().write_provenance()
+        # Only copy if the tool was set up successfully, so we never write into
+        # a pre-existing output directory that was rejected during setup.
+        if not self.is_setup or self.output_dir is None:
+            return
+        provenance_log = self.provenance_log.resolve()
+        destination = (self.output_dir / provenance_log.name).resolve()
+        if not provenance_log.exists() or provenance_log == destination:
+            return
+        try:
+            self.output_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(provenance_log, destination)
+            self.log.info("Provenance log copied to %s", destination)
+        except OSError as err:
+            self.log.warning(
+                "Could not copy provenance log to %s: %s", destination, err
+            )
