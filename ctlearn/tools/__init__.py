@@ -4,6 +4,7 @@
 __all__ = [
     "TrainCTLearnModel",
     "TrainCTLearnKerasModel",
+    "LoggingModelCheckpoint",
     "TrainCTLearnPyTorchModel",
     "LST1PredictionTool",
     "MonoPredictCTLearnModel",
@@ -20,6 +21,9 @@ def __getattr__(name):
     if name == "TrainCTLearnKerasModel":
         from .keras.train_model import TrainCTLearnKerasModel
         return TrainCTLearnKerasModel
+    if name == "LoggingModelCheckpoint":
+        from .keras.train_model import LoggingModelCheckpoint
+        return LoggingModelCheckpoint
     if name == "TrainCTLearnPyTorchModel":
         from .pytorch.train_model import TrainCTLearnPyTorchModel
         return TrainCTLearnPyTorchModel

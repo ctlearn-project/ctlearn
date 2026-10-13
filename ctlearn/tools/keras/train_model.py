@@ -2,9 +2,10 @@
 Tool to train a Keras-based ``CTLearnModel``on R1/DL1a data using the ``DLDataReader`` and ``DLDataLoader``.
 """
 
-__all__ = ["TrainCTLearnKerasModel"] 
+__all__ = ["LoggingModelCheckpoint", "TrainCTLearnKerasModel"]
 
 import atexit
+import time
 import tensorflow as tf
 import keras
 
@@ -12,6 +13,65 @@ from ctlearn.core.keras.sequence import KerasSequence
 from ctlearn.core.model import CTLearnModel
 from ctlearn.tools.train_model import TrainCTLearnModel
 from ctlearn.tools.utils import validate_conv_backend, model_conv_backend
+
+
+class LoggingModelCheckpoint(keras.callbacks.ModelCheckpoint):
+    """Log checkpoint updates through the ctapipe tool logger.
+
+    This keeps Keras checkpoint messages within the logging system used by
+    ctapipe tools, while preserving ``ModelCheckpoint``'s save behavior.
+    """
+
+    def __init__(self, logger, *args, **kwargs):
+        """Initialize the checkpoint callback with the owning tool's logger."""
+        self.logger = logger
+        super().__init__(*args, **kwargs)
+
+    def on_epoch_end(self, epoch, logs=None):
+        """Save the checkpoint and log whether the monitored metric improved."""
+        logs = logs or {}
+
+        if not self.save_best_only:
+            self.logger.info(
+                "Epoch %d: saving model to %s", epoch + 1, self.filepath
+            )
+            super().on_epoch_end(epoch, logs)
+            self.logger.info(
+                "Epoch %d: finished saving model to %s", epoch + 1, self.filepath
+            )
+            return
+
+        current = logs.get(self.monitor)
+        if current is None:
+            super().on_epoch_end(epoch, logs)
+            return
+
+        if self.monitor_op is None:
+            self._set_monitor_op()
+
+        if self._is_improvement(current, self.best):
+            previous_best = self.best
+            previous_loss = "None" if previous_best is None else f"{previous_best:.5f}"
+            self.logger.info(
+                "Epoch %d: %s improved from %s to %.5f, saving model to %s",
+                epoch + 1,
+                self.monitor,
+                previous_loss,
+                float(current),
+                self.filepath,
+            )
+            super().on_epoch_end(epoch, logs)
+            self.logger.info(
+                "Epoch %d: finished saving model to %s", epoch + 1, self.filepath
+            )
+        else:
+            self.logger.info(
+                "Epoch %d: %s did not improve from %.5f",
+                epoch + 1,
+                self.monitor,
+                float(self.best),
+            )
+            super().on_epoch_end(epoch, logs)
 
 
 class TrainCTLearnKerasModel(TrainCTLearnModel):
@@ -103,14 +163,19 @@ class TrainCTLearnKerasModel(TrainCTLearnModel):
         )
 
         # Set up the callbacks
+        lamba_callback = keras.callbacks.LambdaCallback(
+            on_epoch_begin=self._on_epoch_begin,
+            on_epoch_end=self._on_epoch_end,
+        )
+        # Model checkpoint callback
         monitor = "val_loss"
         monitor_mode = "min"
-        # Model checkpoint callback
         model_path = f"{self.output_dir}/ctlearn_model.keras"
-        model_checkpoint_callback = keras.callbacks.ModelCheckpoint(
+        model_checkpoint_callback = LoggingModelCheckpoint(
+            logger=self.log,
             filepath=model_path,
             monitor=monitor,
-            verbose=1,
+            verbose=0,
             mode=monitor_mode,
             save_best_only=self.save_best_validation_only,
         )
@@ -123,6 +188,7 @@ class TrainCTLearnKerasModel(TrainCTLearnModel):
             filename=f"{self.output_dir}/training_log.csv", append=True
         )
         self.callbacks = [
+            lamba_callback,
             model_checkpoint_callback,
             tensorboard_callback,
             csv_logger_callback,
@@ -150,6 +216,22 @@ class TrainCTLearnKerasModel(TrainCTLearnModel):
                 min_lr=self.lr_reducing["min_lr"],
             )
             self.callbacks.append(lr_reducing_callback)
+
+    def _on_epoch_begin(self, epoch, logs=None):
+        self._epoch_start_time = time.perf_counter()
+
+    def _on_epoch_end(self, epoch, logs=None):
+        epoch_duration = time.perf_counter() - self._epoch_start_time
+        metrics_summary = " - ".join(
+            f"{name}: {float(value):.4f}" for name, value in (logs or {}).items()
+        )
+        self.log.info(
+            "Epoch %d/%d - %s - time: %.2fs",
+            epoch + 1,
+            self.n_epochs,
+            metrics_summary,
+            epoch_duration,
+        )
 
     def start(self):
         """
@@ -207,7 +289,7 @@ class TrainCTLearnKerasModel(TrainCTLearnModel):
             epochs=self.n_epochs,
             class_weight=self.dl1dh_reader.class_weight,
             callbacks=self.callbacks,
-            verbose=2,
+            verbose=0,
         )
         self.log.info("Training and evaluating finished succesfully!")
 
