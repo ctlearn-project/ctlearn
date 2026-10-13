@@ -257,13 +257,13 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
                 f.write(row_str + "\n")
 
             # TensorBoard metrics training and validation
-            self.train_writer.add_scalar("loss", train_loss, epoch_idx)
+            self.train_writer.add_scalar("epoch_loss", train_loss, epoch_idx)
             for k, v in train_metric_vals.items():
-                self.train_writer.add_scalar(k, v, epoch_idx)
+                self.train_writer.add_scalar(f"epoch_{k}", v, epoch_idx)
             self.train_writer.flush()
-            self.val_writer.add_scalar("loss", val_loss, epoch_idx)
+            self.val_writer.add_scalar("epoch_loss", val_loss, epoch_idx)
             for k, v in val_metric_vals.items():
-                self.val_writer.add_scalar(k, v, epoch_idx)
+                self.val_writer.add_scalar(f"epoch_{k}", v, epoch_idx)
             self.val_writer.flush()
 
             # Unwrap model if wrapped with DataParallel / DistributedDataParallel
