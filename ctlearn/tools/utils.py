@@ -4,6 +4,7 @@ Utility functions for the CTLearn tools.
 
 from enum import Enum
 import pathlib
+import sys
 from importlib.resources import files, as_file
 import os
 import time
@@ -293,24 +294,25 @@ def validate_conv_backend(image_mappers, conv_backend):
 def model_conv_backend(model):
     """
     Determine the convolution backend a (possibly loaded-from-disk) Keras
-    model actually uses, by inspecting its layers directly.
+    or PyTorch model actually uses, by inspecting its layers directly.
 
     Used at prediction time, where models are loaded via
-    ``keras.saving.load_model`` rather than built through
+    ``keras.saving.load_model`` or ``torch.load`` rather than built through
     ``CTLearnModel.from_name``, so no ``conv_backend`` trait is available to
     read -- the loaded layers are the only ground truth for what the model
     was actually built with.
 
     Parameters
     ----------
-    model : keras.Model
-        A (possibly nested) Keras model to inspect.
+    model : keras.Model or torch.nn.Module
+        A (possibly nested) Keras model or PyTorch module to inspect.
 
     Returns
     -------
     str
         ``"hexagdly"`` if any layer in the model (recursing into nested
-        sub-models) is a ``keras_hexagdly`` layer, otherwise ``"square"``.
+        sub-models) is a ``keras_hexagdly`` or ``pytorch_hexagdly`` layer,
+        otherwise ``"square"``.
     """
     def _uses_hexagdly(layer):
         """
@@ -320,5 +322,14 @@ def model_conv_backend(model):
             return True
         sublayers = getattr(layer, "layers", None)
         return sublayers is not None and any(_uses_hexagdly(sub) for sub in sublayers)
+
+    # A PyTorch model can only exist once torch is imported, so this check
+    # never imports torch (or pytorch_hexagdly) for a Keras model.
+    torch = sys.modules.get("torch")
+    if torch is not None and isinstance(model, torch.nn.Module):
+        import pytorch_hexagdly as phgly
+
+        if any(isinstance(m, (phgly.Conv2d, phgly.MaxPool2d)) for m in model.modules()):
+            return "hexagdly"
 
     return "hexagdly" if _uses_hexagdly(model) else "square"

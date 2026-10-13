@@ -89,11 +89,13 @@ class CTLearnModel(Component):
         default_value="square",
         allow_none=False,
         help=(
-            "Convolution backend for the model backbone. 'square' uses plain "
-            "keras.layers.Conv2D/MaxPool2D/AveragePooling2D (default, expects a "
-            "square-mapped input, e.g. from BilinearMapper). 'hexagdly' uses "
-            "keras_hexagdly.Conv2d/MaxPool2d/AvgPool2d for hex-native convolution "
-            "(expects hex-addressed input, e.g. from HexagdlyMapper)."
+            "Convolution backend for the model backbone. 'square' uses the "
+            "framework's own Conv2D/MaxPool2D/AveragePooling2D layers (default, "
+            "expects a square-mapped input, e.g. from BilinearMapper). 'hexagdly' "
+            "uses the Conv2d/MaxPool2d/AvgPool2d layers of keras_hexagdly (Keras) "
+            "or pytorch_hexagdly (PyTorch) for hex-native convolution (expects "
+            "hex-addressed input, e.g. from HexagdlyMapper). With 'hexagdly', "
+            "kernel_size counts hexagonal rings around the centre cell."
         ),
     ).tag(config=True)
 

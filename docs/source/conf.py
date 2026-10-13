@@ -198,4 +198,5 @@ autodoc_mock_imports = [
     "tensorboard",
     "keras",
     "keras_hexagdly",
+    "pytorch_hexagdly",
 ]

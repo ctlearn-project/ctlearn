@@ -46,6 +46,7 @@ dependencies = [
     "torchvision",
     "torchmetrics",
     "keras-hexagdly>=0.5.0",
+    "pytorch-hexagdly>=0.3.0",
 ]
 
 dynamic = ["version"]

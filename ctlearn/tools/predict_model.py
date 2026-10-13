@@ -898,6 +898,10 @@ class PredictCTLearnModel(Tool):
                 f"but got '{type(model).__name__}'. "
                 "Ensure the model was saved via 'torch.save(model, path)' rather than 'torch.save(model.state_dict(), path)'."
             )
+        # Validate that the image mapper(s) and the loaded model's conv backend agree
+        validate_conv_backend(
+            self.dl1dh_reader.image_mappers, model_conv_backend(model)
+        )
         model.eval()
         # PyTorch DataLoaders natively handle drop_last=False,
         # so we don't need a separate generator for incomplete batches.

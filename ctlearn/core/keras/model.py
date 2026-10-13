@@ -196,9 +196,10 @@ class KerasSingleCNN(SingleCNN):
             if self.batchnorm:
                 x = keras.layers.BatchNormalization(momentum=0.99)(x)
 
-        # bottleneck layer -- a 1x1 conv is purely a per-cell channel
-        # projection with no spatial mixing, so a plain square Conv2D is
-        # geometry-agnostic and used for both conv backends.
+        # bottleneck layer -- built with the backend's conv class like every
+        # other conv. With "hexagdly", kernel_size=1 is one hexagonal ring (a
+        # cell and its six neighbours), as for the ResNet's kernel_size=1 convs;
+        # see #302.
         if self.bottleneck_filters is not None:
             x = self._conv_layer(
                 filters=self.bottleneck_filters,
