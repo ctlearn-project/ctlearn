@@ -4,6 +4,7 @@ ctlearn core Keras functionalities
 
 from .model import (
     build_fully_connect_keras_head,
+    KerasConvBackend,
     KerasSingleCNN,
     KerasResNet,
     KerasLoadedModel,
@@ -17,6 +18,7 @@ from .sequence import KerasSequence
 
 __all__ = [
     "build_fully_connect_keras_head",
+    "KerasConvBackend",
     "KerasSingleCNN",
     "KerasResNet",
     "KerasLoadedModel",
