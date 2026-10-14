@@ -351,16 +351,15 @@ class LST1PredictionTool(Tool):
                     f"the image shape of the ImageMapper ('{self.image_mapper.image_shape}'). "
                     f"Use e.g. '--BilinearMapper.interpolation_image_shape={input_shape[0]}' ."
                 )
-        if self.framework_type == FrameworkType.KERAS:
-            # Validate that the ImageMapper and each loaded Keras model's conv backend agree
-            image_mappers = {self.image_mapper_type: self.image_mapper}
-            for loaded_model in (
-                self.backbone_type if self.load_type_model_from is not None else None,
-                self.backbone_energy if self.load_energy_model_from is not None else None,
-                self.backbone_direction if self.load_cameradirection_model_from is not None else None,
-            ):
-                if loaded_model is not None:
-                    validate_conv_backend(image_mappers, model_conv_backend(loaded_model))
+        # Validate that the ImageMapper and each loaded model's conv backend agree
+        image_mappers = {self.image_mapper_type: self.image_mapper}
+        for loaded_model in (
+            self.backbone_type if self.load_type_model_from is not None else None,
+            self.backbone_energy if self.load_energy_model_from is not None else None,
+            self.backbone_direction if self.load_cameradirection_model_from is not None else None,
+        ):
+            if loaded_model is not None:
+                validate_conv_backend(image_mappers, model_conv_backend(loaded_model))
 
         # Get offset and scaling of images
         self.transforms = {}
