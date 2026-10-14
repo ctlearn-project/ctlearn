@@ -3,8 +3,6 @@ name: Changelog
 on:
   pull_request:
     types: [opened, reopened, labeled, unlabeled, synchronize]
-    branches:
-      - 'main'
 
 env:
   FRAGMENT_NAME_PREFIX: "docs/changes/${{ github.event.number }}"
