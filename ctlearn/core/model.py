@@ -10,17 +10,41 @@ from ctapipe.core.traits import Bool, Int, CaselessStrEnum, List, Dict, Unicode,
 from ctlearn.tools.utils import validate_trait_dict
 
 __all__ = [
+    "ConvBackend",
     "CTLearnModel",
     "SingleCNN",
     "ResNet",
     "LoadedModel",
 ]
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
 from ctapipe.core import Component
 from ctapipe.core.traits import Bool, Int, CaselessStrEnum, List, Dict, Unicode, Path
 from ctlearn.tools.utils import validate_trait_dict
+
+
+class ConvBackend(ABC):
+    """Interface for framework-specific convolution and pooling layers.
+
+    Concrete backends provide convolution, max-pooling, and average-pooling
+    layer classes selected by the model's ``conv_backend`` trait.
+    """
+
+    @property
+    @abstractmethod
+    def _conv_layer(self):
+        pass
+
+    @property
+    @abstractmethod
+    def _pool_layer(self):
+        pass
+
+    @property
+    @abstractmethod
+    def _avg_pool_layer(self):
+        pass
 
 
 class CTLearnModel(Component):

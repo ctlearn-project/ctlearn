@@ -7,6 +7,7 @@ __all__ = [
     "BottleneckBlock",
     "MultiFullyConnectedHead",
     "build_fully_connect_pytorch_head",
+    "PyTorchConvBackend",
     "PyTorchSingleCNN",
     "PyTorchResNet",
     "PyTorchLoadedModel",
@@ -19,6 +20,7 @@ import torch.nn.functional as F
 
 # Assuming these custom attention blocks are updated to return torch.nn.Module or used dynamically
 from ctlearn.core.model import (
+    ConvBackend,
     SingleCNN,
     ResNet,
     LoadedModel,
@@ -177,7 +179,35 @@ class FullModelPipeline(nn.Module):
         return self.head(features), features
 
 
-class PyTorchSingleCNN(SingleCNN):
+class PyTorchConvBackend(ConvBackend):
+    """Select PyTorch layers for square or hexagonal model backbones.
+
+    The ``conv_backend`` trait selects native PyTorch layers for square-mapped
+    inputs or ``pytorch_hexagdly`` layers for hex-addressed inputs.
+    """
+
+    @property
+    def _conv_layer(self):
+        """Convolution layer class for ``conv_backend``.
+
+        Both classes are built with the same arguments. With ``"hexagdly"``,
+        ``kernel_size`` counts hexagonal rings (see #302), and the hex grid is
+        always padded so every cell is a window centre, whatever ``padding``
+        says.
+        """
+        return phgly.Conv2d if self.conv_backend == "hexagdly" else nn.Conv2d
+
+    @property
+    def _pool_layer(self):
+        """Max-pooling layer class for ``conv_backend``."""
+        return phgly.MaxPool2d if self.conv_backend == "hexagdly" else nn.MaxPool2d
+
+    @property
+    def _avg_pool_layer(self):
+        """Average-pooling layer class for ``conv_backend``."""
+        return phgly.AvgPool2d if self.conv_backend == "hexagdly" else nn.AvgPool2d
+
+class PyTorchSingleCNN(SingleCNN, PyTorchConvBackend):
     """
     ``SingleCNN`` is a simple convolutional neural network model implemented in PyTorch.
     """
@@ -208,27 +238,6 @@ class PyTorchSingleCNN(SingleCNN):
         )
         # Final native PyTorch module pipeline saved into self.model
         self.model = FullModelPipeline(self.backbone_model, self.logits_head)
-
-    @property
-    def _conv_layer(self):
-        """Convolution layer class for ``conv_backend``.
-
-        Both classes are built with the same arguments. With ``"hexagdly"``,
-        ``kernel_size`` counts hexagonal rings (see #302), and the hex grid is
-        always padded so every cell is a window centre, whatever ``padding``
-        says.
-        """
-        return phgly.Conv2d if self.conv_backend == "hexagdly" else nn.Conv2d
-
-    @property
-    def _pool_layer(self):
-        """Max-pooling layer class for ``conv_backend``."""
-        return phgly.MaxPool2d if self.conv_backend == "hexagdly" else nn.MaxPool2d
-
-    @property
-    def _avg_pool_layer(self):
-        """Average-pooling layer class for ``conv_backend``."""
-        return phgly.AvgPool2d if self.conv_backend == "hexagdly" else nn.AvgPool2d
 
     def _build_backbone(self, input_shape):
         """
@@ -501,7 +510,7 @@ class BottleneckBlock(nn.Module):
         out += identity
         return F.relu(out)
 
-class PyTorchResNet(ResNet):
+class PyTorchResNet(ResNet, PyTorchConvBackend):
     """
     ``PyTorchResNet`` is a residual neural network model implemented in PyTorch.
     """
@@ -533,27 +542,6 @@ class PyTorchResNet(ResNet):
         )
         # Unify into our structural pipeline wrapper module
         self.model = FullModelPipeline(self.backbone_model, self.logits_head)
-
-    @property
-    def _conv_layer(self):
-        """Convolution layer class for ``conv_backend``.
-
-        Both classes are built with the same arguments. With ``"hexagdly"``,
-        ``kernel_size`` counts hexagonal rings (see #302), and the hex grid is
-        always padded so every cell is a window centre, whatever ``padding``
-        says.
-        """
-        return phgly.Conv2d if self.conv_backend == "hexagdly" else nn.Conv2d
-
-    @property
-    def _pool_layer(self):
-        """Max-pooling layer class for ``conv_backend``."""
-        return phgly.MaxPool2d if self.conv_backend == "hexagdly" else nn.MaxPool2d
-
-    @property
-    def _avg_pool_layer(self):
-        """Average-pooling layer class for ``conv_backend``."""
-        return phgly.AvgPool2d if self.conv_backend == "hexagdly" else nn.AvgPool2d
 
     def _build_backbone(self, input_shape):
         """

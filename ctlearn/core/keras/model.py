@@ -4,6 +4,7 @@ This module defines the ``CTLearnModel`` classes, which holds the basic function
 
 __all__ = [
     "build_fully_connect_keras_head",
+    "KerasConvBackend",
     "KerasSingleCNN",
     "KerasResNet",
     "KerasLoadedModel",
@@ -13,6 +14,7 @@ import keras
 import keras_hexagdly as hgly
 
 from ctlearn.core.model import (
+    ConvBackend,
     SingleCNN,
     ResNet,
     LoadedModel,
@@ -65,8 +67,37 @@ def build_fully_connect_keras_head(inputs, layers, activation_function, tasks):
         logits = logits[tasks[0]]
     return logits
 
+class KerasConvBackend(ConvBackend):
+    """Select Keras layers for square or hexagonal model backbones.
 
-class KerasSingleCNN(SingleCNN):
+    The ``conv_backend`` trait selects native Keras layers for square-mapped
+    inputs or ``keras_hexagdly`` layers for hex-addressed inputs.
+    """
+
+    @property
+    def _conv_layer(self):
+        """Convolution layer class for ``conv_backend``.
+
+        Both classes are built with the same keyword arguments. With
+        ``"hexagdly"``, ``kernel_size`` counts hexagonal rings, and the hex
+        grid is always padded (``"same"``), including where the square call
+        leaves Keras' default ``"valid"``.
+        """
+        return hgly.Conv2d if self.conv_backend == "hexagdly" else keras.layers.Conv2D
+
+    @property
+    def _pool_layer(self):
+        """Max-pooling layer class for ``conv_backend``."""
+        return hgly.MaxPool2d if self.conv_backend == "hexagdly" else keras.layers.MaxPool2D
+
+    @property
+    def _avg_pool_layer(self):
+        """Average-pooling layer class for ``conv_backend``."""
+        return (
+            hgly.AvgPool2d if self.conv_backend == "hexagdly" else keras.layers.AveragePooling2D
+        )
+
+class KerasSingleCNN(SingleCNN, KerasConvBackend):
     """
     ``SingleCNN`` is a simple convolutional neural network model.
 
@@ -114,30 +145,6 @@ class KerasSingleCNN(SingleCNN):
         )
         # Build the full pipeline model∫
         self.model = keras.Model(self.input_layer, self.logits, name="CTLearn_model")
-
-
-    @property
-    def _conv_layer(self):
-        """Convolution layer class for ``conv_backend``.
-
-        Both classes are built with the same keyword arguments. With
-        ``"hexagdly"``, ``kernel_size`` counts hexagonal rings, and the hex
-        grid is always padded (``"same"``), including where the square call
-        leaves Keras' default ``"valid"``.
-        """
-        return hgly.Conv2d if self.conv_backend == "hexagdly" else keras.layers.Conv2D
-
-    @property
-    def _pool_layer(self):
-        """Max-pooling layer class for ``conv_backend``."""
-        return hgly.MaxPool2d if self.conv_backend == "hexagdly" else keras.layers.MaxPool2D
-
-    @property
-    def _avg_pool_layer(self):
-        """Average-pooling layer class for ``conv_backend``."""
-        return (
-            hgly.AvgPool2d if self.conv_backend == "hexagdly" else keras.layers.AveragePooling2D
-        )
 
     def _build_backbone(self, input_shape):
         """
@@ -235,7 +242,7 @@ class KerasSingleCNN(SingleCNN):
         return backbone_model, network_input
 
 
-class KerasResNet(ResNet):
+class KerasResNet(ResNet, KerasConvBackend):
     """
     ``ResNet`` is a residual neural network model.
 
@@ -282,29 +289,6 @@ class KerasResNet(ResNet):
         )
 
         self.model = keras.Model(self.input_layer, self.logits, name="CTLearn_model")
-
-    @property
-    def _conv_layer(self):
-        """Convolution layer class for ``conv_backend``.
-
-        Both classes are built with the same keyword arguments. With
-        ``"hexagdly"``, ``kernel_size`` counts hexagonal rings, and the hex
-        grid is always padded (``"same"``), including where the square call
-        leaves Keras' default ``"valid"``.
-        """
-        return hgly.Conv2d if self.conv_backend == "hexagdly" else keras.layers.Conv2D
-
-    @property
-    def _pool_layer(self):
-        """Max-pooling layer class for ``conv_backend``."""
-        return hgly.MaxPool2d if self.conv_backend == "hexagdly" else keras.layers.MaxPool2D
-
-    @property
-    def _avg_pool_layer(self):
-        """Average-pooling layer class for ``conv_backend``."""
-        return (
-            hgly.AvgPool2d if self.conv_backend == "hexagdly" else keras.layers.AveragePooling2D
-        )
 
     def _build_backbone(self, input_shape):
         """
