@@ -16,6 +16,14 @@ In CTLearn we follow the "fork-and-pull" Git workflow:
 * Push your work back up to your fork on GitHub
 * Submit a Pull Request so the core developer team can review your changes
 
+Changelog entries
+-----------------
+
+Every pull request should include a Towncrier fragment describing its user-facing
+changes. See ``docs/changes/README.md`` for the naming conventions and supported
+categories. If a change does not warrant a changelog entry, maintainers can apply
+the ``no-changelog-needed`` pull request label.
+
 Issues
 ------
 
