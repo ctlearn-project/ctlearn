@@ -239,7 +239,7 @@ def test_train_model_rejects_too_few_events(tmp_path, monkeypatch):
         _get_n_events=lambda: 1,
         class_weight={},
         mode="mono",
-        selected_telescopes=[],
+        selected_telescopes=["LST_LST_LSTCam"],
     )
     tool = _make_setup_tool(tmp_path, monkeypatch, reader)
 
@@ -254,7 +254,7 @@ def test_train_model_rejects_classification_with_one_class(tmp_path, monkeypatch
         n_signal_events=4,
         n_bkg_events=0,
         mode="mono",
-        selected_telescopes=[],
+        selected_telescopes=["LST_LST_LSTCam"],
     )
     tool = _make_setup_tool(tmp_path, monkeypatch, reader)
     tool.reco_tasks = ["type"]
@@ -267,8 +267,8 @@ def test_train_model_rejects_classification_with_one_class(tmp_path, monkeypatch
     ("reader_mode", "selected_telescopes", "sort_by_intensity", "message"),
     [
         ("mono", [], False, "mono mode"),
-        ("stereo", [1, 2], False, "multiple telescope types"),
-        ("stereo", [1], True, "sorting by intensity"),
+        ("stereo", ["LST_LST_LSTCam", "MST_MST_NectarCam"], False, "multiple telescope types"),
+        ("stereo", ["LST_LST_LSTCam"], True, "sorting by intensity"),
     ],
 )
 def test_train_model_rejects_invalid_stacking_options(
@@ -311,7 +311,7 @@ def test_train_model_rejects_incomplete_training_options(
         _get_n_events=lambda: 4,
         class_weight={},
         mode="mono",
-        selected_telescopes=[],
+        selected_telescopes=["LST_LST_LSTCam"],
     )
     tool = _make_setup_tool(tmp_path, monkeypatch, reader)
     setattr(tool, option, value)

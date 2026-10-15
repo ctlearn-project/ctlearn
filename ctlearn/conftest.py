@@ -8,6 +8,7 @@ import sys
 import numpy as np
 import pytest
 import shutil
+import tables
 from astropy.table import Column, Table
 from filelock import FileLock
 from traitlets.config.loader import Config
@@ -127,6 +128,16 @@ def _create_mock_lst1_dl1_file(
         "/dl1/event/telescope/parameters/LST_LSTCam",
         overwrite=True,
     )
+    with tables.open_file(output_path, mode="a") as output_file:
+        image_table_node = output_file.get_node(
+            "/dl1/event/telescope/image/LST_LSTCam"
+        )
+        image_attrs = image_table_node._v_attrs
+        image_attrs.CTAFIELD_3_TRANSFORM_SCALE = 0.0
+        image_attrs.CTAFIELD_3_TRANSFORM_OFFSET = 0
+        image_attrs.CTAFIELD_4_TRANSFORM_SCALE = 0.0
+        image_attrs.CTAFIELD_4_TRANSFORM_OFFSET = 0
+        image_table_node.flush()
     return output_path
 
 
