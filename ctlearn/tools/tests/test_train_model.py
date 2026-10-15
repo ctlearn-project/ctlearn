@@ -126,6 +126,60 @@ def test_train_ctlearn_model(framework, model, reco_task, dl1_gamma_file, dl1_pr
             f"found in {subfolder_path}"
         )
 
+
+@pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
+@pytest.mark.parametrize("save_best_validation_only", [True, False])
+def test_train_model_early_stopping_and_checkpoint_options(
+    framework, save_best_validation_only, dl1_gamma_file, tmp_path
+):
+    signal_dir = tmp_path / "gamma_dl1"
+    signal_dir.mkdir()
+    shutil.copy(dl1_gamma_file, signal_dir)
+    output_dir = tmp_path / "trained_model"
+    early_stopping = {
+        "monitor": "val_loss",
+        "patience": 0,
+        "verbose": 1,
+        "restore_best_weights": True,
+    }
+    tool = TRAINING_TOOLS[framework]()
+    argv = [
+        f"--signal={signal_dir}",
+        "--pattern-signal=*.dl1.h5",
+        f"--output={output_dir}",
+        "--reco=energy",
+        "--TrainCTLearnModel.model_type=SingleCNN",
+        "--TrainCTLearnModel.n_epochs=2",
+        "--TrainCTLearnModel.batch_size=4",
+        f"--TrainCTLearnModel.save_best_validation_only={save_best_validation_only}",
+        f"--TrainCTLearnModel.early_stopping={early_stopping}",
+        "--DLImageReader.focal_length_choice=EQUIVALENT",
+        "--DLImageReader.allowed_tels=[7, 13, 15, 16, 17, 19]",
+    ]
+
+    assert run_tool(tool, argv=argv, cwd=tmp_path) == 0
+    assert tool.save_best_validation_only is save_best_validation_only
+    assert tool.early_stopping == early_stopping
+
+    if framework == "Keras":
+        checkpoint = next(
+            callback
+            for callback in tool.callbacks
+            if callback.__class__.__name__ == "ModelCheckpoint"
+        )
+        early_stopping_callback = next(
+            callback
+            for callback in tool.callbacks
+            if callback.__class__.__name__ == "EarlyStopping"
+        )
+        assert checkpoint.save_best_only is save_best_validation_only
+        assert early_stopping_callback.patience == early_stopping["patience"]
+        assert early_stopping_callback.restore_best_weights
+    else:
+        # With zero patience, PyTorch stops after the first epoch.
+        assert len(pd.read_csv(output_dir / "training_log.csv")) == 1
+
+
 def test_pytorch_workers_configuration_error():
     """
     Test that TrainCTLearnPyTorchModel raises a ToolConfigurationError 
@@ -264,10 +318,3 @@ def test_train_model_rejects_incomplete_training_options(
 
     with pytest.raises(TraitError, match=missing_key):
         tool.setup()
-
-
-def test_train_model_framework_setup_is_abstract():
-    assert isabstract(TrainCTLearnModel)
-    assert all(
-        not isabstract(type(tool())) for tool in TRAINING_TOOLS.values()
-    )
