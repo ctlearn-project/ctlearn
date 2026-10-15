@@ -310,9 +310,9 @@ class TrainCTLearnModel(Tool):
         self.setup_framework()
      
     @abstractmethod
-    def setup_framework():
+    def setup_framework(self):
         """ This is an abstract method for the setup of the framework-specific training tool."""
-        pass
+        pass  # pragma: no cover
 
     def finish(self):
         self.log.info("Tool is shutting down")
