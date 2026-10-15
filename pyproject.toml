@@ -115,6 +115,10 @@ norecursedirs = [
     "images"
 ]
 
+[tool.coverage.run]
+source = ["ctlearn"]
+omit = ["*/tests/*", "*/conftest.py"]
+
 [tool.towncrier]
 package = "ctlearn"
 directory = "docs/changes"
