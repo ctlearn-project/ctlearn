@@ -16,6 +16,25 @@ In CTLearn we follow the "fork-and-pull" Git workflow:
 * Push your work back up to your fork on GitHub
 * Submit a Pull Request so the core developer team can review your changes
 
+Code quality
+------------
+
+CTLearn uses pre-commit hooks for whitespace and file checks, spelling, and
+Ruff linting and formatting. Install the development dependencies and set up
+the hooks in your checkout with:
+
+.. code-block:: console
+
+   pip install -e ".[dev]"
+   pre-commit install
+
+The hooks will run automatically before each commit. To run them manually on
+all files, use:
+
+.. code-block:: console
+
+   pre-commit run --all-files
+
 Changelog entries
 -----------------
 
