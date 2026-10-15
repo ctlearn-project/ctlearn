@@ -166,6 +166,7 @@ def test_predict_mono_model_with_dl1_images(
         f"--input_url={dl1_gamma_file}",
         "--PredictCTLearnModel.batch_size=2",
         "--DLImageReader.focal_length_choice=EQUIVALENT",
+        "--dl1-features",
         "--no-dl1-images",
         "--no-true-images",
         f"--{dl2_tel_flag}",

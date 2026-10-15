@@ -377,21 +377,21 @@ class LST1PredictionTool(Tool):
         # Get the number of rows in the table
         with tables.open_file(self.input_url) as input_file:
             img_table_v_attrs = input_file.get_node(self.image_table_path)._v_attrs
-        # Check the transform value used for the file compression
-        if "CTAFIELD_3_TRANSFORM_SCALE" in img_table_v_attrs:
-            self.transforms["image_scale"] = img_table_v_attrs[
-                "CTAFIELD_3_TRANSFORM_SCALE"
-            ]
-            self.transforms["image_offset"] = img_table_v_attrs[
-                "CTAFIELD_3_TRANSFORM_OFFSET"
-            ]
-        if "CTAFIELD_4_TRANSFORM_SCALE" in img_table_v_attrs:
-            self.transforms["peak_time_scale"] = img_table_v_attrs[
-                "CTAFIELD_4_TRANSFORM_SCALE"
-            ]
-            self.transforms["peak_time_offset"] = img_table_v_attrs[
-                "CTAFIELD_4_TRANSFORM_OFFSET"
-            ]
+            # Check transform values while the input file is still open.
+            if "CTAFIELD_3_TRANSFORM_SCALE" in img_table_v_attrs:
+                self.transforms["image_scale"] = img_table_v_attrs[
+                    "CTAFIELD_3_TRANSFORM_SCALE"
+                ]
+                self.transforms["image_offset"] = img_table_v_attrs[
+                    "CTAFIELD_3_TRANSFORM_OFFSET"
+                ]
+            if "CTAFIELD_4_TRANSFORM_SCALE" in img_table_v_attrs:
+                self.transforms["peak_time_scale"] = img_table_v_attrs[
+                    "CTAFIELD_4_TRANSFORM_SCALE"
+                ]
+                self.transforms["peak_time_offset"] = img_table_v_attrs[
+                    "CTAFIELD_4_TRANSFORM_OFFSET"
+                ]
 
     def start(self):
         """

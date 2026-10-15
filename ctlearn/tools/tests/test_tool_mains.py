@@ -1,7 +1,7 @@
-from importlib import import_module
-from types import SimpleNamespace
+import runpy
 
 import pytest
+from ctapipe.core import Tool
 
 
 @pytest.mark.parametrize(
@@ -14,14 +14,14 @@ import pytest
         ("ctlearn.tools.pytorch.train_model", "TrainCTLearnPyTorchModel"),
     ],
 )
-def test_main_runs_tool(monkeypatch, module_name, tool_name):
-    """ Test that the main function of a tool runs the tool's run method once. """
-    module = import_module(module_name)
+def test_module_main_guard_runs_tool(monkeypatch, module_name, tool_name):
     calls = []
-    monkeypatch.setattr(
-        module, tool_name, lambda: SimpleNamespace(run=lambda: calls.append(True))
-    )
 
-    module.main()
+    def record_run(tool, *args, **kwargs):
+        calls.append(tool)
 
-    assert calls == [True]
+    monkeypatch.setattr(Tool, "run", record_run)
+    runpy.run_module(module_name, run_name="__main__")
+
+    assert len(calls) == 1
+    assert type(calls[0]).__name__ == tool_name
