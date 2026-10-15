@@ -1,0 +1,1 @@
+Added pre-commit checks for spelling, Ruff linting, formatting, and common file issues.
