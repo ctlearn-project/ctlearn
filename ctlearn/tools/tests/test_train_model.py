@@ -1,3 +1,6 @@
+from inspect import isabstract
+from types import SimpleNamespace
+
 import json
 import pandas as pd
 import pytest
@@ -5,7 +8,30 @@ import shutil
 
 from ctapipe.core import run_tool
 from ctapipe.core.tool import ToolConfigurationError
+from ctapipe.core.traits import TraitError
 from ctlearn.conftest import TRAINING_TOOLS, MODEL_FILE_FORMATS
+from ctlearn.tools.train_model import TrainCTLearnModel
+
+
+def _make_setup_tool(tmp_path, monkeypatch, reader):
+    """Create a concrete training tool with a mocked data reader."""
+    tool = TRAINING_TOOLS["Keras"]()
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    (input_dir / "signal.h5").touch()
+    tool.input_dir_signal = input_dir
+    tool.file_pattern_signal = ["*.h5"]
+    tool.output_dir = tmp_path / "output"
+    tool.reco_tasks = ["energy"]
+    tool.batch_size = 2
+
+    monkeypatch.setattr(
+        "ctlearn.tools.train_model.DLDataReader.from_name",
+        lambda *args, **kwargs: reader,
+    )
+    monkeypatch.setattr(tool, "setup_framework", lambda: None)
+    return tool
+
 
 @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
 @pytest.mark.parametrize("model", ["SingleCNN", "ResNet", "LoadedModel"])
@@ -145,3 +171,112 @@ def test_train_model_empty_patterns(framework, tmp_path):
     
     with pytest.raises(ToolConfigurationError, match="No background files found in"):
         tool.setup()
+
+
+def test_train_model_rejects_existing_output_directory(tmp_path, monkeypatch):
+    tool = _make_setup_tool(tmp_path, monkeypatch, reader=None)
+    tool.output_dir.mkdir()
+
+    with pytest.raises(ToolConfigurationError, match="already exists"):
+        tool.setup()
+
+
+def test_train_model_rejects_unsupported_reader(tmp_path, monkeypatch):
+    tool = _make_setup_tool(tmp_path, monkeypatch, reader=None)
+    tool.dl1dh_reader_type = "DLFeatureVectorReader"
+
+    with pytest.raises(NotImplementedError, match="DLFeatureVectorReader"):
+        tool.setup()
+
+
+def test_train_model_rejects_too_few_events(tmp_path, monkeypatch):
+    reader = SimpleNamespace(
+        _get_n_events=lambda: 1,
+        class_weight={},
+        mode="mono",
+        selected_telescopes=[],
+    )
+    tool = _make_setup_tool(tmp_path, monkeypatch, reader)
+
+    with pytest.raises(ValueError, match="not enough to form a batch"):
+        tool.setup()
+
+
+def test_train_model_rejects_classification_with_one_class(tmp_path, monkeypatch):
+    reader = SimpleNamespace(
+        _get_n_events=lambda: 4,
+        class_weight=None,
+        n_signal_events=4,
+        n_bkg_events=0,
+        mode="mono",
+        selected_telescopes=[],
+    )
+    tool = _make_setup_tool(tmp_path, monkeypatch, reader)
+    tool.reco_tasks = ["type"]
+
+    with pytest.raises(ValueError, match="less than two classes"):
+        tool.setup()
+
+
+@pytest.mark.parametrize(
+    ("reader_mode", "selected_telescopes", "sort_by_intensity", "message"),
+    [
+        ("mono", [], False, "mono mode"),
+        ("stereo", [1, 2], False, "multiple telescope types"),
+        ("stereo", [1], True, "sorting by intensity"),
+    ],
+)
+def test_train_model_rejects_invalid_stacking_options(
+    tmp_path, monkeypatch, reader_mode, selected_telescopes, sort_by_intensity, message
+):
+    reader = SimpleNamespace(
+        _get_n_events=lambda: 4,
+        class_weight={},
+        mode=reader_mode,
+        selected_telescopes=selected_telescopes,
+    )
+    tool = _make_setup_tool(tmp_path, monkeypatch, reader)
+    tool.stack_telescope_images = True
+    tool.sort_by_intensity = sort_by_intensity
+
+    with pytest.raises(ToolConfigurationError, match=message):
+        tool.setup()
+
+
+@pytest.mark.parametrize(
+    ("option", "value", "missing_key"),
+    [
+        ("optimizer", {"name": "Adam"}, "base_learning_rate"),
+        (
+            "lr_reducing",
+            {"factor": 0.5, "patience": 5, "min_delta": 0.01},
+            "min_lr",
+        ),
+        (
+            "early_stopping",
+            {"monitor": "val_loss", "patience": 4, "verbose": 1},
+            "restore_best_weights",
+        ),
+    ],
+)
+def test_train_model_rejects_incomplete_training_options(
+    tmp_path, monkeypatch, option, value, missing_key
+):
+    reader = SimpleNamespace(
+        _get_n_events=lambda: 4,
+        class_weight={},
+        mode="mono",
+        selected_telescopes=[],
+    )
+    tool = _make_setup_tool(tmp_path, monkeypatch, reader)
+    setattr(tool, option, value)
+
+    with pytest.raises(TraitError, match=missing_key):
+        tool.setup()
+
+
+def test_train_model_framework_setup_is_abstract():
+    assert isabstract(TrainCTLearnModel)
+    assert all(
+        not isabstract(type(tool())) for tool in TRAINING_TOOLS.values()
+    )
