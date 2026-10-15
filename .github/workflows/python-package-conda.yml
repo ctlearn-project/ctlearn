@@ -11,6 +11,22 @@ on:
     - cron: "0 2 * * *"  # Daily at 02:00 UTC
 
 jobs:
+  lint:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: pre-commit/action@v3.0.1
+        with:
+          extra_args: --files $(git diff origin/${{ github.base_ref }} --name-only)
+
   cache-test-data:
     if: >-
       github.event_name != 'pull_request' ||
@@ -23,13 +39,13 @@ jobs:
         with:
           path: ~/.cache/ctapipe
           key: ctapipe-data-${{ runner.os }}-v1
-          
+
       - name: Set up Python
         if: steps.cache-ctapipe.outputs.cache-hit != 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-          
+
       - name: Install ctapipe
         if: steps.cache-ctapipe.outputs.cache-hit != 'true'
         run: pip install ctapipe
