@@ -13,7 +13,11 @@ CTLearn: Deep Learning for IACT Event Reconstruction
 .. image:: https://github.com/ctlearn-project/ctlearn/actions/workflows/python-package-conda.yml/badge.svg
     :target: https://github.com/ctlearn-project/ctlearn/actions/workflows/python-package-conda.yml
     :alt: Continuos Integration
-    
+
+.. image:: https://codecov.io/gh/ctlearn-project/ctlearn/branch/main/graph/badge.svg
+    :target: https://codecov.io/gh/ctlearn-project/ctlearn
+    :alt: Code coverage
+
 .. image:: images/CTLearnTextCTinBox_WhiteBkgd.png
    :target: images/CTLearnTextCTinBox_WhiteBkgd.png
    :alt: CTLearn Logo
