@@ -37,8 +37,20 @@ REQUIRED_COLUMNS = [
 
 @pytest.mark.verifies_usecase("DPPS-UC-130-1.2.2")
 @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
+@pytest.mark.parametrize(
+    ("input_file_fixture", "input_suffix"),
+    [
+        ("dl1_gamma_file", "simulation"),
+        ("dl1_obs_mock_file", "obs_mock"),
+    ],
+)
 def test_predict_stereo_model_with_dl1_images(
-    tmp_path, ctlearn_trained_dl1_stereo_models, dl1_gamma_file, framework
+    tmp_path,
+    request,
+    ctlearn_trained_dl1_stereo_models,
+    input_file_fixture,
+    input_suffix,
+    framework,
 ):
     """
     Test training CTLearn stereo model using the DL1 gamma and proton files for all reconstruction tasks
@@ -62,7 +74,7 @@ def test_predict_stereo_model_with_dl1_images(
         assert model_file.exists(), f"Trained stereo model file not found for {key}"
     # Build command-line arguments
     argv = [
-        f"--input_url={dl1_gamma_file}",
+        f"--input_url={request.getfixturevalue(input_file_fixture)}",
         "--PredictCTLearnModel.batch_size=2",
         "--PredictCTLearnModel.stack_telescope_images=True",
         "--DLImageReader.mode=stereo",
@@ -71,7 +83,10 @@ def test_predict_stereo_model_with_dl1_images(
         "--no-dl1-images",
         "--no-true-images",
     ]
-    output_file = dl2_dir / f"gamma_{framework}_{telescope_type}_stereo_from_images.dl2.h5"
+    output_file = (
+        dl2_dir
+        / f"gamma_{framework}_{telescope_type}_stereo_from_images_{input_suffix}.dl2.h5"
+    )
     # Run Prediction tool
     assert (
         run_tool(
@@ -108,6 +123,8 @@ def test_predict_stereo_model_with_dl1_images(
             ]:
                 if "_tel_" in col:
                     continue
+                if input_suffix == "obs_mock" and col.startswith("true_"):
+                    continue
                 if "CTLearnCameraReconstructor" in col:
                     col = col.replace(
                         "CTLearnCameraReconstructor", "CTLearnSkyReconstructor"
@@ -123,6 +140,8 @@ def test_predict_stereo_model_with_dl1_images(
         assert len(subarray_events) > 0
         for col in REQUIRED_COLUMNS:
             if "_tel_" in col:
+                continue
+            if input_suffix == "obs_mock" and col.startswith("true_"):
                 continue
             if "CTLearnCameraReconstructor" in col:
                 col = col.replace(

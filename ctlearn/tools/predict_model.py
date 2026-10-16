@@ -567,24 +567,25 @@ class PredictCTLearnModel(Tool):
             overwrite=True,
         )
         # Update the simulation shower table to keep only events present in the subarray trigger table
-        subarray_trigger_table.keep_columns(SUBARRAY_EVENT_KEYS)
-        sim_shower_table = read_table(
-            self.output_path,
-            SIMULATION_SHOWER_TABLE,
-        )
-        sim_shower_table = join(
-            sim_shower_table,
-            subarray_trigger_table,
-            keys=SUBARRAY_EVENT_KEYS,
-            join_type="right",
-        )
-        sim_shower_table.sort(SUBARRAY_EVENT_KEYS)
-        write_table(
-            sim_shower_table,
-            self.output_path,
-            SIMULATION_SHOWER_TABLE,
-            overwrite=True,
-        )
+        if self.dl1dh_reader.process_type == ProcessType.Simulation:
+            subarray_trigger_table.keep_columns(SUBARRAY_EVENT_KEYS)
+            sim_shower_table = read_table(
+                self.output_path,
+                SIMULATION_SHOWER_TABLE,
+            )
+            sim_shower_table = join(
+                sim_shower_table,
+                subarray_trigger_table,
+                keys=SUBARRAY_EVENT_KEYS,
+                join_type="right",
+            )
+            sim_shower_table.sort(SUBARRAY_EVENT_KEYS)
+            write_table(
+                sim_shower_table,
+                self.output_path,
+                SIMULATION_SHOWER_TABLE,
+                overwrite=True,
+            )
         # Delete telescope-specific tables for unselected telescopes
         self._delete_unselected_telescope_tables()
 
@@ -1263,9 +1264,9 @@ class PredictCTLearnModel(Tool):
         pointing_info = vstack(pointing_info)
         if self.dl1dh_reader.mode == "stereo":
             # Group the pointing information by subarray event keys
-            # TODO: This needs to be debugged with SST1M data
             pointing_info_grouped = pointing_info.group_by(SUBARRAY_EVENT_KEYS)
             pointing_mean = pointing_info_grouped.groups.aggregate(np.mean)
+            pointing_mean.remove_columns(["time"])
             pointing_info = join(
                 all_identifiers,
                 pointing_mean,
