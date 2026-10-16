@@ -3,18 +3,26 @@ common pytest fixtures for tests in ctlearn.
 """
 
 from pathlib import Path
-import sys
+import warnings
 
 import numpy as np
 import pytest
 import shutil
 import tables
+from astropy import units as u
 from astropy.table import Column, Table
 from filelock import FileLock
 from traitlets.config.loader import Config
 
 from ctapipe.core import run_tool
-from ctapipe.io import write_table
+from ctapipe.io import read_table, write_table
+from ctapipe.io.hdf5dataformat import (
+    SIMULATION_RUN_TABLE,
+    FIXED_POINTING_GROUP,
+    SIMULATION_GROUP,
+    DL1_TEL_TRIGGER_TABLE,
+    DL0_TEL_POINTING_GROUP,
+)
 from ctapipe.tools.process import ProcessorTool
 from ctapipe.utils import get_dataset_path
 
@@ -164,6 +172,48 @@ def dl1_gamma_file(dl1_tmp_path, gamma_simtel_path):
     assert run_tool(ProcessorTool(), argv=argv, cwd=dl1_tmp_path) == 0
     return output
 
+@pytest.fixture(scope="session")
+def dl1_obs_mock_file(dl1_tmp_path, dl1_gamma_file):
+    """
+    DL1 file containing both images and parameters from a mock observation.
+    """
+    # Hardcopy the DL1 gamma file to the output path to avoid modifying the original file
+    output = dl1_tmp_path / "dl1_obs_mock_file.dl1.h5"
+    shutil.copy(dl1_gamma_file, output)
+    # Read the trigger table to get the unique telescope IDs and their pointing information
+    trigger_table = read_table(dl1_gamma_file, path=DL1_TEL_TRIGGER_TABLE)
+    tel_ids = np.unique(trigger_table["tel_id"])
+    time = trigger_table["time"][[0, -1]]
+    for tel_id in tel_ids:
+        tel_pointing = read_table(dl1_gamma_file, path=f"{FIXED_POINTING_GROUP}/tel_{tel_id:03d}")
+        azimuth = tel_pointing["telescope_pointing_azimuth"][0]
+        altitude = tel_pointing["telescope_pointing_altitude"][0]
+        tel_pointing_table = Table(
+            {
+                "time": time,
+                "azimuth": [azimuth, azimuth] * u.rad,
+                "altitude": [altitude, altitude] * u.rad,
+            }
+        )
+        write_table(
+            tel_pointing_table,
+            output,
+            f"{DL0_TEL_POINTING_GROUP}/tel_{tel_id:03d}",
+        )
+    # Modify the file to mimic an observation file
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", tables.NaturalNameWarning)
+        with tables.open_file(output, mode="r+") as h5_file:
+            # Update CTA Activity metadata to mimic an observation file
+            h5_file.root._v_attrs["CTA PROCESS TYPE"] = "Observation"
+            h5_file.flush()
+            # Remove simulation-related group to mimic an observation file
+            pointing_group = FIXED_POINTING_GROUP.rsplit("/", maxsplit=1)[0]
+            simulation_run_group = SIMULATION_RUN_TABLE.rsplit("/", maxsplit=1)[0]
+            for group in [SIMULATION_GROUP, simulation_run_group, pointing_group]:
+                if group in h5_file:
+                    h5_file.remove_node(group, recursive=True)
+    return output
 
 @pytest.fixture(scope="session")
 def dl1_proton_file(dl1_tmp_path, proton_simtel_path):
