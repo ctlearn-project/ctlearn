@@ -184,6 +184,8 @@ def dl1_obs_mock_file(dl1_tmp_path, dl1_gamma_file):
     trigger_table = read_table(dl1_gamma_file, path=DL1_TEL_TRIGGER_TABLE)
     tel_ids = np.unique(trigger_table["tel_id"])
     time = trigger_table["time"][[0, -1]]
+    # Mimic an observation of 20 mins duration by adjusting the time range for the tel pointing tables
+    time[0] -= 20 * u.min
     for tel_id in tel_ids:
         tel_pointing = read_table(dl1_gamma_file, path=f"{FIXED_POINTING_GROUP}/tel_{tel_id:03d}")
         azimuth = tel_pointing["telescope_pointing_azimuth"][0]

@@ -6,9 +6,7 @@ from enum import Enum
 import pathlib
 import sys
 from importlib.resources import files, as_file
-import os
-import time
-from tqdm import tqdm
+
 from ctapipe.core import Provenance
 from ctapipe.core.tool import ToolConfigurationError
 from ctapipe.core.traits import TraitError
