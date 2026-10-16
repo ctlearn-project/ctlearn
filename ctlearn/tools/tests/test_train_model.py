@@ -1,10 +1,36 @@
+from inspect import isabstract
+from types import SimpleNamespace
+
 import pandas as pd
 import pytest
 import shutil
 
 from ctapipe.core import run_tool
 from ctapipe.core.tool import ToolConfigurationError
+from ctapipe.core.traits import TraitError
 from ctlearn.conftest import TRAINING_TOOLS, MODEL_FILE_FORMATS
+from ctlearn.tools.train_model import TrainCTLearnModel
+
+
+def _make_setup_tool(tmp_path, monkeypatch, reader):
+    """Create a concrete training tool with a mocked data reader."""
+    tool = TRAINING_TOOLS["Keras"]()
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    (input_dir / "signal.h5").touch()
+    tool.input_dir_signal = input_dir
+    tool.file_pattern_signal = ["*.h5"]
+    tool.output_dir = tmp_path / "output"
+    tool.reco_tasks = ["energy"]
+    tool.batch_size = 2
+
+    monkeypatch.setattr(
+        "ctlearn.tools.train_model.DLDataReader.from_name",
+        lambda *args, **kwargs: reader,
+    )
+    monkeypatch.setattr(tool, "setup_framework", lambda: None)
+    return tool
+
 
 @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
 @pytest.mark.parametrize("model", ["SingleCNN", "ResNet", "LoadedModel"])
@@ -100,6 +126,60 @@ def test_train_ctlearn_model(framework, model, reco_task, dl1_gamma_file, dl1_pr
             f"found in {subfolder_path}"
         )
 
+
+@pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
+@pytest.mark.parametrize("save_best_validation_only", [True, False])
+def test_train_model_early_stopping_and_checkpoint_options(
+    framework, save_best_validation_only, dl1_gamma_file, tmp_path
+):
+    signal_dir = tmp_path / "gamma_dl1"
+    signal_dir.mkdir()
+    shutil.copy(dl1_gamma_file, signal_dir)
+    output_dir = tmp_path / "trained_model"
+    early_stopping = {
+        "monitor": "val_loss",
+        "patience": 0,
+        "verbose": 1,
+        "restore_best_weights": True,
+    }
+    tool = TRAINING_TOOLS[framework]()
+    argv = [
+        f"--signal={signal_dir}",
+        "--pattern-signal=*.dl1.h5",
+        f"--output={output_dir}",
+        "--reco=energy",
+        "--TrainCTLearnModel.model_type=SingleCNN",
+        "--TrainCTLearnModel.n_epochs=2",
+        "--TrainCTLearnModel.batch_size=4",
+        f"--TrainCTLearnModel.save_best_validation_only={save_best_validation_only}",
+        f"--TrainCTLearnModel.early_stopping={early_stopping}",
+        "--DLImageReader.focal_length_choice=EQUIVALENT",
+        "--DLImageReader.allowed_tels=[7, 13, 15, 16, 17, 19]",
+    ]
+
+    assert run_tool(tool, argv=argv, cwd=tmp_path) == 0
+    assert tool.save_best_validation_only is save_best_validation_only
+    assert tool.early_stopping == early_stopping
+
+    if framework == "Keras":
+        checkpoint = next(
+            callback
+            for callback in tool.callbacks
+            if callback.__class__.__name__ == "ModelCheckpoint"
+        )
+        early_stopping_callback = next(
+            callback
+            for callback in tool.callbacks
+            if callback.__class__.__name__ == "EarlyStopping"
+        )
+        assert checkpoint.save_best_only is save_best_validation_only
+        assert early_stopping_callback.patience == early_stopping["patience"]
+        assert early_stopping_callback.restore_best_weights
+    else:
+        # With zero patience, PyTorch stops after the first epoch.
+        assert len(pd.read_csv(output_dir / "training_log.csv")) == 1
+
+
 def test_pytorch_workers_configuration_error():
     """
     Test that TrainCTLearnPyTorchModel raises a ToolConfigurationError 
@@ -135,4 +215,106 @@ def test_train_model_empty_patterns(framework, tmp_path):
     tool.file_pattern_background = ["nonexistent_background_*.h5"]
     
     with pytest.raises(ToolConfigurationError, match="No background files found in"):
+        tool.setup()
+
+
+def test_train_model_rejects_existing_output_directory(tmp_path, monkeypatch):
+    tool = _make_setup_tool(tmp_path, monkeypatch, reader=None)
+    tool.output_dir.mkdir()
+
+    with pytest.raises(ToolConfigurationError, match="already exists"):
+        tool.setup()
+
+
+def test_train_model_rejects_unsupported_reader(tmp_path, monkeypatch):
+    tool = _make_setup_tool(tmp_path, monkeypatch, reader=None)
+    tool.dl1dh_reader_type = "DLFeatureVectorReader"
+
+    with pytest.raises(NotImplementedError, match="DLFeatureVectorReader"):
+        tool.setup()
+
+
+def test_train_model_rejects_too_few_events(tmp_path, monkeypatch):
+    reader = SimpleNamespace(
+        get_n_events=lambda: 1,
+        class_weight={},
+        mode="mono",
+        selected_telescopes=["LST_LST_LSTCam"],
+    )
+    tool = _make_setup_tool(tmp_path, monkeypatch, reader)
+
+    with pytest.raises(ValueError, match="not enough to form a batch"):
+        tool.setup()
+
+
+def test_train_model_rejects_classification_with_one_class(tmp_path, monkeypatch):
+    reader = SimpleNamespace(
+        get_n_events=lambda: 4,
+        class_weight=None,
+        n_signal_events=4,
+        n_bkg_events=0,
+        mode="mono",
+        selected_telescopes=["LST_LST_LSTCam"],
+    )
+    tool = _make_setup_tool(tmp_path, monkeypatch, reader)
+    tool.reco_tasks = ["type"]
+
+    with pytest.raises(ValueError, match="less than two classes"):
+        tool.setup()
+
+
+@pytest.mark.parametrize(
+    ("reader_mode", "selected_telescopes", "sort_by_intensity", "message"),
+    [
+        ("mono", [], False, "mono mode"),
+        ("stereo", ["LST_LST_LSTCam", "MST_MST_NectarCam"], False, "multiple telescope types"),
+        ("stereo", ["LST_LST_LSTCam"], True, "sorting by intensity"),
+    ],
+)
+def test_train_model_rejects_invalid_stacking_options(
+    tmp_path, monkeypatch, reader_mode, selected_telescopes, sort_by_intensity, message
+):
+    reader = SimpleNamespace(
+        get_n_events=lambda: 4,
+        class_weight={},
+        mode=reader_mode,
+        selected_telescopes=selected_telescopes,
+    )
+    tool = _make_setup_tool(tmp_path, monkeypatch, reader)
+    tool.stack_telescope_images = True
+    tool.sort_by_intensity = sort_by_intensity
+
+    with pytest.raises(ToolConfigurationError, match=message):
+        tool.setup()
+
+
+@pytest.mark.parametrize(
+    ("option", "value", "missing_key"),
+    [
+        ("optimizer", {"name": "Adam"}, "base_learning_rate"),
+        (
+            "lr_reducing",
+            {"factor": 0.5, "patience": 5, "min_delta": 0.01},
+            "min_lr",
+        ),
+        (
+            "early_stopping",
+            {"monitor": "val_loss", "patience": 4, "verbose": 1},
+            "restore_best_weights",
+        ),
+    ],
+)
+def test_train_model_rejects_incomplete_training_options(
+    tmp_path, monkeypatch, option, value, missing_key
+):
+    reader = SimpleNamespace(
+        get_n_events=lambda: 4,
+        class_weight={},
+        mode="mono",
+        selected_telescopes=["LST_LST_LSTCam"],
+    )
+    tool = _make_setup_tool(tmp_path, monkeypatch, reader)
+    setattr(tool, option, value)
+
+    with pytest.raises(TraitError, match=missing_key):
         tool.setup()

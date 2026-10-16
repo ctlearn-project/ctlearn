@@ -6,9 +6,7 @@ from enum import Enum
 import pathlib
 import sys
 from importlib.resources import files, as_file
-import os
-import time
-from tqdm import tqdm
+
 from ctapipe.core import Provenance
 from ctapipe.core.tool import ToolConfigurationError
 from ctapipe.core.traits import TraitError
@@ -17,7 +15,6 @@ from ctapipe.instrument import SubarrayDescription
 import keras_hexagdly as hgly
 
 __all__ = [
-    "monitor_progress",
     "validate_trait_dict",
     "get_lst1_subarray_description",
     "FrameworkType",
@@ -25,42 +22,6 @@ __all__ = [
     "validate_conv_backend",
     "model_conv_backend",
 ]
-
-def monitor_progress(src_path, dst_path, stop_event, logger):
-    try:
-        total_size = os.path.getsize(src_path)
-    except OSError:
-        logger.error(f"Unable to access source file '{src_path}'.")
-        return
-
-    last_logged_percent = -1
-
-    with tqdm(total=total_size, unit='B', unit_scale=True, desc="Copy Progress") as pbar:
-        while not stop_event.is_set():
-            try:
-                current_size = os.path.getsize(dst_path)
-            except OSError:
-                current_size = 0
-
-            pbar.n = current_size
-            pbar.refresh()
-            
-            # Logging cada 10%
-            if total_size > 0:
-                percent = int((current_size / total_size) * 100)
-                if percent // 10 != last_logged_percent // 10:
-                    logger.info(f"Progress: {percent}%")
-                    last_logged_percent = percent
-
-            time.sleep(0.5)
-        # Ensure the progress bar reaches the end
-        try:
-            final_size = os.path.getsize(dst_path)
-            pbar.n = final_size
-            pbar.refresh()
-            logger.info("Copy completed.")
-        except OSError:
-            logger.warning("Could not get final size of output file.")
             
 def validate_trait_dict(trait_dict, required_keys):
     """

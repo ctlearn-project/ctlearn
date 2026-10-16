@@ -3,7 +3,9 @@ import numpy as np
 import pytest
 
 from ctapipe.core import run_tool
-from ctapipe.io import TableLoader
+from ctapipe.core.tool import ToolConfigurationError
+from ctapipe.io import TableLoader, read_table
+from ctapipe.io.hdf5dataformat import DL1_TEL_GROUP
 from ctlearn.conftest import MODEL_FILE_FORMATS
 from ctlearn.tools import LST1PredictionTool
 
@@ -57,10 +59,12 @@ def test_predict_mono_model_with_lst1_mock_data(
     # Check that the mock LST1 DL1 file was created
     assert mock_lst1_dl1_file.exists(), "Mock LST1 DL1 file not found"
     output_file = dl2_dir / f"mock_lst1_{framework}_predictions.dl2.h5"
+    override_obs_id = 123456
     # Build command-line arguments for LST1PredictionTool
     argv = [
         f"--input_url={mock_lst1_dl1_file}",
         f"--output={output_file}",
+        f"--LST1PredictionTool.override_obs_id={override_obs_id}",
         "--LST1PredictionTool.batch_size=2",
         "--LST1PredictionTool.channels=cleaned_image",
         "--LST1PredictionTool.channels=cleaned_relative_peak_time",
@@ -68,11 +72,19 @@ def test_predict_mono_model_with_lst1_mock_data(
         f"--type_model={model_dir}/ctlearn_mono_model_{framework}_{telescope_type}_type.{MODEL_FILE_FORMATS[framework]}",
         f"--energy_model={model_dir}/ctlearn_mono_model_{framework}_{telescope_type}_energy.{MODEL_FILE_FORMATS[framework]}",
         f"--cameradirection_model={model_dir}/ctlearn_mono_model_{framework}_{telescope_type}_cameradirection.{MODEL_FILE_FORMATS[framework]}",
+        "--dl1-features",
         "--dl2-telescope",
         "--overwrite",
     ]
     # Run LST1PredictionTool
-    assert run_tool(LST1PredictionTool(), argv=argv, cwd=tmp_path) == 0
+    tool = LST1PredictionTool()
+    assert run_tool(tool, argv=argv, cwd=tmp_path) == 0
+    assert tool.transforms == {
+        "image_scale": 0.0,
+        "image_offset": 0,
+        "peak_time_scale": 0.0,
+        "peak_time_offset": 0,
+    }
     # Check that the output DL2 file was created
     assert output_file.exists(), "Output DL2 file not created"
     # Check that the created DL2 file can be read with the TableLoader
@@ -86,6 +98,7 @@ def test_predict_mono_model_with_lst1_mock_data(
         )
         for tel_id in allowed_tels:
             assert len(tel_events[tel_id]) > 0
+            assert tel_events[tel_id]["obs_id"][0] == override_obs_id
             for col in REQUIRED_COLUMNS + [
                 "tel_id",
                 "hillas_intensity",
@@ -112,3 +125,30 @@ def test_predict_mono_model_with_lst1_mock_data(
             assert (
                 subarray_events[col][0] is not np.nan
             ), f"{col} has NaN values in DL2 file {output_file.name}"
+    # Check that the DL1 feature table was created and contains the expected columns
+    feature_table_path = (
+        f"{DL1_TEL_GROUP}/features/CTLearn/tel_{allowed_tels[0]:03d}"
+    )
+    feature_table = read_table(output_file, feature_table_path)
+    assert len(feature_table) > 0, (
+        f"DL1 feature table missing or empty at {feature_table_path}"
+    )
+    for col in ["particletype", "energy", "geometry"]:
+        assert (
+            f"CTLearn_tel_{col}_feature_vectors" in feature_table.colnames
+        ), f"{col} missing in DL1 feature table {feature_table_path}"
+
+def test_lst1_prediction_rejects_mapper_shape_mismatch(
+    tmp_path, mock_lst1_dl1_file, ctlearn_trained_dl1_mono_models
+):
+    model = ctlearn_trained_dl1_mono_models["Keras_LST_energy"]
+    tool = LST1PredictionTool()
+    argv = [
+        f"--input_url={mock_lst1_dl1_file}",
+        f"--output={tmp_path / 'axial_mapper.dl2.h5'}",
+        f"--energy_model={model}",
+        "--LST1PredictionTool.image_mapper_type=AxialMapper",
+    ]
+
+    with pytest.raises(ToolConfigurationError, match="input shape of the model"):
+        run_tool(tool, argv=argv, cwd=tmp_path)
