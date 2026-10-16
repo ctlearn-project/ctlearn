@@ -238,7 +238,7 @@ class TrainCTLearnModel(Tool):
             input_url_background=sorted(self.input_url_background),
             parent=self,
         )
-        self.log.info("Number of events loaded: %s", self.dl1dh_reader._get_n_events())
+        self.log.info("Number of events loaded: %s", self.dl1dh_reader.get_n_events())
         if "type" in self.reco_tasks:
             self.log.info(
                 "Number of signal events: %d", self.dl1dh_reader.n_signal_events
@@ -247,9 +247,9 @@ class TrainCTLearnModel(Tool):
                 "Number of background events: %d", self.dl1dh_reader.n_bkg_events
             )
         # Check if the number of events is enough to form a batch
-        if self.dl1dh_reader._get_n_events() < self.batch_size:
+        if self.dl1dh_reader.get_n_events() < self.batch_size:
             raise ValueError(
-                f"{self.dl1dh_reader._get_n_events()} events are not enough "
+                f"{self.dl1dh_reader.get_n_events()} events are not enough "
                 f"to form a batch of size {self.batch_size}. Reduce the batch size."
             )
         # Check if there are at least two classes in the reader for the particle classification
@@ -277,12 +277,12 @@ class TrainCTLearnModel(Tool):
             )
 
         # Set up the data loaders for training and validation
-        self.indices = list(range(self.dl1dh_reader._get_n_events()))
+        self.indices = list(range(self.dl1dh_reader.get_n_events()))
         # Shuffle the indices before the training/validation split
         np.random.seed(self.random_seed)
         np.random.shuffle(self.indices)
         self.n_validation_examples = int(
-            self.validation_split * self.dl1dh_reader._get_n_events()
+            self.validation_split * self.dl1dh_reader.get_n_events()
         )
         self.training_indices = self.indices[self.n_validation_examples:]
         self.validation_indices = self.indices[:self.n_validation_examples]

@@ -236,7 +236,7 @@ def test_train_model_rejects_unsupported_reader(tmp_path, monkeypatch):
 
 def test_train_model_rejects_too_few_events(tmp_path, monkeypatch):
     reader = SimpleNamespace(
-        _get_n_events=lambda: 1,
+        get_n_events=lambda: 1,
         class_weight={},
         mode="mono",
         selected_telescopes=["LST_LST_LSTCam"],
@@ -249,7 +249,7 @@ def test_train_model_rejects_too_few_events(tmp_path, monkeypatch):
 
 def test_train_model_rejects_classification_with_one_class(tmp_path, monkeypatch):
     reader = SimpleNamespace(
-        _get_n_events=lambda: 4,
+        get_n_events=lambda: 4,
         class_weight=None,
         n_signal_events=4,
         n_bkg_events=0,
@@ -275,7 +275,7 @@ def test_train_model_rejects_invalid_stacking_options(
     tmp_path, monkeypatch, reader_mode, selected_telescopes, sort_by_intensity, message
 ):
     reader = SimpleNamespace(
-        _get_n_events=lambda: 4,
+        get_n_events=lambda: 4,
         class_weight={},
         mode=reader_mode,
         selected_telescopes=selected_telescopes,
@@ -308,7 +308,7 @@ def test_train_model_rejects_incomplete_training_options(
     tmp_path, monkeypatch, option, value, missing_key
 ):
     reader = SimpleNamespace(
-        _get_n_events=lambda: 4,
+        get_n_events=lambda: 4,
         class_weight={},
         mode="mono",
         selected_telescopes=["LST_LST_LSTCam"],
