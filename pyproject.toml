@@ -76,12 +76,14 @@ tests = [
 docs = [
   "ctlearn[all]",
   "sphinx",
+  "sphinx-changelog",
   "sphinx-rtd-theme",
 ]
 
 dev = [
     "ctlearn[all,docs,tests]",
     "setuptools_scm[toml]",
+    "towncrier",
 ]
 
 [project.urls]
@@ -112,3 +114,38 @@ norecursedirs = [
     "docs",
     "images"
 ]
+
+[tool.towncrier]
+package = "ctlearn"
+directory = "docs/changes"
+filename = "CHANGES.rst"
+template = "docs/changes/template.rst"
+issue_format = "`#{issue} <https://github.com/ctlearn-project/ctlearn/pull/{issue}>`__"
+
+    [tool.towncrier.fragment.feature]
+    name = "New Features"
+    showcontent = true
+
+    [tool.towncrier.fragment.bugfix]
+    name = "Bug Fixes"
+    showcontent = true
+
+    [tool.towncrier.fragment.api]
+    name = "API Changes"
+    showcontent = true
+
+    [tool.towncrier.fragment.datamodel]
+    name = "Data Model Changes"
+    showcontent = true
+
+    [tool.towncrier.fragment.optimization]
+    name = "Refactoring and Optimization"
+    showcontent = true
+
+    [tool.towncrier.fragment.maintenance]
+    name = "Maintenance"
+    showcontent = true
+
+    [[tool.towncrier.section]]
+    name = ""
+    path = ""

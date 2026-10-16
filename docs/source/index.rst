@@ -26,6 +26,7 @@ CTLearn: Deep Learning for IACT Event Reconstruction
    usage
    suplementary
    modules
+   changelog
 
 Documentation
 ==================
