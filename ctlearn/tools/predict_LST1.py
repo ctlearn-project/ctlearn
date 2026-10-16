@@ -662,10 +662,10 @@ class LST1PredictionTool(Tool):
                 )
                 feature_vector_table.add_column(
                     classification_fvs,
-                    name=f"{self.prefixes['all']}_tel_classification_feature_vectors",
+                    name=f"{self.prefixes['all']}_tel_particletype_feature_vectors",
                 )
                 if nonexample_identifiers is not None:
-                    fvs_columns_list.append(f"{self.prefixes['all']}_tel_classification_feature_vectors")
+                    fvs_columns_list.append(f"{self.prefixes['all']}_tel_particletype_feature_vectors")
                     fvs_shapes_list.append(
                         (
                             len(nonexample_identifiers),
@@ -861,10 +861,10 @@ class LST1PredictionTool(Tool):
                 )
                 feature_vector_table.add_column(
                     direction_fvs,
-                    name=f"{self.prefixes['all']}_tel_direction_feature_vectors",
+                    name=f"{self.prefixes['all']}_tel_geometry_feature_vectors",
                 )
                 if nonexample_identifiers is not None:
-                    fvs_columns_list.append(f"{self.prefixes['all']}_tel_direction_feature_vectors")
+                    fvs_columns_list.append(f"{self.prefixes['all']}_tel_geometry_feature_vectors")
                     fvs_shapes_list.append(
                         (
                             len(nonexample_identifiers),

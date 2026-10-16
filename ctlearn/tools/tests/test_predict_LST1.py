@@ -125,6 +125,7 @@ def test_predict_mono_model_with_lst1_mock_data(
             assert (
                 subarray_events[col][0] is not np.nan
             ), f"{col} has NaN values in DL2 file {output_file.name}"
+    # Check that the DL1 feature table was created and contains the expected columns
     feature_table_path = (
         f"{DL1_TEL_GROUP}/features/CTLearn/tel_{allowed_tels[0]:03d}"
     )
@@ -132,6 +133,10 @@ def test_predict_mono_model_with_lst1_mock_data(
     assert len(feature_table) > 0, (
         f"DL1 feature table missing or empty at {feature_table_path}"
     )
+    for col in ["particletype", "energy", "geometry"]:
+        assert (
+            f"CTLearn_tel_{col}_feature_vectors" in feature_table.colnames
+        ), f"{col} missing in DL1 feature table {feature_table_path}"
 
 def test_lst1_prediction_rejects_mapper_shape_mismatch(
     tmp_path, mock_lst1_dl1_file, ctlearn_trained_dl1_mono_models

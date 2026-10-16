@@ -3,7 +3,8 @@ import numpy as np
 import pytest
 
 from ctapipe.core import run_tool
-from ctapipe.io import TableLoader
+from ctapipe.io import read_table, TableLoader
+from ctapipe.io.hdf5dataformat import DL1_SUBARRAY_GROUP
 from ctlearn.conftest import MODEL_FILE_FORMATS
 from ctlearn.tools.predict_stereo_model import StereoPredictCTLearnModel
 
@@ -80,6 +81,7 @@ def test_predict_stereo_model_with_dl1_images(
         "--DLImageReader.mode=stereo",
         "--DLImageReader.focal_length_choice=EQUIVALENT",
         f"--DLImageReader.allowed_tels={allowed_tels}",
+        "--dl1-features",
         "--no-dl1-images",
         "--no-true-images",
     ]
@@ -153,3 +155,15 @@ def test_predict_stereo_model_with_dl1_images(
             assert (
                 subarray_events[col][0] is not np.nan
             ), f"{col} has NaN values in DL2 file {output_file.name}"
+    # Check that the DL1 feature table was created and contains the expected columns
+    feature_table_path = (
+        f"{DL1_SUBARRAY_GROUP}/features/CTLearn"
+    )
+    feature_table = read_table(output_file, feature_table_path)
+    assert len(feature_table) > 0, (
+        f"DL1 feature table missing or empty at {feature_table_path}"
+    )
+    for col in ["particletype", "energy", "geometry"]:
+        assert (
+            f"CTLearn_{col}_feature_vectors" in feature_table.colnames
+        ), f"{col} missing in DL1 feature table {feature_table_path}"
