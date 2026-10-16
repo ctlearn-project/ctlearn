@@ -448,15 +448,15 @@ class PredictCTLearnModel(Tool):
             input_url_signal=[self.input_url],
             parent=self,
         )
-        self.log.info("Number of events loaded: %s", self.dl1dh_reader._get_n_events())
+        self.log.info("Number of events loaded: %s", self.dl1dh_reader.get_n_events())
         # Check if the number of events is enough to form a batch
-        if self.dl1dh_reader._get_n_events() < self.batch_size:
+        if self.dl1dh_reader.get_n_events() < self.batch_size:
             raise ToolConfigurationError(
-                f"{self.dl1dh_reader._get_n_events()} events are not enough "
+                f"{self.dl1dh_reader.get_n_events()} events are not enough "
                 f"to form a batch of size {self.batch_size}. Reduce the batch size."
             )
         # Set the indices for the data loaders
-        self.indices = list(range(self.dl1dh_reader._get_n_events()))
+        self.indices = list(range(self.dl1dh_reader.get_n_events()))
         self.last_batch_size = len(self.indices) % (
             self.batch_size * self.num_devices
         )
