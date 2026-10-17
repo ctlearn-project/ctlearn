@@ -6,6 +6,7 @@ __all__ = ["TrainCTLearnPyTorchModel"]
 
 import sys
 import os
+import time
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -242,8 +243,29 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
         state_dict_save_path = os.path.join(self.output_dir, "ctlearn_state_dict.pth")
 
         for epoch_idx in range(self.n_epochs):
+            epoch_start = time.perf_counter()
             train_loss, train_metric_vals = self._train_epoch()
             val_loss, val_metric_vals = self._validate_epoch()
+            epoch_duration = time.perf_counter() - epoch_start
+
+            epoch_metrics = [
+                ("loss", train_loss),
+                *train_metric_vals.items(),
+                ("val_loss", val_loss),
+            ]
+            epoch_metrics.extend(
+                (f"val_{name}", value) for name, value in val_metric_vals.items()
+            )
+            metrics_summary = " - ".join(
+                f"{name}: {value:.4f}" for name, value in epoch_metrics
+            )
+            self.log.info(
+                "Epoch %d/%d - %s - time: %.2fs",
+                epoch_idx + 1,
+                self.n_epochs,
+                metrics_summary,
+                epoch_duration,
+            )
 
             # Record CSV Row (0-indexed epochs matching Keras CSVLogger)
             row_dict = {"epoch": epoch_idx, "loss": train_loss, "val_loss": val_loss}
@@ -257,13 +279,13 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
                 f.write(row_str + "\n")
 
             # TensorBoard metrics training and validation
-            self.train_writer.add_scalar("loss", train_loss, epoch_idx)
+            self.train_writer.add_scalar("epoch_loss", train_loss, epoch_idx)
             for k, v in train_metric_vals.items():
-                self.train_writer.add_scalar(k, v, epoch_idx)
+                self.train_writer.add_scalar(f"epoch_{k}", v, epoch_idx)
             self.train_writer.flush()
-            self.val_writer.add_scalar("loss", val_loss, epoch_idx)
+            self.val_writer.add_scalar("epoch_loss", val_loss, epoch_idx)
             for k, v in val_metric_vals.items():
-                self.val_writer.add_scalar(k, v, epoch_idx)
+                self.val_writer.add_scalar(f"epoch_{k}", v, epoch_idx)
             self.val_writer.flush()
 
             # Unwrap model if wrapped with DataParallel / DistributedDataParallel
@@ -274,7 +296,9 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
             )
 
             # Checkpoint saving & Early stopping logic
-            if val_loss < best_val_loss:
+            previous_best_val_loss = best_val_loss
+            validation_improved = val_loss < best_val_loss
+            if validation_improved:
                 best_val_loss = val_loss
                 patience_counter = 0
                 state_dict = (
@@ -283,6 +307,18 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
                     else self.model.state_dict()
                 )
                 best_model_weights = state_dict
+                previous_loss = (
+                    "None"
+                    if previous_best_val_loss == float("inf")
+                    else f"{previous_best_val_loss:.5f}"
+                )
+                self.log.info(
+                    "Epoch %d: val_loss improved from %s to %.5f, saving model to %s",
+                    epoch_idx + 1,
+                    previous_loss,
+                    val_loss,
+                    model_save_path,
+                )
                 if self.save_best_validation_only:
                     # Save state_dict (tensors only)
                     torch.save(state_dict, state_dict_save_path)
@@ -293,8 +329,18 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
                         'ctlearn_config': dict(self.config) if self.config else {}
                     }
                     torch.save(checkpoint, model_save_path)
+                    self.log.info(
+                        "Epoch %d: finished saving model to %s",
+                        epoch_idx + 1,
+                        model_save_path,
+                    )
             else:
                 patience_counter += 1
+                self.log.info(
+                    "Epoch %d: val_loss did not improve from %.5f",
+                    epoch_idx + 1,
+                    best_val_loss,
+                )
 
             if not self.save_best_validation_only:
                 state_dict = (
@@ -311,6 +357,11 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
                     'ctlearn_config': dict(self.config) if self.config else {}
                 }
                 torch.save(checkpoint, model_save_path)
+                self.log.info(
+                    "Epoch %d: finished saving model to %s",
+                    epoch_idx + 1,
+                    model_save_path,
+                )
 
             if self.scheduler is not None:
                 self.scheduler.step(val_loss)
