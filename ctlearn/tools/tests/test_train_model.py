@@ -1,4 +1,3 @@
-from inspect import isabstract
 from types import SimpleNamespace
 
 import json
