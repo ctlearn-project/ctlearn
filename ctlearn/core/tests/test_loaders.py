@@ -32,7 +32,7 @@ def test_data_loading(
     allowed_tels,
     num_telescopes,
 ):
-    """Check the data loading for the Keras and PyTorch frameworks"""
+    """Check the mono and stereo data loading for the Keras and PyTorch frameworks"""
     expected_features_shape = list(expected_features_shape)
     expected_features_shape[channel_axis] *= num_telescopes
     # Create a configuration suitable for the test
