@@ -8,7 +8,6 @@ import sys
 from importlib.resources import files, as_file
 
 from ctapipe.core import Provenance
-from ctapipe.core.tool import ToolConfigurationError
 from ctapipe.core.traits import TraitError
 from ctapipe.instrument.optics import FocalLengthKind
 from ctapipe.instrument import SubarrayDescription
@@ -120,7 +119,7 @@ def setup_framework(model_paths):
 
     Raises
     ------
-    ToolConfigurationError
+    IOError
         If no valid model paths are provided, or if multiple inconsistent frameworks 
         are detected across the provided paths.
     """
@@ -149,7 +148,7 @@ def setup_framework(model_paths):
             detected_frameworks[path] = _detect_framework(path)
     # Fail immediately if no valid model paths are provided
     if not detected_frameworks:
-        raise ToolConfigurationError(
+        raise IOError(
             "No model paths were specified. At least one valid model path "
             "(.keras/.h5 for Keras, or .pt/.pth for PyTorch) must be provided."
         )
@@ -157,7 +156,7 @@ def setup_framework(model_paths):
     unique_frameworks = set(detected_frameworks.values())
     if len(unique_frameworks) > 1:
         details = ", ".join(f"{p}: {fw.value}" for p, fw in detected_frameworks.items())
-        raise ToolConfigurationError(
+        raise IOError(
             f"Inconsistent model frameworks detected across paths: {details}. "
             "All specified model files must belong to the same framework."
         )
