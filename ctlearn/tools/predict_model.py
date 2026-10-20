@@ -509,7 +509,7 @@ class PredictCTLearnModel(Tool):
             self.input_url,
             focal_length_choice=self.dl1dh_reader.focal_length_choice,
         )
-        if input_subarray == self.dl1dh_reader.subarray:
+        if SubarrayDescription.check_matching_subarrays([input_subarray, self.dl1dh_reader.subarray]):
             return
 
         # From the merger tool a SubarrayDescription for the full array is already stored
