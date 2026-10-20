@@ -5,12 +5,16 @@ on:
     branches: ["**"]
     tags: ["**"]
   pull_request:
+    types: [opened, reopened, synchronize, labeled, unlabeled]
   workflow_dispatch:
   schedule:
     - cron: "0 2 * * *"  # Daily at 02:00 UTC
 
 jobs:
   cache-test-data:
+    if: >-
+      github.event_name != 'pull_request' ||
+      !contains(github.event.pull_request.labels.*.name, 'documentation-only')
     runs-on: ubuntu-24.04
     steps:
       - name: Cache ctapipe data
@@ -37,6 +41,9 @@ jobs:
 
   build:
     needs: cache-test-data
+    if: >-
+      github.event_name != 'pull_request' ||
+      !contains(github.event.pull_request.labels.*.name, 'documentation-only')
     strategy:
       matrix:
         os: [ubuntu-24.04]
