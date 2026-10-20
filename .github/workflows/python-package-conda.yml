@@ -151,7 +151,7 @@ jobs:
 
       - name: Install package with pip
         run: pip install -e .[tests]
-          
+
       - name: Run pytest with coverage
         if: >-
           matrix.python-version == '3.12' &&
