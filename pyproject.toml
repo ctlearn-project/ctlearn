@@ -30,7 +30,7 @@ requires-python = ">=3.12"
 dependencies = [
     "astropy",
     "ctapipe>=0.29",
-    "dl1_data_handler>=0.14.10",
+    "dl1_data_handler>=0.14.11",
     "numba",
     "numpy",
     "pandas",
@@ -70,6 +70,7 @@ tests = [
     "pytest-cov",
     "pytest-xdist",
     "pytest_astropy_header",
+    "diff-cover",
     "filelock",
 ]
 
@@ -114,6 +115,10 @@ norecursedirs = [
     "docs",
     "images"
 ]
+
+[tool.coverage.run]
+source = ["ctlearn"]
+omit = ["*/tests/*", "*/conftest.py"]
 
 [tool.towncrier]
 package = "ctlearn"

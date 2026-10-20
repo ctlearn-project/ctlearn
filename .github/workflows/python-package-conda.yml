@@ -5,12 +5,16 @@ on:
     branches: ["**"]
     tags: ["**"]
   pull_request:
+    types: [opened, reopened, synchronize, labeled, unlabeled]
   workflow_dispatch:
   schedule:
     - cron: "0 2 * * *"  # Daily at 02:00 UTC
 
 jobs:
   cache-test-data:
+    if: >-
+      github.event_name != 'pull_request' ||
+      !contains(github.event.pull_request.labels.*.name, 'documentation-only')
     runs-on: ubuntu-24.04
     steps:
       - name: Cache ctapipe data
@@ -37,6 +41,9 @@ jobs:
 
   build:
     needs: cache-test-data
+    if: >-
+      github.event_name != 'pull_request' ||
+      !contains(github.event.pull_request.labels.*.name, 'documentation-only')
     strategy:
       matrix:
         os: [ubuntu-24.04]
@@ -68,6 +75,8 @@ jobs:
         shell: bash -el {0}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Restore ctapipe data cache
         uses: actions/cache@v4
@@ -127,5 +136,40 @@ jobs:
       - name: Install package with pip
         run: pip install -e .[tests]
           
+      - name: Run pytest with coverage
+        if: >-
+          matrix.python-version == '3.12' &&
+          matrix.dl1dh-version == 'latest' &&
+          matrix.tensorflow-version == 'latest' &&
+          matrix.torch-version == 'latest'
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          pytest --cov --cov-report=xml --cov-report=term-missing
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch --no-tags origin "$BASE_REF:refs/remotes/origin/$BASE_REF"
+            diff-cover coverage.xml --compare-branch="origin/$BASE_REF" \
+              --fail-under=80
+          fi
+
+      - name: Upload coverage to Codecov
+        if: >-
+          matrix.python-version == '3.12' &&
+          matrix.dl1dh-version == 'latest' &&
+          matrix.tensorflow-version == 'latest' &&
+          matrix.torch-version == 'latest' &&
+          (github.event_name != 'pull_request' ||
+           github.event.pull_request.head.repo.full_name == github.repository)
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./coverage.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
+
       - name: Run pytest
+        if: >-
+          matrix.python-version != '3.12' ||
+          matrix.dl1dh-version != 'latest' ||
+          matrix.tensorflow-version != 'latest' ||
+          matrix.torch-version != 'latest'
         run: pytest

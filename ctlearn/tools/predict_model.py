@@ -441,15 +441,15 @@ class PredictCTLearnModel(Tool):
             input_url_signal=[self.input_url],
             parent=self,
         )
-        self.log.info("Number of events loaded: %s", self.dl1dh_reader._get_n_events())
+        self.log.info("Number of events loaded: %s", self.dl1dh_reader.get_n_events())
         # Check if the number of events is enough to form a batch
-        if self.dl1dh_reader._get_n_events() < self.batch_size:
+        if self.dl1dh_reader.get_n_events() < self.batch_size:
             raise ToolConfigurationError(
-                f"{self.dl1dh_reader._get_n_events()} events are not enough "
+                f"{self.dl1dh_reader.get_n_events()} events are not enough "
                 f"to form a batch of size {self.batch_size}. Reduce the batch size."
             )
         # Set the indices for the data loaders
-        self.indices = list(range(self.dl1dh_reader._get_n_events()))
+        self.indices = list(range(self.dl1dh_reader.get_n_events()))
         self.last_batch_size = len(self.indices) % (
             self.batch_size * self.num_devices
         )
@@ -509,7 +509,7 @@ class PredictCTLearnModel(Tool):
             self.input_url,
             focal_length_choice=self.dl1dh_reader.focal_length_choice,
         )
-        if input_subarray == self.dl1dh_reader.subarray:
+        if SubarrayDescription.check_matching_subarrays([input_subarray, self.dl1dh_reader.subarray]):
             return
 
         # From the merger tool a SubarrayDescription for the full array is already stored
@@ -567,24 +567,25 @@ class PredictCTLearnModel(Tool):
             overwrite=True,
         )
         # Update the simulation shower table to keep only events present in the subarray trigger table
-        subarray_trigger_table.keep_columns(SUBARRAY_EVENT_KEYS)
-        sim_shower_table = read_table(
-            self.output_path,
-            SIMULATION_SHOWER_TABLE,
-        )
-        sim_shower_table = join(
-            sim_shower_table,
-            subarray_trigger_table,
-            keys=SUBARRAY_EVENT_KEYS,
-            join_type="right",
-        )
-        sim_shower_table.sort(SUBARRAY_EVENT_KEYS)
-        write_table(
-            sim_shower_table,
-            self.output_path,
-            SIMULATION_SHOWER_TABLE,
-            overwrite=True,
-        )
+        if self.dl1dh_reader.process_type == ProcessType.Simulation:
+            subarray_trigger_table.keep_columns(SUBARRAY_EVENT_KEYS)
+            sim_shower_table = read_table(
+                self.output_path,
+                SIMULATION_SHOWER_TABLE,
+            )
+            sim_shower_table = join(
+                sim_shower_table,
+                subarray_trigger_table,
+                keys=SUBARRAY_EVENT_KEYS,
+                join_type="right",
+            )
+            sim_shower_table.sort(SUBARRAY_EVENT_KEYS)
+            write_table(
+                sim_shower_table,
+                self.output_path,
+                SIMULATION_SHOWER_TABLE,
+                overwrite=True,
+            )
         # Delete telescope-specific tables for unselected telescopes
         self._delete_unselected_telescope_tables()
 
@@ -1263,9 +1264,9 @@ class PredictCTLearnModel(Tool):
         pointing_info = vstack(pointing_info)
         if self.dl1dh_reader.mode == "stereo":
             # Group the pointing information by subarray event keys
-            # TODO: This needs to be debugged with SST1M data
             pointing_info_grouped = pointing_info.group_by(SUBARRAY_EVENT_KEYS)
             pointing_mean = pointing_info_grouped.groups.aggregate(np.mean)
+            pointing_mean.remove_columns(["time"])
             pointing_info = join(
                 all_identifiers,
                 pointing_mean,

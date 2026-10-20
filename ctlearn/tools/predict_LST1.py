@@ -370,21 +370,21 @@ class LST1PredictionTool(Tool):
         # Get the number of rows in the table
         with tables.open_file(self.input_url) as input_file:
             img_table_v_attrs = input_file.get_node(self.image_table_path)._v_attrs
-        # Check the transform value used for the file compression
-        if "CTAFIELD_3_TRANSFORM_SCALE" in img_table_v_attrs:
-            self.transforms["image_scale"] = img_table_v_attrs[
-                "CTAFIELD_3_TRANSFORM_SCALE"
-            ]
-            self.transforms["image_offset"] = img_table_v_attrs[
-                "CTAFIELD_3_TRANSFORM_OFFSET"
-            ]
-        if "CTAFIELD_4_TRANSFORM_SCALE" in img_table_v_attrs:
-            self.transforms["peak_time_scale"] = img_table_v_attrs[
-                "CTAFIELD_4_TRANSFORM_SCALE"
-            ]
-            self.transforms["peak_time_offset"] = img_table_v_attrs[
-                "CTAFIELD_4_TRANSFORM_OFFSET"
-            ]
+            # Check transform values while the input file is still open.
+            if "CTAFIELD_3_TRANSFORM_SCALE" in img_table_v_attrs:
+                self.transforms["image_scale"] = img_table_v_attrs[
+                    "CTAFIELD_3_TRANSFORM_SCALE"
+                ]
+                self.transforms["image_offset"] = img_table_v_attrs[
+                    "CTAFIELD_3_TRANSFORM_OFFSET"
+                ]
+            if "CTAFIELD_4_TRANSFORM_SCALE" in img_table_v_attrs:
+                self.transforms["peak_time_scale"] = img_table_v_attrs[
+                    "CTAFIELD_4_TRANSFORM_SCALE"
+                ]
+                self.transforms["peak_time_offset"] = img_table_v_attrs[
+                    "CTAFIELD_4_TRANSFORM_OFFSET"
+                ]
 
     def start(self):
         all_identifiers = read_table(self.input_url, self.parameter_table_name)
@@ -662,10 +662,10 @@ class LST1PredictionTool(Tool):
                 )
                 feature_vector_table.add_column(
                     classification_fvs,
-                    name=f"{self.prefixes['all']}_tel_classification_feature_vectors",
+                    name=f"{self.prefixes['all']}_tel_particletype_feature_vectors",
                 )
                 if nonexample_identifiers is not None:
-                    fvs_columns_list.append(f"{self.prefixes['all']}_tel_classification_feature_vectors")
+                    fvs_columns_list.append(f"{self.prefixes['all']}_tel_particletype_feature_vectors")
                     fvs_shapes_list.append(
                         (
                             len(nonexample_identifiers),
@@ -861,10 +861,10 @@ class LST1PredictionTool(Tool):
                 )
                 feature_vector_table.add_column(
                     direction_fvs,
-                    name=f"{self.prefixes['all']}_tel_direction_feature_vectors",
+                    name=f"{self.prefixes['all']}_tel_geometry_feature_vectors",
                 )
                 if nonexample_identifiers is not None:
-                    fvs_columns_list.append(f"{self.prefixes['all']}_tel_direction_feature_vectors")
+                    fvs_columns_list.append(f"{self.prefixes['all']}_tel_geometry_feature_vectors")
                     fvs_shapes_list.append(
                         (
                             len(nonexample_identifiers),
