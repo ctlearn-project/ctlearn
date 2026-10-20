@@ -32,7 +32,7 @@ jobs:
           extra_args: --files $(git diff origin/main --name-only)
 
   cache-test-data:
-  needs: lint
+    needs: lint
     if: >-
       github.event_name != 'pull_request' ||
       !contains(github.event.pull_request.labels.*.name, 'documentation-only')
