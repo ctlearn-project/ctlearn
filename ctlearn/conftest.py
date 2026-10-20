@@ -156,6 +156,22 @@ def mock_lst1_dl1_file(tmp_path_factory):
     output = tmp_path_factory.mktemp("mock_lst1") / "mock_lst1_dl1.h5"
     return _create_mock_lst1_dl1_file(output)
 
+@pytest.fixture(scope="session")
+def dl1_gamma_tel2_file(dl1_tmp_path, gamma_simtel_path):
+    """
+    DL1 file containing both images and parameters from a gamma simulation set.
+    """
+    output = dl1_tmp_path / "gamma_tel2.dl1.h5"
+    argv = [
+        f"--input={gamma_simtel_path}",
+        f"--output={output}",
+        "--allowed-tels=2",
+        "--max-events=10",
+        "--write-images",
+        "--SimTelEventSource.focal_length_choice=EQUIVALENT",
+    ]
+    assert run_tool(ProcessorTool(), argv=argv, cwd=dl1_tmp_path) == 0
+    return output
 
 @pytest.fixture(scope="session")
 def dl1_gamma_file(dl1_tmp_path, gamma_simtel_path):
