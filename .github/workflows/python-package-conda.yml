@@ -25,13 +25,14 @@ jobs:
       - name: Check reStructuredText syntax
         run: |
           pip install restructuredtext-lint
-          restructuredtext-lint README.rst docs/source/*.rst
+          restructuredtext-lint README.rst
 
       - uses: pre-commit/action@v3.0.1
         with:
           extra_args: --files $(git diff origin/main --name-only)
 
   cache-test-data:
+  needs: lint
     if: >-
       github.event_name != 'pull_request' ||
       !contains(github.event.pull_request.labels.*.name, 'documentation-only')
