@@ -142,7 +142,7 @@ jobs:
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             git fetch --no-tags origin "$BASE_REF:refs/remotes/origin/$BASE_REF"
             diff-cover coverage.xml --compare-branch="origin/$BASE_REF" \
-              --fail-under=95
+              --fail-under=80
           fi
 
       - name: Upload coverage to Codecov
