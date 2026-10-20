@@ -68,6 +68,8 @@ jobs:
         shell: bash -el {0}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Restore ctapipe data cache
         uses: actions/cache@v4
@@ -133,11 +135,14 @@ jobs:
           matrix.dl1dh-version == 'latest' &&
           matrix.tensorflow-version == 'latest' &&
           matrix.torch-version == 'latest'
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
           pytest --cov --cov-report=xml --cov-report=term-missing
           if [ "${{ github.event_name }}" = "pull_request" ]; then
-            git fetch --no-tags origin main:refs/remotes/origin/main
-            diff-cover coverage.xml --compare-branch=origin/main --fail-under=95
+            git fetch --no-tags origin "$BASE_REF:refs/remotes/origin/$BASE_REF"
+            diff-cover coverage.xml --compare-branch="origin/$BASE_REF" \
+              --fail-under=95
           fi
 
       - name: Upload coverage to Codecov
