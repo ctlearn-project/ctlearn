@@ -10,6 +10,8 @@ __all__ = [
     "KerasLoadedModel",
 ]
 
+from functools import partial
+
 import keras
 import keras_hexagdly as hgly
 
@@ -67,6 +69,16 @@ def build_fully_connect_keras_head(inputs, layers, activation_function, tasks):
         logits = logits[tasks[0]]
     return logits
 
+
+# The hexagonal layers read ``kernel_size`` as a square-kernel width, like the
+# square layers do, instead of counting hexagonal rings (their default): 3 is
+# the 7-cell hexagon and 1 a plain 1x1. The same configuration then describes
+# comparable models on both grids.
+_HexConv2d = partial(hgly.Conv2d, kernel_size_unit="pixels")
+_HexMaxPool2d = partial(hgly.MaxPool2d, kernel_size_unit="pixels")
+_HexAvgPool2d = partial(hgly.AvgPool2d, kernel_size_unit="pixels")
+
+
 class KerasConvBackend(ConvBackend):
     """Select Keras layers for square or hexagonal model backbones.
 
@@ -78,23 +90,23 @@ class KerasConvBackend(ConvBackend):
     def _conv_layer(self):
         """Convolution layer class for ``conv_backend``.
 
-        Both classes are built with the same keyword arguments. With
-        ``"hexagdly"``, ``kernel_size`` counts hexagonal rings, and the hex
-        grid is always padded (``"same"``), including where the square call
-        leaves Keras' default ``"valid"``.
+        Both are built with the same keyword arguments, and ``kernel_size`` has
+        the same meaning for both: a square-kernel width. The hex grid is
+        always padded (``"same"``), including where the square call leaves
+        Keras' default ``"valid"``.
         """
-        return hgly.Conv2d if self.conv_backend == "hexagdly" else keras.layers.Conv2D
+        return _HexConv2d if self.conv_backend == "hexagdly" else keras.layers.Conv2D
 
     @property
     def _pool_layer(self):
         """Max-pooling layer class for ``conv_backend``."""
-        return hgly.MaxPool2d if self.conv_backend == "hexagdly" else keras.layers.MaxPool2D
+        return _HexMaxPool2d if self.conv_backend == "hexagdly" else keras.layers.MaxPool2D
 
     @property
     def _avg_pool_layer(self):
         """Average-pooling layer class for ``conv_backend``."""
         return (
-            hgly.AvgPool2d if self.conv_backend == "hexagdly" else keras.layers.AveragePooling2D
+            _HexAvgPool2d if self.conv_backend == "hexagdly" else keras.layers.AveragePooling2D
         )
 
 class KerasSingleCNN(SingleCNN, KerasConvBackend):
@@ -203,10 +215,9 @@ class KerasSingleCNN(SingleCNN, KerasConvBackend):
             if self.batchnorm:
                 x = keras.layers.BatchNormalization(momentum=0.99)(x)
 
-        # bottleneck layer -- built with the backend's conv class like every
-        # other conv. With "hexagdly", kernel_size=1 is one hexagonal ring (a
-        # cell and its six neighbours), as for the ResNet's kernel_size=1 convs;
-        # see #302.
+        # bottleneck layer -- a 1x1 conv is a pure per-cell channel projection
+        # with no spatial mixing. It is built with the backend's conv class like
+        # every other conv: kernel_size=1 is a plain 1x1 for both backends.
         if self.bottleneck_filters is not None:
             x = self._conv_layer(
                 filters=self.bottleneck_filters,

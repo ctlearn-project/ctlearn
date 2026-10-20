@@ -42,6 +42,7 @@ class _Keras:
     )
     hex_conv = hgly.Conv2d
     hex_avg_pool = hgly.AvgPool2d
+    hex_pools = (hgly.MaxPool2d, hgly.AvgPool2d)
     model_suffix = "keras"
 
     @staticmethod
@@ -70,6 +71,7 @@ class _PyTorch:
     square_layers = (nn.Conv2d, nn.MaxPool2d, nn.AvgPool2d)
     hex_conv = phgly.Conv2d
     hex_avg_pool = phgly.AvgPool2d
+    hex_pools = (phgly.MaxPool2d, phgly.AvgPool2d)
     model_suffix = "pt"
 
     @staticmethod
@@ -294,6 +296,106 @@ class TestResNetConvBackend:
             grads = [p.grad for p in conv.parameters()]
             assert all(g is not None and torch.isfinite(g).all() for g in grads)
             assert any(g.abs().sum() > 0 for g in grads)
+
+
+class TestKernelSizeMeaning:
+    """``kernel_size`` means the same thing for both backends: a square-kernel
+    width. A hex layer reads it that way (``kernel_size_unit="pixels"``) rather
+    than as a number of hexagonal rings, so one configuration describes
+    comparable models on a square and on a hex grid (issue #302).
+
+    The hexagonal layers' ``hexbase_size`` is the ring count they actually use:
+    3 pixels -> 1 ring (the 7-cell hexagon), 1 pixel -> 0 rings (a plain 1x1).
+    """
+
+    @staticmethod
+    def _hex_layers(fw, model, kinds):
+        return [layer for layer in fw.layers(model) if isinstance(layer, kinds)]
+
+    @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
+    @pytest.mark.parametrize("kernel_size, rings", [(1, 0), (3, 1), (5, 2)])
+    def test_single_cnn_conv_reads_kernel_size_as_a_width(self, framework, kernel_size, rings):
+        fw = FRAMEWORKS[framework]
+        model = fw.single_cnn(
+            input_shape=fw.input_shape(_image_mapper("HexagdlyMapper")),
+            tasks=["type"],
+            conv_backend="hexagdly",
+            architecture=[{"filters": 4, "kernel_size": kernel_size, "number": 1}],
+            attention_mechanism=None,
+        )
+        (conv,) = self._hex_layers(fw, model, fw.hex_conv)
+        assert conv.kernel_size_unit == "pixels"
+        assert conv.hexbase_size == rings
+
+    @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
+    def test_single_cnn_bottleneck_is_a_plain_1x1(self, framework):
+        """The bottleneck is built with ``kernel_size=1``: a pure per-cell
+        channel projection on the square grid, and now on the hex grid too."""
+        fw = FRAMEWORKS[framework]
+        model = fw.single_cnn(
+            input_shape=fw.input_shape(_image_mapper("HexagdlyMapper")),
+            tasks=["type"],
+            conv_backend="hexagdly",
+            architecture=[{"filters": 4, "kernel_size": 3, "number": 1}],
+            bottleneck_filters=6,
+            attention_mechanism=None,
+        )
+        arch_conv, bottleneck = self._hex_layers(fw, model, fw.hex_conv)
+        assert arch_conv.hexbase_size == 1
+        assert bottleneck.hexbase_size == 0
+
+    @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
+    @pytest.mark.parametrize("residual_block_type", ["bottleneck", "basic"])
+    def test_resnet_hardcoded_kernel_sizes_follow_the_same_meaning(
+        self, framework, residual_block_type
+    ):
+        """The ResNet blocks hardcode ``kernel_size`` 3 (spatial convs) and 1
+        (shortcuts, projections), with no way to configure them. Read as widths
+        they are a 7-cell hexagon and a plain 1x1, as in a square ResNet."""
+        fw = FRAMEWORKS[framework]
+        model = fw.res_net(
+            input_shape=fw.input_shape(_image_mapper("HexagdlyMapper")),
+            tasks=["type"],
+            conv_backend="hexagdly",
+            residual_block_type=residual_block_type,
+            architecture=[{"filters": 4, "blocks": 1}, {"filters": 8, "blocks": 1}],
+            attention_mechanism=None,
+        )
+        convs = self._hex_layers(fw, model, fw.hex_conv)
+        assert {conv.kernel_size_unit for conv in convs} == {"pixels"}
+        assert {(conv.kernel_size, conv.hexbase_size) for conv in convs} == {(1, 0), (3, 1)}
+
+    @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
+    def test_default_pooling_size_two_resolves_to_one_ring(self, framework):
+        """CTLearn's default pooling is ``size: 2``. A hex window has no exact
+        even width, so it floors to the ring count of the odd width below it
+        rather than being rejected."""
+        fw = FRAMEWORKS[framework]
+        model = fw.single_cnn(
+            input_shape=fw.input_shape(_image_mapper("HexagdlyMapper")),
+            tasks=["type"],
+            conv_backend="hexagdly",
+            architecture=[{"filters": 4, "kernel_size": 3, "number": 1}],
+            attention_mechanism=None,
+        )
+        pools = self._hex_layers(fw, model, fw.hex_pools)
+        assert pools
+        assert {(pool.kernel_size, pool.hexbase_size, pool.kernel_size_unit) for pool in pools} == {
+            (2, 1, "pixels")
+        }
+
+    @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
+    def test_square_backend_is_untouched(self, framework):
+        """The square layers are not wrapped or replaced."""
+        fw = FRAMEWORKS[framework]
+        model = fw.single_cnn(
+            input_shape=fw.input_shape(_image_mapper("BilinearMapper")),
+            tasks=["type"],
+            architecture=[{"filters": 4, "kernel_size": 3, "number": 1}],
+            attention_mechanism=None,
+        )
+        assert model._conv_layer is fw.square_layers[0]
+        assert not any(isinstance(layer, fw.hex_layers) for layer in fw.layers(model))
 
 
 class TestValidateConvBackend:

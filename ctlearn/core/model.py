@@ -118,8 +118,9 @@ class CTLearnModel(Component):
             "expects a square-mapped input, e.g. from BilinearMapper). 'hexagdly' "
             "uses the Conv2d/MaxPool2d/AvgPool2d layers of keras_hexagdly (Keras) "
             "or pytorch_hexagdly (PyTorch) for hex-native convolution (expects "
-            "hex-addressed input, e.g. from HexagdlyMapper). With 'hexagdly', "
-            "kernel_size counts hexagonal rings around the centre cell."
+            "hex-addressed input, e.g. from HexagdlyMapper). kernel_size and the "
+            "pooling size mean the same for both backends, a square-kernel width: "
+            "with 'hexagdly', 3 is the 7-cell hexagon and 1 a plain 1x1."
         ),
     ).tag(config=True)
 
