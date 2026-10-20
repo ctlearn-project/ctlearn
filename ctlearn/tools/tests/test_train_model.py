@@ -164,7 +164,7 @@ def test_train_model_early_stopping_and_checkpoint_options(
         checkpoint = next(
             callback
             for callback in tool.callbacks
-            if callback.__class__.__name__ == "ModelCheckpoint"
+            if callback.__class__.__name__ == "LoggingModelCheckpoint"
         )
         early_stopping_callback = next(
             callback
