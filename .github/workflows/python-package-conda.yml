@@ -22,6 +22,11 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Check reStructuredText syntax
+        run: |
+          pip install restructuredtext-lint
+          restructuredtext-lint README.rst docs/source/*.rst
+
       - uses: pre-commit/action@v3.0.1
         with:
           extra_args: --files $(git diff origin/main --name-only)
