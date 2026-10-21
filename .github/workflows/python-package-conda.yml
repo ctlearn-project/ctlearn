@@ -109,6 +109,13 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install pylint pylint-exit anybadge eventio pytest flake8
+
+      - name: Install package with pip
+        run: pip install -e .[tests]
+          
+
+      - name: Install pip target dependencies
+        run: |
           if [ "${{ matrix.dl1dh-version }}" = "nightly" ]; then
             pip install git+https://github.com/cta-observatory/dl1-data-handler.git
           else
@@ -133,9 +140,7 @@ jobs:
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-      - name: Install package with pip
-        run: pip install -e .[tests]
-          
+
       - name: Run pytest with coverage
         if: >-
           matrix.python-version == '3.12' &&
