@@ -115,9 +115,9 @@ jobs:
             pip install dl1-data-handler
           fi
           if [ "${{ matrix.tensorflow-version }}" = "latest" ]; then
-            pip install --upgrade tensorflow
+            pip install --upgrade tensorflow[and-cuda]
           else
-            pip install "tensorflow==${{ matrix.tensorflow-version }}"
+            pip install "tensorflow[and-cuda]==${{ matrix.tensorflow-version }}"
           fi
           if [ "${{ matrix.torch-version }}" = "latest" ]; then
             pip install --upgrade torch torchvision
