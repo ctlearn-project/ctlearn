@@ -14,26 +14,16 @@ COPY ./pyproject.toml MANIFEST.in ./
 COPY ./ctlearn ./ctlearn/
 # If .git is truly needed for versioning by setuptools_scm, copy it. Otherwise, omit.
 COPY ./.git ./.git/
-RUN pip install --no-cache-dir build
-
-# Copy source code needed for the build
-WORKDIR /repo
-COPY ./pyproject.toml MANIFEST.in ./
-COPY ./ctlearn ./ctlearn/
-# If .git is truly needed for versioning by setuptools_scm, copy it. Otherwise, omit.
-COPY ./.git ./.git/
 
 # Build the wheel
 RUN python -m build --wheel
 
-# Stage 2: Create the final runtime image BASED ON NVIDIA's TF image
-# TODO what version to use? After 24.?? TF 2.14 is not found in the container
-FROM nvcr.io/nvidia/tensorflow:25.02-tf2-py3
+# Stage 2: Use NVIDIA's PyTorch image; installing CTLearn also installs TensorFlow and Keras.
+FROM nvcr.io/nvidia/pytorch:25.02-py3
 # Copy only the built wheel from the builder stage's dist directory
 COPY --from=builder /repo/dist /tmp/dist
 
-# Install the ctlearn wheel using pip from the NVIDIA base image
-# Install the ctlearn wheel using pip from the NVIDIA base image
+# Install the CTLearn wheel and its declared runtime dependencies.
 RUN python -m pip install --no-cache-dir /tmp/dist/* \
     && rm -r /tmp/dist
 
