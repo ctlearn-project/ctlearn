@@ -120,7 +120,9 @@ class CTLearnModel(Component):
             "or pytorch_hexagdly (PyTorch) for hex-native convolution (expects "
             "hex-addressed input, e.g. from HexagdlyMapper). kernel_size and the "
             "pooling size mean the same for both backends, a square-kernel width: "
-            "with 'hexagdly', 3 is the 7-cell hexagon and 1 a plain 1x1."
+            "with 'hexagdly', 3 is the 7-cell hexagon and 1 a plain 1x1. A hexagonal "
+            "window is centred on a cell, so an even size has no exact equivalent: "
+            "it is rounded up to the next odd one, with a warning from the hexagonal layers."
         ),
     ).tag(config=True)
 

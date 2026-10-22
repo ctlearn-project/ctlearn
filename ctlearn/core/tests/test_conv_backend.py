@@ -6,6 +6,9 @@ run, saved and reloaded) live in the ``FRAMEWORKS`` adapters below, and the
 handful of checks that only exist on one side are named accordingly.
 """
 
+import re
+import warnings
+
 import keras
 import keras_hexagdly as hgly
 import numpy as np
@@ -366,22 +369,22 @@ class TestKernelSizeMeaning:
         assert {(conv.kernel_size, conv.hexbase_size) for conv in convs} == {(1, 0), (3, 1)}
 
     @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
-    def test_default_pooling_size_two_resolves_to_one_ring(self, framework):
-        """CTLearn's default pooling is ``size: 2``. A hex window has no exact
-        even width, so it floors to the ring count of the odd width below it
-        rather than being rejected."""
+    @pytest.mark.parametrize("pooling_type", ["max", "average"])
+    def test_pooling_size_three_is_the_seven_cell_hexagon(self, framework, pooling_type):
         fw = FRAMEWORKS[framework]
         model = fw.single_cnn(
             input_shape=fw.input_shape(_image_mapper("HexagdlyMapper")),
             tasks=["type"],
             conv_backend="hexagdly",
             architecture=[{"filters": 4, "kernel_size": 3, "number": 1}],
+            pooling_type=pooling_type,
+            pooling_parameters={"size": 3, "strides": 2},
             attention_mechanism=None,
         )
         pools = self._hex_layers(fw, model, fw.hex_pools)
         assert pools
         assert {(pool.kernel_size, pool.hexbase_size, pool.kernel_size_unit) for pool in pools} == {
-            (2, 1, "pixels")
+            (3, 1, "pixels")
         }
 
     @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
@@ -396,6 +399,115 @@ class TestKernelSizeMeaning:
         )
         assert model._conv_layer is fw.square_layers[0]
         assert not any(isinstance(layer, fw.hex_layers) for layer in fw.layers(model))
+
+    # -- even sizes: no exact hexagonal equivalent, rounded up with a warning --------
+    # A hexagonal window is centred on a cell, so it only exists for odd sizes
+    # (1 cell, then 7 for size 3, 19 for size 5, ...). An even size is rounded up
+    # to the next odd one, so 2 gives the same window as 3 (and 1 is the identity).
+    # The warning comes from keras-hexagdly / pytorch-hexagdly (>=0.6.1 / >=0.4.1).
+
+    @staticmethod
+    def _rounded_sizes(record):
+        """The (size, rounded size) pairs announced by the hexagonal layers."""
+        return sorted(
+            {
+                (int(m.group(1)), int(m.group(2)))
+                for w in record
+                if (m := re.search(r"the size (\d+) is rounded up to (\d+)", str(w.message)))
+            }
+        )
+
+    @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
+    @pytest.mark.parametrize("pooling_type", ["max", "average"])
+    def test_even_pooling_size_is_rounded_up_and_warns(self, framework, pooling_type):
+        fw = FRAMEWORKS[framework]
+        with pytest.warns(UserWarning, match="no even size") as record:
+            model = fw.single_cnn(
+                input_shape=fw.input_shape(_image_mapper("HexagdlyMapper")),
+                tasks=["type"],
+                conv_backend="hexagdly",
+                architecture=[{"filters": 4, "kernel_size": 3, "number": 1}],
+                pooling_type=pooling_type,
+                pooling_parameters={"size": 2, "strides": 2},
+                attention_mechanism=None,
+            )
+        pools = self._hex_layers(fw, model, fw.hex_pools)
+        assert pools
+        # size 2 gives the 7-cell window of size 3, not the identity of size 1
+        assert {(pool.kernel_size, pool.hexbase_size) for pool in pools} == {(2, 1)}
+        assert self._rounded_sizes(record) == [(2, 3)]
+
+    @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
+    def test_default_configuration_warns_about_its_pooling_size(self, framework):
+        """CTLearn's default pooling is ``size: 2``."""
+        fw = FRAMEWORKS[framework]
+        with pytest.warns(UserWarning, match="no even size") as record:
+            fw.single_cnn(
+                input_shape=fw.input_shape(_image_mapper("HexagdlyMapper")),
+                tasks=["type"],
+                conv_backend="hexagdly",
+                attention_mechanism=None,
+            )
+        assert self._rounded_sizes(record) == [(2, 3)]
+
+    @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
+    def test_even_kernel_size_is_rounded_up_and_warns(self, framework):
+        fw = FRAMEWORKS[framework]
+        with pytest.warns(UserWarning, match="no even size") as record:
+            model = fw.single_cnn(
+                input_shape=fw.input_shape(_image_mapper("HexagdlyMapper")),
+                tasks=["type"],
+                conv_backend="hexagdly",
+                architecture=[{"filters": 4, "kernel_size": 4, "number": 1}],
+                pooling_parameters={"size": 3, "strides": 2},
+                attention_mechanism=None,
+            )
+        (conv,) = self._hex_layers(fw, model, fw.hex_conv)
+        assert conv.hexbase_size == 2  # the 19-cell window of size 5
+        assert self._rounded_sizes(record) == [(4, 5)]
+
+    @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
+    def test_resnet_stem_even_sizes_warn(self, framework):
+        """Only the stem is configurable: the residual blocks hardcode 1 and 3."""
+        fw = FRAMEWORKS[framework]
+        with pytest.warns(UserWarning, match="no even size") as record:
+            fw.res_net(
+                input_shape=fw.input_shape(_image_mapper("HexagdlyMapper")),
+                tasks=["type"],
+                conv_backend="hexagdly",
+                init_layer={"filters": 4, "kernel_size": 4, "strides": 2},
+                init_max_pool={"size": 2, "strides": 2},
+                architecture=[{"filters": 4, "blocks": 1}],
+                attention_mechanism=None,
+            )
+        assert self._rounded_sizes(record) == [(2, 3), (4, 5)]
+
+    @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
+    def test_odd_sizes_do_not_warn(self, framework):
+        fw = FRAMEWORKS[framework]
+        with warnings.catch_warnings():
+            warnings.filterwarnings("error", message=".*no even size.*")
+            fw.single_cnn(
+                input_shape=fw.input_shape(_image_mapper("HexagdlyMapper")),
+                tasks=["type"],
+                conv_backend="hexagdly",
+                architecture=[{"filters": 4, "kernel_size": 3, "number": 1}],
+                pooling_parameters={"size": 3, "strides": 2},
+                attention_mechanism=None,
+            )
+
+    @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
+    def test_square_backend_does_not_warn_about_even_sizes(self, framework):
+        """Even sizes are fine on a square grid (the default pooling is 2x2)."""
+        fw = FRAMEWORKS[framework]
+        with warnings.catch_warnings():
+            warnings.filterwarnings("error", message=".*no even size.*")
+            fw.single_cnn(
+                input_shape=fw.input_shape(_image_mapper("BilinearMapper")),
+                tasks=["type"],
+                architecture=[{"filters": 4, "kernel_size": 4, "number": 1}],
+                attention_mechanism=None,
+            )
 
 
 class TestValidateConvBackend:
