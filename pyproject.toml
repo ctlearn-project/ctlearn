@@ -42,7 +42,7 @@ dependencies = [
     "tensorboard",
     "tensorflow>=2.18; sys_platform == 'darwin' and python_version < '3.13'",
     "tensorflow>=2.20; sys_platform == 'darwin' and python_version >= '3.13' and python_version < '3.14'",
-    "tensorflow>=2.22.0; sys_platform == 'darwin' and python_version >= '3.14'",
+    "tensorflow>=2.22; sys_platform == 'darwin' and python_version >= '3.14'",
     "tensorflow[and-cuda]>=2.18; sys_platform == 'linux' and python_version < '3.13'",
     "tensorflow[and-cuda]>=2.20; sys_platform == 'linux' and python_version >= '3.13' and python_version < '3.14'",
     "tensorflow[and-cuda]>=2.22; sys_platform == 'linux' and python_version >= '3.14'",
