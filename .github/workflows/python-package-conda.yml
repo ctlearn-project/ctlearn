@@ -52,6 +52,12 @@ jobs:
         tensorflow-version: ['latest', '2.18.*']
         torch-version: ['latest', '2.4.*']
         exclude:
+          - python-version: '3.12'
+            tensorflow-version: '2.16.*'
+            torch-version: 'latest'
+          - python-version: '3.12'
+            tensorflow-version: 'latest'
+            torch-version: '2.4.*'
           - python-version: '3.13'
             tensorflow-version: '2.18.*'
           - python-version: '3.14'
