@@ -1,0 +1,1 @@
+Fixed CI dependency installation order by installing CTLearn from source before the matrix-selected TensorFlow and PyTorch versions. This ensures the intended framework versions remain installed instead of being upgraded during the source installation.
