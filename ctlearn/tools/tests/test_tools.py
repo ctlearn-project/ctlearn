@@ -35,6 +35,7 @@ def test_module_main_guard_runs_tool(monkeypatch, module_name, tool_name):
         ("TrainCTLearnModel", "ctlearn.tools.train_model"),
         ("TrainCTLearnKerasModel", "ctlearn.tools.keras.train_model"),
         ("TrainCTLearnPyTorchModel", "ctlearn.tools.pytorch.train_model"),
+        ("LoggingModelCheckpoint", "ctlearn.tools.keras.train_model"),
         ("LST1PredictionTool", "ctlearn.tools.predict_LST1"),
         ("MonoPredictCTLearnModel", "ctlearn.tools.predict_mono_model"),
         ("StereoPredictCTLearnModel", "ctlearn.tools.predict_stereo_model"),

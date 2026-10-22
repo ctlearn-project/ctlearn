@@ -1,4 +1,6 @@
+import logging
 from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pandas as pd
 import pytest
@@ -8,6 +10,7 @@ from ctapipe.core import run_tool
 from ctapipe.core.tool import ToolConfigurationError
 from ctapipe.core.traits import TraitError
 from ctlearn.conftest import TRAINING_TOOLS, MODEL_FILE_FORMATS
+from ctlearn.tools.keras.train_model import LoggingModelCheckpoint
 from ctlearn.tools.train_model import TrainCTLearnModel
 
 
@@ -164,7 +167,7 @@ def test_train_model_early_stopping_and_checkpoint_options(
         checkpoint = next(
             callback
             for callback in tool.callbacks
-            if callback.__class__.__name__ == "ModelCheckpoint"
+            if callback.__class__.__name__ == "LoggingModelCheckpoint"
         )
         early_stopping_callback = next(
             callback
@@ -317,3 +320,19 @@ def test_train_model_rejects_incomplete_training_options(
 
     with pytest.raises(TraitError, match=missing_key):
         tool.setup()
+
+def test_logging_checkpoint_handles_missing_monitor(tmp_path):
+    checkpoint_path = tmp_path / "best.keras"
+    model = Mock()
+    callback = LoggingModelCheckpoint(
+        logging.getLogger(__name__),
+        filepath=str(checkpoint_path),
+        monitor="val_loss",
+        mode="min",
+        save_best_only=True,
+    )
+    callback.set_model(model)
+
+    callback.on_epoch_end(0, logs={"loss": 0.5})
+
+    model.save.assert_called_once_with(str(checkpoint_path), overwrite=True)
