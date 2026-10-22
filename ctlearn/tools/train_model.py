@@ -5,7 +5,6 @@ Base tool to train a ``CTLearnModel``on R1/DL1a data using the ``DLDataReader`` 
 __all__ = ["TrainCTLearnModel"] 
 
 from abc import abstractmethod
-import shutil
 import numpy as np
 
 
@@ -332,21 +331,24 @@ class TrainCTLearnModel(Tool):
         self.log.info("Tool is shutting down")
 
     def write_provenance(self):
-        """Write the provenance log and copy it to the output directory."""
+        """Write the provenance log and a second one in the output directory."""
         super().write_provenance()
-        # Only copy if the tool was set up successfully, so we never write into
+        # Only write if the tool was set up successfully, so we never write into
         # a pre-existing output directory that was rejected during setup.
         if not self.is_setup or self.output_dir is None:
             return
-        provenance_log = self.provenance_log.resolve()
-        destination = (self.output_dir / provenance_log.name).resolve()
-        if not provenance_log.exists() or provenance_log == destination:
+        provenance_log = self.provenance_log
+        destination = self.output_dir / provenance_log.name
+        if provenance_log.resolve() == destination.resolve():
             return
+        # Write the provenance again instead of copying the file, since ctapipe
+        # appends to an existing log, which can contain previous runs of the tool.
         try:
-            self.output_dir.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(provenance_log, destination)
-            self.log.info("Provenance log copied to %s", destination)
+            self.provenance_log = destination
+            super().write_provenance()
         except OSError as err:
             self.log.warning(
-                "Could not copy provenance log to %s: %s", destination, err
+                "Could not write provenance log to %s: %s", destination, err
             )
+        finally:
+            self.provenance_log = provenance_log
