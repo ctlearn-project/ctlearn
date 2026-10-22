@@ -64,13 +64,17 @@ jobs:
             tensorflow-version: '2.18.*'
           - python-version: '3.13'
             torch-version: '2.4.*'
+          - python-version: '3.13'
+            dl1dh-version: 'nightly'
           - python-version: '3.14'
             torch-version: '2.4.*'
+          - python-version: '3.14'
+            dl1dh-version: 'nightly'
           - dl1dh-version: 'nightly'
             tensorflow-version: '2.18.*'
           - dl1dh-version: 'nightly'
             torch-version: '2.4.*'
-      max-parallel: 6
+      max-parallel: 10
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.dl1dh-version == 'nightly' }}
     env:
