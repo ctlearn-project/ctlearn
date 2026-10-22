@@ -1,3 +1,4 @@
+import json
 import pandas as pd
 import pytest
 import shutil
@@ -70,10 +71,14 @@ def test_train_ctlearn_model(framework, model, reco_task, dl1_gamma_file, dl1_pr
     # Check training_log.csv exists
     log_file = output_dir / "training_log.csv"
     assert log_file.exists(), f"Training log file not found for {reco_task}"
-    # Check that the provenance log was copied to the output directory
+    # Check that the provenance log was written to the output directory
     tool_name = TRAINING_TOOLS[framework].name
     provenance_file = output_dir / f"{tool_name}.provenance.log"
     assert provenance_file.exists(), f"Provenance log not found in {output_dir}"
+    # It must be written only once (a single JSON document), so it does not
+    # contain logs appended by previous runs of the tool
+    provenance = json.loads(provenance_file.read_text())
+    assert provenance[-1]["activity_name"] == tool_name
     # Read CSV and verify number of epochs
     log_df = pd.read_csv(log_file)
     num_epochs_logged = log_df.shape[0]
