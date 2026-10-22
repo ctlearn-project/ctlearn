@@ -13,6 +13,8 @@ __all__ = [
     "PyTorchLoadedModel",
 ]
 
+from functools import partial
+
 import pytorch_hexagdly as phgly
 import torch
 import torch.nn as nn
@@ -118,6 +120,15 @@ class FullModelPipeline(nn.Module):
         return self.head(features), features
 
 
+# The hexagonal layers read ``kernel_size`` as a square-kernel width, like the
+# square layers do, instead of counting hexagonal rings (their default): 3 is
+# the 7-cell hexagon and 1 a plain 1x1. The same configuration then describes
+# comparable models on both grids.
+_HexConv2d = partial(phgly.Conv2d, kernel_size_unit="pixels")
+_HexMaxPool2d = partial(phgly.MaxPool2d, kernel_size_unit="pixels")
+_HexAvgPool2d = partial(phgly.AvgPool2d, kernel_size_unit="pixels")
+
+
 class PyTorchConvBackend(ConvBackend):
     """Select PyTorch layers for square or hexagonal model backbones.
 
@@ -129,22 +140,21 @@ class PyTorchConvBackend(ConvBackend):
     def _conv_layer(self):
         """Convolution layer class for ``conv_backend``.
 
-        Both classes are built with the same arguments. With ``"hexagdly"``,
-        ``kernel_size`` counts hexagonal rings (see #302), and the hex grid is
-        always padded so every cell is a window centre, whatever ``padding``
-        says.
+        Both are built with the same arguments, and ``kernel_size`` has the same
+        meaning for both: a square-kernel width. The hex grid is always padded
+        so every cell is a window centre, whatever ``padding`` says.
         """
-        return phgly.Conv2d if self.conv_backend == "hexagdly" else nn.Conv2d
+        return _HexConv2d if self.conv_backend == "hexagdly" else nn.Conv2d
 
     @property
     def _pool_layer(self):
         """Max-pooling layer class for ``conv_backend``."""
-        return phgly.MaxPool2d if self.conv_backend == "hexagdly" else nn.MaxPool2d
+        return _HexMaxPool2d if self.conv_backend == "hexagdly" else nn.MaxPool2d
 
     @property
     def _avg_pool_layer(self):
         """Average-pooling layer class for ``conv_backend``."""
-        return phgly.AvgPool2d if self.conv_backend == "hexagdly" else nn.AvgPool2d
+        return _HexAvgPool2d if self.conv_backend == "hexagdly" else nn.AvgPool2d
 
 class PyTorchSingleCNN(SingleCNN, PyTorchConvBackend):
     """
