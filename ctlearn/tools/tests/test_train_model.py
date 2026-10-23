@@ -1,8 +1,8 @@
-import json
 import logging
 from types import SimpleNamespace
 from unittest.mock import Mock
 
+import json
 import pandas as pd
 import pytest
 import shutil

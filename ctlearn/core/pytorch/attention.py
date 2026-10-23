@@ -19,11 +19,34 @@ class DualSqueezeExciteBlock(nn.Module):
     Concurrently applies channel and spatial scaling, then sums the results.
     """
     def __init__(self, in_channels, ratio=16):
+        """
+        Initialize the DualSqueezeExciteBlock.
+
+        Parameters
+        ----------
+        in_channels : int
+            Number of input channels in the feature map.
+        ratio : int, optional
+            Reduction ratio for the channel squeeze-excite bottleneck (default: 16).
+        """
         super().__init__()
         self.cse = ChannelSqueezeExciteBlock(in_channels=in_channels, ratio=ratio)
         self.sse = SpatialSqueezeExciteBlock(in_channels=in_channels)
 
     def forward(self, x):
+        """
+        Perform the forward pass of the neural network.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            The input tensor.
+
+        Returns
+        -------
+        torch.Tensor
+            The output tensor after processing.
+        """
         # Combines cse and sse by element-wise addition
         return self.cse(x) + self.sse(x)
 
@@ -33,6 +56,16 @@ class ChannelSqueezeExciteBlock(nn.Module):
     A channel-wise squeeze-excite (cSE) block in PyTorch.
     """
     def __init__(self, in_channels, ratio=4):
+        """
+        Initialize the ChannelSqueezeExciteBlock.
+
+        Parameters
+        ----------
+        in_channels : int
+            Number of input channels in the feature map.
+        ratio : int, optional
+            Reduction ratio for the channel bottleneck (default: 4).
+        """
         super().__init__()
         reduced_channels = max(1, in_channels // ratio)
         # Using nn.Linear to match Keras Dense layers
@@ -40,6 +73,19 @@ class ChannelSqueezeExciteBlock(nn.Module):
         self.fc2 = nn.Linear(reduced_channels, in_channels, bias=True)
 
     def forward(self, x):
+        """
+        Perform the forward pass of the neural network.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            The input tensor.
+
+        Returns
+        -------
+        torch.Tensor
+            The output tensor after processing.
+        """
         batch_size, channels, _, _ = x.shape
         # Global Average Pooling keeping dimensions: (B, C, H, W) -> (B, C, 1, 1)
         squeeze = F.adaptive_avg_pool2d(x, (1, 1))
@@ -58,11 +104,32 @@ class SpatialSqueezeExciteBlock(nn.Module):
     A spatial squeeze-excite (sSE) block in PyTorch.
     """
     def __init__(self, in_channels):
+        """
+        Initialize the SpatialSqueezeExciteBlock.
+
+        Parameters
+        ----------
+        in_channels : int
+            Number of input channels in the feature map.
+        """
         super().__init__()
         # A 1x1 convolution projecting channels down to 1 spatial mask
         self.spatial_conv = nn.Conv2d(in_channels, 1, kernel_size=1, bias=True)
 
     def forward(self, x):
+        """
+        Perform the forward pass of the neural network.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            The input tensor.
+
+        Returns
+        -------
+        torch.Tensor
+            The output tensor after processing.
+        """
         # Create a spatial landscape mask via sigmoid
         spatial_mask = torch.sigmoid(self.spatial_conv(x))
         # Multiply input tensor element-wise across spatial layout

@@ -239,6 +239,20 @@ class SingleCNN(CTLearnModel):
         parent=None,
         **kwargs,
     ):
+        """
+        Initialize the SingleCNN model component.
+
+        Parameters
+        ----------
+        tasks : list of str
+            List of active prediction tasks (e.g., ['type'], ['energy']).
+        config : traitlets.config.Config, optional
+            Configuration dictionary or object.
+        parent : ctapipe.core.Component or ctapipe.core.Tool, optional
+            Parent component or tool in the ctapipe tool hierarchy.
+        **kwargs : dict, optional
+            Additional keyword arguments passed to CTLearnModel initializer.
+        """
         super().__init__(
             config=config,
             parent=parent,
@@ -317,6 +331,20 @@ class ResNet(CTLearnModel):
         parent=None,
         **kwargs,
     ):
+        """
+        Initialize the ResNet model component.
+
+        Parameters
+        ----------
+        tasks : list of str
+            List of active prediction tasks (e.g., ['type'], ['energy']).
+        config : traitlets.config.Config, optional
+            Configuration dictionary or object.
+        parent : ctapipe.core.Component or ctapipe.core.Tool, optional
+            Parent component or tool in the ctapipe tool hierarchy.
+        **kwargs : dict, optional
+            Additional keyword arguments passed to CTLearnModel initializer.
+        """
         super().__init__(
             config=config,
             parent=parent,
@@ -375,6 +403,20 @@ class LoadedModel(CTLearnModel):
         parent=None,
         **kwargs,
     ):
+        """
+        Initialize the LoadedModel component.
+
+        Parameters
+        ----------
+        tasks : list of str
+            List of active prediction tasks (e.g., ['type'], ['energy']).
+        config : traitlets.config.Config, optional
+            Configuration dictionary or object.
+        parent : ctapipe.core.Component or ctapipe.core.Tool, optional
+            Parent component or tool in the ctapipe tool hierarchy.
+        **kwargs : dict, optional
+            Additional keyword arguments passed to CTLearnModel initializer.
+        """
         super().__init__(
             config=config,
             parent=parent,

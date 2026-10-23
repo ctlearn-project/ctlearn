@@ -114,6 +114,13 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
     ).tag(config=True)
 
     def start(self):
+        """
+        Execute the core logic of the tool.
+
+        Depending on the tool, this method either orchestrates the training and validation 
+        loops across epochs, or it iterates through the input dataset to generate 
+        and save model predictions to the output file.
+        """
         self.log.info("Processing the telescope pointings...")
         # Retrieve the IDs from the dl1dh for the prediction tables
         example_identifiers = self.dl1dh_reader.example_identifiers.copy()
@@ -704,6 +711,12 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
 
 
 def main():
+    """
+    Main entry point for the command-line tool.
+
+    This function instantiates the Tool class and invokes its `run()` method, 
+    which sequentially executes the `setup()`, `start()`, and `finish()` methods.
+    """
     # Run the tool
     tool = MonoPredictCTLearnModel()
     tool.run()
