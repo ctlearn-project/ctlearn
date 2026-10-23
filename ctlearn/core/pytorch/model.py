@@ -7,17 +7,22 @@ __all__ = [
     "BottleneckBlock",
     "MultiFullyConnectedHead",
     "build_fully_connect_pytorch_head",
+    "PyTorchConvBackend",
     "PyTorchSingleCNN",
     "PyTorchResNet",
     "PyTorchLoadedModel",
 ]
 
+from functools import partial
+
+import pytorch_hexagdly as phgly
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 # Assuming these custom attention blocks are updated to return torch.nn.Module or used dynamically
 from ctlearn.core.model import (
+    ConvBackend,
     SingleCNN,
     ResNet,
     LoadedModel,
@@ -115,7 +120,43 @@ class FullModelPipeline(nn.Module):
         return self.head(features), features
 
 
-class PyTorchSingleCNN(SingleCNN):
+# The hexagonal layers read ``kernel_size`` as a square-kernel width, like the
+# square layers do, instead of counting hexagonal rings (their default): 3 is
+# the 7-cell hexagon and 1 a plain 1x1. The same configuration then describes
+# comparable models on both grids.
+_HexConv2d = partial(phgly.Conv2d, kernel_size_unit="pixels")
+_HexMaxPool2d = partial(phgly.MaxPool2d, kernel_size_unit="pixels")
+_HexAvgPool2d = partial(phgly.AvgPool2d, kernel_size_unit="pixels")
+
+
+class PyTorchConvBackend(ConvBackend):
+    """Select PyTorch layers for square or hexagonal model backbones.
+
+    The ``conv_backend`` trait selects native PyTorch layers for square-mapped
+    inputs or ``pytorch_hexagdly`` layers for hex-addressed inputs.
+    """
+
+    @property
+    def _conv_layer(self):
+        """Convolution layer class for ``conv_backend``.
+
+        Both are built with the same arguments, and ``kernel_size`` has the same
+        meaning for both: a square-kernel width. The hex grid is always padded
+        so every cell is a window centre, whatever ``padding`` says.
+        """
+        return _HexConv2d if self.conv_backend == "hexagdly" else nn.Conv2d
+
+    @property
+    def _pool_layer(self):
+        """Max-pooling layer class for ``conv_backend``."""
+        return _HexMaxPool2d if self.conv_backend == "hexagdly" else nn.MaxPool2d
+
+    @property
+    def _avg_pool_layer(self):
+        """Average-pooling layer class for ``conv_backend``."""
+        return _HexAvgPool2d if self.conv_backend == "hexagdly" else nn.AvgPool2d
+
+class PyTorchSingleCNN(SingleCNN, PyTorchConvBackend):
     """
     ``SingleCNN`` is a simple convolutional neural network model implemented in PyTorch.
     """
@@ -147,7 +188,7 @@ class PyTorchSingleCNN(SingleCNN):
             for nr in range(number):
                 # padding="same" calculates padding dynamically in PyTorch based on kernel size
                 padding = kernel_size // 2 
-                modules.append(nn.Conv2d(in_channels, filters, kernel_size=kernel_size, padding=padding))
+                modules.append(self._conv_layer(in_channels, filters, kernel_size=kernel_size, padding=padding))
                 modules.append(nn.ReLU())
                 in_channels = filters
             
@@ -155,15 +196,15 @@ class PyTorchSingleCNN(SingleCNN):
                 p_size = self.pooling_parameters["size"]
                 p_stride = self.pooling_parameters["strides"]
                 if self.pooling_type == "max":
-                    modules.append(nn.MaxPool2d(kernel_size=p_size, stride=p_stride))
+                    modules.append(self._pool_layer(kernel_size=p_size, stride=p_stride))
                 elif self.pooling_type == "average":
-                    modules.append(nn.AvgPool2d(kernel_size=p_size, stride=p_stride))
+                    modules.append(self._avg_pool_layer(kernel_size=p_size, stride=p_stride))
                     
             if self.batchnorm:
                 modules.append(nn.BatchNorm2d(in_channels, momentum=0.01, eps=1e-3))
 
         if self.bottleneck_filters is not None:
-            modules.append(nn.Conv2d(in_channels, self.bottleneck_filters, kernel_size=1))
+            modules.append(self._conv_layer(in_channels, self.bottleneck_filters, kernel_size=1))
             modules.append(nn.ReLU())
             in_channels = self.bottleneck_filters
             if self.batchnorm:
@@ -188,22 +229,30 @@ class PyTorchSingleCNN(SingleCNN):
 
 
 class BasicBlock(nn.Module):
-    def __init__(self, in_channels, out_channels, stride=1, conv_shortcut=True, attention=None):
+    def __init__(
+        self,
+        in_channels,
+        out_channels,
+        stride=1,
+        conv_shortcut=True,
+        attention=None,
+        conv_layer=nn.Conv2d,
+    ):
         super().__init__()
         self.conv_shortcut = conv_shortcut
         self.attention_config = attention
         # Projection Shortcut Branch
         if conv_shortcut:
-            self.shortcut = nn.Conv2d(
+            self.shortcut = conv_layer(
                 in_channels, out_channels, kernel_size=1, stride=stride, bias=True
             )
         else:
             self.shortcut = None
         # Main Branch Convolutions (Matching Keras _1_conv and _2_conv)
-        self.conv1 = nn.Conv2d(
+        self.conv1 = conv_layer(
             in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=True
         )
-        self.conv2 = nn.Conv2d(
+        self.conv2 = conv_layer(
             out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=True
         )
         # Setup the attention mechanism
@@ -240,28 +289,36 @@ class BasicBlock(nn.Module):
 
 
 class BottleneckBlock(nn.Module):
-    def __init__(self, in_channels, base_filters, stride=1, conv_shortcut=True, attention=None):
+    def __init__(
+        self,
+        in_channels,
+        base_filters,
+        stride=1,
+        conv_shortcut=True,
+        attention=None,
+        conv_layer=nn.Conv2d,
+    ):
         super().__init__()
         self.conv_shortcut = conv_shortcut
         self.attention_config = attention
 
         # Shortcut connection
         if conv_shortcut:
-            self.shortcut = nn.Conv2d(
+            self.shortcut = conv_layer(
                 in_channels, 4 * base_filters, kernel_size=1, stride=stride, bias=False
             )
         else:
             self.shortcut = nn.Identity()
         # Main branch convolutions matching Keras layout:
-        self.conv1 = nn.Conv2d(
+        self.conv1 = conv_layer(
             in_channels, base_filters, kernel_size=1, stride=stride, bias=False
         )
         # Keras _2_conv is 3x3 spatial convolution with stride=1 (since stride is handled in _1_conv)
-        self.conv2 = nn.Conv2d(
+        self.conv2 = conv_layer(
             base_filters, base_filters, kernel_size=3, stride=1, padding=1, bias=False
         )
         # Keras _3_conv restores channels back to 4 * base_filters
-        self.conv3 = nn.Conv2d(
+        self.conv3 = conv_layer(
             base_filters, 4 * base_filters, kernel_size=1, bias=False
         )
         # Setup the attention mechanism
@@ -293,7 +350,7 @@ class BottleneckBlock(nn.Module):
         out += identity
         return F.relu(out)
 
-class PyTorchResNet(ResNet):
+class PyTorchResNet(ResNet, PyTorchConvBackend):
     """
     ``PyTorchResNet`` is a residual neural network model implemented in PyTorch.
     """
@@ -326,7 +383,7 @@ class PyTorchResNet(ResNet):
             padding = k_size // 2 
             
             modules.append(
-                nn.Conv2d(
+                self._conv_layer(
                     in_channels,
                     out_ch,
                     kernel_size=k_size,
@@ -343,7 +400,7 @@ class PyTorchResNet(ResNet):
             p_size = self.init_max_pool["size"]
             p_stride = self.init_max_pool["strides"]
             modules.append(
-                nn.MaxPool2d(kernel_size=p_size, stride=p_stride, padding=0)
+                self._pool_layer(kernel_size=p_size, stride=p_stride, padding=0)
             )
 
         # Assemble Stacked Residual Architecture blocks
@@ -415,6 +472,7 @@ class PyTorchResNet(ResNet):
                     stride=s,
                     conv_shortcut=needs_shortcut,
                     attention=attention,
+                    conv_layer=self._conv_layer,
                 )
             else:
                 return BottleneckBlock(
@@ -423,6 +481,7 @@ class PyTorchResNet(ResNet):
                     stride=s,
                     conv_shortcut=needs_shortcut,
                     attention=attention,
+                    conv_layer=self._conv_layer,
                 )
 
         # First block transition

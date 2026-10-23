@@ -4,15 +4,19 @@ This module defines the ``CTLearnModel`` classes, which holds the basic function
 
 __all__ = [
     "build_fully_connect_keras_head",
+    "KerasConvBackend",
     "KerasSingleCNN",
     "KerasResNet",
     "KerasLoadedModel",
 ]
 
+from functools import partial
+
 import keras
 import keras_hexagdly as hgly
 
 from ctlearn.core.model import (
+    ConvBackend,
     SingleCNN,
     ResNet,
     LoadedModel,
@@ -66,7 +70,46 @@ def build_fully_connect_keras_head(inputs, layers, activation_function, tasks):
     return logits
 
 
-class KerasSingleCNN(SingleCNN):
+# The hexagonal layers read ``kernel_size`` as a square-kernel width, like the
+# square layers do, instead of counting hexagonal rings (their default): 3 is
+# the 7-cell hexagon and 1 a plain 1x1. The same configuration then describes
+# comparable models on both grids.
+_HexConv2d = partial(hgly.Conv2d, kernel_size_unit="pixels")
+_HexMaxPool2d = partial(hgly.MaxPool2d, kernel_size_unit="pixels")
+_HexAvgPool2d = partial(hgly.AvgPool2d, kernel_size_unit="pixels")
+
+
+class KerasConvBackend(ConvBackend):
+    """Select Keras layers for square or hexagonal model backbones.
+
+    The ``conv_backend`` trait selects native Keras layers for square-mapped
+    inputs or ``keras_hexagdly`` layers for hex-addressed inputs.
+    """
+
+    @property
+    def _conv_layer(self):
+        """Convolution layer class for ``conv_backend``.
+
+        Both are built with the same keyword arguments, and ``kernel_size`` has
+        the same meaning for both: a square-kernel width. The hex grid is
+        always padded (``"same"``), including where the square call leaves
+        Keras' default ``"valid"``.
+        """
+        return _HexConv2d if self.conv_backend == "hexagdly" else keras.layers.Conv2D
+
+    @property
+    def _pool_layer(self):
+        """Max-pooling layer class for ``conv_backend``."""
+        return _HexMaxPool2d if self.conv_backend == "hexagdly" else keras.layers.MaxPool2D
+
+    @property
+    def _avg_pool_layer(self):
+        """Average-pooling layer class for ``conv_backend``."""
+        return (
+            _HexAvgPool2d if self.conv_backend == "hexagdly" else keras.layers.AveragePooling2D
+        )
+
+class KerasSingleCNN(SingleCNN, KerasConvBackend):
     """
     ``SingleCNN`` is a simple convolutional neural network model.
 
@@ -98,30 +141,6 @@ class KerasSingleCNN(SingleCNN):
         )
         # Build the full pipeline model∫
         self.model = keras.Model(self.input_layer, self.logits, name="CTLearn_model")
-
-
-    @property
-    def _conv_layer(self):
-        """Convolution layer class for ``conv_backend``.
-
-        Both classes are built with the same keyword arguments. With
-        ``"hexagdly"``, ``kernel_size`` counts hexagonal rings, and the hex
-        grid is always padded (``"same"``), including where the square call
-        leaves Keras' default ``"valid"``.
-        """
-        return hgly.Conv2d if self.conv_backend == "hexagdly" else keras.layers.Conv2D
-
-    @property
-    def _pool_layer(self):
-        """Max-pooling layer class for ``conv_backend``."""
-        return hgly.MaxPool2d if self.conv_backend == "hexagdly" else keras.layers.MaxPool2D
-
-    @property
-    def _avg_pool_layer(self):
-        """Average-pooling layer class for ``conv_backend``."""
-        return (
-            hgly.AvgPool2d if self.conv_backend == "hexagdly" else keras.layers.AveragePooling2D
-        )
 
     def _build_backbone(self, input_shape):
         """
@@ -180,9 +199,9 @@ class KerasSingleCNN(SingleCNN):
             if self.batchnorm:
                 x = keras.layers.BatchNormalization(momentum=0.99)(x)
 
-        # bottleneck layer -- a 1x1 conv is purely a per-cell channel
-        # projection with no spatial mixing, so a plain square Conv2D is
-        # geometry-agnostic and used for both conv backends.
+        # bottleneck layer -- a 1x1 conv is a pure per-cell channel projection
+        # with no spatial mixing. It is built with the backend's conv class like
+        # every other conv: kernel_size=1 is a plain 1x1 for both backends.
         if self.bottleneck_filters is not None:
             x = self._conv_layer(
                 filters=self.bottleneck_filters,
@@ -218,7 +237,7 @@ class KerasSingleCNN(SingleCNN):
         return backbone_model, network_input
 
 
-class KerasResNet(ResNet):
+class KerasResNet(ResNet, KerasConvBackend):
     """
     ``ResNet`` is a residual neural network model.
 
@@ -249,29 +268,6 @@ class KerasResNet(ResNet):
         )
 
         self.model = keras.Model(self.input_layer, self.logits, name="CTLearn_model")
-
-    @property
-    def _conv_layer(self):
-        """Convolution layer class for ``conv_backend``.
-
-        Both classes are built with the same keyword arguments. With
-        ``"hexagdly"``, ``kernel_size`` counts hexagonal rings, and the hex
-        grid is always padded (``"same"``), including where the square call
-        leaves Keras' default ``"valid"``.
-        """
-        return hgly.Conv2d if self.conv_backend == "hexagdly" else keras.layers.Conv2D
-
-    @property
-    def _pool_layer(self):
-        """Max-pooling layer class for ``conv_backend``."""
-        return hgly.MaxPool2d if self.conv_backend == "hexagdly" else keras.layers.MaxPool2D
-
-    @property
-    def _avg_pool_layer(self):
-        """Average-pooling layer class for ``conv_backend``."""
-        return (
-            hgly.AvgPool2d if self.conv_backend == "hexagdly" else keras.layers.AveragePooling2D
-        )
 
     def _build_backbone(self, input_shape):
         """

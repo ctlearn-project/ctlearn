@@ -1,0 +1,1 @@
+Aligns the logging between ``Keras`` and ``PyTorch`` training tools by adopting the ctapipe logger. 

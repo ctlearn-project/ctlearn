@@ -10,17 +10,41 @@ from ctapipe.core.traits import Bool, Int, CaselessStrEnum, List, Dict, Unicode,
 from ctlearn.tools.utils import validate_trait_dict
 
 __all__ = [
+    "ConvBackend",
     "CTLearnModel",
     "SingleCNN",
     "ResNet",
     "LoadedModel",
 ]
 
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 
 from ctapipe.core import Component
 from ctapipe.core.traits import Bool, Int, CaselessStrEnum, List, Dict, Unicode, Path
 from ctlearn.tools.utils import validate_trait_dict
+
+
+class ConvBackend(ABC):
+    """Interface for framework-specific convolution and pooling layers.
+
+    Concrete backends provide convolution, max-pooling, and average-pooling
+    layer classes selected by the model's ``conv_backend`` trait.
+    """
+
+    @property
+    @abstractmethod
+    def _conv_layer(self):
+        pass
+
+    @property
+    @abstractmethod
+    def _pool_layer(self):
+        pass
+
+    @property
+    @abstractmethod
+    def _avg_pool_layer(self):
+        pass
 
 
 class CTLearnModel(Component):
@@ -89,11 +113,16 @@ class CTLearnModel(Component):
         default_value="square",
         allow_none=False,
         help=(
-            "Convolution backend for the model backbone. 'square' uses plain "
-            "keras.layers.Conv2D/MaxPool2D/AveragePooling2D (default, expects a "
-            "square-mapped input, e.g. from BilinearMapper). 'hexagdly' uses "
-            "keras_hexagdly.Conv2d/MaxPool2d/AvgPool2d for hex-native convolution "
-            "(expects hex-addressed input, e.g. from HexagdlyMapper)."
+            "Convolution backend for the model backbone. 'square' uses the "
+            "framework's own Conv2D/MaxPool2D/AveragePooling2D layers (default, "
+            "expects a square-mapped input, e.g. from BilinearMapper). 'hexagdly' "
+            "uses the Conv2d/MaxPool2d/AvgPool2d layers of keras_hexagdly (Keras) "
+            "or pytorch_hexagdly (PyTorch) for hex-native convolution (expects "
+            "hex-addressed input, e.g. from HexagdlyMapper). kernel_size and the "
+            "pooling size mean the same for both backends, a square-kernel width: "
+            "with 'hexagdly', 3 is the 7-cell hexagon and 1 a plain 1x1. A hexagonal "
+            "window is centred on a cell, so an even size has no exact equivalent: "
+            "it is rounded up to the next odd one, with a warning from the hexagonal layers."
         ),
     ).tag(config=True)
 

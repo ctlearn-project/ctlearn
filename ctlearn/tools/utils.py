@@ -4,19 +4,16 @@ Utility functions for the CTLearn tools.
 
 from enum import Enum
 import pathlib
+import sys
 from importlib.resources import files, as_file
-import os
-import time
-from tqdm import tqdm
+
 from ctapipe.core import Provenance
-from ctapipe.core.tool import ToolConfigurationError
 from ctapipe.core.traits import TraitError
 from ctapipe.instrument.optics import FocalLengthKind
 from ctapipe.instrument import SubarrayDescription
 import keras_hexagdly as hgly
 
 __all__ = [
-    "monitor_progress",
     "validate_trait_dict",
     "get_lst1_subarray_description",
     "FrameworkType",
@@ -24,42 +21,6 @@ __all__ = [
     "validate_conv_backend",
     "model_conv_backend",
 ]
-
-def monitor_progress(src_path, dst_path, stop_event, logger):
-    try:
-        total_size = os.path.getsize(src_path)
-    except OSError:
-        logger.error(f"Unable to access source file '{src_path}'.")
-        return
-
-    last_logged_percent = -1
-
-    with tqdm(total=total_size, unit='B', unit_scale=True, desc="Copy Progress") as pbar:
-        while not stop_event.is_set():
-            try:
-                current_size = os.path.getsize(dst_path)
-            except OSError:
-                current_size = 0
-
-            pbar.n = current_size
-            pbar.refresh()
-            
-            # Logging cada 10%
-            if total_size > 0:
-                percent = int((current_size / total_size) * 100)
-                if percent // 10 != last_logged_percent // 10:
-                    logger.info(f"Progress: {percent}%")
-                    last_logged_percent = percent
-
-            time.sleep(0.5)
-        # Ensure the progress bar reaches the end
-        try:
-            final_size = os.path.getsize(dst_path)
-            pbar.n = final_size
-            pbar.refresh()
-            logger.info("Copy completed.")
-        except OSError:
-            logger.warning("Could not get final size of output file.")
             
 def validate_trait_dict(trait_dict, required_keys):
     """
@@ -158,7 +119,7 @@ def setup_framework(model_paths):
 
     Raises
     ------
-    ToolConfigurationError
+    IOError
         If no valid model paths are provided, or if multiple inconsistent frameworks 
         are detected across the provided paths.
     """
@@ -187,7 +148,7 @@ def setup_framework(model_paths):
             detected_frameworks[path] = _detect_framework(path)
     # Fail immediately if no valid model paths are provided
     if not detected_frameworks:
-        raise ToolConfigurationError(
+        raise IOError(
             "No model paths were specified. At least one valid model path "
             "(.keras/.h5 for Keras, or .pt/.pth for PyTorch) must be provided."
         )
@@ -195,7 +156,7 @@ def setup_framework(model_paths):
     unique_frameworks = set(detected_frameworks.values())
     if len(unique_frameworks) > 1:
         details = ", ".join(f"{p}: {fw.value}" for p, fw in detected_frameworks.items())
-        raise ToolConfigurationError(
+        raise IOError(
             f"Inconsistent model frameworks detected across paths: {details}. "
             "All specified model files must belong to the same framework."
         )
@@ -279,29 +240,39 @@ def validate_conv_backend(image_mappers, conv_backend):
 def model_conv_backend(model):
     """
     Determine the convolution backend a (possibly loaded-from-disk) Keras
-    model actually uses, by inspecting its layers directly.
+    or PyTorch model actually uses, by inspecting its layers directly.
 
     Used at prediction time, where models are loaded via
-    ``keras.saving.load_model`` rather than built through
+    ``keras.saving.load_model`` or ``torch.load`` rather than built through
     ``CTLearnModel.from_name``, so no ``conv_backend`` trait is available to
     read -- the loaded layers are the only ground truth for what the model
     was actually built with.
 
     Parameters
     ----------
-    model : keras.Model
-        A (possibly nested) Keras model to inspect.
+    model : keras.Model or torch.nn.Module
+        A (possibly nested) Keras model or PyTorch module to inspect.
 
     Returns
     -------
     str
         ``"hexagdly"`` if any layer in the model (recursing into nested
-        sub-models) is a ``keras_hexagdly`` layer, otherwise ``"square"``.
+        sub-models) is a ``keras_hexagdly`` or ``pytorch_hexagdly`` layer,
+        otherwise ``"square"``.
     """
     def _uses_hexagdly(layer):
         if isinstance(layer, (hgly.Conv2d, hgly.MaxPool2d)):
             return True
         sublayers = getattr(layer, "layers", None)
         return sublayers is not None and any(_uses_hexagdly(sub) for sub in sublayers)
+
+    # A PyTorch model can only exist once torch is imported, so this check
+    # never imports torch (or pytorch_hexagdly) for a Keras model.
+    torch = sys.modules.get("torch")
+    if torch is not None and isinstance(model, torch.nn.Module):
+        import pytorch_hexagdly as phgly
+
+        if any(isinstance(m, (phgly.Conv2d, phgly.MaxPool2d)) for m in model.modules()):
+            return "hexagdly"
 
     return "hexagdly" if _uses_hexagdly(model) else "square"

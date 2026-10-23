@@ -1,8 +1,11 @@
 import shutil
+
 import numpy as np
 import pytest
+from traitlets.config.loader import Config
 
 from ctapipe.core import run_tool
+from ctapipe.core.tool import ToolConfigurationError
 from ctapipe.io import TableLoader
 from ctlearn.conftest import MODEL_FILE_FORMATS
 from ctlearn.tools.predict_mono_model import MonoPredictCTLearnModel
@@ -129,8 +132,22 @@ def test_predict_mono_model_with_r1_waveforms(
 @pytest.mark.verifies_usecase("DPPS-UC-130-1.2.2")
 @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
 @pytest.mark.parametrize("dl2_tel_flag", ["dl2-telescope", "no-dl2-telescope"])
+@pytest.mark.parametrize(
+    ("input_file_fixture", "input_suffix"),
+    [
+        ("dl1_gamma_file", "simulation"),
+        ("dl1_gamma_tel2_file", "simulation_singleLST"),
+        ("dl1_obs_mock_file", "obs_mock"),
+    ],
+)
 def test_predict_mono_model_with_dl1_images(
-    tmp_path, ctlearn_trained_dl1_mono_models, dl1_gamma_file, framework, dl2_tel_flag
+    tmp_path,
+    request,
+    ctlearn_trained_dl1_mono_models,
+    input_file_fixture,
+    input_suffix,
+    framework,
+    dl2_tel_flag,
 ):
     """
     Test training CTLearn model using the DL1 gamma and proton files for all reconstruction tasks
@@ -153,6 +170,9 @@ def test_predict_mono_model_with_dl1_images(
     }
     # Hardcopy the trained models to the model directory
     for telescope_type in telescope_types.keys():
+        # Skip MST and SST for the file with one single LST since they are not present in the simulated data
+        if telescope_type != "LST" and input_suffix == "simulation_singleLST":
+            continue
         for reco_task in ["type", "energy", "cameradirection"]:
             key = f"{framework}_{telescope_type}_{reco_task}"
             shutil.copy(
@@ -163,16 +183,21 @@ def test_predict_mono_model_with_dl1_images(
             assert model_file.exists(), f"Trained mono model file not found for {key}"
     # Build command-line arguments
     argv = [
-        f"--input_url={dl1_gamma_file}",
+        f"--input_url={request.getfixturevalue(input_file_fixture)}",
         "--PredictCTLearnModel.batch_size=2",
         "--DLImageReader.focal_length_choice=EQUIVALENT",
+        "--dl1-features",
         "--no-dl1-images",
         "--no-true-images",
         f"--{dl2_tel_flag}",
     ]
     for telescope_type, allowed_tels in telescope_types.items():
+        # Skip MST and SST for the file with one single LST since they are not present in the simulated data
+        if telescope_type != "LST" and input_suffix == "simulation_singleLST":
+            continue
         output_file = (
-            dl2_dir / f"gamma_{dl2_tel_flag}_{telescope_type}_{framework}_mono_from_images.dl2.h5"
+            dl2_dir
+            / f"gamma_{dl2_tel_flag}_{telescope_type}_{framework}_mono_from_images_{input_suffix}.dl2.h5"
         )
         # Run Prediction tool
         assert (
@@ -212,6 +237,8 @@ def test_predict_mono_model_with_dl1_images(
                 ]:
                     if dl2_tel_flag == "no-dl2-telescope" and "_tel_" in col:
                         continue
+                    if input_suffix == "obs_mock" and col.startswith("true_"):
+                        continue
                     assert (
                         col in tel_events[tel_id].colnames
                     ), f"{col} missing in DL2 file {output_file.name}"
@@ -224,9 +251,37 @@ def test_predict_mono_model_with_dl1_images(
             for col in REQUIRED_COLUMNS:
                 if "_tel_" in col:
                     continue
+                if input_suffix == "obs_mock" and col.startswith("true_"):
+                        continue
                 assert (
                     col in subarray_events.colnames
                 ), f"{col} missing in DL2 file {output_file.name}"
                 assert (
                     subarray_events[col][0] is not np.nan
                 ), f"{col} has NaN values in DL2 file {output_file.name}"
+
+
+@pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
+def test_predict_model_rejects_batch_larger_than_event_count(
+    tmp_path, dl1_gamma_tel2_file, framework
+):
+    model_path = tmp_path / f"model.{MODEL_FILE_FORMATS[framework]}"
+    model_path.touch()
+    config = Config(
+        {
+            "TableQualityQuery": {"quality_criteria": []},
+            "DLImageReader": {"focal_length_choice": "EQUIVALENT"}
+        
+        }
+    )
+    tool = MonoPredictCTLearnModel(config=config)
+    tool.input_url = dl1_gamma_tel2_file
+    tool.output_path = tmp_path / "output.h5"
+    tool.load_type_model_from = model_path
+    tool.batch_size = 16
+
+    with pytest.raises(
+        ToolConfigurationError,
+        match="10 events are not enough to form a batch of size 16",
+    ):
+        tool.setup()
