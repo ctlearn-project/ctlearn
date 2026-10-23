@@ -346,6 +346,8 @@ class BasicBlock(nn.Module):
             Whether to use a 1x1 convolution in the shortcut connection (default: True).
         attention : dict or None, optional
             Configuration dictionary for attention mechanism (default: None).
+        conv_layer : callable, optional
+            Convolution layer class to use (default: nn.Conv2d).
         """
         super().__init__()
         self.conv_shortcut = conv_shortcut
@@ -446,6 +448,8 @@ class BottleneckBlock(nn.Module):
             Whether to use a projection 1x1 convolution in the shortcut connection (default: True).
         attention : dict or None, optional
             Configuration dictionary for attention mechanism (default: None).
+        conv_layer : callable, optional
+            Convolution layer class to use (default: nn.Conv2d).
         """
         super().__init__()
         self.conv_shortcut = conv_shortcut
