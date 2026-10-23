@@ -46,25 +46,38 @@ jobs:
       !contains(github.event.pull_request.labels.*.name, 'documentation-only')
     strategy:
       matrix:
-        os: [ubuntu-24.04]
-        python-version: ['3.12', '3.13', '3.14']
-        dl1dh-version: ['latest', 'nightly']
-        tensorflow-version: ['latest', '2.16.*']
-        torch-version: ['latest', '2.4.*']
-        exclude:
-          - python-version: '3.13'
-            tensorflow-version: '2.16.*'
-          - python-version: '3.14'
-            tensorflow-version: '2.16.*'
-          - python-version: '3.13'
+        include:
+          - os: ubuntu-24.04
+            python-version: '3.12'
+            dl1dh-version: latest
+            tensorflow-version: latest
+            torch-version: latest
+          - os: macos-26
+            python-version: '3.12'
+            dl1dh-version: latest
+            tensorflow-version: latest
+            torch-version: latest
+          - os: ubuntu-24.04
+            python-version: '3.12'
+            dl1dh-version: nightly
+            tensorflow-version: latest
+            torch-version: latest
+          - os: ubuntu-24.04
+            python-version: '3.12'
+            dl1dh-version: latest
+            tensorflow-version: '2.18.*'
             torch-version: '2.4.*'
-          - python-version: '3.14'
-            torch-version: '2.4.*'
-          - dl1dh-version: 'nightly'
-            tensorflow-version: '2.16.*'
-          - dl1dh-version: 'nightly'
-            torch-version: '2.4.*'
-      max-parallel: 6
+          - os: ubuntu-24.04
+            python-version: '3.13'
+            dl1dh-version: latest
+            tensorflow-version: latest
+            torch-version: latest
+          - os: ubuntu-24.04
+            python-version: '3.14'
+            dl1dh-version: latest
+            tensorflow-version: latest
+            torch-version: latest
+      max-parallel: 12
     runs-on: ${{ matrix.os }}
     continue-on-error: ${{ matrix.dl1dh-version == 'nightly' }}
     env:
@@ -102,22 +115,38 @@ jobs:
           channels: conda-forge,defaults
           channel-priority: strict
 
-      - name: Install Conda dependencies
+      - name: Install Conda dependencies on Ubuntu
+        if: matrix.os == 'ubuntu-24.04'
         run: mamba install -y llvmlite triton
+
+      - name: Install Conda dependencies on MacOS
+        if: matrix.os == 'macos-26'
+        run: mamba install -y llvmlite
 
       - name: Install pip dependencies
         run: |
           pip install --upgrade pip
           pip install pylint pylint-exit anybadge eventio pytest flake8
+
+      - name: Install package with pip
+        run: pip install -e .[tests]
+          
+
+      - name: Install pip target dependencies
+        run: |
           if [ "${{ matrix.dl1dh-version }}" = "nightly" ]; then
             pip install git+https://github.com/cta-observatory/dl1-data-handler.git
           else
             pip install dl1-data-handler
           fi
+          tensorflow_package="tensorflow[and-cuda]"
+          if [ "${{ runner.os }}" == "macOS" ]; then
+            tensorflow_package="tensorflow"
+          fi
           if [ "${{ matrix.tensorflow-version }}" = "latest" ]; then
-            pip install --upgrade tensorflow
+            pip install --upgrade "$tensorflow_package"
           else
-            pip install "tensorflow==${{ matrix.tensorflow-version }}"
+            pip install "${tensorflow_package}==${{ matrix.tensorflow-version }}"
           fi
           if [ "${{ matrix.torch-version }}" = "latest" ]; then
             pip install --upgrade torch torchvision
@@ -133,11 +162,10 @@ jobs:
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-      - name: Install package with pip
-        run: pip install -e .[tests]
-          
+
       - name: Run pytest with coverage
         if: >-
+          matrix.os == 'ubuntu-24.04' &&
           matrix.python-version == '3.12' &&
           matrix.dl1dh-version == 'latest' &&
           matrix.tensorflow-version == 'latest' &&
@@ -154,6 +182,7 @@ jobs:
 
       - name: Upload coverage to Codecov
         if: >-
+          matrix.os == 'ubuntu-24.04' &&
           matrix.python-version == '3.12' &&
           matrix.dl1dh-version == 'latest' &&
           matrix.tensorflow-version == 'latest' &&
@@ -168,6 +197,7 @@ jobs:
 
       - name: Run pytest
         if: >-
+          matrix.os != 'ubuntu-24.04' ||
           matrix.python-version != '3.12' ||
           matrix.dl1dh-version != 'latest' ||
           matrix.tensorflow-version != 'latest' ||

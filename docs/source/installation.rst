@@ -59,7 +59,7 @@ Core dependencies
 
 * python>=3.12
 * torch>=2.4.0
-* tensorflow>=2.16
+* tensorflow>=2.18
 * keras>=3.0
 * astropy
 * ctapipe>=0.29.0
