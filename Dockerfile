@@ -18,8 +18,8 @@ COPY ./.git ./.git/
 # Build the wheel
 RUN python -m build --wheel
 
-# Stage 2: Use NVIDIA's PyTorch image; installing CTLearn also installs TensorFlow and Keras.
-FROM nvcr.io/nvidia/pytorch:25.02-py3
+# Stage 2: Create the final runtime image BASED ON NVIDIA's TF image
+FROM nvcr.io/nvidia/tensorflow:25.02-tf2-py3
 # Copy only the built wheel from the builder stage's dist directory
 COPY --from=builder /repo/dist /tmp/dist
 
