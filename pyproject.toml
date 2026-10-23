@@ -83,6 +83,9 @@ docs = [
 
 dev = [
     "ctlearn[all,docs,tests]",
+    "codespell",
+    "pre-commit",
+    "ruff",
     "setuptools_scm[toml]",
     "towncrier",
 ]
@@ -115,6 +118,28 @@ norecursedirs = [
     "docs",
     "images"
 ]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+
+[tool.ruff.lint]
+extend-select = ["I"]
+ignore = []
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+skip-magic-trailing-comma = false
+
+[tool.ruff.lint.isort]
+known-first-party = ["ctlearn"]
+
+[tool.codespell]
+ignore-words = ".codespell-ignores"
 
 [tool.coverage.run]
 source = ["ctlearn"]
