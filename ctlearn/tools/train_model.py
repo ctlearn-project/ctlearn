@@ -5,10 +5,12 @@ Base tool to train a ``CTLearnModel``on R1/DL1a data using the ``DLDataReader`` 
 __all__ = ["TrainCTLearnModel"] 
 
 from abc import abstractmethod
+import json
 import numpy as np
 
 
 from ctapipe.core import Tool
+from ctapipe.core.provenance import json_config_handler
 from ctapipe.core.tool import ToolConfigurationError
 from ctapipe.core.traits import (
     Bool,
@@ -315,4 +317,24 @@ class TrainCTLearnModel(Tool):
         pass  # pragma: no cover
 
     def finish(self):
+        self._write_config_file()
         self.log.info("Tool is shutting down")
+
+    def write_provenance(self):
+        """Write the provenance log and a second one in the output directory."""
+        provenance_log = self.provenance_log
+        destination = self.output_dir / provenance_log.name
+        try:
+            if provenance_log.resolve() != destination.resolve():
+                self.provenance_log = destination
+                super().write_provenance()
+        finally:
+            self.provenance_log = provenance_log
+            super().write_provenance()
+
+    def _write_config_file(self):
+        """Write the configuration file to the output directory."""
+        config_file = self.output_dir / "config.json"
+        self.log.info("Writing configuration file to %s", config_file)
+        with config_file.open("w") as file:
+            json.dump(self.config, file, default=json_config_handler, indent=4)

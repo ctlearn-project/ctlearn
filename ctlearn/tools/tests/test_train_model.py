@@ -1,3 +1,4 @@
+import json
 import logging
 from types import SimpleNamespace
 from unittest.mock import Mock
@@ -7,6 +8,7 @@ import pytest
 import shutil
 
 from ctapipe.core import run_tool
+from ctapipe.core.provenance import Provenance
 from ctapipe.core.tool import ToolConfigurationError
 from ctapipe.core.traits import TraitError
 from ctlearn.conftest import TRAINING_TOOLS, MODEL_FILE_FORMATS
@@ -90,6 +92,7 @@ def test_train_ctlearn_model(framework, model, reco_task, dl1_gamma_file, dl1_pr
     argv.append(f"--TrainCTLearnModel.model_type={model}")
     if model == "LoadedModel":
         argv.append(f"--LoadedModel.load_model_from={model_file}")
+    Provenance().clear()
     assert run_tool(TRAINING_TOOLS[framework](), argv=argv, cwd=tmp_path) == 0
     # --- Additional checks ---
     # Check that the trained model exists
@@ -98,6 +101,18 @@ def test_train_ctlearn_model(framework, model, reco_task, dl1_gamma_file, dl1_pr
     # Check training_log.csv exists
     log_file = output_dir / "training_log.csv"
     assert log_file.exists(), f"Training log file not found for {reco_task}"
+    # Check that the provenance log was written to the output directory
+    tool_name = TRAINING_TOOLS[framework].name
+    provenance_file = output_dir / f"{tool_name}.provenance.log"
+    assert provenance_file.exists(), f"Provenance log not found in {output_dir}"
+    provenance = json.loads(provenance_file.read_text())
+    assert len(provenance) == 1
+    assert provenance[0]["activity_name"] == tool_name
+    # Check that the serialized tool configuration is present and readable.
+    config_file = output_dir / "config.json"
+    assert config_file.exists(), f"Configuration file not found in {output_dir}"
+    config = json.loads(config_file.read_text())
+    assert "TrainCTLearnModel" in config
     # Read CSV and verify number of epochs
     log_df = pd.read_csv(log_file)
     num_epochs_logged = log_df.shape[0]
@@ -149,6 +164,7 @@ def test_train_model_early_stopping_and_checkpoint_options(
         f"--signal={signal_dir}",
         "--pattern-signal=*.dl1.h5",
         f"--output={output_dir}",
+        f"--TrainCTLearnModel.provenance_log={output_dir}/{tool.name}.provenance.log",
         "--reco=energy",
         "--TrainCTLearnModel.model_type=SingleCNN",
         "--TrainCTLearnModel.n_epochs=2",
@@ -162,6 +178,8 @@ def test_train_model_early_stopping_and_checkpoint_options(
     assert run_tool(tool, argv=argv, cwd=tmp_path) == 0
     assert tool.save_best_validation_only is save_best_validation_only
     assert tool.early_stopping == early_stopping
+    provenance_file = output_dir / f"{tool.name}.provenance.log"
+    assert provenance_file.exists(), f"Provenance log not found in {output_dir}"
 
     if framework == "Keras":
         checkpoint = next(
