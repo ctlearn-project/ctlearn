@@ -118,8 +118,11 @@ class CTLearnModel(Component):
             "expects a square-mapped input, e.g. from BilinearMapper). 'hexagdly' "
             "uses the Conv2d/MaxPool2d/AvgPool2d layers of keras_hexagdly (Keras) "
             "or pytorch_hexagdly (PyTorch) for hex-native convolution (expects "
-            "hex-addressed input, e.g. from HexagdlyMapper). With 'hexagdly', "
-            "kernel_size counts hexagonal rings around the centre cell."
+            "hex-addressed input, e.g. from HexagdlyMapper). kernel_size and the "
+            "pooling size mean the same for both backends, a square-kernel width: "
+            "with 'hexagdly', 3 is the 7-cell hexagon and 1 a plain 1x1. A hexagonal "
+            "window is centred on a cell, so an even size has no exact equivalent: "
+            "it is rounded up to the next odd one, with a warning from the hexagonal layers."
         ),
     ).tag(config=True)
 
@@ -236,6 +239,20 @@ class SingleCNN(CTLearnModel):
         parent=None,
         **kwargs,
     ):
+        """
+        Initialize the SingleCNN model component.
+
+        Parameters
+        ----------
+        tasks : list of str
+            List of active prediction tasks (e.g., ['type'], ['energy']).
+        config : traitlets.config.Config, optional
+            Configuration dictionary or object.
+        parent : ctapipe.core.Component or ctapipe.core.Tool, optional
+            Parent component or tool in the ctapipe tool hierarchy.
+        **kwargs : dict, optional
+            Additional keyword arguments passed to CTLearnModel initializer.
+        """
         super().__init__(
             config=config,
             parent=parent,
@@ -314,6 +331,20 @@ class ResNet(CTLearnModel):
         parent=None,
         **kwargs,
     ):
+        """
+        Initialize the ResNet model component.
+
+        Parameters
+        ----------
+        tasks : list of str
+            List of active prediction tasks (e.g., ['type'], ['energy']).
+        config : traitlets.config.Config, optional
+            Configuration dictionary or object.
+        parent : ctapipe.core.Component or ctapipe.core.Tool, optional
+            Parent component or tool in the ctapipe tool hierarchy.
+        **kwargs : dict, optional
+            Additional keyword arguments passed to CTLearnModel initializer.
+        """
         super().__init__(
             config=config,
             parent=parent,
@@ -372,6 +403,20 @@ class LoadedModel(CTLearnModel):
         parent=None,
         **kwargs,
     ):
+        """
+        Initialize the LoadedModel component.
+
+        Parameters
+        ----------
+        tasks : list of str
+            List of active prediction tasks (e.g., ['type'], ['energy']).
+        config : traitlets.config.Config, optional
+            Configuration dictionary or object.
+        parent : ctapipe.core.Component or ctapipe.core.Tool, optional
+            Parent component or tool in the ctapipe tool hierarchy.
+        **kwargs : dict, optional
+            Additional keyword arguments passed to CTLearnModel initializer.
+        """
         super().__init__(
             config=config,
             parent=parent,

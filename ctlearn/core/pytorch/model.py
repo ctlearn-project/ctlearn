@@ -13,6 +13,8 @@ __all__ = [
     "PyTorchLoadedModel",
 ]
 
+from functools import partial
+
 import pytorch_hexagdly as phgly
 import torch
 import torch.nn as nn
@@ -31,13 +33,22 @@ from ctlearn.core.pytorch.attention import (
     SpatialSqueezeExciteBlock,
 )
 
-
 class MultiFullyConnectedHead(nn.Module):
     """
     A PyTorch container module to hold the multi-task fully connected heads.
     """
 
     def __init__(self, heads_dict, single_output_task=None):
+        """
+        Initialize the MultiFullyConnectedHead.
+
+        Parameters
+        ----------
+        heads_dict : dict of torch.nn.Module
+            Dictionary mapping task names to their respective fully connected head modules.
+        single_output_task : str, optional
+            Task name if only a single task output should be returned directly (default: None).
+        """
         super().__init__()
         # Save the dict with tasks info in an attribute
         self.heads_dict = heads_dict
@@ -53,6 +64,19 @@ class MultiFullyConnectedHead(nn.Module):
         self.single_output_task = single_output_task
 
     def forward(self, x):
+        """
+        Perform the forward pass of the neural network.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            The input tensor.
+
+        Returns
+        -------
+        torch.Tensor
+            The output tensor after processing.
+        """
         # Flatten backbone output if spatially aggregated (B, C, 1, 1) -> (B, C)
         if x.dim() > 2:
             x = torch.flatten(x, start_dim=1)
@@ -77,6 +101,22 @@ class MultiFullyConnectedHead(nn.Module):
 def build_fully_connect_pytorch_head(in_features, layers, activation_function, tasks):
     """
     Build the fully connected head for the PyTorch-based CTLearn model.
+
+    Parameters
+    ----------
+    in_features : int
+        Number of input features entering the fully connected head.
+    layers : dict of list of int
+        Dictionary specifying the hidden unit sizes for each task head.
+    activation_function : dict of str
+        Dictionary specifying the activation function for each task head.
+    tasks : list of str
+        List of active prediction tasks (e.g., ['type'], ['energy']).
+
+    Returns
+    -------
+    head : MultiFullyConnectedHead
+        Constructed PyTorch multi-task head module.
     """
     heads = {}
     
@@ -109,13 +149,45 @@ class FullModelPipeline(nn.Module):
     Combines the backbone and multi-task heads into a unified executable nn.Module pipeline.
     """
     def __init__(self, backbone, head):
+        """
+        Initialize the FullModelPipeline.
+
+        Parameters
+        ----------
+        backbone : torch.nn.Module
+            Feature extractor backbone module.
+        head : MultiFullyConnectedHead
+            Multi-task output head module.
+        """
         super().__init__()
         self.backbone = backbone
         self.head = head
 
     def forward(self, x):
+        """
+        Perform the forward pass of the neural network.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            The input tensor.
+
+        Returns
+        -------
+        torch.Tensor
+            The output tensor after processing.
+        """
         features = self.backbone(x)
         return self.head(features), features
+
+
+# The hexagonal layers read ``kernel_size`` as a square-kernel width, like the
+# square layers do, instead of counting hexagonal rings (their default): 3 is
+# the 7-cell hexagon and 1 a plain 1x1. The same configuration then describes
+# comparable models on both grids.
+_HexConv2d = partial(phgly.Conv2d, kernel_size_unit="pixels")
+_HexMaxPool2d = partial(phgly.MaxPool2d, kernel_size_unit="pixels")
+_HexAvgPool2d = partial(phgly.AvgPool2d, kernel_size_unit="pixels")
 
 
 class PyTorchConvBackend(ConvBackend):
@@ -129,22 +201,21 @@ class PyTorchConvBackend(ConvBackend):
     def _conv_layer(self):
         """Convolution layer class for ``conv_backend``.
 
-        Both classes are built with the same arguments. With ``"hexagdly"``,
-        ``kernel_size`` counts hexagonal rings (see #302), and the hex grid is
-        always padded so every cell is a window centre, whatever ``padding``
-        says.
+        Both are built with the same arguments, and ``kernel_size`` has the same
+        meaning for both: a square-kernel width. The hex grid is always padded
+        so every cell is a window centre, whatever ``padding`` says.
         """
-        return phgly.Conv2d if self.conv_backend == "hexagdly" else nn.Conv2d
+        return _HexConv2d if self.conv_backend == "hexagdly" else nn.Conv2d
 
     @property
     def _pool_layer(self):
         """Max-pooling layer class for ``conv_backend``."""
-        return phgly.MaxPool2d if self.conv_backend == "hexagdly" else nn.MaxPool2d
+        return _HexMaxPool2d if self.conv_backend == "hexagdly" else nn.MaxPool2d
 
     @property
     def _avg_pool_layer(self):
         """Average-pooling layer class for ``conv_backend``."""
-        return phgly.AvgPool2d if self.conv_backend == "hexagdly" else nn.AvgPool2d
+        return _HexAvgPool2d if self.conv_backend == "hexagdly" else nn.AvgPool2d
 
 class PyTorchSingleCNN(SingleCNN, PyTorchConvBackend):
     """
@@ -152,6 +223,22 @@ class PyTorchSingleCNN(SingleCNN, PyTorchConvBackend):
     """
 
     def __init__(self, input_shape, tasks, config=None, parent=None, **kwargs):
+        """
+        Initialize the PyTorchSingleCNN model component.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Input image tensor dimensions (channels, height, width).
+        tasks : list of str
+            List of target prediction tasks.
+        config : traitlets.config.Config, optional
+            Configuration specified by config file or cmdline arguments.
+        parent : ctapipe.core.Component or ctapipe.core.Tool, optional
+            Parent component in hierarchy.
+        **kwargs : dict, optional
+            Additional keyword arguments.
+        """
         super().__init__(tasks=tasks, config=config, parent=parent, **kwargs)
         
         # Build modules
@@ -163,6 +250,19 @@ class PyTorchSingleCNN(SingleCNN, PyTorchConvBackend):
         self.model = FullModelPipeline(self.backbone_model, self.logits_head)
 
     def _build_backbone(self, input_shape):
+        """
+        Construct the feature extraction backbone of the network.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            The shape of the input image tensor (channels, height, width).
+
+        Returns
+        -------
+        tuple
+            A tuple containing the constructed nn.Module backbone and the number of output channels.
+        """
         # input_shape format: (channels, height, width)
         in_channels = input_shape[0]
         modules = []
@@ -219,6 +319,9 @@ class PyTorchSingleCNN(SingleCNN, PyTorchConvBackend):
 
 
 class BasicBlock(nn.Module):
+    """
+    Basic block for ResNet architectures.
+    """
     def __init__(
         self,
         in_channels,
@@ -228,6 +331,24 @@ class BasicBlock(nn.Module):
         attention=None,
         conv_layer=nn.Conv2d,
     ):
+        """
+        Initialize the BasicBlock module.
+
+        Parameters
+        ----------
+        in_channels : int
+            Number of input feature channels.
+        out_channels : int
+            Number of output feature channels.
+        stride : int, optional
+            Stride size for convolution and shortcut (default: 1).
+        conv_shortcut : bool, optional
+            Whether to use a 1x1 convolution in the shortcut connection (default: True).
+        attention : dict or None, optional
+            Configuration dictionary for attention mechanism (default: None).
+        conv_layer : callable, optional
+            Convolution layer class to use (default: nn.Conv2d).
+        """
         super().__init__()
         self.conv_shortcut = conv_shortcut
         self.attention_config = attention
@@ -249,6 +370,14 @@ class BasicBlock(nn.Module):
         self.setup_attention(out_channels)
 
     def setup_attention(self, channels):
+        """
+        Initialize and configure the attention mechanism for the block.
+
+        Parameters
+        ----------
+        channels : int
+            The number of feature channels to apply attention on.
+        """
         self.attn_layer = None
         if self.attention_config:
             mech = self.attention_config.get("mechanism")
@@ -261,6 +390,19 @@ class BasicBlock(nn.Module):
                 self.attn_layer = SpatialSqueezeExciteBlock(in_channels=channels)
 
     def forward(self, x):
+        """
+        Perform the forward pass of the neural network.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            The input tensor.
+
+        Returns
+        -------
+        torch.Tensor
+            The output tensor after processing.
+        """
         # Shortcut path
         if self.conv_shortcut and self.shortcut is not None:
             identity = self.shortcut(x)
@@ -279,6 +421,9 @@ class BasicBlock(nn.Module):
 
 
 class BottleneckBlock(nn.Module):
+    """
+    Bottleneck block for deeper ResNet architectures.
+    """
     def __init__(
         self,
         in_channels,
@@ -288,6 +433,24 @@ class BottleneckBlock(nn.Module):
         attention=None,
         conv_layer=nn.Conv2d,
     ):
+        """
+        Initialize the BottleneckBlock module.
+
+        Parameters
+        ----------
+        in_channels : int
+            Number of input feature channels.
+        base_filters : int
+            Base number of filters (expanded to 4x at output).
+        stride : int, optional
+            Stride size for downsampling convolution (default: 1).
+        conv_shortcut : bool, optional
+            Whether to use a projection 1x1 convolution in the shortcut connection (default: True).
+        attention : dict or None, optional
+            Configuration dictionary for attention mechanism (default: None).
+        conv_layer : callable, optional
+            Convolution layer class to use (default: nn.Conv2d).
+        """
         super().__init__()
         self.conv_shortcut = conv_shortcut
         self.attention_config = attention
@@ -315,6 +478,14 @@ class BottleneckBlock(nn.Module):
         self.setup_attention(4 * base_filters)
 
     def setup_attention(self, channels):
+        """
+        Initialize and configure the attention mechanism for the block.
+
+        Parameters
+        ----------
+        channels : int
+            The number of feature channels to apply attention on.
+        """
         self.attn_layer = None
         if self.attention_config:
             mech = self.attention_config["mechanism"]
@@ -327,6 +498,19 @@ class BottleneckBlock(nn.Module):
                 self.attn_layer = SpatialSqueezeExciteBlock(in_channels=channels)
 
     def forward(self, x):
+        """
+        Perform the forward pass of the neural network.
+
+        Parameters
+        ----------
+        x : torch.Tensor
+            The input tensor.
+
+        Returns
+        -------
+        torch.Tensor
+            The output tensor after processing.
+        """
         identity = self.shortcut(x)
         
         # Matches Keras sequence: conv1 (with stride) -> relu -> conv2 -> relu -> conv3
@@ -346,6 +530,22 @@ class PyTorchResNet(ResNet, PyTorchConvBackend):
     """
 
     def __init__(self, input_shape, tasks, config=None, parent=None, **kwargs):
+        """
+        Initialize the PyTorchResNet model component.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Input image tensor dimensions (channels, height, width).
+        tasks : list of str
+            List of target prediction tasks.
+        config : traitlets.config.Config, optional
+            Configuration specified by config file or cmdline arguments.
+        parent : ctapipe.core.Component or ctapipe.core.Tool, optional
+            Parent component in hierarchy.
+        **kwargs : dict, optional
+            Additional keyword arguments.
+        """
         super().__init__(tasks=tasks, config=config, parent=parent, **kwargs)
 
         # Build PyTorch backbone and track final out_features channel size
@@ -358,6 +558,19 @@ class PyTorchResNet(ResNet, PyTorchConvBackend):
         self.model = FullModelPipeline(self.backbone_model, self.logits_head)
 
     def _build_backbone(self, input_shape):
+        """
+        Construct the feature extraction backbone of the network.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            The shape of the input image tensor (channels, height, width).
+
+        Returns
+        -------
+        tuple
+            A tuple containing the constructed nn.Module backbone and the number of output channels.
+        """
         in_channels = input_shape[0]
         modules = []
 
@@ -409,6 +622,31 @@ class PyTorchResNet(ResNet, PyTorchConvBackend):
         return nn.Sequential(*modules), final_channels
 
     def _stacked_res_blocks(self, in_channels, architecture, residual_block_type, attention):
+        """
+        Assemble the full sequence of residual blocks for the ResNet architecture.
+
+        This method iterates over the network architecture configuration, grouping 
+        blocks by their output filter sizes and downsampling strides. It uses 
+        `_stack_fn` to create each stack of blocks and maintains the current channel count.
+
+        Parameters
+        ----------
+        in_channels : int
+            Number of input channels to the first block.
+        architecture : list of dict
+            A list specifying the configuration (filters, blocks) for each layer block stack.
+        residual_block_type : str
+            The type of residual block to use ('basic' or 'bottleneck').
+        attention : dict or None
+            Configuration dictionary for the attention mechanism, if any.
+
+        Returns
+        -------
+        list of nn.Module
+            The list of instantiated residual blocks.
+        int
+            The final number of output channels after all blocks.
+        """
         blocks_list = []
         current_channels = in_channels
         
@@ -447,12 +685,42 @@ class PyTorchResNet(ResNet, PyTorchConvBackend):
         return blocks_list, current_channels
     
     def _stack_fn(self, in_channels, filters, blocks, residual_block_type, stride=2, attention=None):
+        """
+        Create a stack of identical residual blocks for a specific layer in the ResNet.
+
+        The first block in the stack is responsible for adapting the channel dimensions 
+        and spatial resolution (via stride). The subsequent blocks maintain the same 
+        dimensions and stride (stride=1). 
+
+        Parameters
+        ----------
+        in_channels : int
+            Number of input channels to the stack.
+        filters : int
+            Base number of filters for the blocks (bottleneck blocks expand this by 4x).
+        blocks : int
+            The number of blocks to instantiate in this stack.
+        residual_block_type : str
+            The type of residual block ('basic' or 'bottleneck').
+        stride : int, default=2
+            The stride used in the first block for downsampling.
+        attention : dict or None
+            Configuration dictionary for the attention mechanism.
+
+        Returns
+        -------
+        list of nn.Module
+            A list containing the constructed residual blocks for this stack.
+        """
         stack = []
         # Bottleneck blocks expand channels by 4x; Basic blocks do not expand.
         multiplier = 4 if residual_block_type == "bottleneck" else 1
         out_channels = filters * multiplier
 
         def build_block(in_c, s):
+            """
+            Construct a single residual block configured for this level of the ResNet.
+            """
             # Only use a conv shortcut if channels change or if downsampling (stride > 1)
             needs_shortcut = (in_c != out_channels) or (s != 1)            
             if residual_block_type == "basic":
@@ -500,6 +768,22 @@ class PyTorchLoadedModel(LoadedModel):
         parent=None,
         **kwargs,
     ):
+        """
+        Initialize the PyTorchLoadedModel component.
+
+        Parameters
+        ----------
+        input_shape : tuple
+            Input image tensor dimensions (channels, height, width).
+        tasks : list of str
+            List of target prediction tasks.
+        config : traitlets.config.Config, optional
+            Configuration specified by config file or cmdline arguments.
+        parent : ctapipe.core.Component or ctapipe.core.Tool, optional
+            Parent component in hierarchy.
+        **kwargs : dict, optional
+            Additional keyword arguments.
+        """
         super().__init__(
             tasks=tasks,
             config=config,

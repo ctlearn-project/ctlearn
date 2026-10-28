@@ -53,6 +53,28 @@ class KerasSequence(Sequence):
         stack_telescope_images=False,
         **kwargs,
     ):
+        """
+        Initialize the KerasSequence generator.
+
+        Parameters
+        ----------
+        DLDataReader : dl1_data_handler.reader.DLDataReader
+            Data reader instance responsible for reading DL1/R1 data files.
+        indices : list or numpy.ndarray
+            List of event indices to load from the dataset.
+        tasks : list of str
+            List of target tasks to compute labels for (e.g., ['type'], ['energy']).
+        batch_size : int, optional
+            Number of samples per batch (default: 64).
+        random_seed : int, optional
+            Seed used to shuffle data indices at the end of each epoch (default: None).
+        sort_by_intensity : bool, optional
+            Whether to sort telescope images by Hillas intensity in descending order (default: False).
+        stack_telescope_images : bool, optional
+            Whether to stack images across telescopes along the channel dimension in stereo mode (default: False).
+        **kwargs : dict, optional
+            Additional keyword arguments passed to the parent keras.utils.Sequence initializer.
+        """
         super().__init__(**kwargs)
         "Initialization"
         self.DLDataReader = DLDataReader

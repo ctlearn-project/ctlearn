@@ -5,10 +5,12 @@ Base tool to train a ``CTLearnModel``on R1/DL1a data using the ``DLDataReader`` 
 __all__ = ["TrainCTLearnModel"] 
 
 from abc import abstractmethod
+import json
 import numpy as np
 
 
 from ctapipe.core import Tool
+from ctapipe.core.provenance import json_config_handler
 from ctapipe.core.tool import ToolConfigurationError
 from ctapipe.core.traits import (
     Bool,
@@ -198,6 +200,13 @@ class TrainCTLearnModel(Tool):
     classes = classes_with_traits(CTLearnModel) + classes_with_traits(DLDataReader)
 
     def setup(self):
+        """
+        Initialize the tool configuration, validate parameters, and setup data handlers.
+
+        This method is the first part of the tool execution lifecycle. It validates input arguments, 
+        sets up the configuration dictionary, configures the output file, and prepares the DataReader 
+        to ensure everything is ready before the core processing begins.
+        """
         self.log.info("ctlearn version %s", ctlearn_version)
         # Check if the output directory exists
         if self.output_dir.exists():
@@ -223,6 +232,12 @@ class TrainCTLearnModel(Tool):
                 raise ToolConfigurationError(
                     f"No background files found in {self.input_dir_background} matching pattern(s) {self.file_pattern_background}."
                 )
+        # Check if at least one reconstruction task is selected
+        if not self.reco_tasks:
+            raise ToolConfigurationError(
+                "No reconstruction task was selected. Specify at least one valid "
+                "task with --reco: type, energy, cameradirection, or skydirection."
+            )
 
         # Set up the data reader
         self.log.info("Loading data:")
@@ -315,4 +330,30 @@ class TrainCTLearnModel(Tool):
         pass  # pragma: no cover
 
     def finish(self):
+        """
+        Perform final cleanup and save metadata after the core logic completes.
+
+        This method writes provenance data (such as configuration and execution context) 
+        to the output file, finalizes tables, and ensures all file handlers are safely closed.
+        """
+        self._write_config_file()
         self.log.info("Tool is shutting down")
+
+    def write_provenance(self):
+        """Write the provenance log and a second one in the output directory."""
+        provenance_log = self.provenance_log
+        destination = self.output_dir / provenance_log.name
+        try:
+            if provenance_log.resolve() != destination.resolve():
+                self.provenance_log = destination
+                super().write_provenance()
+        finally:
+            self.provenance_log = provenance_log
+            super().write_provenance()
+
+    def _write_config_file(self):
+        """Write the configuration file to the output directory."""
+        config_file = self.output_dir / "config.json"
+        self.log.info("Writing configuration file to %s", config_file)
+        with config_file.open("w") as file:
+            json.dump(self.config, file, default=json_config_handler, indent=4)

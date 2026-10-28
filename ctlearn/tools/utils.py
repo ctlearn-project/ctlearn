@@ -261,6 +261,9 @@ def model_conv_backend(model):
         otherwise ``"square"``.
     """
     def _uses_hexagdly(layer):
+        """
+    Determine if Hexagdly is used within the neural network model architecture.
+    """
         if isinstance(layer, (hgly.Conv2d, hgly.MaxPool2d)):
             return True
         sublayers = getattr(layer, "layers", None)
