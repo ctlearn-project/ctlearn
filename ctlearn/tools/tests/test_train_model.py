@@ -212,6 +212,7 @@ def test_pytorch_workers_configuration_error():
     with pytest.raises(ToolConfigurationError, match="Cannot set persistent_workers=True when num_workers=0"):
         tool.setup_framework()
 
+
 @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
 def test_train_model_empty_patterns(framework, tmp_path):
     """
@@ -243,6 +244,17 @@ def test_train_model_rejects_existing_output_directory(tmp_path, monkeypatch):
     tool.output_dir.mkdir()
 
     with pytest.raises(ToolConfigurationError, match="already exists"):
+        tool.setup()
+
+
+def test_train_model_rejects_missing_reco_tasks(tmp_path, monkeypatch):
+    tool = _make_setup_tool(tmp_path, monkeypatch, reader=None)
+    tool.reco_tasks = []
+
+    with pytest.raises(
+        ToolConfigurationError,
+        match="No reconstruction task was selected.*--reco",
+    ):
         tool.setup()
 
 
