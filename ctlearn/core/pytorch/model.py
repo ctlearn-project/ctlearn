@@ -23,15 +23,16 @@ import torch.nn.functional as F
 # Assuming these custom attention blocks are updated to return torch.nn.Module or used dynamically
 from ctlearn.core.model import (
     ConvBackend,
-    SingleCNN,
-    ResNet,
     LoadedModel,
+    ResNet,
+    SingleCNN,
 )
 from ctlearn.core.pytorch.attention import (
-    DualSqueezeExciteBlock,
     ChannelSqueezeExciteBlock,
+    DualSqueezeExciteBlock,
     SpatialSqueezeExciteBlock,
 )
+
 
 class MultiFullyConnectedHead(nn.Module):
     """
@@ -87,7 +88,7 @@ class MultiFullyConnectedHead(nn.Module):
             head = self.heads[internal_key]
             out = head(x)
 
-            # Return raw logits for all tasks, including 'type', 
+            # Return raw logits for all tasks, including 'type',
             # because CrossEntropyLoss expects logits during training.
             outputs[original_task] = out
 
@@ -119,25 +120,21 @@ def build_fully_connect_pytorch_head(in_features, layers, activation_function, t
         Constructed PyTorch multi-task head module.
     """
     heads = {}
-    
+
     # Activation mapping from Keras string to PyTorch Module
-    act_map = {
-        "relu": nn.ReLU,
-        "tanh": nn.Tanh,
-        "sigmoid": nn.Sigmoid
-    }
+    act_map = {"relu": nn.ReLU, "tanh": nn.Tanh, "sigmoid": nn.Sigmoid}
 
     for task in tasks:
         task_layers = []
         current_features = in_features
-        
+
         for i, units in enumerate(layers[task]):
             task_layers.append(nn.Linear(current_features, units))
             if i != len(layers[task]) - 1:
                 act_cls = act_map.get(activation_function[task].lower(), nn.ReLU)
                 task_layers.append(act_cls())
             current_features = units
-            
+
         heads[task] = nn.Sequential(*task_layers)
 
     single_output_task = tasks[0] if (len(tasks) == 1 and tasks[0] == "type") else None
@@ -148,6 +145,7 @@ class FullModelPipeline(nn.Module):
     """
     Combines the backbone and multi-task heads into a unified executable nn.Module pipeline.
     """
+
     def __init__(self, backbone, head):
         """
         Initialize the FullModelPipeline.
@@ -217,6 +215,7 @@ class PyTorchConvBackend(ConvBackend):
         """Average-pooling layer class for ``conv_backend``."""
         return _HexAvgPool2d if self.conv_backend == "hexagdly" else nn.AvgPool2d
 
+
 class PyTorchSingleCNN(SingleCNN, PyTorchConvBackend):
     """
     ``SingleCNN`` is a simple convolutional neural network model implemented in PyTorch.
@@ -240,9 +239,9 @@ class PyTorchSingleCNN(SingleCNN, PyTorchConvBackend):
             Additional keyword arguments.
         """
         super().__init__(tasks=tasks, config=config, parent=parent, **kwargs)
-        
+
         # Build modules
-        self.backbone_model, out_features = self._build_backbone(input_shape)     
+        self.backbone_model, out_features = self._build_backbone(input_shape)
         self.logits_head = build_fully_connect_pytorch_head(
             out_features, self.head_layers, self.head_activation_function, tasks
         )
@@ -268,7 +267,9 @@ class PyTorchSingleCNN(SingleCNN, PyTorchConvBackend):
         modules = []
 
         if self.batchnorm:
-            modules.append(nn.BatchNorm2d(in_channels, momentum=0.01, eps=1e-3)) # PyTorch momentum = 1 - Keras momentum
+            modules.append(
+                nn.BatchNorm2d(in_channels, momentum=0.01, eps=1e-3)
+            )  # PyTorch momentum = 1 - Keras momentum
 
         for i, layer in enumerate(self.architecture):
             filters = layer["filters"]
@@ -277,24 +278,34 @@ class PyTorchSingleCNN(SingleCNN, PyTorchConvBackend):
 
             for nr in range(number):
                 # padding="same" calculates padding dynamically in PyTorch based on kernel size
-                padding = kernel_size // 2 
-                modules.append(self._conv_layer(in_channels, filters, kernel_size=kernel_size, padding=padding))
+                padding = kernel_size // 2
+                modules.append(
+                    self._conv_layer(
+                        in_channels, filters, kernel_size=kernel_size, padding=padding
+                    )
+                )
                 modules.append(nn.ReLU())
                 in_channels = filters
-            
+
             if self.pooling_type is not None:
                 p_size = self.pooling_parameters["size"]
                 p_stride = self.pooling_parameters["strides"]
                 if self.pooling_type == "max":
-                    modules.append(self._pool_layer(kernel_size=p_size, stride=p_stride))
+                    modules.append(
+                        self._pool_layer(kernel_size=p_size, stride=p_stride)
+                    )
                 elif self.pooling_type == "average":
-                    modules.append(self._avg_pool_layer(kernel_size=p_size, stride=p_stride))
-                    
+                    modules.append(
+                        self._avg_pool_layer(kernel_size=p_size, stride=p_stride)
+                    )
+
             if self.batchnorm:
                 modules.append(nn.BatchNorm2d(in_channels, momentum=0.01, eps=1e-3))
 
         if self.bottleneck_filters is not None:
-            modules.append(self._conv_layer(in_channels, self.bottleneck_filters, kernel_size=1))
+            modules.append(
+                self._conv_layer(in_channels, self.bottleneck_filters, kernel_size=1)
+            )
             modules.append(nn.ReLU())
             in_channels = self.bottleneck_filters
             if self.batchnorm:
@@ -304,9 +315,13 @@ class PyTorchSingleCNN(SingleCNN, PyTorchConvBackend):
             mech = self.attention.get("mechanism")
             ratio = self.attention.get("reduction_ratio", 16)
             if mech == "Dual-SE":
-                attention_layer = DualSqueezeExciteBlock(in_channels=in_channels, ratio=ratio)
+                attention_layer = DualSqueezeExciteBlock(
+                    in_channels=in_channels, ratio=ratio
+                )
             elif mech == "Channel-SE":
-                attention_layer = ChannelSqueezeExciteBlock(in_channels=in_channels, ratio=ratio)
+                attention_layer = ChannelSqueezeExciteBlock(
+                    in_channels=in_channels, ratio=ratio
+                )
             elif mech == "Spatial-SE":
                 attention_layer = SpatialSqueezeExciteBlock(in_channels=in_channels)
             modules.append(attention_layer)
@@ -314,7 +329,7 @@ class PyTorchSingleCNN(SingleCNN, PyTorchConvBackend):
         # Perform global 2D average pooling
         modules.append(nn.AdaptiveAvgPool2d((1, 1)))
         modules.append(nn.Flatten(start_dim=1))
-        
+
         return nn.Sequential(*modules), in_channels
 
 
@@ -322,6 +337,7 @@ class BasicBlock(nn.Module):
     """
     Basic block for ResNet architectures.
     """
+
     def __init__(
         self,
         in_channels,
@@ -361,7 +377,12 @@ class BasicBlock(nn.Module):
             self.shortcut = None
         # Main Branch Convolutions (Matching Keras _1_conv and _2_conv)
         self.conv1 = conv_layer(
-            in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=True
+            in_channels,
+            out_channels,
+            kernel_size=3,
+            stride=stride,
+            padding=1,
+            bias=True,
         )
         self.conv2 = conv_layer(
             out_channels, out_channels, kernel_size=3, stride=1, padding=1, bias=True
@@ -383,9 +404,13 @@ class BasicBlock(nn.Module):
             mech = self.attention_config.get("mechanism")
             ratio = self.attention_config.get("reduction_ratio", 16)
             if mech == "Dual-SE":
-                self.attn_layer = DualSqueezeExciteBlock(in_channels=channels, ratio=ratio)
+                self.attn_layer = DualSqueezeExciteBlock(
+                    in_channels=channels, ratio=ratio
+                )
             elif mech == "Channel-SE":
-                self.attn_layer = ChannelSqueezeExciteBlock(in_channels=channels, ratio=ratio)
+                self.attn_layer = ChannelSqueezeExciteBlock(
+                    in_channels=channels, ratio=ratio
+                )
             elif mech == "Spatial-SE":
                 self.attn_layer = SpatialSqueezeExciteBlock(in_channels=channels)
 
@@ -424,6 +449,7 @@ class BottleneckBlock(nn.Module):
     """
     Bottleneck block for deeper ResNet architectures.
     """
+
     def __init__(
         self,
         in_channels,
@@ -491,9 +517,13 @@ class BottleneckBlock(nn.Module):
             mech = self.attention_config["mechanism"]
             ratio = self.attention_config.get("reduction_ratio", 16)
             if mech == "Dual-SE":
-                self.attn_layer = DualSqueezeExciteBlock(in_channels=channels, ratio=ratio)
+                self.attn_layer = DualSqueezeExciteBlock(
+                    in_channels=channels, ratio=ratio
+                )
             elif mech == "Channel-SE":
-                self.attn_layer = ChannelSqueezeExciteBlock(in_channels=channels, ratio=ratio)
+                self.attn_layer = ChannelSqueezeExciteBlock(
+                    in_channels=channels, ratio=ratio
+                )
             elif mech == "Spatial-SE":
                 self.attn_layer = SpatialSqueezeExciteBlock(in_channels=channels)
 
@@ -512,17 +542,18 @@ class BottleneckBlock(nn.Module):
             The output tensor after processing.
         """
         identity = self.shortcut(x)
-        
+
         # Matches Keras sequence: conv1 (with stride) -> relu -> conv2 -> relu -> conv3
         out = F.relu(self.conv1(x))
         out = F.relu(self.conv2(out))
         out = self.conv3(out)
-        
+
         if self.attn_layer:
             out = self.attn_layer(out)
-            
+
         out += identity
         return F.relu(out)
+
 
 class PyTorchResNet(ResNet, PyTorchConvBackend):
     """
@@ -583,8 +614,8 @@ class PyTorchResNet(ResNet, PyTorchConvBackend):
             out_ch = self.init_layer["filters"]
             k_size = self.init_layer["kernel_size"]
             stride = self.init_layer["strides"]
-            padding = k_size // 2 
-            
+            padding = k_size // 2
+
             modules.append(
                 self._conv_layer(
                     in_channels,
@@ -621,12 +652,14 @@ class PyTorchResNet(ResNet, PyTorchConvBackend):
 
         return nn.Sequential(*modules), final_channels
 
-    def _stacked_res_blocks(self, in_channels, architecture, residual_block_type, attention):
+    def _stacked_res_blocks(
+        self, in_channels, architecture, residual_block_type, attention
+    ):
         """
         Assemble the full sequence of residual blocks for the ResNet architecture.
 
-        This method iterates over the network architecture configuration, grouping 
-        blocks by their output filter sizes and downsampling strides. It uses 
+        This method iterates over the network architecture configuration, grouping
+        blocks by their output filter sizes and downsampling strides. It uses
         `_stack_fn` to create each stack of blocks and maintains the current channel count.
 
         Parameters
@@ -649,10 +682,10 @@ class PyTorchResNet(ResNet, PyTorchConvBackend):
         """
         blocks_list = []
         current_channels = in_channels
-        
+
         filters_list = [layer["filters"] for layer in architecture]
         blocks_count = [layer["blocks"] for layer in architecture]
-        
+
         # First layer block sequence (stride=1)
         blocks_list.extend(
             self._stack_fn(
@@ -664,10 +697,10 @@ class PyTorchResNet(ResNet, PyTorchConvBackend):
                 attention=attention,
             )
         )
-        
+
         multiplier = 4 if residual_block_type == "bottleneck" else 1
         current_channels = filters_list[0] * multiplier
-        
+
         # Subsequent downsampling levels (stride=2)
         for filters, blocks in zip(filters_list[1:], blocks_count[1:]):
             blocks_list.extend(
@@ -681,16 +714,24 @@ class PyTorchResNet(ResNet, PyTorchConvBackend):
                 )
             )
             current_channels = filters * multiplier
-            
+
         return blocks_list, current_channels
-    
-    def _stack_fn(self, in_channels, filters, blocks, residual_block_type, stride=2, attention=None):
+
+    def _stack_fn(
+        self,
+        in_channels,
+        filters,
+        blocks,
+        residual_block_type,
+        stride=2,
+        attention=None,
+    ):
         """
         Create a stack of identical residual blocks for a specific layer in the ResNet.
 
-        The first block in the stack is responsible for adapting the channel dimensions 
-        and spatial resolution (via stride). The subsequent blocks maintain the same 
-        dimensions and stride (stride=1). 
+        The first block in the stack is responsible for adapting the channel dimensions
+        and spatial resolution (via stride). The subsequent blocks maintain the same
+        dimensions and stride (stride=1).
 
         Parameters
         ----------
@@ -722,7 +763,7 @@ class PyTorchResNet(ResNet, PyTorchConvBackend):
             Construct a single residual block configured for this level of the ResNet.
             """
             # Only use a conv shortcut if channels change or if downsampling (stride > 1)
-            needs_shortcut = (in_c != out_channels) or (s != 1)            
+            needs_shortcut = (in_c != out_channels) or (s != 1)
             if residual_block_type == "basic":
                 return BasicBlock(
                     in_channels=in_c,
@@ -744,11 +785,11 @@ class PyTorchResNet(ResNet, PyTorchConvBackend):
 
         # First block transition
         stack.append(build_block(in_channels, s=stride))
-        
+
         # Remaining blocks in the layer
         for _ in range(1, blocks):
             stack.append(build_block(out_channels, s=1))
-            
+
         return stack
 
 
@@ -792,23 +833,25 @@ class PyTorchLoadedModel(LoadedModel):
         )
 
         # 1. Load object directly from disk
-        loaded_object = torch.load(self.load_model_from, map_location="cpu", weights_only=False)
+        loaded_object = torch.load(
+            self.load_model_from, map_location="cpu", weights_only=False
+        )
 
         # Extract model and check config if it's a checkpoint dictionary
-        if isinstance(loaded_object, dict) and 'model' in loaded_object:
-            saved_config = loaded_object.get('ctlearn_config', {})
+        if isinstance(loaded_object, dict) and "model" in loaded_object:
+            saved_config = loaded_object.get("ctlearn_config", {})
             current_config = dict(self.config) if self.config else {}
-            
-            if 'DLDataReader' in saved_config and 'DLDataReader' in current_config:
-                for key, saved_val in saved_config['DLDataReader'].items():
-                    current_val = current_config['DLDataReader'].get(key)
+
+            if "DLDataReader" in saved_config and "DLDataReader" in current_config:
+                for key, saved_val in saved_config["DLDataReader"].items():
+                    current_val = current_config["DLDataReader"].get(key)
                     if current_val is not None and current_val != saved_val:
                         raise ValueError(
                             f"Configuration mismatch: The model was trained with DLDataReader.{key}={saved_val}, "
                             f"but you are trying to load it with {key}={current_val}. "
                             "Adjust the configuration to match."
                         )
-            loaded_object = loaded_object['model']
+            loaded_object = loaded_object["model"]
 
         # 2. Strict validation: ensure the loaded object is an nn.Module
         if not isinstance(loaded_object, nn.Module):
@@ -859,7 +902,9 @@ class PyTorchLoadedModel(LoadedModel):
             param.requires_grad = self.trainable_backbone
 
         # Extract output dimensions for head construction
-        if hasattr(self.loaded_model, "head") and hasattr(self.loaded_model.head, "heads"):
+        if hasattr(self.loaded_model, "head") and hasattr(
+            self.loaded_model.head, "heads"
+        ):
             first_head = next(iter(self.loaded_model.head.heads.values()))
             out_features = first_head[0].in_features
         else:

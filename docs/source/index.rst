@@ -13,7 +13,7 @@ CTLearn: Deep Learning for IACT Event Reconstruction
 .. CAUTION:: This is not production-ready code yet. Although stable
    releases are available, users should expect changes to the code
    before a 1.0 release arrives.
-	   
+
 * Code, feature requests, bug reports, pull requests: https://github.com/ctlearn-project/ctlearn
 * Documentation: https://ctlearn.readthedocs.io
 * License: BSD-3

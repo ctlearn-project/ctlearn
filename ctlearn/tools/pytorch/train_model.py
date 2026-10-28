@@ -2,23 +2,23 @@
 Tool to train a PyTorch-based ``CTLearnModel`` on R1/DL1a data using the ``DLDataReader`` and ``PyTorchDataLoader``.
 """
 
-__all__ = ["TrainCTLearnPyTorchModel"] 
+__all__ = ["TrainCTLearnPyTorchModel"]
 
-import sys
 import os
 import time
+
 import torch
 import torch.nn as nn
+import torchmetrics
+from ctapipe.core.tool import ToolConfigurationError
+from ctapipe.core.traits import Bool, Int
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
-import torchmetrics
 
-from ctapipe.core.tool import ToolConfigurationError
-from ctapipe.core.traits import Int, Bool
-from ctlearn.core.pytorch.dataset import PyTorchDataset
 from ctlearn.core.model import CTLearnModel
+from ctlearn.core.pytorch.dataset import PyTorchDataset
 from ctlearn.tools.train_model import TrainCTLearnModel
-from ctlearn.tools.utils import validate_conv_backend, model_conv_backend
+from ctlearn.tools.utils import model_conv_backend, validate_conv_backend
 
 
 class TrainCTLearnPyTorchModel(TrainCTLearnModel):
@@ -57,7 +57,7 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
         --pattern-signal "gamma_*_run10.dl1.h5" \
         --output /path/to/your/energy/ \
         --reco energy \
-    
+
     To train a PyTorch-based CTLearn model for the regression of the primary particle
     arrival direction based on the offsets in camera coordinates:
     > ctlearn-train-pytorch-model \
@@ -93,7 +93,7 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
         """
         Initialize the backend-specific parameters (e.g., PyTorch or Keras devices and distributed strategies).
 
-        This method ensures that the hardware accelerators (like GPUs) are properly allocated 
+        This method ensures that the hardware accelerators (like GPUs) are properly allocated
         and configures things like precision mixed-training and multi-processing workers.
         """
         if self.persistent_workers and self.num_workers == 0:
@@ -112,7 +112,6 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
             self.device = torch.device("cpu")
             self.num_devices = 1
             self.log.info("Using CPU device.")
-
 
         # Set seed globally for reproducibility across random operations
         torch.manual_seed(self.random_seed)
@@ -139,10 +138,10 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
         )
         self.training_loader = DataLoader(
             dataset=self.training_dataset,
-            shuffle=True, # Enables shuffling
-            generator=g, # Controls the shuffling seed deterministically
+            shuffle=True,  # Enables shuffling
+            generator=g,  # Controls the shuffling seed deterministically
             **dataloader_kwargs,
-        ) 
+        )
         self.validation_dataset = PyTorchDataset(
             DLDataReader=self.dl1dh_reader,
             indices=self.validation_indices,
@@ -152,13 +151,17 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
         )
         self.validation_loader = DataLoader(
             dataset=self.validation_dataset,
-            shuffle=False, # Disables shuffling
+            shuffle=False,  # Disables shuffling
             **dataloader_kwargs,
         )
 
         # Set up TensorBoard writers for train and validation and CSV logging path
-        self.train_writer = SummaryWriter(log_dir=os.path.join(self.output_dir, "train"))
-        self.val_writer = SummaryWriter(log_dir=os.path.join(self.output_dir, "validation"))
+        self.train_writer = SummaryWriter(
+            log_dir=os.path.join(self.output_dir, "train")
+        )
+        self.val_writer = SummaryWriter(
+            log_dir=os.path.join(self.output_dir, "validation")
+        )
         self.csv_log_path = os.path.join(self.output_dir, "training_log.csv")
 
         # Initialize TorchMetrics according to reconstruction tasks
@@ -197,8 +200,8 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
         """
         Execute the core logic of the tool.
 
-        Depending on the tool, this method either orchestrates the training and validation 
-        loops across epochs, or it iterates through the input dataset to generate 
+        Depending on the tool, this method either orchestrates the training and validation
+        loops across epochs, or it iterates through the input dataset to generate
         and save model predictions to the output file.
         """
         self.log.info("Setting up the PyTorch model.")
@@ -226,9 +229,15 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
             self.model = base_model
 
         optimizers = {
-            "Adadelta": lambda params: torch.optim.Adadelta(params, lr=self.learning_rate),
-            "Adam": lambda params: torch.optim.Adam(params, lr=self.learning_rate, eps=self.adam_epsilon),
-            "RMSProp": lambda params: torch.optim.RMSprop(params, lr=self.learning_rate),
+            "Adadelta": lambda params: torch.optim.Adadelta(
+                params, lr=self.learning_rate
+            ),
+            "Adam": lambda params: torch.optim.Adam(
+                params, lr=self.learning_rate, eps=self.adam_epsilon
+            ),
+            "RMSProp": lambda params: torch.optim.RMSprop(
+                params, lr=self.learning_rate
+            ),
             "SGD": lambda params: torch.optim.SGD(params, lr=self.learning_rate),
         }
         self.opt = optimizers[self.optimizer["name"]](self.model.parameters())
@@ -248,7 +257,7 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
         self.loss_fns = self._get_loss_functions()
 
         self.log.info("Training and evaluating...")
-        
+
         best_val_loss = float("inf")
         patience_counter = 0
         best_model_weights = None
@@ -304,7 +313,9 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
             # Unwrap model if wrapped with DataParallel / DistributedDataParallel
             unwrapped_model = (
                 self.model.module
-                if isinstance(self.model, (nn.DataParallel, nn.parallel.DistributedDataParallel))
+                if isinstance(
+                    self.model, (nn.DataParallel, nn.parallel.DistributedDataParallel)
+                )
                 else self.model
             )
 
@@ -337,9 +348,9 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
                     torch.save(state_dict, state_dict_save_path)
                     # Save full model and config
                     checkpoint = {
-                        'model': unwrapped_model,
-                        'model_state_dict': state_dict,
-                        'ctlearn_config': dict(self.config) if self.config else {}
+                        "model": unwrapped_model,
+                        "model_state_dict": state_dict,
+                        "ctlearn_config": dict(self.config) if self.config else {},
                     }
                     torch.save(checkpoint, model_save_path)
                     self.log.info(
@@ -365,9 +376,9 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
                 torch.save(state_dict, state_dict_save_path)
                 # Save full model and config
                 checkpoint = {
-                    'model': unwrapped_model,
-                    'model_state_dict': state_dict,
-                    'ctlearn_config': dict(self.config) if self.config else {}
+                    "model": unwrapped_model,
+                    "model_state_dict": state_dict,
+                    "ctlearn_config": dict(self.config) if self.config else {},
                 }
                 torch.save(checkpoint, model_save_path)
                 self.log.info(
@@ -403,7 +414,7 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
         """
         Execute a single training epoch.
 
-        This method iterates over the training data loader, performs the forward pass, calculates the loss, 
+        This method iterates over the training data loader, performs the forward pass, calculates the loss,
         and updates the model weights using backpropagation.
 
         Returns
@@ -422,7 +433,11 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
             batch_x = self._to_device(batch_x)
             batch_y = self._to_device(batch_y)
 
-            batch_size = batch_x.size(0) if isinstance(batch_x, torch.Tensor) else next(iter(batch_x.values())).size(0)
+            batch_size = (
+                batch_x.size(0)
+                if isinstance(batch_x, torch.Tensor)
+                else next(iter(batch_x.values())).size(0)
+            )
 
             self.opt.zero_grad()
             outputs, _ = self.model(batch_x)
@@ -443,7 +458,7 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
         """
         Execute a single validation epoch.
 
-        This method iterates over the validation data loader in evaluation mode (no gradients), 
+        This method iterates over the validation data loader in evaluation mode (no gradients),
         computes the validation loss, and calculates the validation metrics.
 
         Returns
@@ -474,13 +489,12 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
 
                 total_loss += loss.item() * batch_size
                 total_samples += batch_size
-                
+
                 self._update_metrics(self.val_metrics, outputs, batch_y)
 
         avg_loss = total_loss / total_samples if total_samples > 0 else 0.0
         metric_results = self._compute_metrics(self.val_metrics)
         return avg_loss, metric_results
-
 
     # Helper methods to safely handle flat or task-nested metric dictionaries
     def _reset_metrics(self, metrics):
@@ -538,11 +552,15 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
         if "energy" in self.reco_tasks:
             metrics["mae_energy"] = torchmetrics.MeanAbsoluteError().to(self.device)
         if "cameradirection" in self.reco_tasks:
-            metrics["mae_cameradirection"] = torchmetrics.MeanAbsoluteError().to(self.device)
+            metrics["mae_cameradirection"] = torchmetrics.MeanAbsoluteError().to(
+                self.device
+            )
         if "skydirection" in self.reco_tasks:
-            metrics["mae_skydirection"] = torchmetrics.MeanAbsoluteError().to(self.device)
+            metrics["mae_skydirection"] = torchmetrics.MeanAbsoluteError().to(
+                self.device
+            )
         return metrics
-    
+
     def _update_metrics(self, metrics, outputs, targets):
         """
         Update the running metrics with the predictions and targets from the current batch.
@@ -593,7 +611,7 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
         """
         Compute the total combined loss for all reconstruction tasks.
 
-        If the model is multi-task, this calculates the loss for each individual task (e.g., type, energy) 
+        If the model is multi-task, this calculates the loss for each individual task (e.g., type, energy)
         using their respective loss functions and sums them up.
 
         Parameters
@@ -643,17 +661,19 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
             weight = None
             if self.dl1dh_reader.class_weight is not None:
                 class_weights = self.dl1dh_reader.class_weight
-                
+
                 # Convert dict to a list ordered by class index
                 if isinstance(class_weights, dict):
-                    class_weights = [class_weights[k] for k in sorted(class_weights.keys())]
+                    class_weights = [
+                        class_weights[k] for k in sorted(class_weights.keys())
+                    ]
 
                 weight = torch.tensor(
                     class_weights,
                     dtype=torch.float32,
                     device=self.device,
                 )
-            
+
             loss_fns["type"] = torch.nn.CrossEntropyLoss(weight=weight)
         if "energy" in self.reco_tasks:
             loss_fns["energy"] = nn.L1Loss()
@@ -690,7 +710,7 @@ def main():
     """
     Main entry point for the command-line tool.
 
-    This function instantiates the Tool class and invokes its `run()` method, 
+    This function instantiates the Tool class and invokes its `run()` method,
     which sequentially executes the `setup()`, `start()`, and `finish()` methods.
     """
     tool = TrainCTLearnPyTorchModel()

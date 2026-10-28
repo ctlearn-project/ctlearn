@@ -10,6 +10,7 @@ __all__ = [
 
 import keras
 
+
 def dual_squeeze_excite_block(inputs, ratio=16, name=None):
     """
     A channel & spatial (dual) squeeze-excite block.
@@ -44,9 +45,7 @@ def dual_squeeze_excite_block(inputs, ratio=16, name=None):
         ratio=ratio,
         name=name + "_cse",
     )
-    sse = spatial_squeeze_excite_block(
-        inputs=inputs, name=name + "_sse"
-    )
+    sse = spatial_squeeze_excite_block(inputs=inputs, name=name + "_sse")
 
     return keras.layers.Add(name=name + "_add")([cse, sse])
 
@@ -74,9 +73,9 @@ def channel_squeeze_excite_block(inputs, ratio=4, name=None):
     """
 
     filters = inputs.shape[-1]
-    cse = keras.layers.GlobalAveragePooling2D(
-        keepdims=True, name=name + "_avgpool"
-    )(inputs)
+    cse = keras.layers.GlobalAveragePooling2D(keepdims=True, name=name + "_avgpool")(
+        inputs
+    )
 
     cse = keras.layers.Dense(
         units=max(1, filters // ratio),

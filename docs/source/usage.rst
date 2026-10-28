@@ -7,7 +7,7 @@ A high-level companion python package to the CTLearn package is available for ea
 Low-level usage of CTLearn tools
 --------------------------------
 
-This page provides a brief overview of how to use the CTLearn tools. 
+This page provides a brief overview of how to use the CTLearn tools.
 
 Training tool
 -------------
@@ -36,13 +36,13 @@ To train a model, use the `ctlearn-train-keras-model` or `ctlearn-train-pytorch-
 
 You can use the exact same arguments with `ctlearn-train-keras-model` to train using the Keras framework.
 
-View training progress in real time with TensorBoard: 
+View training progress in real time with TensorBoard:
 
 .. code-block:: bash
 
    tensorboard --logdir=/path/to/output_dir
 
-Prediction tools 
+Prediction tools
 ----------------
 
 To predict with a trained Keras or PyTorch model, use the `ctlearn-predict-mono-model` or `ctlearn-predict-stereo-model` command. The following command will display all available options for predicting with a CTLearn model:

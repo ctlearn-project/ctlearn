@@ -1,8 +1,8 @@
 import pytest
+from dl1_data_handler.reader import DLImageReader
 from torch.utils.data import DataLoader
 from traitlets.config.loader import Config
 
-from dl1_data_handler.reader import DLImageReader
 from ctlearn.core.keras.sequence import KerasSequence
 from ctlearn.core.pytorch.dataset import PyTorchDataset
 

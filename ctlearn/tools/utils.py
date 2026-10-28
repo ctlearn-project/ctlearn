@@ -2,16 +2,16 @@
 Utility functions for the CTLearn tools.
 """
 
-from enum import Enum
 import pathlib
 import sys
-from importlib.resources import files, as_file
+from enum import Enum
+from importlib.resources import as_file, files
 
+import keras_hexagdly as hgly
 from ctapipe.core import Provenance
 from ctapipe.core.traits import TraitError
-from ctapipe.instrument.optics import FocalLengthKind
 from ctapipe.instrument import SubarrayDescription
-import keras_hexagdly as hgly
+from ctapipe.instrument.optics import FocalLengthKind
 
 __all__ = [
     "validate_trait_dict",
@@ -21,7 +21,8 @@ __all__ = [
     "validate_conv_backend",
     "model_conv_backend",
 ]
-            
+
+
 def validate_trait_dict(trait_dict, required_keys):
     """
     Validate that a dictionary contains all required keys.
@@ -40,15 +41,14 @@ def validate_trait_dict(trait_dict, required_keys):
     """
     missing_keys = required_keys - trait_dict.keys()
     if missing_keys:
-        raise TraitError(
-            f"Dict is missing required key(s): {', '.join(missing_keys)}"
-        )
+        raise TraitError(f"Dict is missing required key(s): {', '.join(missing_keys)}")
     return True
+
 
 def get_lst1_subarray_description(focal_length_choice=FocalLengthKind.EFFECTIVE):
     """
     Load subarray description from bundled file
-    
+
     Parameters
     ----------
     focal_length_choice : FocalLengthKind
@@ -62,45 +62,49 @@ def get_lst1_subarray_description(focal_length_choice=FocalLengthKind.EFFECTIVE)
     """
     with as_file(files("ctlearn") / "resources/LST-1_SubarrayDescription.h5") as path:
         Provenance().add_input_file(path, role="SubarrayDescription")
-        return SubarrayDescription.from_hdf(path, focal_length_choice=focal_length_choice)
+        return SubarrayDescription.from_hdf(
+            path, focal_length_choice=focal_length_choice
+        )
+
 
 class FrameworkType(Enum):
     """
     Deep learning framework type enumeration.
-    
+
     This enumeration specifies which deep learning framework to use for
     model training and inference. CTLearn supports both Keras (TensorFlow backend)
     and PyTorch frameworks.
-    
+
     Attributes:
         KERAS (int): Use Keras/TensorFlow framework (value: 1)
             - Advantages: High-level API, easy to use, good for prototyping
             - TensorFlow 2.x with Keras API
             - Suitable for production deployment
-            
+
         PYTORCH (int): Use PyTorch framework (value: 2)
             - Advantages: Dynamic computation graphs, flexible, research-friendly
             - PyTorch 1.x or 2.x
             - Better for custom architectures and experimental models
-    
+
     Example:
         >>> from ctlearn.core.ctlearn_enum import FrameworkType
         >>> framework = FrameworkType.PYTORCH
         >>> print(framework.name)  # 'PYTORCH'
         >>> print(framework.value)  # 'PyTorch'
     """
+
     KERAS = "Keras"
     PYTORCH = "PyTorch"
 
 
 def setup_framework(model_paths):
     """
-    Detects the deep learning framework from model paths, ensures consistency, 
+    Detects the deep learning framework from model paths, ensures consistency,
     and configures the hardware devices for distributed or single-device execution.
 
-    This function iterates through the provided model paths, infers the framework 
-    (Keras or PyTorch) based on file extensions, and ensures all models belong 
-    to the same framework. It then initializes the appropriate hardware setup 
+    This function iterates through the provided model paths, infers the framework
+    (Keras or PyTorch) based on file extensions, and ensures all models belong
+    to the same framework. It then initializes the appropriate hardware setup
     (e.g., MirroredStrategy for Keras, CUDA/CPU device for PyTorch).
 
     Parameters
@@ -120,7 +124,7 @@ def setup_framework(model_paths):
     Raises
     ------
     IOError
-        If no valid model paths are provided, or if multiple inconsistent frameworks 
+        If no valid model paths are provided, or if multiple inconsistent frameworks
         are detected across the provided paths.
     """
 
@@ -166,10 +170,12 @@ def setup_framework(model_paths):
     strategy, device = None, None
     if framework_type == FrameworkType.KERAS:
         import tensorflow as tf
+
         strategy = tf.distribute.MirroredStrategy()
         num_devices = strategy.num_replicas_in_sync
     elif framework_type == FrameworkType.PYTORCH:
         import torch
+
         if torch.cuda.is_available():
             device = torch.device("cuda")
             num_devices = torch.cuda.device_count()
@@ -177,6 +183,7 @@ def setup_framework(model_paths):
             device = torch.device("cpu")
             num_devices = 1
     return framework_type, num_devices, strategy, device
+
 
 def validate_conv_backend(image_mappers, conv_backend):
     """
@@ -260,10 +267,11 @@ def model_conv_backend(model):
         sub-models) is a ``keras_hexagdly`` or ``pytorch_hexagdly`` layer,
         otherwise ``"square"``.
     """
+
     def _uses_hexagdly(layer):
         """
-    Determine if Hexagdly is used within the neural network model architecture.
-    """
+        Determine if Hexagdly is used within the neural network model architecture.
+        """
         if isinstance(layer, (hgly.Conv2d, hgly.MaxPool2d)):
             return True
         sublayers = getattr(layer, "layers", None)

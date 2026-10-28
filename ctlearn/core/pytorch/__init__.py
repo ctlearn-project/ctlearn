@@ -2,23 +2,22 @@
 ctlearn core PyTorch functionalities
 """
 
+from .attention import (
+    ChannelSqueezeExciteBlock,
+    DualSqueezeExciteBlock,
+    SpatialSqueezeExciteBlock,
+)
+from .dataset import PyTorchDataset
 from .model import (
     BasicBlock,
     BottleneckBlock,
     MultiFullyConnectedHead,
-    build_fully_connect_pytorch_head,
     PyTorchConvBackend,
-    PyTorchSingleCNN,
-    PyTorchResNet,
     PyTorchLoadedModel,
+    PyTorchResNet,
+    PyTorchSingleCNN,
+    build_fully_connect_pytorch_head,
 )
-from .attention import (
-    DualSqueezeExciteBlock,
-    ChannelSqueezeExciteBlock,
-    SpatialSqueezeExciteBlock,
-)
-from .dataset import PyTorchDataset
-
 
 __all__ = [
     "BasicBlock",

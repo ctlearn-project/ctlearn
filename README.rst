@@ -12,7 +12,7 @@ CTLearn: Deep Learning for IACT Event Reconstruction
 
 .. image:: https://github.com/ctlearn-project/ctlearn/actions/workflows/python-package-conda.yml/badge.svg
     :target: https://github.com/ctlearn-project/ctlearn/actions/workflows/python-package-conda.yml
-    :alt: Continuos Integration
+    :alt: Continuous Integration
 
 .. image:: https://codecov.io/gh/ctlearn-project/ctlearn/branch/main/graph/badge.svg
     :target: https://codecov.io/gh/ctlearn-project/ctlearn
@@ -66,19 +66,19 @@ Team
    * - .. image:: https://github.com/aribrill.png?size=100
         :target: https://github.com/aribrill
         :alt: Ari Brill
-     
+
      - .. image:: https://github.com/bryankim96.png?size=100
         :target: https://github.com/bryankim96
         :alt: Bryan Kim
-     
+
      - .. image:: https://github.com/TjarkMiener.png?size=100
         :target: https://github.com/TjarkMiener
         :alt: Tjark Miener
-     
+
      - .. image:: https://github.com/nietootein.png?size=100
         :target: https://github.com/nietootein
         :alt: Daniel Nieto
-     
+
    * - `Ari Brill <https://github.com/aribrill>`_
      - `Bryan Kim <https://github.com/bryankim96>`_
      - `Tjark Miener <https://github.com/TjarkMiener>`_
@@ -112,27 +112,27 @@ Alumni
    * - .. image:: https://github.com/Jsevillamol.png?size=100
         :target: https://github.com/Jsevillamol
         :alt: Jaime Sevilla
-     
+
      - .. image:: https://github.com/hrueda25.png?size=100
         :target: https://github.com/hrueda25
         :alt: Héctor Rueda
-     
+
      - .. image:: https://github.com/jredondopizarro.png?size=100
         :target: https://github.com/jredondopizarro
         :alt: Juan Redondo Pizarro
-     
+
      - .. image:: https://github.com/LucaRomanato.png?size=100
         :target: https://github.com/LucaRomanato
         :alt: LucaRomanato
-     
+
      - .. image:: https://github.com/sahilyadav27.png?size=100
         :target: https://github.com/sahilyadav27
         :alt: Sahil Yadav
-     
+
      - .. image:: https://github.com/sgh14.png?size=100
         :target: https://github.com/sgh14
         :alt: Sergio García Heredia
-     
+
    * - `Jaime Sevilla <https://github.com/Jsevillamol>`_
      - `Héctor Rueda <https://github.com/hrueda25>`_
      - `Juan Redondo Pizarro <https://github.com/jredondopizarro>`_

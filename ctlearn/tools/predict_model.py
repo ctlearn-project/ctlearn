@@ -4,7 +4,7 @@ Base (abstract) tool to predict the gammaness, energy and arrival direction usin
 
 __all__ = [
     "PredictCTLearnModel",
-] 
+]
 
 import atexit
 import uuid
@@ -16,27 +16,25 @@ from astropy import units as u
 from astropy.coordinates import AltAz, SkyCoord
 from astropy.table import (
     Table,
-    vstack,
     join,
     unique,
+    vstack,
 )
 from astropy.time import Time
-
 from ctapipe.coordinates import CameraFrame, NominalFrame
 from ctapipe.core import Tool
 from ctapipe.core.tool import ToolConfigurationError
 from ctapipe.core.traits import (
     Bool,
+    ComponentName,
+    Dict,
     Int,
     Path,
-    flag,
-    Dict,
-    ComponentName,
     classes_with_traits,
+    flag,
 )
-from ctapipe.monitoring.interpolation import PointingInterpolator
 from ctapipe.instrument import SubarrayDescription
-from ctapipe.io import read_table, write_table, HDF5Merger
+from ctapipe.io import HDF5Merger, read_table, write_table
 from ctapipe.io.datalevels import DataLevel
 from ctapipe.io.hdf5dataformat import (
     DL0_TEL_POINTING_GROUP,
@@ -51,6 +49,7 @@ from ctapipe.io.hdf5dataformat import (
     DL1_TEL_PARAMETERS_GROUP,
     DL1_TEL_POINTING_GROUP,
     DL1_TEL_TRIGGER_TABLE,
+    DL2_SUBARRAY_GROUP,
     FIXED_POINTING_GROUP,
     R0_TEL_GROUP,
     R1_TEL_GROUP,
@@ -58,24 +57,24 @@ from ctapipe.io.hdf5dataformat import (
     SIMULATION_IMPACT_GROUP,
     SIMULATION_PARAMETERS_GROUP,
     SIMULATION_SHOWER_TABLE,
-    DL2_SUBARRAY_GROUP,
 )
+from ctapipe.monitoring.interpolation import PointingInterpolator
 from dl1_data_handler.reader import (
+    LST_EPOCH,
     DLDataReader,
     ProcessType,
-    LST_EPOCH,
 )
-from ctlearn import __version__ as ctlearn_version
 
+from ctlearn import __version__ as ctlearn_version
 from ctlearn.tools.utils import (
     FrameworkType,
-    setup_framework,
-    validate_trait_dict,
-    validate_conv_backend,
     model_conv_backend,
+    setup_framework,
+    validate_conv_backend,
+    validate_trait_dict,
 )
 
-# Convienient constants for column names and table keys
+# Convenient constants for column names and table keys
 SUBARRAY_EVENT_KEYS = ["obs_id", "event_id"]
 TEL_EVENT_KEYS = ["obs_id", "event_id", "tel_id"]
 TEL_ITER_GROUPS = [
@@ -103,6 +102,7 @@ DATALEVEL_TO_GROUP = {
     DataLevel.DL1_MUON: DL1_TEL_MUON_GROUP,
     DataLevel.DL2: DL2_SUBARRAY_GROUP,
 }
+
 
 class PredictCTLearnModel(Tool):
     """
@@ -397,8 +397,8 @@ class PredictCTLearnModel(Tool):
         """
         Initialize the tool configuration, validate parameters, and setup data handlers.
 
-        This method is the first part of the tool execution lifecycle. It validates input arguments, 
-        sets up the configuration dictionary, configures the output file, and prepares the DataReader 
+        This method is the first part of the tool execution lifecycle. It validates input arguments,
+        sets up the configuration dictionary, configures the output file, and prepares the DataReader
         to ensure everything is ready before the core processing begins.
         """
         self.activity_start_time = Time.now()
@@ -413,7 +413,12 @@ class PredictCTLearnModel(Tool):
             "set 'r0_waveforms', 'r1_waveforms', 'dl1_images' and/or 'true_images' to true in the "
             "configuration to enable waveform and/or image copying."
         )
-        for merger_default in ["r0_waveforms", "r1_waveforms", "dl1_images", "true_images"]:
+        for merger_default in [
+            "r0_waveforms",
+            "r1_waveforms",
+            "dl1_images",
+            "true_images",
+        ]:
             self.config.setdefault("HDF5Merger", {}).setdefault(merger_default, False)
         # Copy selected tables from the input file to the output file
         self.log.info("Copying to output destination.")
@@ -429,17 +434,24 @@ class PredictCTLearnModel(Tool):
             self.load_skydirection_model_from,
         ]
         # Reads the model paths and set up the Keras or PyTorch framework
-        self.framework_type, self.num_devices, self.strategy, self.device = setup_framework(model_paths)
+        self.framework_type, self.num_devices, self.strategy, self.device = (
+            setup_framework(model_paths)
+        )
         self.log.info("Framework selected: %s", self.framework_type.value)
         if self.framework_type == FrameworkType.KERAS:
             atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore
-            self.log.info("Using Keras MirroredStrategy with %d replica(s).", self.num_devices)
+            self.log.info(
+                "Using Keras MirroredStrategy with %d replica(s).", self.num_devices
+            )
         elif self.framework_type == FrameworkType.PYTORCH:
             import torch
+
             if self.device == torch.device("cpu"):
                 self.log.info("Using PyTorch CPU device.")
             else:
-                self.log.info("Using PyTorch GPU device(s). Count: %d", self.num_devices)
+                self.log.info(
+                    "Using PyTorch GPU device(s). Count: %d", self.num_devices
+                )
         # Set up the data reader
         self.log.info("Loading data reader:")
         self.log.info("For a large dataset, this may take a while...")
@@ -457,9 +469,7 @@ class PredictCTLearnModel(Tool):
             )
         # Set the indices for the data loaders
         self.indices = list(range(self.dl1dh_reader.get_n_events()))
-        self.last_batch_size = len(self.indices) % (
-            self.batch_size * self.num_devices
-        )
+        self.last_batch_size = len(self.indices) % (self.batch_size * self.num_devices)
         # Ensure subarray consistency in the output file
         self._ensure_subarray_consistency()
 
@@ -467,7 +477,7 @@ class PredictCTLearnModel(Tool):
         """
         Perform final cleanup and save metadata after the core logic completes.
 
-        This method writes provenance data (such as configuration and execution context) 
+        This method writes provenance data (such as configuration and execution context)
         to the output file, finalizes tables, and ensures all file handlers are safely closed.
         """
         # Overwrite CTAO reference metadata to the output file
@@ -476,7 +486,7 @@ class PredictCTLearnModel(Tool):
 
     def _overwrite_meta(self):
         """Overwrite CTAO metadata in the output file."""
-        # TODO: Upgrade to new CTAO metatdata standard when available
+        # TODO: Upgrade to new CTAO metadata standard when available
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", tables.NaturalNameWarning)
             with tables.open_file(self.output_path, mode="r+") as h5_file:
@@ -522,7 +532,9 @@ class PredictCTLearnModel(Tool):
             self.input_url,
             focal_length_choice=self.dl1dh_reader.focal_length_choice,
         )
-        if SubarrayDescription.check_matching_subarrays([input_subarray, self.dl1dh_reader.subarray]):
+        if SubarrayDescription.check_matching_subarrays(
+            [input_subarray, self.dl1dh_reader.subarray]
+        ):
             return
 
         # From the merger tool a SubarrayDescription for the full array is already stored
@@ -530,7 +542,9 @@ class PredictCTLearnModel(Tool):
         # the new SubarrayDescription for the selected telescopes.
         with tables.open_file(self.output_path, mode="a") as h5file:
             h5file.remove_node("/configuration/instrument", recursive=True)
-        selected_subarray = input_subarray.select_subarray(set(self.dl1dh_reader.tel_ids))
+        selected_subarray = input_subarray.select_subarray(
+            set(self.dl1dh_reader.tel_ids)
+        )
         selected_subarray.to_hdf(self.output_path)
         self.log.info("SubarrayDescription was stored in '%s'", self.output_path)
 
@@ -616,8 +630,8 @@ class PredictCTLearnModel(Tool):
 
             def prune_group(group, valid_ids):
                 """
-        Prune unnecessary tables from the HDF5 group to save space and clean up predictions.
-        """
+                Prune unnecessary tables from the HDF5 group to save space and clean up predictions.
+                """
                 for table in group._f_iter_nodes("Table"):
                     idx = int(table._v_name.split("_")[-1])
                     if idx not in valid_ids:
@@ -629,7 +643,6 @@ class PredictCTLearnModel(Tool):
                 group = getattr(h5_file.root, group_name, None)
                 if group is not None:
                     prune_group(group, tel_ids)
-
 
     def _create_nan_table(self, nonexample_identifiers, columns, shapes, reco_task):
         """
@@ -703,7 +716,7 @@ class PredictCTLearnModel(Tool):
         return unique(t, keys=list(keys), keep="first")
 
     def _predict_with_model(self, model_path):
-        """ Select the framework to load and predict the data. """
+        """Select the framework to load and predict the data."""
         if self.framework_type == FrameworkType.KERAS:
             return self._predict_with_keras_model(model_path)
         elif self.framework_type == FrameworkType.PYTORCH:
@@ -712,7 +725,7 @@ class PredictCTLearnModel(Tool):
     def _predict_with_keras_model(self, model_path):
         """
         Load and predict with a CTLearn Keras-based model.
-        
+
         Load a model from the specified path and predict the data using the loaded model.
         If a last batch loader is provided, predict the last batch and stack the results.
 
@@ -729,7 +742,9 @@ class PredictCTLearnModel(Tool):
             Feature vectors extracted from the backbone model.
         """
         import keras
+
         from ctlearn.core.keras.sequence import KerasSequence
+
         # Create a new KerasSequence for each task
         # It turned out to be more robust to initialize the KerasSequence separately.
         data_loader = KerasSequence(
@@ -742,7 +757,7 @@ class PredictCTLearnModel(Tool):
         )
         # Keras is only considering the last complete batch.
         # In prediction mode we don't want to loose the last
-        # uncomplete batch, so we are creating an additional
+        # incomplete batch, so we are creating an additional
         # batch generator for the remaining events.
         data_loader_last_batch = None
         if self.last_batch_size > 0:
@@ -779,9 +794,7 @@ class PredictCTLearnModel(Tool):
             head = keras.Model(inputs=backbone_output_shape, outputs=x)
             # Apply the backbone model with the data loader to retrieve the feature vectors
             try:
-                feature_vectors = backbone_model.predict(
-                    data_loader
-                )
+                feature_vectors = backbone_model.predict(data_loader)
             except ValueError as err:
                 if str(err).startswith("Input 0 of layer"):
                     raise ToolConfigurationError(
@@ -791,13 +804,7 @@ class PredictCTLearnModel(Tool):
                     ) from err
                 raise
             # Apply the head model with the feature vectors to retrieve the prediction
-            predict_data = Table(
-                {
-                    prediction_colname: head.predict(
-                        feature_vectors
-                    )
-                }
-            )
+            predict_data = Table({prediction_colname: head.predict(feature_vectors)})
             # Predict the last batch and stack the results to the prediction data
             if data_loader_last_batch is not None:
                 feature_vectors_last_batch = backbone_model.predict(
@@ -841,9 +848,7 @@ class PredictCTLearnModel(Tool):
                 predict_data = Table(predict_data)
             # Predict the last batch and stack the results to the prediction data
             if data_loader_last_batch is not None:
-                predict_data_last_batch = model.predict(
-                    data_loader_last_batch
-                )
+                predict_data_last_batch = model.predict(data_loader_last_batch)
                 if model.layers[-1].name == "type":
                     predict_data_last_batch = Table(
                         {prediction_colname: predict_data_last_batch}
@@ -852,7 +857,6 @@ class PredictCTLearnModel(Tool):
                     predict_data_last_batch = Table(predict_data_last_batch)
                 predict_data = vstack([predict_data, predict_data_last_batch])
         return predict_data, feature_vectors
-
 
     def _predict_with_pytorch_model(self, model_path):
         """
@@ -869,30 +873,32 @@ class PredictCTLearnModel(Tool):
             Table containing the prediction results.
         feature_vectors : np.ndarray
             Feature vectors extracted from the backbone model.
-        """        
+        """
         # Load the model and make sure it is not a state dict
         import torch
         import torch.nn as nn
         from torch.utils.data import DataLoader
+
         from ctlearn.core.pytorch.dataset import PyTorchDataset
+
         model = torch.load(model_path, map_location=self.device, weights_only=False)
-        
+
         # Extract model and check config if it's a checkpoint dictionary
-        if isinstance(model, dict) and 'model' in model:
-            saved_config = model.get('ctlearn_config', {})
+        if isinstance(model, dict) and "model" in model:
+            saved_config = model.get("ctlearn_config", {})
             current_config = dict(self.config) if self.config else {}
-            
-            if 'DLDataReader' in saved_config and 'DLDataReader' in current_config:
-                for key, saved_val in saved_config['DLDataReader'].items():
-                    current_val = current_config['DLDataReader'].get(key)
+
+            if "DLDataReader" in saved_config and "DLDataReader" in current_config:
+                for key, saved_val in saved_config["DLDataReader"].items():
+                    current_val = current_config["DLDataReader"].get(key)
                     if current_val is not None and current_val != saved_val:
                         raise ValueError(
                             f"Configuration mismatch: The model was trained with DLDataReader.{key}={saved_val}, "
                             f"but you are trying to predict with {key}={current_val}. "
                             "Adjust the prediction configuration to match."
                         )
-            model = model['model']
-            
+            model = model["model"]
+
         if not isinstance(model, nn.Module):
             raise TypeError(
                 f"Expected a PyTorch 'nn.Module' object at '{model_path}', "
@@ -919,7 +925,7 @@ class PredictCTLearnModel(Tool):
             batch_size=self.batch_size * self.num_devices,
             shuffle=False,
             pin_memory=torch.cuda.is_available(),
-            drop_last=False
+            drop_last=False,
         )
         predictions_dict, feature_vectors_list = {}, []
         with torch.no_grad():
@@ -931,7 +937,9 @@ class PredictCTLearnModel(Tool):
                 # Standardize model outputs into predictions_dict using self.heads_dict
                 if isinstance(predictions, torch.Tensor):
                     task_name = list(model.head.heads_dict.keys())[0]
-                    predictions_dict.setdefault(task_name, []).append(predictions.cpu().numpy())
+                    predictions_dict.setdefault(task_name, []).append(
+                        predictions.cpu().numpy()
+                    )
                 elif isinstance(predictions, dict):
                     for task_name, output_tensor in predictions.items():
                         predictions_dict.setdefault(task_name, []).append(
@@ -977,12 +985,13 @@ class PredictCTLearnModel(Tool):
         )
         # Create prediction table and add the predicted classification score ('gammaness')
         particletype_table = example_identifiers.copy()
-        
+
         preds = predict_data["type"]
         if self.framework_type == FrameworkType.PYTORCH:
             from scipy.special import softmax
+
             preds = softmax(preds, axis=1)
-            
+
         particletype_table.add_column(
             preds.T[1], name=f"{self.prefixes['type']}_tel_prediction"
         )

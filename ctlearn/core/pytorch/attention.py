@@ -18,6 +18,7 @@ class DualSqueezeExciteBlock(nn.Module):
     A channel & spatial (dual) squeeze-excite block in PyTorch.
     Concurrently applies channel and spatial scaling, then sums the results.
     """
+
     def __init__(self, in_channels, ratio=16):
         """
         Initialize the DualSqueezeExciteBlock.
@@ -55,6 +56,7 @@ class ChannelSqueezeExciteBlock(nn.Module):
     """
     A channel-wise squeeze-excite (cSE) block in PyTorch.
     """
+
     def __init__(self, in_channels, ratio=4):
         """
         Initialize the ChannelSqueezeExciteBlock.
@@ -99,10 +101,12 @@ class ChannelSqueezeExciteBlock(nn.Module):
         # Scale input tensor
         return x * excitation
 
+
 class SpatialSqueezeExciteBlock(nn.Module):
     """
     A spatial squeeze-excite (sSE) block in PyTorch.
     """
+
     def __init__(self, in_channels):
         """
         Initialize the SpatialSqueezeExciteBlock.

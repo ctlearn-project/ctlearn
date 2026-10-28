@@ -147,6 +147,7 @@ known-first-party = ["ctlearn"]
 
 [tool.codespell]
 ignore-words = ".codespell-ignores"
+skip = "*.drawio,*.svg,*.egg-info/*"
 
 [tool.coverage.run]
 source = ["ctlearn"]

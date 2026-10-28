@@ -2,8 +2,9 @@ import importlib
 import runpy
 
 import pytest
-import ctlearn.tools as tools
 from ctapipe.core import Tool
+
+import ctlearn.tools as tools
 
 
 @pytest.mark.parametrize(

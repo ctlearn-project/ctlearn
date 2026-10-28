@@ -6,13 +6,14 @@ __all__ = ["LoggingModelCheckpoint", "TrainCTLearnKerasModel"]
 
 import atexit
 import time
-import tensorflow as tf
+
 import keras
+import tensorflow as tf
 
 from ctlearn.core.keras.sequence import KerasSequence
 from ctlearn.core.model import CTLearnModel
 from ctlearn.tools.train_model import TrainCTLearnModel
-from ctlearn.tools.utils import validate_conv_backend, model_conv_backend
+from ctlearn.tools.utils import model_conv_backend, validate_conv_backend
 
 
 class LoggingModelCheckpoint(keras.callbacks.ModelCheckpoint):
@@ -32,9 +33,7 @@ class LoggingModelCheckpoint(keras.callbacks.ModelCheckpoint):
         logs = logs or {}
 
         if not self.save_best_only:
-            self.logger.info(
-                "Epoch %d: saving model to %s", epoch + 1, self.filepath
-            )
+            self.logger.info("Epoch %d: saving model to %s", epoch + 1, self.filepath)
             super().on_epoch_end(epoch, logs)
             self.logger.info(
                 "Epoch %d: finished saving model to %s", epoch + 1, self.filepath
@@ -134,7 +133,7 @@ class TrainCTLearnKerasModel(TrainCTLearnModel):
         """
         Initialize the backend-specific parameters (e.g., PyTorch or Keras devices and distributed strategies).
 
-        This method ensures that the hardware accelerators (like GPUs) are properly allocated 
+        This method ensures that the hardware accelerators (like GPUs) are properly allocated
         and configures things like precision mixed-training and multi-processing workers.
         """
         # Create a MirroredStrategy.
@@ -142,7 +141,7 @@ class TrainCTLearnKerasModel(TrainCTLearnModel):
         atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore
         self.log.info("Number of devices: %s", self.strategy.num_replicas_in_sync)
 
-        # Init the DLDataLoader for the 
+        # Init the DLDataLoader for the
         self.training_loader = KerasSequence(
             DLDataReader=self.dl1dh_reader,
             indices=self.training_indices,
@@ -237,8 +236,8 @@ class TrainCTLearnKerasModel(TrainCTLearnModel):
         """
         Execute the core logic of the tool.
 
-        Depending on the tool, this method either orchestrates the training and validation 
-        loops across epochs, or it iterates through the input dataset to generate 
+        Depending on the tool, this method either orchestrates the training and validation
+        loops across epochs, or it iterates through the input dataset to generate
         and save model predictions to the output file.
         """
 
@@ -264,22 +263,24 @@ class TrainCTLearnKerasModel(TrainCTLearnModel):
 
             # Select optimizer with appropriate arguments
             optimizers = {
-                "Adadelta": lambda: keras.optimizers.Adadelta(learning_rate=self.learning_rate),
+                "Adadelta": lambda: keras.optimizers.Adadelta(
+                    learning_rate=self.learning_rate
+                ),
                 "Adam": lambda: keras.optimizers.Adam(
                     learning_rate=self.learning_rate, epsilon=self.adam_epsilon
                 ),
-                "RMSProp": lambda: keras.optimizers.RMSprop(learning_rate=self.learning_rate),
+                "RMSProp": lambda: keras.optimizers.RMSprop(
+                    learning_rate=self.learning_rate
+                ),
                 "SGD": lambda: keras.optimizers.SGD(learning_rate=self.learning_rate),
             }
             self.opt = optimizers[self.optimizer["name"]]()
-           
+
             # Get the losses and metrics for the model
             losses, metrics = self._get_losses_and_mertics(self.reco_tasks)
             # Compile the model
             self.log.info("Compiling CTLearn model.")
-            self.model.compile(
-                optimizer=self.opt, loss=losses, metrics=metrics
-            )
+            self.model.compile(optimizer=self.opt, loss=losses, metrics=metrics)
 
         # Train and evaluate the model
         self.log.info("Training and evaluating...")
@@ -291,7 +292,7 @@ class TrainCTLearnKerasModel(TrainCTLearnModel):
             callbacks=self.callbacks,
             verbose=0,
         )
-        self.log.info("Training and evaluating finished succesfully!")
+        self.log.info("Training and evaluating finished successfully!")
 
     def _get_losses_and_mertics(self, tasks):
         """
@@ -353,7 +354,7 @@ def main():
     """
     Main entry point for the command-line tool.
 
-    This function instantiates the Tool class and invokes its `run()` method, 
+    This function instantiates the Tool class and invokes its `run()` method,
     which sequentially executes the `setup()`, `start()`, and `finish()` methods.
     """
     # Run the tool

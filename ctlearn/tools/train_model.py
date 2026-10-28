@@ -2,39 +2,40 @@
 Base tool to train a ``CTLearnModel``on R1/DL1a data using the ``DLDataReader`` and ``DLDataLoader``.
 """
 
-__all__ = ["TrainCTLearnModel"] 
+__all__ = ["TrainCTLearnModel"]
 
-from abc import abstractmethod
 import json
+from abc import abstractmethod
+
 import numpy as np
-
-
 from ctapipe.core import Tool
 from ctapipe.core.provenance import json_config_handler
 from ctapipe.core.tool import ToolConfigurationError
 from ctapipe.core.traits import (
     Bool,
     CaselessStrEnum,
-    Path,
+    ComponentName,
+    Dict,
     Float,
     Int,
     List,
-    Dict,
-    classes_with_traits,
-    ComponentName,
+    Path,
     Unicode,
+    classes_with_traits,
 )
+from dl1_data_handler.reader import DLDataReader
+
 from ctlearn import __version__ as ctlearn_version
 from ctlearn.core.model import CTLearnModel
 from ctlearn.tools.utils import validate_trait_dict
-from dl1_data_handler.reader import DLDataReader
+
 
 class TrainCTLearnModel(Tool):
     """
     Base tool to train a ``~ctlearn.core.model.CTLearnModel`` on R1/DL1a data.
 
     The tool holds configurations and set up functions.
-   
+
     """
 
     input_dir_signal = Path(
@@ -166,23 +167,27 @@ class TrainCTLearnModel(Tool):
     ).tag(config=True)
 
     lr_reducing = Dict(
-        default_value={"factor": 0.5, "patience": 5, "min_delta": 0.01, "min_lr": 0.000001},
+        default_value={
+            "factor": 0.5,
+            "patience": 5,
+            "min_delta": 0.01,
+            "min_lr": 0.000001,
+        },
         allow_none=True,
-	help=(
-	    "Learning rate reducing parameters for the Keras callback or the PyTorch scheduler. "
-	    "E.g. {'factor': 0.5, 'patience': 5, 'min_delta': 0.01, 'min_lr': 0.000001}. "
-	)
+        help=(
+            "Learning rate reducing parameters for the Keras callback or the PyTorch scheduler. "
+            "E.g. {'factor': 0.5, 'patience': 5, 'min_delta': 0.01, 'min_lr': 0.000001}. "
+        ),
     ).tag(config=True)
 
     early_stopping = Dict(
         default_value=None,
         allow_none=True,
-	help=(
-	    "Early stopping parameters for the Keras callback or the PyTorch scheduler. "
-	    "E.g. {'monitor': 'val_loss', 'patience': 4, 'verbose': 1, 'restore_best_weights': True}. "
-	)
+        help=(
+            "Early stopping parameters for the Keras callback or the PyTorch scheduler. "
+            "E.g. {'monitor': 'val_loss', 'patience': 4, 'verbose': 1, 'restore_best_weights': True}. "
+        ),
     ).tag(config=True)
-
 
     aliases = {
         "signal": "TrainCTLearnModel.input_dir_signal",
@@ -203,8 +208,8 @@ class TrainCTLearnModel(Tool):
         """
         Initialize the tool configuration, validate parameters, and setup data handlers.
 
-        This method is the first part of the tool execution lifecycle. It validates input arguments, 
-        sets up the configuration dictionary, configures the output file, and prepares the DataReader 
+        This method is the first part of the tool execution lifecycle. It validates input arguments,
+        sets up the configuration dictionary, configures the output file, and prepares the DataReader
         to ensure everything is ready before the core processing begins.
         """
         self.log.info("ctlearn version %s", ctlearn_version)
@@ -275,20 +280,20 @@ class TrainCTLearnModel(Tool):
         # Check if stereo mode is selected for stacking telescope images
         if self.stack_telescope_images and self.dl1dh_reader.mode == "mono":
             raise ToolConfigurationError(
-                f"Cannot stack telescope images in mono mode. Use stereo mode for stacking."
+                "Cannot stack telescope images in mono mode. Use stereo mode for stacking."
             )
-        # Ckeck if only one telescope type is selected for stacking telescope images
+        # Check if only one telescope type is selected for stacking telescope images
         if (
             self.stack_telescope_images
             and len(list(self.dl1dh_reader.selected_telescopes)) > 1
         ):
             raise ToolConfigurationError(
-                f"Cannot stack telescope images from multiple telescope types. Use only one telescope type."
+                "Cannot stack telescope images from multiple telescope types. Use only one telescope type."
             )
         # Check if sorting by intensity is disabled for stacking telescope images
         if self.stack_telescope_images and self.sort_by_intensity:
             raise ToolConfigurationError(
-                f"Cannot stack telescope images when sorting by intensity. Disable sorting by intensity."
+                "Cannot stack telescope images when sorting by intensity. Disable sorting by intensity."
             )
 
         # Set up the data loaders for training and validation
@@ -299,8 +304,8 @@ class TrainCTLearnModel(Tool):
         self.n_validation_examples = int(
             self.validation_split * self.dl1dh_reader.get_n_events()
         )
-        self.training_indices = self.indices[self.n_validation_examples:]
-        self.validation_indices = self.indices[:self.n_validation_examples]
+        self.training_indices = self.indices[self.n_validation_examples :]
+        self.validation_indices = self.indices[: self.n_validation_examples]
 
         # Validate the optimizer parameters
         validate_trait_dict(self.optimizer, ["name", "base_learning_rate"])
@@ -313,7 +318,7 @@ class TrainCTLearnModel(Tool):
             validate_trait_dict(
                 self.lr_reducing, ["factor", "patience", "min_delta", "min_lr"]
             )
-       
+
         # Validate the early stopping parameters
         if self.early_stopping is not None:
             validate_trait_dict(
@@ -323,17 +328,17 @@ class TrainCTLearnModel(Tool):
 
         # Set up framework-specific training tool
         self.setup_framework()
-     
+
     @abstractmethod
     def setup_framework(self):
-        """ This is an abstract method for the setup of the framework-specific training tool."""
+        """This is an abstract method for the setup of the framework-specific training tool."""
         pass  # pragma: no cover
 
     def finish(self):
         """
         Perform final cleanup and save metadata after the core logic completes.
 
-        This method writes provenance data (such as configuration and execution context) 
+        This method writes provenance data (such as configuration and execution context)
         to the output file, finalizes tables, and ensures all file handlers are safely closed.
         """
         self._write_config_file()

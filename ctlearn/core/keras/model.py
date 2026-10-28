@@ -15,16 +15,16 @@ from functools import partial
 import keras
 import keras_hexagdly as hgly
 
+from ctlearn.core.keras.attention import (
+    channel_squeeze_excite_block,
+    dual_squeeze_excite_block,
+    spatial_squeeze_excite_block,
+)
 from ctlearn.core.model import (
     ConvBackend,
-    SingleCNN,
-    ResNet,
     LoadedModel,
-)
-from ctlearn.core.keras.attention import (
-    dual_squeeze_excite_block,
-    channel_squeeze_excite_block,
-    spatial_squeeze_excite_block,
+    ResNet,
+    SingleCNN,
 )
 
 
@@ -58,7 +58,7 @@ def build_fully_connect_keras_head(inputs, layers, activation_function, tasks):
                 x = keras.layers.Dense(
                     units=units,
                     activation=activation_function[task],
-                    name=f"fc_{task}_{i+1}",
+                    name=f"fc_{task}_{i + 1}",
                 )(x)
             else:
                 x = keras.layers.Dense(units=units, name=task)(x)
@@ -100,14 +100,19 @@ class KerasConvBackend(ConvBackend):
     @property
     def _pool_layer(self):
         """Max-pooling layer class for ``conv_backend``."""
-        return _HexMaxPool2d if self.conv_backend == "hexagdly" else keras.layers.MaxPool2D
+        return (
+            _HexMaxPool2d if self.conv_backend == "hexagdly" else keras.layers.MaxPool2D
+        )
 
     @property
     def _avg_pool_layer(self):
         """Average-pooling layer class for ``conv_backend``."""
         return (
-            _HexAvgPool2d if self.conv_backend == "hexagdly" else keras.layers.AveragePooling2D
+            _HexAvgPool2d
+            if self.conv_backend == "hexagdly"
+            else keras.layers.AveragePooling2D
         )
+
 
 class KerasSingleCNN(SingleCNN, KerasConvBackend):
     """
@@ -197,20 +202,20 @@ class KerasSingleCNN(SingleCNN, KerasConvBackend):
                     kernel_size=kernel_size,
                     padding="same",
                     activation="relu",
-                    name=f"{self.backbone_name}_conv_{i+1}_{nr+1}",
+                    name=f"{self.backbone_name}_conv_{i + 1}_{nr + 1}",
                 )(x)
             if self.pooling_type is not None:
                 if self.pooling_type == "max":
                     x = self._pool_layer(
                         pool_size=self.pooling_parameters["size"],
                         strides=self.pooling_parameters["strides"],
-                        name=f"{self.backbone_name}_pool_{i+1}",
+                        name=f"{self.backbone_name}_pool_{i + 1}",
                     )(x)
                 elif self.pooling_type == "average":
                     x = self._avg_pool_layer(
                         pool_size=self.pooling_parameters["size"],
                         strides=self.pooling_parameters["strides"],
-                        name=f"{self.backbone_name}_pool_{i+1}",
+                        name=f"{self.backbone_name}_pool_{i + 1}",
                     )(x)
             if self.batchnorm:
                 x = keras.layers.BatchNormalization(momentum=0.99)(x)
@@ -233,11 +238,15 @@ class KerasSingleCNN(SingleCNN, KerasConvBackend):
         if self.attention is not None:
             if self.attention["mechanism"] == "Dual-SE":
                 x = dual_squeeze_excite_block(
-                    x, self.attention["reduction_ratio"], name=f"{self.backbone_name}_dse"
+                    x,
+                    self.attention["reduction_ratio"],
+                    name=f"{self.backbone_name}_dse",
                 )
             elif self.attention["mechanism"] == "Channel-SE":
                 x = channel_squeeze_excite_block(
-                    x, self.attention["reduction_ratio"], name=f"{self.backbone_name}_cse"
+                    x,
+                    self.attention["reduction_ratio"],
+                    name=f"{self.backbone_name}_cse",
                 )
             elif self.attention["mechanism"] == "Spatial-SE":
                 x = spatial_squeeze_excite_block(x, name=f"{self.backbone_name}_sse")
@@ -623,9 +632,9 @@ class KerasResNet(ResNet, KerasConvBackend):
             activation="relu",
             name=name + "_2_conv",
         )(x)
-        x = self._conv_layer(
-            filters=4 * filters, kernel_size=1, name=name + "_3_conv"
-        )(x)
+        x = self._conv_layer(filters=4 * filters, kernel_size=1, name=name + "_3_conv")(
+            x
+        )
 
         # Attention mechanism
         if attention is not None:

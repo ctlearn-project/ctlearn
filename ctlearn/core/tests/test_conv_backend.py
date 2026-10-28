@@ -17,12 +17,12 @@ import pytorch_hexagdly as phgly
 import torch
 import torch.nn as nn
 
-from ctlearn.core.keras.model import KerasSingleCNN, KerasResNet
-from ctlearn.core.pytorch.model import PyTorchSingleCNN, PyTorchResNet
+from ctlearn.core.keras.model import KerasResNet, KerasSingleCNN
+from ctlearn.core.pytorch.model import PyTorchResNet, PyTorchSingleCNN
 from ctlearn.tools.utils import (
     get_lst1_subarray_description,
-    validate_conv_backend,
     model_conv_backend,
+    validate_conv_backend,
 )
 
 
@@ -158,7 +158,9 @@ class TestSingleCNNConvBackend:
 
         # The bottleneck is built with the backend's conv class too, so the one
         # architecture conv and the bottleneck are both hexagonal.
-        hex_convs = [layer for layer in fw.layers(model) if isinstance(layer, fw.hex_conv)]
+        hex_convs = [
+            layer for layer in fw.layers(model) if isinstance(layer, fw.hex_conv)
+        ]
         assert len(hex_convs) == 2
 
     @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
@@ -203,7 +205,9 @@ class TestSingleCNNConvBackend:
             conv_backend="hexagdly",
             attention_mechanism=None,
         )
-        convs = [layer for layer in _Keras.layers(model) if isinstance(layer, hgly.Conv2d)]
+        convs = [
+            layer for layer in _Keras.layers(model) if isinstance(layer, hgly.Conv2d)
+        ]
         assert convs
         assert all(layer.activation is keras.activations.relu for layer in convs)
         assert not any(
@@ -317,7 +321,9 @@ class TestKernelSizeMeaning:
 
     @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
     @pytest.mark.parametrize("kernel_size, rings", [(1, 0), (3, 1), (5, 2)])
-    def test_single_cnn_conv_reads_kernel_size_as_a_width(self, framework, kernel_size, rings):
+    def test_single_cnn_conv_reads_kernel_size_as_a_width(
+        self, framework, kernel_size, rings
+    ):
         fw = FRAMEWORKS[framework]
         model = fw.single_cnn(
             input_shape=fw.input_shape(_image_mapper("HexagdlyMapper")),
@@ -366,11 +372,16 @@ class TestKernelSizeMeaning:
         )
         convs = self._hex_layers(fw, model, fw.hex_conv)
         assert {conv.kernel_size_unit for conv in convs} == {"pixels"}
-        assert {(conv.kernel_size, conv.hexbase_size) for conv in convs} == {(1, 0), (3, 1)}
+        assert {(conv.kernel_size, conv.hexbase_size) for conv in convs} == {
+            (1, 0),
+            (3, 1),
+        }
 
     @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
     @pytest.mark.parametrize("pooling_type", ["max", "average"])
-    def test_pooling_size_three_is_the_seven_cell_hexagon(self, framework, pooling_type):
+    def test_pooling_size_three_is_the_seven_cell_hexagon(
+        self, framework, pooling_type
+    ):
         fw = FRAMEWORKS[framework]
         model = fw.single_cnn(
             input_shape=fw.input_shape(_image_mapper("HexagdlyMapper")),
@@ -383,9 +394,10 @@ class TestKernelSizeMeaning:
         )
         pools = self._hex_layers(fw, model, fw.hex_pools)
         assert pools
-        assert {(pool.kernel_size, pool.hexbase_size, pool.kernel_size_unit) for pool in pools} == {
-            (3, 1, "pixels")
-        }
+        assert {
+            (pool.kernel_size, pool.hexbase_size, pool.kernel_size_unit)
+            for pool in pools
+        } == {(3, 1, "pixels")}
 
     @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
     def test_square_backend_is_untouched(self, framework):
@@ -413,7 +425,11 @@ class TestKernelSizeMeaning:
             {
                 (int(m.group(1)), int(m.group(2)))
                 for w in record
-                if (m := re.search(r"the size (\d+) is rounded up to (\d+)", str(w.message)))
+                if (
+                    m := re.search(
+                        r"the size (\d+) is rounded up to (\d+)", str(w.message)
+                    )
+                )
             }
         )
 

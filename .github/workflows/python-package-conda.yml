@@ -146,7 +146,7 @@ jobs:
 
       - name: Install package with pip
         run: pip install -e .[tests]
-          
+
 
       - name: Install pip target dependencies
         run: |
