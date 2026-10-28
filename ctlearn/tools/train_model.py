@@ -232,6 +232,12 @@ class TrainCTLearnModel(Tool):
                 raise ToolConfigurationError(
                     f"No background files found in {self.input_dir_background} matching pattern(s) {self.file_pattern_background}."
                 )
+        # Check if at least one reconstruction task is selected
+        if not self.reco_tasks:
+            raise ToolConfigurationError(
+                "No reconstruction task was selected. Specify at least one valid "
+                "task with --reco: type, energy, cameradirection, or skydirection."
+            )
 
         # Set up the data reader
         self.log.info("Loading data:")
