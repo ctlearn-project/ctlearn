@@ -1,11 +1,12 @@
 import shutil
+
 import numpy as np
 import pytest
-
 from ctapipe.core import run_tool
 from ctapipe.core.tool import ToolConfigurationError
 from ctapipe.io import TableLoader, read_table
 from ctapipe.io.hdf5dataformat import DL1_TEL_GROUP
+
 from ctlearn.conftest import MODEL_FILE_FORMATS
 from ctlearn.tools import LST1PredictionTool
 
@@ -54,7 +55,9 @@ def test_predict_mono_model_with_lst1_mock_data(
             ctlearn_trained_dl1_mono_models[key],
             model_dir / f"ctlearn_mono_model_{key}.{MODEL_FILE_FORMATS[framework]}",
         )
-        model_file = model_dir / f"ctlearn_mono_model_{key}.{MODEL_FILE_FORMATS[framework]}"
+        model_file = (
+            model_dir / f"ctlearn_mono_model_{key}.{MODEL_FILE_FORMATS[framework]}"
+        )
         assert model_file.exists(), f"Trained mono model file not found for {key}"
     # Check that the mock LST1 DL1 file was created
     assert mock_lst1_dl1_file.exists(), "Mock LST1 DL1 file not found"
@@ -107,36 +110,35 @@ def test_predict_mono_model_with_lst1_mock_data(
             ]:
                 if "_tel_" not in col:
                     continue
-                assert (
-                    col in tel_events[tel_id].colnames
-                ), f"{col} missing in DL2 file {output_file.name}"
-                assert (
-                    tel_events[tel_id][col][0] is not np.nan
-                ), f"{col} has NaN values in DL2 file {output_file.name}"
+                assert col in tel_events[tel_id].colnames, (
+                    f"{col} missing in DL2 file {output_file.name}"
+                )
+                assert tel_events[tel_id][col][0] is not np.nan, (
+                    f"{col} has NaN values in DL2 file {output_file.name}"
+                )
         # Check subarray-wise data
         subarray_events = loader.read_subarray_events(start=0, stop=2, dl2=True)
         assert len(subarray_events) > 0
         for col in REQUIRED_COLUMNS:
             if "_tel_" in col:
                 continue
-            assert (
-                col in subarray_events.colnames
-            ), f"{col} missing in DL2 file {output_file.name}"
-            assert (
-                subarray_events[col][0] is not np.nan
-            ), f"{col} has NaN values in DL2 file {output_file.name}"
+            assert col in subarray_events.colnames, (
+                f"{col} missing in DL2 file {output_file.name}"
+            )
+            assert subarray_events[col][0] is not np.nan, (
+                f"{col} has NaN values in DL2 file {output_file.name}"
+            )
     # Check that the DL1 feature table was created and contains the expected columns
-    feature_table_path = (
-        f"{DL1_TEL_GROUP}/features/CTLearn/tel_{allowed_tels[0]:03d}"
-    )
+    feature_table_path = f"{DL1_TEL_GROUP}/features/CTLearn/tel_{allowed_tels[0]:03d}"
     feature_table = read_table(output_file, feature_table_path)
     assert len(feature_table) > 0, (
         f"DL1 feature table missing or empty at {feature_table_path}"
     )
     for col in ["particletype", "energy", "geometry"]:
-        assert (
-            f"CTLearn_tel_{col}_feature_vectors" in feature_table.colnames
-        ), f"{col} missing in DL1 feature table {feature_table_path}"
+        assert f"CTLearn_tel_{col}_feature_vectors" in feature_table.colnames, (
+            f"{col} missing in DL1 feature table {feature_table_path}"
+        )
+
 
 def test_lst1_prediction_rejects_mapper_shape_mismatch(
     tmp_path, mock_lst1_dl1_file, ctlearn_trained_dl1_mono_models

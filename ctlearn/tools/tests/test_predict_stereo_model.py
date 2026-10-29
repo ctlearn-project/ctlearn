@@ -1,10 +1,11 @@
 import shutil
+
 import numpy as np
 import pytest
-
 from ctapipe.core import run_tool
-from ctapipe.io import read_table, TableLoader
+from ctapipe.io import TableLoader, read_table
 from ctapipe.io.hdf5dataformat import DL1_SUBARRAY_GROUP
+
 from ctlearn.conftest import MODEL_FILE_FORMATS
 from ctlearn.tools.predict_stereo_model import StereoPredictCTLearnModel
 
@@ -35,6 +36,7 @@ REQUIRED_COLUMNS = [
     "CTLearnRegressor_telescopes",
     "tels_with_trigger",
 ]
+
 
 @pytest.mark.verifies_usecase("DPPS-UC-130-1.2.2")
 @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
@@ -71,7 +73,9 @@ def test_predict_stereo_model_with_dl1_images(
             ctlearn_trained_dl1_stereo_models[key],
             model_dir / f"ctlearn_stereo_model_{key}.{MODEL_FILE_FORMATS[framework]}",
         )
-        model_file = model_dir / f"ctlearn_stereo_model_{key}.{MODEL_FILE_FORMATS[framework]}"
+        model_file = (
+            model_dir / f"ctlearn_stereo_model_{key}.{MODEL_FILE_FORMATS[framework]}"
+        )
         assert model_file.exists(), f"Trained stereo model file not found for {key}"
     # Build command-line arguments
     argv = [
@@ -131,12 +135,12 @@ def test_predict_stereo_model_with_dl1_images(
                     col = col.replace(
                         "CTLearnCameraReconstructor", "CTLearnSkyReconstructor"
                     )
-                assert (
-                    col in tel_events[tel_id].colnames
-                ), f"{col} missing in DL2 file {output_file.name}"
-                assert (
-                    tel_events[tel_id][col][0] is not np.nan
-                ), f"{col} has NaN values in DL2 file {output_file.name}"
+                assert col in tel_events[tel_id].colnames, (
+                    f"{col} missing in DL2 file {output_file.name}"
+                )
+                assert tel_events[tel_id][col][0] is not np.nan, (
+                    f"{col} has NaN values in DL2 file {output_file.name}"
+                )
         # Check subarray-wise data
         subarray_events = loader.read_subarray_events(start=0, stop=2, dl2=True)
         assert len(subarray_events) > 0
@@ -149,21 +153,19 @@ def test_predict_stereo_model_with_dl1_images(
                 col = col.replace(
                     "CTLearnCameraReconstructor", "CTLearnSkyReconstructor"
                 )
-            assert (
-                col in subarray_events.colnames
-            ), f"{col} missing in DL2 file {output_file.name}"
-            assert (
-                subarray_events[col][0] is not np.nan
-            ), f"{col} has NaN values in DL2 file {output_file.name}"
+            assert col in subarray_events.colnames, (
+                f"{col} missing in DL2 file {output_file.name}"
+            )
+            assert subarray_events[col][0] is not np.nan, (
+                f"{col} has NaN values in DL2 file {output_file.name}"
+            )
     # Check that the DL1 feature table was created and contains the expected columns
-    feature_table_path = (
-        f"{DL1_SUBARRAY_GROUP}/features/CTLearn"
-    )
+    feature_table_path = f"{DL1_SUBARRAY_GROUP}/features/CTLearn"
     feature_table = read_table(output_file, feature_table_path)
     assert len(feature_table) > 0, (
         f"DL1 feature table missing or empty at {feature_table_path}"
     )
     for col in ["particletype", "energy", "geometry"]:
-        assert (
-            f"CTLearn_{col}_feature_vectors" in feature_table.colnames
-        ), f"{col} missing in DL1 feature table {feature_table_path}"
+        assert f"CTLearn_{col}_feature_vectors" in feature_table.colnames, (
+            f"{col} missing in DL1 feature table {feature_table_path}"
+        )

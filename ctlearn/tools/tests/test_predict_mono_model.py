@@ -2,11 +2,11 @@ import shutil
 
 import numpy as np
 import pytest
-from traitlets.config.loader import Config
-
 from ctapipe.core import run_tool
 from ctapipe.core.tool import ToolConfigurationError
 from ctapipe.io import TableLoader
+from traitlets.config.loader import Config
+
 from ctlearn.conftest import MODEL_FILE_FORMATS
 from ctlearn.tools.predict_mono_model import MonoPredictCTLearnModel
 
@@ -62,7 +62,9 @@ def test_predict_mono_model_with_r1_waveforms(
             ctlearn_trained_r1_mono_models[key],
             model_dir / f"ctlearn_mono_model_{key}.{MODEL_FILE_FORMATS[framework]}",
         )
-        model_file = model_dir / f"ctlearn_mono_model_{key}.{MODEL_FILE_FORMATS[framework]}"
+        model_file = (
+            model_dir / f"ctlearn_mono_model_{key}.{MODEL_FILE_FORMATS[framework]}"
+        )
         assert model_file.exists(), f"Trained mono model file not found for {key}"
     # Build command-line arguments
     argv = [
@@ -74,7 +76,9 @@ def test_predict_mono_model_with_r1_waveforms(
         "--no-r1-waveforms",
         "--dl2-telescope",
     ]
-    output_file = dl2_dir / f"gamma_{framework}_{telescope_type}_mono_from_waveforms.dl2.h5"
+    output_file = (
+        dl2_dir / f"gamma_{framework}_{telescope_type}_mono_from_waveforms.dl2.h5"
+    )
     # Run Prediction tool
     assert (
         run_tool(
@@ -109,24 +113,24 @@ def test_predict_mono_model_with_r1_waveforms(
                 "telescope_pointing_azimuth",
                 "telescope_pointing_altitude",
             ]:
-                assert (
-                    col in tel_events[tel_id].colnames
-                ), f"{col} missing in DL2 file {output_file.name}"
-                assert (
-                    tel_events[tel_id][col][0] is not np.nan
-                ), f"{col} has NaN values in DL2 file {output_file.name}"
+                assert col in tel_events[tel_id].colnames, (
+                    f"{col} missing in DL2 file {output_file.name}"
+                )
+                assert tel_events[tel_id][col][0] is not np.nan, (
+                    f"{col} has NaN values in DL2 file {output_file.name}"
+                )
         # Check subarray-wise data
         subarray_events = loader.read_subarray_events(start=0, stop=2, dl2=True)
         assert len(subarray_events) > 0
         for col in REQUIRED_COLUMNS:
             if "_tel_" in col:
                 continue
-            assert (
-                col in subarray_events.colnames
-            ), f"{col} missing in DL2 file {output_file.name}"
-            assert (
-                subarray_events[col][0] is not np.nan
-            ), f"{col} has NaN values in DL2 file {output_file.name}"
+            assert col in subarray_events.colnames, (
+                f"{col} missing in DL2 file {output_file.name}"
+            )
+            assert subarray_events[col][0] is not np.nan, (
+                f"{col} has NaN values in DL2 file {output_file.name}"
+            )
 
 
 @pytest.mark.verifies_usecase("DPPS-UC-130-1.2.2")
@@ -179,7 +183,9 @@ def test_predict_mono_model_with_dl1_images(
                 ctlearn_trained_dl1_mono_models[key],
                 model_dir / f"ctlearn_mono_model_{key}.{MODEL_FILE_FORMATS[framework]}",
             )
-            model_file = model_dir / f"ctlearn_mono_model_{key}.{MODEL_FILE_FORMATS[framework]}"
+            model_file = (
+                model_dir / f"ctlearn_mono_model_{key}.{MODEL_FILE_FORMATS[framework]}"
+            )
             assert model_file.exists(), f"Trained mono model file not found for {key}"
     # Build command-line arguments
     argv = [
@@ -239,12 +245,12 @@ def test_predict_mono_model_with_dl1_images(
                         continue
                     if input_suffix == "obs_mock" and col.startswith("true_"):
                         continue
-                    assert (
-                        col in tel_events[tel_id].colnames
-                    ), f"{col} missing in DL2 file {output_file.name}"
-                    assert (
-                        tel_events[tel_id][col][0] is not np.nan
-                    ), f"{col} has NaN values in DL2 file {output_file.name}"
+                    assert col in tel_events[tel_id].colnames, (
+                        f"{col} missing in DL2 file {output_file.name}"
+                    )
+                    assert tel_events[tel_id][col][0] is not np.nan, (
+                        f"{col} has NaN values in DL2 file {output_file.name}"
+                    )
             # Check subarray-wise data
             subarray_events = loader.read_subarray_events(start=0, stop=2, dl2=True)
             assert len(subarray_events) > 0
@@ -252,13 +258,13 @@ def test_predict_mono_model_with_dl1_images(
                 if "_tel_" in col:
                     continue
                 if input_suffix == "obs_mock" and col.startswith("true_"):
-                        continue
-                assert (
-                    col in subarray_events.colnames
-                ), f"{col} missing in DL2 file {output_file.name}"
-                assert (
-                    subarray_events[col][0] is not np.nan
-                ), f"{col} has NaN values in DL2 file {output_file.name}"
+                    continue
+                assert col in subarray_events.colnames, (
+                    f"{col} missing in DL2 file {output_file.name}"
+                )
+                assert subarray_events[col][0] is not np.nan, (
+                    f"{col} has NaN values in DL2 file {output_file.name}"
+                )
 
 
 @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
@@ -270,8 +276,7 @@ def test_predict_model_rejects_batch_larger_than_event_count(
     config = Config(
         {
             "TableQualityQuery": {"quality_criteria": []},
-            "DLImageReader": {"focal_length_choice": "EQUIVALENT"}
-        
+            "DLImageReader": {"focal_length_choice": "EQUIVALENT"},
         }
     )
     tool = MonoPredictCTLearnModel(config=config)

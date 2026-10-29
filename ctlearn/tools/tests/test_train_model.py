@@ -1,19 +1,18 @@
+import json
 import logging
+import shutil
 from types import SimpleNamespace
 from unittest.mock import Mock
 
-import json
 import pandas as pd
 import pytest
-import shutil
-
 from ctapipe.core import run_tool
 from ctapipe.core.provenance import Provenance
 from ctapipe.core.tool import ToolConfigurationError
 from ctapipe.core.traits import TraitError
-from ctlearn.conftest import TRAINING_TOOLS, MODEL_FILE_FORMATS
+
+from ctlearn.conftest import MODEL_FILE_FORMATS, TRAINING_TOOLS
 from ctlearn.tools.keras.train_model import LoggingModelCheckpoint
-from ctlearn.tools.train_model import TrainCTLearnModel
 
 
 def _make_setup_tool(tmp_path, monkeypatch, reader):
@@ -39,7 +38,15 @@ def _make_setup_tool(tmp_path, monkeypatch, reader):
 @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
 @pytest.mark.parametrize("model", ["SingleCNN", "ResNet", "LoadedModel"])
 @pytest.mark.parametrize("reco_task", ["type", "energy", "cameradirection"])
-def test_train_ctlearn_model(framework, model, reco_task, dl1_gamma_file, dl1_proton_file, ctlearn_trained_dl1_mono_models, tmp_path):
+def test_train_ctlearn_model(
+    framework,
+    model,
+    reco_task,
+    dl1_gamma_file,
+    dl1_proton_file,
+    ctlearn_trained_dl1_mono_models,
+    tmp_path,
+):
     """
     Test training CTLearn model using the DL1 gamma and proton files for all reconstruction tasks.
     Each test run gets its own isolated temp directories.
@@ -65,8 +72,12 @@ def test_train_ctlearn_model(framework, model, reco_task, dl1_gamma_file, dl1_pr
             ctlearn_trained_dl1_mono_models[key],
             model_dir / f"ctlearn_mono_model_{key}.{MODEL_FILE_FORMATS[framework]}",
         )
-        model_file = model_dir / f"ctlearn_mono_model_{key}.{MODEL_FILE_FORMATS[framework]}"
-        assert model_file.exists(), f"Trained {framework} mono model file not found for {key}"
+        model_file = (
+            model_dir / f"ctlearn_mono_model_{key}.{MODEL_FILE_FORMATS[framework]}"
+        )
+        assert model_file.exists(), (
+            f"Trained {framework} mono model file not found for {key}"
+        )
     # Output directory for trained model
     output_dir = tmp_path / f"ctlearn_{framework}_{model}_{reco_task}"
     # Build command-line arguments
@@ -116,26 +127,29 @@ def test_train_ctlearn_model(framework, model, reco_task, dl1_gamma_file, dl1_pr
     # Read CSV and verify number of epochs
     log_df = pd.read_csv(log_file)
     num_epochs_logged = log_df.shape[0]
-    assert (
-        num_epochs_logged == 2
-    ), f"Expected two epochs, found {num_epochs_logged} for {reco_task}"
+    assert num_epochs_logged == 2, (
+        f"Expected two epochs, found {num_epochs_logged} for {reco_task}"
+    )
     # Check that val_loss column exists
-    assert (
-        "val_loss" in log_df.columns
-    ), f"'val_loss' column missing in training_log.csv for {reco_task}"
+    assert "val_loss" in log_df.columns, (
+        f"'val_loss' column missing in training_log.csv for {reco_task}"
+    )
     val_loss = log_df["val_loss"].dropna()
     assert not val_loss.empty, f"'val_loss' column is empty for {reco_task}"
     assert ((val_loss >= 0.0) & (val_loss <= 1.5)).all(), (
         f"'val_loss' values out of range [0.0, 1.5] for {reco_task}: "
         f"{val_loss.tolist()}"
     )
-    # Check that the event file for TensorBoard is created for train and validation 
+    # Check that the event file for TensorBoard is created for train and validation
     for subfolder in ["train", "validation"]:
         subfolder_path = output_dir / subfolder
-        assert subfolder_path.is_dir(), f"TensorBoard '{subfolder}' directory missing in {output_dir}"
+        assert subfolder_path.is_dir(), (
+            f"TensorBoard '{subfolder}' directory missing in {output_dir}"
+        )
         # Check that at least one file starting with 'events.out.tfevents.' exists
         event_files = [
-            f for f in subfolder_path.iterdir() 
+            f
+            for f in subfolder_path.iterdir()
             if f.is_file() and f.name.startswith("events.out.tfevents.")
         ]
         assert event_files, (
@@ -202,39 +216,42 @@ def test_train_model_early_stopping_and_checkpoint_options(
 
 def test_pytorch_workers_configuration_error():
     """
-    Test that TrainCTLearnPyTorchModel raises a ToolConfigurationError 
+    Test that TrainCTLearnPyTorchModel raises a ToolConfigurationError
     when persistent_workers=True and num_workers=0.
     """
     tool = TRAINING_TOOLS["PyTorch"]()
     tool.num_workers = 0
     tool.persistent_workers = True
-    
-    with pytest.raises(ToolConfigurationError, match="Cannot set persistent_workers=True when num_workers=0"):
+
+    with pytest.raises(
+        ToolConfigurationError,
+        match="Cannot set persistent_workers=True when num_workers=0",
+    ):
         tool.setup_framework()
 
 
 @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
 def test_train_model_empty_patterns(framework, tmp_path):
     """
-    Test that TrainCTLearnModel raises a ToolConfigurationError 
+    Test that TrainCTLearnModel raises a ToolConfigurationError
     when signal or background file patterns match 0 files.
     """
     tool = TRAINING_TOOLS[framework]()
-    
+
     tool.input_dir_signal = tmp_path
     tool.file_pattern_signal = ["nonexistent_*.h5"]
     tool.output_dir = tmp_path / "output"
-    
+
     with pytest.raises(ToolConfigurationError, match="No signal files found in"):
         tool.setup()
-        
+
     # Create a dummy signal file so the first check passes
     (tmp_path / "signal_1.h5").touch()
     tool.file_pattern_signal = ["signal_*.h5"]
-    
+
     tool.input_dir_background = tmp_path
     tool.file_pattern_background = ["nonexistent_background_*.h5"]
-    
+
     with pytest.raises(ToolConfigurationError, match="No background files found in"):
         tool.setup()
 
@@ -299,7 +316,12 @@ def test_train_model_rejects_classification_with_one_class(tmp_path, monkeypatch
     ("reader_mode", "selected_telescopes", "sort_by_intensity", "message"),
     [
         ("mono", [], False, "mono mode"),
-        ("stereo", ["LST_LST_LSTCam", "MST_MST_NectarCam"], False, "multiple telescope types"),
+        (
+            "stereo",
+            ["LST_LST_LSTCam", "MST_MST_NectarCam"],
+            False,
+            "multiple telescope types",
+        ),
         ("stereo", ["LST_LST_LSTCam"], True, "sorting by intensity"),
     ],
 )
@@ -350,6 +372,7 @@ def test_train_model_rejects_incomplete_training_options(
 
     with pytest.raises(TraitError, match=missing_key):
         tool.setup()
+
 
 def test_logging_checkpoint_handles_missing_monitor(tmp_path):
     checkpoint_path = tmp_path / "best.keras"

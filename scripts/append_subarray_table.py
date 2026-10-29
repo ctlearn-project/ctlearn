@@ -1,16 +1,15 @@
-from astropy.table import vstack
 import numpy as np
-
-from ctapipe.io import read_table, write_table
+from astropy.table import vstack
 from ctapipe.core import Tool
 from ctapipe.core.traits import (
+    Bool,
     ComponentName,
+    List,
     Path,
     Unicode,
-    Bool,
-    List,
 )
 from ctapipe.instrument import SubarrayDescription
+from ctapipe.io import read_table, write_table
 from ctapipe.reco.reconstructor import ReconstructionProperty
 from ctapipe.reco.stereo_combination import StereoCombiner
 
@@ -45,8 +44,11 @@ class AppendSubarrayTable(Tool):
     overwrite_tables : bool
         Overwrite the table in the hdf5 file if it exists.
     """
+
     name = "AppendSubarrayTable"
-    description = "Append a subarray table to the hdf5 file after the monoscopic predictions."
+    description = (
+        "Append a subarray table to the hdf5 file after the monoscopic predictions."
+    )
 
     input_url = Path(
         help="Input ctapipe HDF5 files including monoscopic predictions.",
@@ -98,7 +100,6 @@ class AppendSubarrayTable(Tool):
         # Read the SubarrayDescription from the input file
         self.subarray = SubarrayDescription.from_hdf(self.input_url)
 
-
     def start(self):
         # Loop over the reconstruction tasks and combine the telescope tables to a subarray table
         for reco_task in self.reco_tasks:
@@ -124,15 +125,10 @@ class AppendSubarrayTable(Tool):
             # Sort the table by the telescope event keys
             tel_tables.sort(TELESCOPE_EVENT_KEYS)
             # Combine the telescope predictions to the subarray prediction using the ctapipe stereo combiner
-            subarray_table = self.stereo_combiner.predict_table(
-                tel_tables
-            )
+            subarray_table = self.stereo_combiner.predict_table(tel_tables)
             # TODO: Remove temporary fix once the stereo combiner returns correct table
             # Check if the table has to be converted to a boolean mask
-            if (
-                subarray_table[f"{self.prefix}_telescopes"].dtype
-                != np.bool_
-            ):
+            if subarray_table[f"{self.prefix}_telescopes"].dtype != np.bool_:
                 # Create boolean mask for telescopes that participate in the stereo reconstruction combination
                 reco_telescopes = np.zeros(
                     (len(subarray_table), len(self.subarray.tel_ids)),
@@ -149,9 +145,7 @@ class AppendSubarrayTable(Tool):
                             self.subarray.tel_ids_to_indices(tel_id)
                         ] = True
                 # Overwrite the column with the boolean mask with fix length
-                subarray_table[f"{self.prefix}_telescopes"] = (
-                    reco_telescopes
-                )
+                subarray_table[f"{self.prefix}_telescopes"] = reco_telescopes
             # Sort the table by the subarray event keys
             subarray_table.sort(SUBARRAY_EVENT_KEYS)
             # Save the prediction to the file
@@ -170,6 +164,7 @@ class AppendSubarrayTable(Tool):
     def finish(self):
         # Shutting down the tool
         self.log.info("Tool is shutting down")
+
 
 def main():
     # Run the tool

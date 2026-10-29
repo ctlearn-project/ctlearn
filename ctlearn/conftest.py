@@ -2,29 +2,28 @@
 common pytest fixtures for tests in ctlearn.
 """
 
-from pathlib import Path
+import shutil
 import warnings
+from pathlib import Path
 
 import numpy as np
 import pytest
-import shutil
 import tables
 from astropy import units as u
 from astropy.table import Column, Table
-from filelock import FileLock
-from traitlets.config.loader import Config
-
 from ctapipe.core import run_tool
 from ctapipe.io import read_table, write_table
 from ctapipe.io.hdf5dataformat import (
-    SIMULATION_RUN_TABLE,
+    DL0_TEL_POINTING_GROUP,
+    DL1_TEL_TRIGGER_TABLE,
     FIXED_POINTING_GROUP,
     SIMULATION_GROUP,
-    DL1_TEL_TRIGGER_TABLE,
-    DL0_TEL_POINTING_GROUP,
+    SIMULATION_RUN_TABLE,
 )
 from ctapipe.tools.process import ProcessorTool
 from ctapipe.utils import get_dataset_path
+from filelock import FileLock
+from traitlets.config.loader import Config
 
 from ctlearn.tools.keras.train_model import TrainCTLearnKerasModel
 from ctlearn.tools.pytorch.train_model import TrainCTLearnPyTorchModel
@@ -32,6 +31,7 @@ from ctlearn.tools.utils import get_lst1_subarray_description
 
 TRAINING_TOOLS = {"Keras": TrainCTLearnKerasModel, "PyTorch": TrainCTLearnPyTorchModel}
 MODEL_FILE_FORMATS = {"Keras": "keras", "PyTorch": "pth"}
+
 
 @pytest.fixture(scope="session")
 def gamma_simtel_path(tmp_path_factory):
@@ -137,9 +137,7 @@ def _create_mock_lst1_dl1_file(
         overwrite=True,
     )
     with tables.open_file(output_path, mode="a") as output_file:
-        image_table_node = output_file.get_node(
-            "/dl1/event/telescope/image/LST_LSTCam"
-        )
+        image_table_node = output_file.get_node("/dl1/event/telescope/image/LST_LSTCam")
         image_attrs = image_table_node._v_attrs
         image_attrs.CTAFIELD_3_TRANSFORM_SCALE = 0.0
         image_attrs.CTAFIELD_3_TRANSFORM_OFFSET = 0
@@ -155,6 +153,7 @@ def mock_lst1_dl1_file(tmp_path_factory):
 
     output = tmp_path_factory.mktemp("mock_lst1") / "mock_lst1_dl1.h5"
     return _create_mock_lst1_dl1_file(output)
+
 
 @pytest.fixture(scope="session")
 def dl1_gamma_tel2_file(dl1_tmp_path, gamma_simtel_path):
@@ -173,6 +172,7 @@ def dl1_gamma_tel2_file(dl1_tmp_path, gamma_simtel_path):
     assert run_tool(ProcessorTool(), argv=argv, cwd=dl1_tmp_path) == 0
     return output
 
+
 @pytest.fixture(scope="session")
 def dl1_gamma_file(dl1_tmp_path, gamma_simtel_path):
     """
@@ -187,6 +187,7 @@ def dl1_gamma_file(dl1_tmp_path, gamma_simtel_path):
     ]
     assert run_tool(ProcessorTool(), argv=argv, cwd=dl1_tmp_path) == 0
     return output
+
 
 @pytest.fixture(scope="session")
 def dl1_obs_mock_file(dl1_tmp_path, dl1_gamma_file):
@@ -203,7 +204,9 @@ def dl1_obs_mock_file(dl1_tmp_path, dl1_gamma_file):
     # Mimic an observation of 20 mins duration by adjusting the time range for the tel pointing tables
     time[0] -= 20 * u.min
     for tel_id in tel_ids:
-        tel_pointing = read_table(dl1_gamma_file, path=f"{FIXED_POINTING_GROUP}/tel_{tel_id:03d}")
+        tel_pointing = read_table(
+            dl1_gamma_file, path=f"{FIXED_POINTING_GROUP}/tel_{tel_id:03d}"
+        )
         azimuth = tel_pointing["telescope_pointing_azimuth"][0]
         altitude = tel_pointing["telescope_pointing_altitude"][0]
         tel_pointing_table = Table(
@@ -233,6 +236,7 @@ def dl1_obs_mock_file(dl1_tmp_path, dl1_gamma_file):
                     h5_file.remove_node(group, recursive=True)
     return output
 
+
 @pytest.fixture(scope="session")
 def dl1_proton_file(dl1_tmp_path, proton_simtel_path):
     """
@@ -261,7 +265,7 @@ def r1_gamma_file(r1_tmp_path, gamma_simtel_path):
     argv = [
         f"--input={gamma_simtel_path}",
         f"--output={output}",
-        f"--DataWriter.write_r1_waveforms=True",
+        "--DataWriter.write_r1_waveforms=True",
         "--SimTelEventSource.focal_length_choice=EQUIVALENT",
         f"--SimTelEventSource.allowed_tels={allowed_tels}",
     ]
@@ -280,7 +284,7 @@ def r1_proton_file(r1_tmp_path, proton_simtel_path):
     argv = [
         f"--input={proton_simtel_path}",
         f"--output={output}",
-        f"--DataWriter.write_r1_waveforms=True",
+        "--DataWriter.write_r1_waveforms=True",
         "--SimTelEventSource.focal_length_choice=EQUIVALENT",
         f"--SimTelEventSource.allowed_tels={allowed_tels}",
     ]
@@ -353,12 +357,19 @@ def ctlearn_trained_r1_mono_models(r1_gamma_file, r1_proton_file, tmp_path_facto
             if framework == "PyTorch":
                 framework_argv.append("--TrainCTLearnPyTorchModel.num_workers=2")
 
-            assert run_tool(training_tool(config=config), argv=framework_argv, cwd=tmp_path) == 0
-            ctlearn_trained_r1_mono_models[f"{framework}_{telescope_type}_{reco_task}"] = (
-                output_dir / f"ctlearn_model.{MODEL_FILE_FORMATS[framework]}"
+            assert (
+                run_tool(
+                    training_tool(config=config), argv=framework_argv, cwd=tmp_path
+                )
+                == 0
             )
+            ctlearn_trained_r1_mono_models[
+                f"{framework}_{telescope_type}_{reco_task}"
+            ] = output_dir / f"ctlearn_model.{MODEL_FILE_FORMATS[framework]}"
             # Check that the trained model exists
-            assert ctlearn_trained_r1_mono_models[f"{framework}_{telescope_type}_{reco_task}"].exists()
+            assert ctlearn_trained_r1_mono_models[
+                f"{framework}_{telescope_type}_{reco_task}"
+            ].exists()
     return ctlearn_trained_r1_mono_models
 
 
@@ -431,17 +442,24 @@ def ctlearn_trained_dl1_mono_models(dl1_gamma_file, dl1_proton_file, tmp_path_fa
             # Run training tools
             for framework, training_tool in TRAINING_TOOLS.items():
                 framework_argv = argv.copy()
-                output_dir = tmp_path / f"ctlearn_{framework}_{telescope_type}_{reco_task}"
-                framework_argv.append(f"--output={output_dir}")
-                assert run_tool(training_tool(config=config), argv=framework_argv, cwd=tmp_path) == 0
-                ctlearn_trained_dl1_mono_models[f"{framework}_{telescope_type}_{reco_task}"] = (
-                    output_dir / f"ctlearn_model.{MODEL_FILE_FORMATS[framework]}"
+                output_dir = (
+                    tmp_path / f"ctlearn_{framework}_{telescope_type}_{reco_task}"
                 )
+                framework_argv.append(f"--output={output_dir}")
+                assert (
+                    run_tool(
+                        training_tool(config=config), argv=framework_argv, cwd=tmp_path
+                    )
+                    == 0
+                )
+                ctlearn_trained_dl1_mono_models[
+                    f"{framework}_{telescope_type}_{reco_task}"
+                ] = output_dir / f"ctlearn_model.{MODEL_FILE_FORMATS[framework]}"
                 # Check that the trained model exists
                 assert ctlearn_trained_dl1_mono_models[
                     f"{framework}_{telescope_type}_{reco_task}"
                 ].exists()
-    return ctlearn_trained_dl1_mono_models 
+    return ctlearn_trained_dl1_mono_models
 
 
 @pytest.fixture(scope="session")
@@ -511,10 +529,15 @@ def ctlearn_trained_dl1_stereo_models(
             framework_argv = argv.copy()
             output_dir = tmp_path / f"ctlearn_{framework}_{telescope_type}_{reco_task}"
             framework_argv.append(f"--output={output_dir}")
-            assert run_tool(training_tool(config=config), argv=framework_argv, cwd=tmp_path) == 0
-            ctlearn_trained_dl1_stereo_models[f"{framework}_{telescope_type}_{reco_task}"] = (
-                output_dir / f"ctlearn_model.{MODEL_FILE_FORMATS[framework]}"
+            assert (
+                run_tool(
+                    training_tool(config=config), argv=framework_argv, cwd=tmp_path
+                )
+                == 0
             )
+            ctlearn_trained_dl1_stereo_models[
+                f"{framework}_{telescope_type}_{reco_task}"
+            ] = output_dir / f"ctlearn_model.{MODEL_FILE_FORMATS[framework]}"
             # Check that the trained model exists
             assert ctlearn_trained_dl1_stereo_models[
                 f"{framework}_{telescope_type}_{reco_task}"

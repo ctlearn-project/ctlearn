@@ -2,36 +2,35 @@
 Predict the gammaness, energy and arrival direction from lstchain DL1 data.
 """
 
-__all__ = ["LST1PredictionTool"] 
+__all__ = ["LST1PredictionTool"]
 
 import atexit
+
 import numpy as np
 import tables
-
 from astropy import units as u
 from astropy.coordinates import AltAz, SkyCoord
 from astropy.table import Table, join, setdiff, vstack
 from astropy.time import Time
-
 from ctapipe.containers import (
     ParticleClassificationContainer,
-    ReconstructedGeometryContainer,
     ReconstructedEnergyContainer,
+    ReconstructedGeometryContainer,
 )
 from ctapipe.coordinates import CameraFrame
 from ctapipe.core import Tool
 from ctapipe.core.tool import ToolConfigurationError
 from ctapipe.core.traits import (
     Bool,
-    Int,
-    Path,
-    List,
-    flag,
     CaselessStrEnum,
     ComponentName,
     Dict,
+    Int,
+    List,
+    Path,
     UseEnum,
     classes_with_traits,
+    flag,
 )
 from ctapipe.instrument.optics import FocalLengthKind
 from ctapipe.io import read_table, write_table
@@ -41,27 +40,28 @@ from ctapipe.io.hdf5dataformat import (
     DL1_TEL_PARAMETERS_GROUP,
     DL1_TEL_POINTING_GROUP,
     DL1_TEL_TRIGGER_TABLE,
-    DL2_TEL_PARTICLETYPE_GROUP,
-    DL2_TEL_ENERGY_GROUP,
-    DL2_TEL_GEOMETRY_GROUP,
-    DL2_SUBARRAY_PARTICLETYPE_GROUP,
     DL2_SUBARRAY_ENERGY_GROUP,
     DL2_SUBARRAY_GEOMETRY_GROUP,
+    DL2_SUBARRAY_PARTICLETYPE_GROUP,
+    DL2_TEL_ENERGY_GROUP,
+    DL2_TEL_GEOMETRY_GROUP,
+    DL2_TEL_PARTICLETYPE_GROUP,
 )
 from ctapipe.reco.utils import add_defaults_and_meta
+from dl1_data_handler.image_mapper import ImageMapper
+from dl1_data_handler.reader import (
+    TableQualityQuery,
+    get_unmapped_image,
+)
+
 from ctlearn import __version__ as ctlearn_version
 from ctlearn.tools.utils import (
     FrameworkType,
-    setup_framework,
-    get_lst1_subarray_description,   
-    validate_trait_dict,
-    validate_conv_backend,
+    get_lst1_subarray_description,
     model_conv_backend,
-)
-from dl1_data_handler.image_mapper import ImageMapper
-from dl1_data_handler.reader import (
-    get_unmapped_image,
-    TableQualityQuery,
+    setup_framework,
+    validate_conv_backend,
+    validate_trait_dict,
 )
 
 SUBARRAY_EVENT_KEYS = ["obs_id", "event_id"]
@@ -249,7 +249,10 @@ class LST1PredictionTool(Tool):
         ("i", "input_url"): "LST1PredictionTool.input_url",
         ("t", "type_model"): "LST1PredictionTool.load_type_model_from",
         ("e", "energy_model"): "LST1PredictionTool.load_energy_model_from",
-        ("d", "cameradirection_model"): "LST1PredictionTool.load_cameradirection_model_from",
+        (
+            "d",
+            "cameradirection_model",
+        ): "LST1PredictionTool.load_cameradirection_model_from",
         ("o", "output"): "LST1PredictionTool.output_path",
     }
 
@@ -287,15 +290,13 @@ class LST1PredictionTool(Tool):
         """
         Initialize the tool configuration, validate parameters, and setup data handlers.
 
-        This method is the first part of the tool execution lifecycle. It validates input arguments, 
-        sets up the configuration dictionary, configures the output file, and prepares the DataReader 
+        This method is the first part of the tool execution lifecycle. It validates input arguments,
+        sets up the configuration dictionary, configures the output file, and prepares the DataReader
         to ensure everything is ready before the core processing begins.
         """
         self.log.info("ctlearn version %s", ctlearn_version)
         # Validate the prefixes trait dictionary
-        validate_trait_dict(
-            self.prefixes, ["type", "energy", "cameradirection", "all"]
-        )
+        validate_trait_dict(self.prefixes, ["type", "energy", "cameradirection", "all"])
         # Save dl1 image and parameters tree schemas and tel id for easy access
         self.image_table_path = "/dl1/event/telescope/image/LST_LSTCam"
         self.parameter_table_name = "/dl1/event/telescope/parameters/LST_LSTCam"
@@ -307,17 +308,24 @@ class LST1PredictionTool(Tool):
             self.load_cameradirection_model_from,
         ]
         # Reads the model paths and set up the Keras or PyTorch framework
-        self.framework_type, self.num_devices, self.strategy, self.device = setup_framework(model_paths)
+        self.framework_type, self.num_devices, self.strategy, self.device = (
+            setup_framework(model_paths)
+        )
         self.log.info("Framework selected: %s", self.framework_type.value)
         if self.framework_type == FrameworkType.KERAS:
             atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore
-            self.log.info("Using Keras MirroredStrategy with %d replica(s).", self.num_devices)
+            self.log.info(
+                "Using Keras MirroredStrategy with %d replica(s).", self.num_devices
+            )
         elif self.framework_type == FrameworkType.PYTORCH:
             import torch
+
             if self.device == torch.device("cpu"):
                 self.log.info("Using PyTorch CPU device.")
             else:
-                self.log.info("Using PyTorch GPU device(s). Count: %d", self.num_devices)
+                self.log.info(
+                    "Using PyTorch GPU device(s). Count: %d", self.num_devices
+                )
         # Load the models from the specified paths
         input_shape_type, self.backbone_type, self.head_type = self._load_model(
             self.load_type_model_from
@@ -325,14 +333,16 @@ class LST1PredictionTool(Tool):
         input_shape_energy, self.backbone_energy, self.head_energy = self._load_model(
             self.load_energy_model_from
         )
-        input_shape_direction, self.backbone_direction, self.head_direction = self._load_model(
-            self.load_cameradirection_model_from
+        input_shape_direction, self.backbone_direction, self.head_direction = (
+            self._load_model(self.load_cameradirection_model_from)
         )
         # Get the number of rows in the table
         with tables.open_file(self.input_url) as input_file:
             self.table_length = len(input_file.get_node(self.image_table_path))
         # Get the SubarrayDescription of the LST-1 telescope
-        self.subarray = get_lst1_subarray_description(focal_length_choice=self.focal_length_choice)
+        self.subarray = get_lst1_subarray_description(
+            focal_length_choice=self.focal_length_choice
+        )
         # Write the SubarrayDescription to the output file
         self.subarray.to_hdf(self.output_path, overwrite=self.overwrite)
         self.log.info("SubarrayDescription was stored in '%s'", self.output_path)
@@ -351,8 +361,15 @@ class LST1PredictionTool(Tool):
             parent=self,
         )
         # Check if the input shape of the model matches the image shape of the ImageMapper
-        for input_shape in [input_shape_type, input_shape_energy, input_shape_direction]:
-            if input_shape is not None and input_shape[0] != self.image_mapper.image_shape:
+        for input_shape in [
+            input_shape_type,
+            input_shape_energy,
+            input_shape_direction,
+        ]:
+            if (
+                input_shape is not None
+                and input_shape[0] != self.image_mapper.image_shape
+            ):
                 raise ToolConfigurationError(
                     f"The input shape of the model ('{input_shape[0]}') does not match "
                     f"the image shape of the ImageMapper ('{self.image_mapper.image_shape}'). "
@@ -363,7 +380,9 @@ class LST1PredictionTool(Tool):
         for loaded_model in (
             self.backbone_type if self.load_type_model_from is not None else None,
             self.backbone_energy if self.load_energy_model_from is not None else None,
-            self.backbone_direction if self.load_cameradirection_model_from is not None else None,
+            self.backbone_direction
+            if self.load_cameradirection_model_from is not None
+            else None,
         ):
             if loaded_model is not None:
                 validate_conv_backend(image_mappers, model_conv_backend(loaded_model))
@@ -397,8 +416,8 @@ class LST1PredictionTool(Tool):
         """
         Execute the core logic of the tool.
 
-        Depending on the tool, this method either orchestrates the training and validation 
-        loops across epochs, or it iterates through the input dataset to generate 
+        Depending on the tool, this method either orchestrates the training and validation
+        loops across epochs, or it iterates through the input dataset to generate
         and save model predictions to the output file.
         """
         all_identifiers = read_table(self.input_url, self.parameter_table_name)
@@ -525,7 +544,7 @@ class LST1PredictionTool(Tool):
         parameter_table.add_column(tel_az, name="tel_az")
         parameter_table.add_column(tel_alt, name="tel_alt")
         # Only select cosmic events for the prediction
-        parameter_table = parameter_table[parameter_table["event_type"]==32]
+        parameter_table = parameter_table[parameter_table["event_type"] == 32]
 
         self.log.info("Starting the prediction...")
         event_id, tel_azimuth, tel_altitude, trigger_time = [], [], [], []
@@ -555,7 +574,7 @@ class LST1PredictionTool(Tool):
             # Quality selection based on the dl1b parameter
             if self.quality_query:
                 passes_quality_checks = self.quality_query.get_table_mask(dl1_table)
-            # Apply the mask to filter events that are not fufilling the quality criteria
+            # Apply the mask to filter events that are not fulfilling the quality criteria
             dl1_table = dl1_table[passes_quality_checks]
             if len(dl1_table) == 0:
                 self.log.debug("No events passed the quality selection.")
@@ -572,20 +591,27 @@ class LST1PredictionTool(Tool):
             tel_altitude.extend(dl1_table["tel_alt"].data)
             trigger_time.extend(dl1_table["time"].mjd)
             if self.load_type_model_from is not None:
-                fvs, preds = self._predict_batch(self.backbone_type, self.head_type, input_data)
+                fvs, preds = self._predict_batch(
+                    self.backbone_type, self.head_type, input_data
+                )
                 if self.framework_type == FrameworkType.PYTORCH:
                     from scipy.special import softmax
+
                     preds = softmax(preds, axis=1)
                 classification_fvs.extend(fvs)
                 prediction.extend(preds[:, 1])
 
             if self.load_energy_model_from is not None:
-                fvs, preds = self._predict_batch(self.backbone_energy, self.head_energy, input_data)
+                fvs, preds = self._predict_batch(
+                    self.backbone_energy, self.head_energy, input_data
+                )
                 energy_fvs.extend(fvs)
                 energy.extend(preds[:, 0])
 
             if self.load_cameradirection_model_from is not None:
-                fvs, preds = self._predict_batch(self.backbone_direction, self.head_direction, input_data)
+                fvs, preds = self._predict_batch(
+                    self.backbone_direction, self.head_direction, input_data
+                )
                 direction_fvs.extend(fvs)
                 cam_coord_offset_x.extend(preds[:, 0])
                 cam_coord_offset_y.extend(preds[:, 1])
@@ -620,7 +646,12 @@ class LST1PredictionTool(Tool):
                 )
                 classification_tel_table = vstack([classification_tel_table, nan_table])
             classification_tel_table.sort(TELESCOPE_EVENT_KEYS)
-            classification_is_valid = ~np.isnan(classification_tel_table[f"{self.prefixes['type']}_tel_prediction"].data, dtype=bool)
+            classification_is_valid = ~np.isnan(
+                classification_tel_table[
+                    f"{self.prefixes['type']}_tel_prediction"
+                ].data,
+                dtype=bool,
+            )
             classification_tel_table.add_column(
                 classification_is_valid,
                 name=f"{self.prefixes['type']}_tel_is_valid",
@@ -629,7 +660,7 @@ class LST1PredictionTool(Tool):
             add_defaults_and_meta(
                 classification_tel_table,
                 ParticleClassificationContainer,
-                prefix=self.prefixes['type'],
+                prefix=self.prefixes["type"],
                 add_tel_prefix=True,
             )
             # Save the prediction to the output file
@@ -655,7 +686,8 @@ class LST1PredictionTool(Tool):
                             colname, colname.replace("_tel", "")
                         )
                 classification_subarray_table.add_column(
-                    [[val] for val in classification_is_valid], name=f"{self.prefixes['type']}_telescopes"
+                    [[val] for val in classification_is_valid],
+                    name=f"{self.prefixes['type']}_telescopes",
                 )
                 # Save the prediction to the output file
                 write_table(
@@ -671,15 +703,15 @@ class LST1PredictionTool(Tool):
                 )
             # Adding the feature vectors for the classification
             if self.dl1_features:
-                is_valid_col = ~np.isnan(
-                    np.min(classification_fvs, axis=1), dtype=bool
-                )
+                is_valid_col = ~np.isnan(np.min(classification_fvs, axis=1), dtype=bool)
                 feature_vector_table.add_column(
                     classification_fvs,
                     name=f"{self.prefixes['all']}_tel_particletype_feature_vectors",
                 )
                 if nonexample_identifiers is not None:
-                    fvs_columns_list.append(f"{self.prefixes['all']}_tel_particletype_feature_vectors")
+                    fvs_columns_list.append(
+                        f"{self.prefixes['all']}_tel_particletype_feature_vectors"
+                    )
                     fvs_shapes_list.append(
                         (
                             len(nonexample_identifiers),
@@ -691,7 +723,9 @@ class LST1PredictionTool(Tool):
             # Convert the reconstructed energy from log10(TeV) to TeV
             reco_energy = u.Quantity(np.power(10, np.squeeze(energy)), unit=u.TeV)
             # Add the reconstructed energy to the prediction table
-            energy_tel_table.add_column(reco_energy, name=f"{self.prefixes['energy']}_tel_energy")
+            energy_tel_table.add_column(
+                reco_energy, name=f"{self.prefixes['energy']}_tel_energy"
+            )
             # Produce output table with NaNs for missing predictions
             if len(nonexample_identifiers) > 0:
                 nan_table = self._create_nan_table(
@@ -701,7 +735,10 @@ class LST1PredictionTool(Tool):
                 )
                 energy_tel_table = vstack([energy_tel_table, nan_table])
             energy_tel_table.sort(TELESCOPE_EVENT_KEYS)
-            energy_is_valid = ~np.isnan(energy_tel_table[f"{self.prefixes['energy']}_tel_energy"].data, dtype=bool)
+            energy_is_valid = ~np.isnan(
+                energy_tel_table[f"{self.prefixes['energy']}_tel_energy"].data,
+                dtype=bool,
+            )
             energy_tel_table.add_column(
                 energy_is_valid,
                 name=f"{self.prefixes['energy']}_tel_is_valid",
@@ -710,7 +747,7 @@ class LST1PredictionTool(Tool):
             add_defaults_and_meta(
                 energy_tel_table,
                 ReconstructedEnergyContainer,
-                prefix=self.prefixes['energy'],
+                prefix=self.prefixes["energy"],
                 add_tel_prefix=True,
             )
             # Save the prediction to the output file
@@ -736,7 +773,8 @@ class LST1PredictionTool(Tool):
                             colname, colname.replace("_tel", "")
                         )
                 energy_subarray_table.add_column(
-                    [[val] for val in energy_is_valid], name=f"{self.prefixes['energy']}_telescopes"
+                    [[val] for val in energy_is_valid],
+                    name=f"{self.prefixes['energy']}_telescopes",
                 )
                 # Save the prediction to the output file
                 write_table(
@@ -752,15 +790,15 @@ class LST1PredictionTool(Tool):
                 )
             # Adding the feature vectors for the energy regression
             if self.dl1_features:
-                is_valid_col = ~np.isnan(
-                    np.min(energy_fvs, axis=1), dtype=bool
-                )
+                is_valid_col = ~np.isnan(np.min(energy_fvs, axis=1), dtype=bool)
                 feature_vector_table.add_column(
                     energy_fvs,
                     name=f"{self.prefixes['all']}_tel_energy_feature_vectors",
                 )
                 if nonexample_identifiers is not None:
-                    fvs_columns_list.append(f"{self.prefixes['all']}_tel_energy_feature_vectors")
+                    fvs_columns_list.append(
+                        f"{self.prefixes['all']}_tel_energy_feature_vectors"
+                    )
                     fvs_shapes_list.append(
                         (
                             len(nonexample_identifiers),
@@ -787,7 +825,9 @@ class LST1PredictionTool(Tool):
             )
             # Set a new camera frame with the pixel rotation of the camera
             camera_frame = CameraFrame(
-                focal_length=self.subarray.tel[self.tel_id].camera.geometry.frame.focal_length,
+                focal_length=self.subarray.tel[
+                    self.tel_id
+                ].camera.geometry.frame.focal_length,
                 rotation=self.pix_rotation,
                 telescope_pointing=tel_pointing,
             )
@@ -795,31 +835,45 @@ class LST1PredictionTool(Tool):
             cam_coord_offset = SkyCoord(
                 x=u.Quantity(cam_coord_offset_x, unit=u.m),
                 y=u.Quantity(cam_coord_offset_y, unit=u.m),
-                frame=camera_frame
+                frame=camera_frame,
             )
             # Transform the true Alt/Az coordinates to camera coordinates
             reco_direction = cam_coord_offset.transform_to(altaz)
             # Add the reconstructed direction (az, alt) to the prediction table
             direction_tel_table.add_column(
-                reco_direction.az.to(u.deg), name=f"{self.prefixes['cameradirection']}_tel_az"
+                reco_direction.az.to(u.deg),
+                name=f"{self.prefixes['cameradirection']}_tel_az",
             )
             direction_tel_table.add_column(
-                reco_direction.alt.to(u.deg), name=f"{self.prefixes['cameradirection']}_tel_alt"
+                reco_direction.alt.to(u.deg),
+                name=f"{self.prefixes['cameradirection']}_tel_alt",
             )
             # Produce output table with NaNs for missing predictions
             if len(nonexample_identifiers) > 0:
                 nan_table = self._create_nan_table(
                     nonexample_identifiers,
-                    columns=[f"{self.prefixes['cameradirection']}_tel_az", f"{self.prefixes['cameradirection']}_tel_alt"],
-                    shapes=[(len(nonexample_identifiers),), (len(nonexample_identifiers),)],
+                    columns=[
+                        f"{self.prefixes['cameradirection']}_tel_az",
+                        f"{self.prefixes['cameradirection']}_tel_alt",
+                    ],
+                    shapes=[
+                        (len(nonexample_identifiers),),
+                        (len(nonexample_identifiers),),
+                    ],
                 )
                 direction_tel_table = vstack([direction_tel_table, nan_table])
             direction_tel_table.keep_columns(
                 TELESCOPE_EVENT_KEYS
-                + [f"{self.prefixes['cameradirection']}_tel_az", f"{self.prefixes['cameradirection']}_tel_alt"]
+                + [
+                    f"{self.prefixes['cameradirection']}_tel_az",
+                    f"{self.prefixes['cameradirection']}_tel_alt",
+                ]
             )
             direction_tel_table.sort(TELESCOPE_EVENT_KEYS)
-            direction_is_valid = ~np.isnan(direction_tel_table[f"{self.prefixes['cameradirection']}_tel_az"].data, dtype=bool)
+            direction_is_valid = ~np.isnan(
+                direction_tel_table[f"{self.prefixes['cameradirection']}_tel_az"].data,
+                dtype=bool,
+            )
             direction_tel_table.add_column(
                 direction_is_valid,
                 name=f"{self.prefixes['cameradirection']}_tel_is_valid",
@@ -828,7 +882,7 @@ class LST1PredictionTool(Tool):
             add_defaults_and_meta(
                 direction_tel_table,
                 ReconstructedGeometryContainer,
-                prefix=self.prefixes['cameradirection'],
+                prefix=self.prefixes["cameradirection"],
                 add_tel_prefix=True,
             )
             # Save the prediction to the output file
@@ -854,7 +908,8 @@ class LST1PredictionTool(Tool):
                             colname, colname.replace("_tel", "")
                         )
                 direction_subarray_table.add_column(
-                    [[val] for val in direction_is_valid], name=f"{self.prefixes['cameradirection']}_telescopes"
+                    [[val] for val in direction_is_valid],
+                    name=f"{self.prefixes['cameradirection']}_telescopes",
                 )
                 # Save the prediction to the output file
                 write_table(
@@ -870,15 +925,15 @@ class LST1PredictionTool(Tool):
                 )
             # Adding the feature vectors for the arrival direction regression
             if self.dl1_features:
-                is_valid_col = ~np.isnan(
-                    np.min(direction_fvs, axis=1), dtype=bool
-                )
+                is_valid_col = ~np.isnan(np.min(direction_fvs, axis=1), dtype=bool)
                 feature_vector_table.add_column(
                     direction_fvs,
                     name=f"{self.prefixes['all']}_tel_geometry_feature_vectors",
                 )
                 if nonexample_identifiers is not None:
-                    fvs_columns_list.append(f"{self.prefixes['all']}_tel_geometry_feature_vectors")
+                    fvs_columns_list.append(
+                        f"{self.prefixes['all']}_tel_geometry_feature_vectors"
+                    )
                     fvs_shapes_list.append(
                         (
                             len(nonexample_identifiers),
@@ -896,7 +951,10 @@ class LST1PredictionTool(Tool):
                     )
                     feature_vector_table = vstack([feature_vector_table, nan_table])
                     is_valid_col = np.concatenate(
-                        (is_valid_col, np.zeros(len(nonexample_identifiers), dtype=bool))
+                        (
+                            is_valid_col,
+                            np.zeros(len(nonexample_identifiers), dtype=bool),
+                        )
                     )
             # Add is_valid column to the feature vector table
             feature_vector_table.add_column(
@@ -920,7 +978,7 @@ class LST1PredictionTool(Tool):
         """
         Perform final cleanup and save metadata after the core logic completes.
 
-        This method writes provenance data (such as configuration and execution context) 
+        This method writes provenance data (such as configuration and execution context)
         to the output file, finalizes tables, and ensures all file handlers are safely closed.
         """
         self.log.info("Tool is shutting down")
@@ -958,6 +1016,7 @@ class LST1PredictionTool(Tool):
             return fvs, preds
         if self.framework_type == FrameworkType.PYTORCH:
             import torch
+
             tensor_data = torch.from_numpy(input_data).float()
             # Convert Channels-Last (N, H, W, C) to Channels-First (N, C, H, W)
             if tensor_data.ndim == 4:
@@ -996,7 +1055,7 @@ class LST1PredictionTool(Tool):
         Returns
         -------
         input_shape : tuple of int or None
-            Input feature tensor shape (excluding batch dimension), or ``None`` if ``path`` 
+            Input feature tensor shape (excluding batch dimension), or ``None`` if ``path``
             is ``None`` or framework is PyTorch.
         backbone : keras.Model, torch.nn.Module, or None
             Feature extraction backbone of the model, or ``None`` if ``path`` is ``None``.
@@ -1006,7 +1065,7 @@ class LST1PredictionTool(Tool):
         Raises
         ------
         TypeError
-            If the loaded PyTorch object is not an instance of ``torch.nn.Module`` 
+            If the loaded PyTorch object is not an instance of ``torch.nn.Module``
             (e.g., when a ``state_dict`` is loaded instead of the full model).
         """
         if path is None:
@@ -1016,6 +1075,7 @@ class LST1PredictionTool(Tool):
         def _split_keras_model(model):
             """Split the Keras model into backbone and head."""
             import keras
+
             # Get the backbone model which is the second layer of the model
             backbone = model.get_layer(index=1)
             # Create a new head model with the same layers as the original model.
@@ -1029,6 +1089,7 @@ class LST1PredictionTool(Tool):
 
         if self.framework_type == FrameworkType.KERAS:
             import keras
+
             model = keras.saving.load_model(path)
             input_shape = model.input_shape[1:]
             backbone, head = _split_keras_model(model)
@@ -1036,24 +1097,25 @@ class LST1PredictionTool(Tool):
         if self.framework_type == FrameworkType.PYTORCH:
             import torch
             import torch.nn as nn
+
             model = torch.load(path, map_location=self.device, weights_only=False)
-            
+
             # Extract model and check config if it's a checkpoint dictionary
-            if isinstance(model, dict) and 'model' in model:
-                saved_config = model.get('ctlearn_config', {})
+            if isinstance(model, dict) and "model" in model:
+                saved_config = model.get("ctlearn_config", {})
                 current_config = dict(self.config) if self.config else {}
-                
-                if 'DLDataReader' in saved_config and 'DLDataReader' in current_config:
-                    for key, saved_val in saved_config['DLDataReader'].items():
-                        current_val = current_config['DLDataReader'].get(key)
+
+                if "DLDataReader" in saved_config and "DLDataReader" in current_config:
+                    for key, saved_val in saved_config["DLDataReader"].items():
+                        current_val = current_config["DLDataReader"].get(key)
                         if current_val is not None and current_val != saved_val:
                             raise ValueError(
                                 f"Configuration mismatch: The model was trained with DLDataReader.{key}={saved_val}, "
                                 f"but you are trying to predict with {key}={current_val}. "
                                 "Adjust the prediction configuration to match."
                             )
-                model = model['model']
-                
+                model = model["model"]
+
             if not isinstance(model, nn.Module):
                 raise TypeError(
                     f"Expected a PyTorch 'nn.Module' object at '{path}', "
@@ -1062,12 +1124,12 @@ class LST1PredictionTool(Tool):
                     "rather than 'torch.save(model.state_dict(), path)'."
                 )
             model.eval()
-            
+
             backbone, head = model.backbone, model.head
             if self.num_devices > 1:
                 backbone = nn.DataParallel(backbone)
                 head = nn.DataParallel(head)
-                
+
             return None, backbone, head
 
     def _create_nan_table(self, nonexample_identifiers, columns, shapes):
@@ -1101,7 +1163,7 @@ def main():
     """
     Main entry point for the command-line tool.
 
-    This function instantiates the Tool class and invokes its `run()` method, 
+    This function instantiates the Tool class and invokes its `run()` method,
     which sequentially executes the `setup()`, `start()`, and `finish()` methods.
     """
     # Run the tool

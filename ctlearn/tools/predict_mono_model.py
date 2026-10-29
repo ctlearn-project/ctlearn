@@ -4,20 +4,19 @@ Tool to predict the gammaness, energy and arrival direction in monoscopic mode u
 
 __all__ = [
     "MonoPredictCTLearnModel",
-] 
+]
 
 import numpy as np
 from astropy.table import (
     Table,
-    vstack,
     join,
     setdiff,
+    vstack,
 )
-
 from ctapipe.containers import (
     ParticleClassificationContainer,
-    ReconstructedGeometryContainer,
     ReconstructedEnergyContainer,
+    ReconstructedGeometryContainer,
 )
 from ctapipe.core.traits import ComponentName
 from ctapipe.io import read_table, write_table
@@ -26,21 +25,21 @@ from ctapipe.io.hdf5dataformat import (
     DL1_TEL_POINTING_GROUP,
     DL1_TEL_TRIGGER_TABLE,
     DL2_EVENT_STATISTICS_GROUP,
-    DL2_TEL_PARTICLETYPE_GROUP,
-    DL2_TEL_ENERGY_GROUP,
-    DL2_TEL_GEOMETRY_GROUP,
-    DL2_SUBARRAY_PARTICLETYPE_GROUP,
     DL2_SUBARRAY_ENERGY_GROUP,
     DL2_SUBARRAY_GEOMETRY_GROUP,
+    DL2_SUBARRAY_PARTICLETYPE_GROUP,
+    DL2_TEL_ENERGY_GROUP,
+    DL2_TEL_GEOMETRY_GROUP,
+    DL2_TEL_PARTICLETYPE_GROUP,
 )
 from ctapipe.reco.reconstructor import ReconstructionProperty
 from ctapipe.reco.stereo_combination import StereoCombiner
 from ctapipe.reco.utils import add_defaults_and_meta
-from ctlearn.tools.predict_model import PredictCTLearnModel
 from dl1_data_handler.reader import ProcessType
 
+from ctlearn.tools.predict_model import PredictCTLearnModel
 
-# Convienient constants for column names and table keys
+# Convenient constants for column names and table keys
 SUBARRAY_EVENT_KEYS = ["obs_id", "event_id"]
 TEL_EVENT_KEYS = ["obs_id", "event_id", "tel_id"]
 
@@ -117,8 +116,8 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
         """
         Execute the core logic of the tool.
 
-        Depending on the tool, this method either orchestrates the training and validation 
-        loops across epochs, or it iterates through the input dataset to generate 
+        Depending on the tool, this method either orchestrates the training and validation
+        loops across epochs, or it iterates through the input dataset to generate
         and save model predictions to the output file.
         """
         self.log.info("Processing the telescope pointings...")
@@ -714,7 +713,7 @@ def main():
     """
     Main entry point for the command-line tool.
 
-    This function instantiates the Tool class and invokes its `run()` method, 
+    This function instantiates the Tool class and invokes its `run()` method,
     which sequentially executes the `setup()`, `start()`, and `finish()` methods.
     """
     # Run the tool

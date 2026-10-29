@@ -2,17 +2,17 @@
 ctlearn core Keras functionalities
 """
 
-from .model import (
-    build_fully_connect_keras_head,
-    KerasConvBackend,
-    KerasSingleCNN,
-    KerasResNet,
-    KerasLoadedModel,
-)
 from .attention import (
-    dual_squeeze_excite_block,
     channel_squeeze_excite_block,
+    dual_squeeze_excite_block,
     spatial_squeeze_excite_block,
+)
+from .model import (
+    KerasConvBackend,
+    KerasLoadedModel,
+    KerasResNet,
+    KerasSingleCNN,
+    build_fully_connect_keras_head,
 )
 from .sequence import KerasSequence
 

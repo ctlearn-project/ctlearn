@@ -1,5 +1,4 @@
-"""ctlearn PyTorch training command line tool.
-"""
+"""ctlearn PyTorch training command line tool."""
 
 from .train_model import TrainCTLearnPyTorchModel
 

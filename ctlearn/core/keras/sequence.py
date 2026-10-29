@@ -1,11 +1,10 @@
-""" Keras sequence for data loading."""
+"""Keras sequence for data loading."""
 
 __all__ = ["KerasSequence"]
 
 import numpy as np
-from keras.utils import Sequence, to_categorical
-
 from dl1_data_handler.reader import ProcessType
+from keras.utils import Sequence, to_categorical
 
 
 class KerasSequence(Sequence):
@@ -243,8 +242,8 @@ class KerasSequence(Sequence):
         features, mono_feature_vectors, stereo_feature_vectors = [], [], []
         true_shower_primary_class = []
         log_true_energy = []
-        fov_lon, fov_lat, angular_separation = [], [], []
-        cam_coord_offset_x, cam_coord_offset_y, cam_coord_distance = [], [], []
+        fov_lon, fov_lat = [], []
+        cam_coord_offset_x, cam_coord_offset_y = [], []
         for group_element in batch_grouped.groups:
             if "features" in batch.colnames:
                 if self.sort_by_intensity:
@@ -283,14 +282,10 @@ class KerasSequence(Sequence):
                 log_true_energy.append(group_element["log_true_energy"].data[0])
             if "skydirection" in self.tasks:
                 fov_lon.append(group_element["fov_lon"].data[0])
-                fov_lat.append(
-                    group_element["fov_lat"].data[0]
-                )
+                fov_lat.append(group_element["fov_lat"].data[0])
             if "cameradirection" in self.tasks:
                 cam_coord_offset_x.append(group_element["cam_coord_offset_x"].data)
-                cam_coord_offset_y.append(
-                    group_element["cam_coord_offset_y"].data
-                )
+                cam_coord_offset_y.append(group_element["cam_coord_offset_y"].data)
         # Store the labels in the labels dictionary
         if "type" in self.tasks:
             labels["type"] = to_categorical(
@@ -322,7 +317,7 @@ class KerasSequence(Sequence):
                 ),
                 axis=1,
             )
-        # Store the fatures in the features dictionary
+        # Store the features in the features dictionary
         if "features" in batch.colnames:
             features = np.array(features)
         # TDOO: Add support for both feature vectors

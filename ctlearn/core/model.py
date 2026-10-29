@@ -4,9 +4,9 @@ This module defines the ``CTLearnModel`` classes, which holds the basic function
 
 from abc import abstractmethod
 
-
 from ctapipe.core import Component
-from ctapipe.core.traits import Bool, Int, CaselessStrEnum, List, Dict, Unicode, Path
+from ctapipe.core.traits import Bool, CaselessStrEnum, Dict, Int, List, Path, Unicode
+
 from ctlearn.tools.utils import validate_trait_dict
 
 __all__ = [
@@ -17,11 +17,7 @@ __all__ = [
     "LoadedModel",
 ]
 
-from abc import ABC, abstractmethod
-
-from ctapipe.core import Component
-from ctapipe.core.traits import Bool, Int, CaselessStrEnum, List, Dict, Unicode, Path
-from ctlearn.tools.utils import validate_trait_dict
+from abc import ABC
 
 
 class ConvBackend(ABC):
@@ -152,7 +148,6 @@ class CTLearnModel(Component):
                 "mechanism": self.attention_mechanism,
                 "reduction_ratio": self.attention_reduction_ratio,
             }
-
 
     @abstractmethod
     def _build_backbone(self, input_shape):
@@ -424,6 +419,6 @@ class LoadedModel(CTLearnModel):
         )
         # Load the fully connected head from the loaded model or build a new one
         if self.overwrite_head:
-            backbone_output = self.backbone_model(self.input_layer)
+            self.backbone_model(self.input_layer)
             # Validate the head trait with the provided tasks
             validate_trait_dict(self.head_layers, tasks)

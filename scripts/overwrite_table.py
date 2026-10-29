@@ -1,4 +1,5 @@
 import argparse
+
 from ctapipe.io import read_table, write_table
 
 

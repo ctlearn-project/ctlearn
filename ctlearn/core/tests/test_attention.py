@@ -1,18 +1,19 @@
-import pytest
-import torch
 import keras
+import pytest
 import tensorflow as tf
+import torch
 
 from ctlearn.core.keras.model import (
     channel_squeeze_excite_block,
-    spatial_squeeze_excite_block,
     dual_squeeze_excite_block,
+    spatial_squeeze_excite_block,
 )
-from ctlearn.core.pytorch.attention import(
+from ctlearn.core.pytorch.attention import (
     ChannelSqueezeExciteBlock,
-    SpatialSqueezeExciteBlock,
     DualSqueezeExciteBlock,
+    SpatialSqueezeExciteBlock,
 )
+
 
 def build_keras_se_model(block_fn, input_shape, **kwargs):
     """Wraps a Keras functional squeeze-excite block in a Keras Model."""
@@ -40,7 +41,9 @@ def test_output_shape_parity(k_fn, p_class, kwargs, batch, height, width, channe
     """Verifies that output shapes match between Keras (BHWC) and PyTorch (BCHW)."""
     # Keras Input: (Batch, H, W, C)
     x_k = tf.random.normal((batch, height, width, channels))
-    k_model = build_keras_se_model(k_fn, input_shape=(height, width, channels), **kwargs)
+    k_model = build_keras_se_model(
+        k_fn, input_shape=(height, width, channels), **kwargs
+    )
     k_out = k_model(x_k)
 
     # PyTorch Input: (Batch, C, H, W)

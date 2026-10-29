@@ -1,6 +1,6 @@
-import pytest
-import numpy as np
 import keras
+import numpy as np
+import pytest
 import torch
 import torch.nn as nn
 
@@ -9,11 +9,12 @@ from ctlearn.core.pytorch.model import PyTorchResNet, PyTorchSingleCNN
 
 rng = np.random.default_rng(42)
 
+
 @pytest.fixture
 def common_config():
     return {
         "tasks": ["type", "energy", "cameradirection"],
-        "input_shape_keras": (110, 110, 2),    # (H, W, C)
+        "input_shape_keras": (110, 110, 2),  # (H, W, C)
         "input_shape_pytorch": (2, 110, 110),  # (C, H, W)
         "kwargs": {
             "head_layers": {
@@ -28,6 +29,7 @@ def common_config():
             },
         },
     }
+
 
 @pytest.mark.parametrize("batchnorm", [True, False])
 @pytest.mark.parametrize(
@@ -56,36 +58,45 @@ def test_SingleCNN_model_structure_parity(common_config, batchnorm, attention):
 
     for task in tasks:
         keras_wrapper = KerasSingleCNN(
-            input_shape=common_config["input_shape_keras"],
-            tasks=[task],
-            **kwargs
+            input_shape=common_config["input_shape_keras"], tasks=[task], **kwargs
         )
         torch_wrapper = PyTorchSingleCNN(
-            input_shape=common_config["input_shape_pytorch"],
-            tasks=[task],
-            **kwargs
+            input_shape=common_config["input_shape_pytorch"], tasks=[task], **kwargs
         )
-        # Collect all the layers from the Keras-based model 
+        # Collect all the layers from the Keras-based model
         keras_layers = [
-            l.get_weights()[0].shape 
-            for l in keras_wrapper.backbone_model.layers 
-            if isinstance(l, (keras.layers.Conv2D, keras.layers.Dense, keras.layers.BatchNormalization))
+            layer.get_weights()[0].shape
+            for layer in keras_wrapper.backbone_model.layers
+            if isinstance(
+                layer,
+                (
+                    keras.layers.Conv2D,
+                    keras.layers.Dense,
+                    keras.layers.BatchNormalization,
+                ),
+            )
         ]
         # Collect also the dense layers from the head
-        keras_layers.extend([
-                l.get_weights()[0].shape 
-                for l in keras_wrapper.model.layers
-                if isinstance(l, keras.layers.Dense) and task in l.name
+        keras_layers.extend(
+            [
+                layer.get_weights()[0].shape
+                for layer in keras_wrapper.model.layers
+                if isinstance(layer, keras.layers.Dense) and task in layer.name
             ]
         )
-        # Collect all the layers from the PyTorch-based model 
+        # Collect all the layers from the PyTorch-based model
         # Note different shapes (PyTorch format: Out, In, H, W -> Keras: H, W, In, Out)
         torch_layers = []
         for m in torch_wrapper.backbone_model.modules():
             if isinstance(m, torch.nn.Conv2d):
                 # PyTorch format: (Out, In, H, W) -> Keras format: (H, W, In, Out)
                 torch_layers.append(
-                    (m.weight.shape[2], m.weight.shape[3], m.weight.shape[1], m.weight.shape[0])
+                    (
+                        m.weight.shape[2],
+                        m.weight.shape[3],
+                        m.weight.shape[1],
+                        m.weight.shape[0],
+                    )
                 )
             elif isinstance(m, torch.nn.Linear):
                 torch_layers.append((m.weight.shape[1], m.weight.shape[0]))
@@ -95,7 +106,13 @@ def test_SingleCNN_model_structure_parity(common_config, batchnorm, attention):
         # Collect also the linear layers from the head
         internal_key = torch_wrapper.logits_head._task_mapping[task]
         p_head_module = torch_wrapper.logits_head.heads[internal_key]
-        torch_layers.extend([(m.weight.shape[1], m.weight.shape[0]) for m in p_head_module if isinstance(m, torch.nn.Linear)])
+        torch_layers.extend(
+            [
+                (m.weight.shape[1], m.weight.shape[0])
+                for m in p_head_module
+                if isinstance(m, torch.nn.Linear)
+            ]
+        )
         # Assert structural length and individual weight shape alignment
         assert len(keras_layers) == len(torch_layers), (
             f"Layer count mismatch: Keras has {len(keras_layers)}, PyTorch has {len(torch_layers)}"
@@ -111,7 +128,10 @@ def test_SingleCNN_model_structure_parity(common_config, batchnorm, attention):
     "first_layers",
     [
         {"init_layer": None, "init_max_pool": None},
-        {"init_layer": {'filters': 8, 'kernel_size': 7, 'strides': 2}, "init_max_pool": {'size': 3, 'strides': 2}},
+        {
+            "init_layer": {"filters": 8, "kernel_size": 7, "strides": 2},
+            "init_max_pool": {"size": 3, "strides": 2},
+        },
     ],
 )
 @pytest.mark.parametrize(
@@ -123,7 +143,9 @@ def test_SingleCNN_model_structure_parity(common_config, batchnorm, attention):
         {"mechanism": "Dual-SE", "reduction_ratio": 32},
     ],
 )
-def test_ResNet_model_structure_parity(common_config, block_type, first_layers, attention):
+def test_ResNet_model_structure_parity(
+    common_config, block_type, first_layers, attention
+):
     """Verify that Keras and PyTorch models have matching layer counts and weight shapes."""
     tasks = common_config["tasks"]
     kwargs = common_config["kwargs"].copy()
@@ -142,77 +164,129 @@ def test_ResNet_model_structure_parity(common_config, block_type, first_layers, 
 
     for task in tasks:
         keras_wrapper = KerasResNet(
-            input_shape=common_config["input_shape_keras"],
-            tasks=[task],
-            **kwargs
+            input_shape=common_config["input_shape_keras"], tasks=[task], **kwargs
         )
         torch_wrapper = PyTorchResNet(
-            input_shape=common_config["input_shape_pytorch"],
-            tasks=[task],
-            **kwargs
+            input_shape=common_config["input_shape_pytorch"], tasks=[task], **kwargs
         )
         # 1. Collect Keras backbone weight shapes (Conv2D / Dense)
         keras_layers = [
-            l.get_weights()[0].shape
-            for l in keras_wrapper.backbone_model.layers
-            if hasattr(l, "weights") and l.weights and isinstance(l, (keras.layers.Conv2D, keras.layers.Dense))
+            layer.get_weights()[0].shape
+            for layer in keras_wrapper.backbone_model.layers
+            if hasattr(layer, "weights")
+            and layer.weights
+            and isinstance(layer, (keras.layers.Conv2D, keras.layers.Dense))
         ]
 
         # 2. Collect PyTorch backbone weight shapes in strict sequential block order
         torch_layers = []
         # Catch initial standalone stem conv if present
-        if hasattr(torch_wrapper.backbone_model, "init_layer") and isinstance(torch_wrapper.backbone_model.init_layer, nn.Conv2d):
+        if hasattr(torch_wrapper.backbone_model, "init_layer") and isinstance(
+            torch_wrapper.backbone_model.init_layer, nn.Conv2d
+        ):
             c = torch_wrapper.backbone_model.init_layer
-            torch_layers.append((c.kernel_size[0], c.kernel_size[1], c.in_channels, c.out_channels))
+            torch_layers.append(
+                (c.kernel_size[0], c.kernel_size[1], c.in_channels, c.out_channels)
+            )
         # Iterate through stages and blocks sequentially
         for module in torch_wrapper.backbone_model.modules():
             # Detect both BasicBlock and BottleneckBlock
             if hasattr(module, "conv1") and hasattr(module, "conv2"):
                 # conv1
                 c1 = module.conv1
-                torch_layers.append((c1.kernel_size[0], c1.kernel_size[1], c1.in_channels, c1.out_channels))
+                torch_layers.append(
+                    (
+                        c1.kernel_size[0],
+                        c1.kernel_size[1],
+                        c1.in_channels,
+                        c1.out_channels,
+                    )
+                )
                 # conv2
                 c2 = module.conv2
-                torch_layers.append((c2.kernel_size[0], c2.kernel_size[1], c2.in_channels, c2.out_channels))
+                torch_layers.append(
+                    (
+                        c2.kernel_size[0],
+                        c2.kernel_size[1],
+                        c2.in_channels,
+                        c2.out_channels,
+                    )
+                )
                 # conv3 (Bottleneck only)
                 if hasattr(module, "conv3"):
                     c3 = module.conv3
-                    torch_layers.append((c3.kernel_size[0], c3.kernel_size[1], c3.in_channels, c3.out_channels))
+                    torch_layers.append(
+                        (
+                            c3.kernel_size[0],
+                            c3.kernel_size[1],
+                            c3.in_channels,
+                            c3.out_channels,
+                        )
+                    )
                 # Attention layer (if present)
                 if hasattr(module, "attn_layer") and module.attn_layer is not None:
                     # Inspect linear/conv layers inside the SE block (e.g. Channel-SE / Dual-SE / Spatial-SE)
                     for attn_submodule in module.attn_layer.modules():
                         if isinstance(attn_submodule, nn.Linear):
-                            torch_layers.append((attn_submodule.weight.shape[1], attn_submodule.weight.shape[0]))
+                            torch_layers.append(
+                                (
+                                    attn_submodule.weight.shape[1],
+                                    attn_submodule.weight.shape[0],
+                                )
+                            )
                         elif isinstance(attn_submodule, nn.Conv2d):
-                            torch_layers.append((
-                                attn_submodule.kernel_size[0],
-                                attn_submodule.kernel_size[1],
-                                attn_submodule.in_channels,
-                                attn_submodule.out_channels,
-                            ))
+                            torch_layers.append(
+                                (
+                                    attn_submodule.kernel_size[0],
+                                    attn_submodule.kernel_size[1],
+                                    attn_submodule.in_channels,
+                                    attn_submodule.out_channels,
+                                )
+                            )
                 # shortcut projection (if present and not Identity)
                 if isinstance(module.shortcut, nn.Conv2d):
                     sc = module.shortcut
-                    torch_layers.append((sc.kernel_size[0], sc.kernel_size[1], sc.in_channels, sc.out_channels))
+                    torch_layers.append(
+                        (
+                            sc.kernel_size[0],
+                            sc.kernel_size[1],
+                            sc.in_channels,
+                            sc.out_channels,
+                        )
+                    )
             # Catch initial stem Conv2d (if present as direct child of backbone_model)
-            elif isinstance(module, nn.Conv2d) and module in torch_wrapper.backbone_model.children():
-                torch_layers.insert(0, (module.kernel_size[0], module.kernel_size[1], module.in_channels, module.out_channels))
+            elif (
+                isinstance(module, nn.Conv2d)
+                and module in torch_wrapper.backbone_model.children()
+            ):
+                torch_layers.insert(
+                    0,
+                    (
+                        module.kernel_size[0],
+                        module.kernel_size[1],
+                        module.in_channels,
+                        module.out_channels,
+                    ),
+                )
 
         # 3. Append task heads
-        keras_layers.extend([
-            l.get_weights()[0].shape
-            for l in keras_wrapper.model.layers
-            if isinstance(l, keras.layers.Dense) and task in l.name
-        ])
+        keras_layers.extend(
+            [
+                layer.get_weights()[0].shape
+                for layer in keras_wrapper.model.layers
+                if isinstance(layer, keras.layers.Dense) and task in layer.name
+            ]
+        )
 
         internal_key = torch_wrapper.logits_head._task_mapping[task]
         p_head_module = torch_wrapper.logits_head.heads[internal_key]
-        torch_layers.extend([
-            (m.weight.shape[1], m.weight.shape[0])
-            for m in p_head_module
-            if isinstance(m, nn.Linear)
-        ])
+        torch_layers.extend(
+            [
+                (m.weight.shape[1], m.weight.shape[0])
+                for m in p_head_module
+                if isinstance(m, nn.Linear)
+            ]
+        )
         # Assert structural length and individual weight shape alignment
         assert len(keras_layers) == len(torch_layers), (
             f"Layer count mismatch: Keras has {len(keras_layers)}, PyTorch has {len(torch_layers)}"

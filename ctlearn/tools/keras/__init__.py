@@ -1,5 +1,4 @@
-"""ctlearn Keras training command line tool.
-"""
+"""ctlearn Keras training command line tool."""
 
 from .train_model import LoggingModelCheckpoint, TrainCTLearnKerasModel
 

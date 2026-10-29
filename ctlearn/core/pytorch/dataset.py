@@ -1,14 +1,11 @@
-""" PyTorch dataset for data loading."""
-
+"""PyTorch dataset for data loading."""
 
 __all__ = ["PyTorchDataset"]
 
 import numpy as np
 import torch
-import torch.nn.functional as F
-from torch.utils.data import Dataset
-
 from dl1_data_handler.reader import ProcessType
+from torch.utils.data import Dataset
 
 
 class PyTorchDataset(Dataset):
@@ -54,7 +51,7 @@ class PyTorchDataset(Dataset):
                 keras_shape = self.DLDataReader.input_shape
             elif self.DLDataReader.mode == "stereo":
                 first_tel = next(iter(self.DLDataReader.selected_telescopes))
-                keras_shape = self.DLDataReader.input_shape[first_tel]                
+                keras_shape = self.DLDataReader.input_shape[first_tel]
                 # In Keras, 4D input shapes are usually (batch/num_tels, H, W, C)
                 if self.stack_telescope_images:
                     num_tels, h, w, c = keras_shape
@@ -139,7 +136,9 @@ class PyTorchDataset(Dataset):
         # Construct task tensors
         if "type" in self.tasks:
             # Return class indices directly as 1D long tensor
-            type_labels = torch.from_numpy(batch["true_shower_primary_class"].data).long()
+            type_labels = torch.from_numpy(
+                batch["true_shower_primary_class"].data
+            ).long()
             labels["type"] = type_labels
             if len(self.tasks) == 1:
                 labels = type_labels
@@ -268,6 +267,8 @@ class PyTorchDataset(Dataset):
         if "mono_feature_vectors" in batch.colnames:
             features = torch.tensor(np.array(mono_feature_vectors), dtype=torch.float32)
         if "stereo_feature_vectors" in batch.colnames:
-            features = torch.tensor(np.array(stereo_feature_vectors), dtype=torch.float32)
+            features = torch.tensor(
+                np.array(stereo_feature_vectors), dtype=torch.float32
+            )
 
         return features, labels

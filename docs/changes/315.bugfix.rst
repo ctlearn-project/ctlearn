@@ -1,2 +1,1 @@
 Raise a ``ToolConfigurationError`` during ``TrainCTLearnModel.setup()`` when no reconstruction task (``--reco`` / ``reco_tasks``) is selected, instead of failing later in the training loop.
-

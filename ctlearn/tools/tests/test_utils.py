@@ -1,6 +1,6 @@
 import pytest
-
 from ctapipe.core.traits import TraitError
+
 from ctlearn.tools.utils import (
     setup_framework,
     validate_trait_dict,

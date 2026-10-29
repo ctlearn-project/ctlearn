@@ -36,7 +36,7 @@ Please do not forget to update your ``LD_LIBRARY_PATH`` to include the necessary
 
    export LD_LIBRARY_PATH=/path/to/your/conda/envs/ctlearn-it-cluster/lib:/path/to/cudnn/lib:$LD_LIBRARY_PATH
 
-.. note:: 
+.. note::
    You will need to replace ``/path/to/your/conda/envs/ctlearn-it-cluster/lib`` with the actual path to your conda environment where CTLearn is installed. Similarly, replace ``/path/to/cudnn/lib`` with the path to your system's cuDNN libraries for CUDA 12.
 
 
