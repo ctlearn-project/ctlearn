@@ -58,14 +58,15 @@ from ctapipe.io.hdf5dataformat import (
     SIMULATION_PARAMETERS_GROUP,
     SIMULATION_SHOWER_TABLE,
 )
+
 # TODO: Bump minimum ctapipe version to v0.33.0. Clean up imports!
 try:
+    from ctao_datamodel.models.dataproducts import Software
     from ctapipe.io.metadata import (
         read_ctao_metadata,
         to_ctao_data_level,
         write_product_metadata_hdf5,
     )
-    from ctao_datamodel.models.dataproducts import Software
 except ImportError:
     read_ctao_metadata = None
 from ctapipe.monitoring.interpolation import PointingInterpolator
@@ -84,7 +85,6 @@ from ctlearn.tools.utils import (
     validate_conv_backend,
     validate_trait_dict,
 )
-
 
 # Convenient constants for column names and table keys
 SUBARRAY_EVENT_KEYS = ["obs_id", "event_id"]
@@ -530,11 +530,11 @@ class PredictCTLearnModel(Tool):
         """Overwrite CTAO metadata in the output file when ctapipe <= v0.32.0."""
         # TODO: Bump minimum ctapipe version to v0.33.0. Remove this function!
         # Note: Since we are using the merger in the setup to copy the data the created
-        # output file follows the old metadata since we have <= v0.32.0 installed.  
+        # output file follows the old metadata since we have <= v0.32.0 installed.
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", tables.NaturalNameWarning)
             with tables.open_file(self.output_path, mode="r+") as h5_file:
-                # Update CTA Activity metadata                
+                # Update CTA Activity metadata
                 h5_file.root._v_attrs["CTA ACTIVITY NAME"] = self.name
                 h5_file.root._v_attrs["CTA ACTIVITY ID"] = str(uuid.uuid4())
                 h5_file.root._v_attrs["CTA ACTIVITY SOFTWARE NAME"] = "ctlearn"
@@ -544,8 +544,8 @@ class PredictCTLearnModel(Tool):
                 )
                 h5_file.root._v_attrs["CTA ACTIVITY STOP TIME"] = Time.now().iso
                 # Update CTA Product metadata
-                h5_file.root._v_attrs["CTA PRODUCT DATA LEVELS"] = (
-                    ",".join(level.name for level in self._get_data_levels(h5_file))
+                h5_file.root._v_attrs["CTA PRODUCT DATA LEVELS"] = ",".join(
+                    level.name for level in self._get_data_levels(h5_file)
                 )
                 h5_file.root._v_attrs["CTA PRODUCT CREATION TIME"] = (
                     self.activity_start_time.iso
