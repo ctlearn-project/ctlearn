@@ -1,1 +1,0 @@
-Introduces ``ConvBackend`` classes that hold properties of the convolution backend. This allows selecting the square (standard) or hexagonal (``hexagdly``) model backbones for both frameworks (``Keras`` or ``PyTorch``).
