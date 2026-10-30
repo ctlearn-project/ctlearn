@@ -58,6 +58,16 @@ from ctapipe.io.hdf5dataformat import (
     SIMULATION_PARAMETERS_GROUP,
     SIMULATION_SHOWER_TABLE,
 )
+# TODO: Bump minimum ctapipe version to v0.33.0. Clean up imports!
+try:
+    from ctapipe.io.metadata import (
+        read_ctao_metadata,
+        to_ctao_data_level,
+        write_product_metadata_hdf5,
+    )
+    from ctao_datamodel.models.dataproducts import Software
+except ImportError:
+    read_ctao_metadata = None
 from ctapipe.monitoring.interpolation import PointingInterpolator
 from dl1_data_handler.reader import (
     LST_EPOCH,
@@ -66,6 +76,7 @@ from dl1_data_handler.reader import (
 )
 
 from ctlearn import __version__ as ctlearn_version
+from ctlearn import get_repository_url
 from ctlearn.tools.utils import (
     FrameworkType,
     model_conv_backend,
@@ -73,6 +84,7 @@ from ctlearn.tools.utils import (
     validate_conv_backend,
     validate_trait_dict,
 )
+
 
 # Convenient constants for column names and table keys
 SUBARRAY_EVENT_KEYS = ["obs_id", "event_id"]
@@ -480,19 +492,51 @@ class PredictCTLearnModel(Tool):
         This method writes provenance data (such as configuration and execution context)
         to the output file, finalizes tables, and ensures all file handlers are safely closed.
         """
+        # TODO: Bump minimum ctapipe version to v0.33.0. Clean up here!
         # Overwrite CTAO reference metadata to the output file
-        self._overwrite_meta()
+        if read_ctao_metadata is not None:
+            self._overwrite_meta()
+        else:
+            self._overwrite_meta_oldctapipe()
         self.log.info("Tool is shutting down")
 
     def _overwrite_meta(self):
         """Overwrite CTAO metadata in the output file."""
-        # TODO: Upgrade to new CTAO metadata standard when available
+        ctao_metadata = read_ctao_metadata(self.output_path)
+        with tables.open_file(self.output_path, mode="r+") as h5_file:
+            # Update CTA Activity metadata
+            ctao_metadata.activity.id = uuid.uuid4()
+            ctao_metadata.activity.name = self.name
+            ctao_metadata.activity.software = Software(
+                name="ctlearn",
+                version=ctlearn_version,
+                url=get_repository_url(),
+            )
+            ctao_metadata.activity.start = self.activity_start_time
+            ctao_metadata.activity.end = Time.now()
+            # Update CTA Product metadata
+            ctao_metadata.data.level = to_ctao_data_level(
+                self._get_data_levels(h5_file)
+            )
+            ctao_metadata.creation_time = self.activity_start_time
+            ctao_metadata.instance.id = uuid.uuid4()
+            write_product_metadata_hdf5(
+                product=ctao_metadata,
+                h5file=h5_file,
+                remove_legacy=True,
+            )
+
+    def _overwrite_meta_oldctapipe(self):
+        """Overwrite CTAO metadata in the output file when ctapipe <= v0.32.0."""
+        # TODO: Bump minimum ctapipe version to v0.33.0. Remove this function!
+        # Note: Since we are using the merger in the setup to copy the data the created
+        # output file follows the old metadata since we have <= v0.32.0 installed.  
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", tables.NaturalNameWarning)
             with tables.open_file(self.output_path, mode="r+") as h5_file:
-                # Update CTA Activity metadata
-                h5_file.root._v_attrs["CTA ACTIVITY ID"] = str(uuid.uuid4())
+                # Update CTA Activity metadata                
                 h5_file.root._v_attrs["CTA ACTIVITY NAME"] = self.name
+                h5_file.root._v_attrs["CTA ACTIVITY ID"] = str(uuid.uuid4())
                 h5_file.root._v_attrs["CTA ACTIVITY SOFTWARE NAME"] = "ctlearn"
                 h5_file.root._v_attrs["CTA ACTIVITY SOFTWARE VERSION"] = ctlearn_version
                 h5_file.root._v_attrs["CTA ACTIVITY START TIME"] = (
@@ -501,7 +545,7 @@ class PredictCTLearnModel(Tool):
                 h5_file.root._v_attrs["CTA ACTIVITY STOP TIME"] = Time.now().iso
                 # Update CTA Product metadata
                 h5_file.root._v_attrs["CTA PRODUCT DATA LEVELS"] = (
-                    self._get_data_levels(h5_file)
+                    ",".join(level.name for level in self._get_data_levels(h5_file))
                 )
                 h5_file.root._v_attrs["CTA PRODUCT CREATION TIME"] = (
                     self.activity_start_time.iso
@@ -509,14 +553,19 @@ class PredictCTLearnModel(Tool):
                 h5_file.root._v_attrs["CTA PRODUCT ID"] = str(uuid.uuid4())
                 h5_file.flush()
 
-    def _get_data_levels(self, h5file):
+    def _get_data_levels(self, h5file) -> list[DataLevel]:
         """Get the data levels present in the HDF5 file."""
-        data_levels = {
-            level.name
-            for level, group in DATALEVEL_TO_GROUP.items()
-            if hasattr(h5file.root, group)
-        }
-        return ",".join(sorted(data_levels))
+        data_levels = sorted(
+            (
+                level
+                for level, group in DATALEVEL_TO_GROUP.items()
+                if hasattr(h5file.root, group)
+            ),
+            key=lambda level: level.value,
+        )
+        if not data_levels:
+            raise ValueError(f"No data levels found in output file {self.output_path}")
+        return data_levels
 
     def _ensure_subarray_consistency(self):
         """

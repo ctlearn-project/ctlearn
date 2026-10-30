@@ -2,28 +2,38 @@
 common pytest fixtures for tests in ctlearn.
 """
 
-import shutil
-import warnings
 from pathlib import Path
+import warnings
 
 import numpy as np
 import pytest
+import shutil
 import tables
 from astropy import units as u
 from astropy.table import Column, Table
+from filelock import FileLock
+from traitlets.config.loader import Config
+
 from ctapipe.core import run_tool
 from ctapipe.io import read_table, write_table
 from ctapipe.io.hdf5dataformat import (
-    DL0_TEL_POINTING_GROUP,
-    DL1_TEL_TRIGGER_TABLE,
+    SIMULATION_RUN_TABLE,
     FIXED_POINTING_GROUP,
     SIMULATION_GROUP,
-    SIMULATION_RUN_TABLE,
+    DL1_TEL_TRIGGER_TABLE,
+    DL0_TEL_POINTING_GROUP,
 )
+# TODO: Bump minimum ctapipe version to v0.33.0. Clean up imports!
+try:
+    from ctapipe.io.metadata import ProductMetadata as _ProductMetadata
+except ImportError:
+    _ProductMetadata = None
+try:
+    from ctapipe.io.metadata import read_ctao_metadata, write_product_metadata_hdf5
+except ImportError:
+    read_ctao_metadata = None
 from ctapipe.tools.process import ProcessorTool
 from ctapipe.utils import get_dataset_path
-from filelock import FileLock
-from traitlets.config.loader import Config
 
 from ctlearn.tools.keras.train_model import TrainCTLearnKerasModel
 from ctlearn.tools.pytorch.train_model import TrainCTLearnPyTorchModel
@@ -31,7 +41,6 @@ from ctlearn.tools.utils import get_lst1_subarray_description
 
 TRAINING_TOOLS = {"Keras": TrainCTLearnKerasModel, "PyTorch": TrainCTLearnPyTorchModel}
 MODEL_FILE_FORMATS = {"Keras": "keras", "PyTorch": "pth"}
-
 
 @pytest.fixture(scope="session")
 def gamma_simtel_path(tmp_path_factory):
@@ -137,7 +146,9 @@ def _create_mock_lst1_dl1_file(
         overwrite=True,
     )
     with tables.open_file(output_path, mode="a") as output_file:
-        image_table_node = output_file.get_node("/dl1/event/telescope/image/LST_LSTCam")
+        image_table_node = output_file.get_node(
+            "/dl1/event/telescope/image/LST_LSTCam"
+        )
         image_attrs = image_table_node._v_attrs
         image_attrs.CTAFIELD_3_TRANSFORM_SCALE = 0.0
         image_attrs.CTAFIELD_3_TRANSFORM_OFFSET = 0
@@ -154,7 +165,6 @@ def mock_lst1_dl1_file(tmp_path_factory):
     output = tmp_path_factory.mktemp("mock_lst1") / "mock_lst1_dl1.h5"
     return _create_mock_lst1_dl1_file(output)
 
-
 @pytest.fixture(scope="session")
 def dl1_gamma_tel2_file(dl1_tmp_path, gamma_simtel_path):
     """
@@ -169,9 +179,10 @@ def dl1_gamma_tel2_file(dl1_tmp_path, gamma_simtel_path):
         "--write-images",
         "--SimTelEventSource.focal_length_choice=EQUIVALENT",
     ]
+    if _ProductMetadata is not None:
+        argv.append("--ProductMetadata.instance=site_id=CTAO-South")
     assert run_tool(ProcessorTool(), argv=argv, cwd=dl1_tmp_path) == 0
     return output
-
 
 @pytest.fixture(scope="session")
 def dl1_gamma_file(dl1_tmp_path, gamma_simtel_path):
@@ -185,9 +196,10 @@ def dl1_gamma_file(dl1_tmp_path, gamma_simtel_path):
         "--write-images",
         "--SimTelEventSource.focal_length_choice=EQUIVALENT",
     ]
+    if _ProductMetadata is not None:
+        argv.append("--ProductMetadata.instance=site_id=CTAO-South")
     assert run_tool(ProcessorTool(), argv=argv, cwd=dl1_tmp_path) == 0
     return output
-
 
 @pytest.fixture(scope="session")
 def dl1_obs_mock_file(dl1_tmp_path, dl1_gamma_file):
@@ -222,12 +234,29 @@ def dl1_obs_mock_file(dl1_tmp_path, dl1_gamma_file):
             f"{DL0_TEL_POINTING_GROUP}/tel_{tel_id:03d}",
         )
     # Modify the file to mimic an observation file
+    # TODO: Bump minimum ctapipe version to v0.33.0. Clean up here!
+    if read_ctao_metadata is not None:
+        ctao_metadata = read_ctao_metadata(output)
+        ctao_metadata.data.type = "Observation"
+        with tables.open_file(output, mode="r+") as h5_file:
+            write_product_metadata_hdf5(
+                product=ctao_metadata,
+                h5file=h5_file,
+                remove_legacy=True,
+            )
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", tables.NaturalNameWarning)
         with tables.open_file(output, mode="r+") as h5_file:
-            # Update CTA Activity metadata to mimic an observation file
-            h5_file.root._v_attrs["CTA PROCESS TYPE"] = "Observation"
-            h5_file.flush()
+            # TODO: Bump minimum ctapipe version to v0.33.0. Clean up here!
+            if read_ctao_metadata is None:
+                # Update CTA Activity metadata to mimic an observation file
+                if "data.type" in h5_file.root._v_attrs:
+                    h5_file.root._v_attrs["data.type"] = "Observation"
+                elif "CTA PROCESS TYPE" in h5_file.root._v_attrs:
+                    h5_file.root._v_attrs["CTA PROCESS TYPE"] = "Observation"
+                else:
+                    raise IOError("Unsupported or missing reference metadata")
+                h5_file.flush()
             # Remove simulation-related group to mimic an observation file
             pointing_group = FIXED_POINTING_GROUP.rsplit("/", maxsplit=1)[0]
             simulation_run_group = SIMULATION_RUN_TABLE.rsplit("/", maxsplit=1)[0]
@@ -235,7 +264,6 @@ def dl1_obs_mock_file(dl1_tmp_path, dl1_gamma_file):
                 if group in h5_file:
                     h5_file.remove_node(group, recursive=True)
     return output
-
 
 @pytest.fixture(scope="session")
 def dl1_proton_file(dl1_tmp_path, proton_simtel_path):
@@ -251,6 +279,8 @@ def dl1_proton_file(dl1_tmp_path, proton_simtel_path):
         "--write-images",
         "--SimTelEventSource.focal_length_choice=EQUIVALENT",
     ]
+    if _ProductMetadata is not None:
+        argv.append("--ProductMetadata.instance=site_id=CTAO-South")
     assert run_tool(ProcessorTool(), argv=argv, cwd=dl1_tmp_path) == 0
     return output
 
@@ -269,6 +299,8 @@ def r1_gamma_file(r1_tmp_path, gamma_simtel_path):
         "--SimTelEventSource.focal_length_choice=EQUIVALENT",
         f"--SimTelEventSource.allowed_tels={allowed_tels}",
     ]
+    if _ProductMetadata is not None:
+        argv.append("--ProductMetadata.instance=site_id=CTAO-South")
     assert run_tool(ProcessorTool(), argv=argv, cwd=r1_tmp_path) == 0
     return output
 
@@ -288,6 +320,8 @@ def r1_proton_file(r1_tmp_path, proton_simtel_path):
         "--SimTelEventSource.focal_length_choice=EQUIVALENT",
         f"--SimTelEventSource.allowed_tels={allowed_tels}",
     ]
+    if _ProductMetadata is not None:
+        argv.append("--ProductMetadata.instance=site_id=CTAO-South")
     assert run_tool(ProcessorTool(), argv=argv, cwd=r1_tmp_path) == 0
     return output
 
@@ -357,19 +391,12 @@ def ctlearn_trained_r1_mono_models(r1_gamma_file, r1_proton_file, tmp_path_facto
             if framework == "PyTorch":
                 framework_argv.append("--TrainCTLearnPyTorchModel.num_workers=2")
 
-            assert (
-                run_tool(
-                    training_tool(config=config), argv=framework_argv, cwd=tmp_path
-                )
-                == 0
+            assert run_tool(training_tool(config=config), argv=framework_argv, cwd=tmp_path) == 0
+            ctlearn_trained_r1_mono_models[f"{framework}_{telescope_type}_{reco_task}"] = (
+                output_dir / f"ctlearn_model.{MODEL_FILE_FORMATS[framework]}"
             )
-            ctlearn_trained_r1_mono_models[
-                f"{framework}_{telescope_type}_{reco_task}"
-            ] = output_dir / f"ctlearn_model.{MODEL_FILE_FORMATS[framework]}"
             # Check that the trained model exists
-            assert ctlearn_trained_r1_mono_models[
-                f"{framework}_{telescope_type}_{reco_task}"
-            ].exists()
+            assert ctlearn_trained_r1_mono_models[f"{framework}_{telescope_type}_{reco_task}"].exists()
     return ctlearn_trained_r1_mono_models
 
 
@@ -442,19 +469,12 @@ def ctlearn_trained_dl1_mono_models(dl1_gamma_file, dl1_proton_file, tmp_path_fa
             # Run training tools
             for framework, training_tool in TRAINING_TOOLS.items():
                 framework_argv = argv.copy()
-                output_dir = (
-                    tmp_path / f"ctlearn_{framework}_{telescope_type}_{reco_task}"
-                )
+                output_dir = tmp_path / f"ctlearn_{framework}_{telescope_type}_{reco_task}"
                 framework_argv.append(f"--output={output_dir}")
-                assert (
-                    run_tool(
-                        training_tool(config=config), argv=framework_argv, cwd=tmp_path
-                    )
-                    == 0
+                assert run_tool(training_tool(config=config), argv=framework_argv, cwd=tmp_path) == 0
+                ctlearn_trained_dl1_mono_models[f"{framework}_{telescope_type}_{reco_task}"] = (
+                    output_dir / f"ctlearn_model.{MODEL_FILE_FORMATS[framework]}"
                 )
-                ctlearn_trained_dl1_mono_models[
-                    f"{framework}_{telescope_type}_{reco_task}"
-                ] = output_dir / f"ctlearn_model.{MODEL_FILE_FORMATS[framework]}"
                 # Check that the trained model exists
                 assert ctlearn_trained_dl1_mono_models[
                     f"{framework}_{telescope_type}_{reco_task}"
@@ -529,15 +549,10 @@ def ctlearn_trained_dl1_stereo_models(
             framework_argv = argv.copy()
             output_dir = tmp_path / f"ctlearn_{framework}_{telescope_type}_{reco_task}"
             framework_argv.append(f"--output={output_dir}")
-            assert (
-                run_tool(
-                    training_tool(config=config), argv=framework_argv, cwd=tmp_path
-                )
-                == 0
+            assert run_tool(training_tool(config=config), argv=framework_argv, cwd=tmp_path) == 0
+            ctlearn_trained_dl1_stereo_models[f"{framework}_{telescope_type}_{reco_task}"] = (
+                output_dir / f"ctlearn_model.{MODEL_FILE_FORMATS[framework]}"
             )
-            ctlearn_trained_dl1_stereo_models[
-                f"{framework}_{telescope_type}_{reco_task}"
-            ] = output_dir / f"ctlearn_model.{MODEL_FILE_FORMATS[framework]}"
             # Check that the trained model exists
             assert ctlearn_trained_dl1_stereo_models[
                 f"{framework}_{telescope_type}_{reco_task}"
