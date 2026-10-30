@@ -15,8 +15,10 @@
 import os
 import sys
 
-# Point Sphinx to the root directory where `ctlearn` lives
-sys.path.insert(0, os.path.abspath("../.."))
+# Point Sphinx to the source directory where `ctlearn` lives
+sys.path.insert(
+    0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src"))
+)
 
 # Import ctapipe.reco before autodoc mocks torch: it walks all scikit-learn
 # submodules, and the scikit-learn torch compatibility layer fails on a mock.

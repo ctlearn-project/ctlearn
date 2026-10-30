@@ -58,8 +58,12 @@ dependencies = [
 
 dynamic = ["version"]
 
-[tool.setuptools]
-packages = ["ctlearn"]
+[tool.setuptools.packages.find]
+where = ["src"]
+namespaces = false
+
+[tool.setuptools.package-data]
+ctlearn = ["resources/*"]
 
 [project.optional-dependencies]
 
@@ -109,10 +113,10 @@ ctlearn-predict-stereo-model = "ctlearn.tools.predict_stereo_model:main"
 ctlearn-predict-LST1= "ctlearn.tools.predict_LST1:main"
 
 [tool.setuptools_scm]
-version_file = "ctlearn/_version.py"
+version_file = "src/ctlearn/_version.py"
 
 [tool.pytest.ini_options]
-testpaths = ["ctlearn"]
+testpaths = ["src/ctlearn"]
 markers = [
     "verifies_usecase(usecase_id): mark test as verifying a specific use case",
 ]
@@ -150,7 +154,7 @@ ignore-words = ".codespell-ignores"
 skip = "*.drawio,*.svg,*.egg-info/*"
 
 [tool.coverage.run]
-source = ["ctlearn"]
+source = ["src/ctlearn"]
 omit = ["*/tests/*", "*/conftest.py"]
 
 [tool.towncrier]

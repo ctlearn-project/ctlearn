@@ -1,2 +1,1 @@
-include ctlearn/default_models/*
-include ctlearn/default_config_files/*
+include src/ctlearn/resources/*
