@@ -1,1 +1,0 @@
-Raised the minimum TensorFlow dependency to 2.18 and specified minimum TensorFlow and PyTorch versions for each supported Python version in the ``pyproject.toml``. Added also a macOS job in the CI.

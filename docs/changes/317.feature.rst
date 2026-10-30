@@ -1,1 +1,0 @@
-Added a script (``scripts/overwrite_metadata.py``) to migrate HDF5 product metadata to the current CTAO data model.
