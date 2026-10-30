@@ -1,4 +1,4 @@
-ctlearn/_version.py
+src/ctlearn/_version.py
 output_dir2/
 *.swp
 *.swo
