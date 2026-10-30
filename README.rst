@@ -103,39 +103,29 @@ Collaborators
      - `Ruben Lopez-Coto <https://github.com/rlopezcoto>`_
 
 
-Alumni
-------
+Active Students
+---------------
 
 .. list-table::
    :header-rows: 1
 
-   * - .. image:: https://github.com/Jsevillamol.png?size=100
-        :target: https://github.com/Jsevillamol
-        :alt: Jaime Sevilla
+   * - .. image:: https://github.com/alexcervino.png?size=100
+        :target: https://github.com/alexcervino
+        :alt: Alexander Cerviño Cortínez
 
-     - .. image:: https://github.com/hrueda25.png?size=100
-        :target: https://github.com/hrueda25
-        :alt: Héctor Rueda
+     - .. image:: https://github.com/BastienLacave.png?size=100
+        :target: https://github.com/BastienLacave
+        :alt: Bastien Lacave
 
-     - .. image:: https://github.com/jredondopizarro.png?size=100
-        :target: https://github.com/jredondopizarro
-        :alt: Juan Redondo Pizarro
+     - .. image:: https://github.com/cpozogonzalez.png?size=100
+        :target: https://github.com/cpozogonzalez
+        :alt: Cristian Pozo González
 
-     - .. image:: https://github.com/LucaRomanato.png?size=100
-        :target: https://github.com/LucaRomanato
-        :alt: LucaRomanato
+     - .. image:: https://github.com/YugnatD.png?size=100
+        :target: https://github.com/YugnatD
+        :alt: Tanguy Dietrich
 
-     - .. image:: https://github.com/sahilyadav27.png?size=100
-        :target: https://github.com/sahilyadav27
-        :alt: Sahil Yadav
-
-     - .. image:: https://github.com/sgh14.png?size=100
-        :target: https://github.com/sgh14
-        :alt: Sergio García Heredia
-
-   * - `Jaime Sevilla <https://github.com/Jsevillamol>`_
-     - `Héctor Rueda <https://github.com/hrueda25>`_
-     - `Juan Redondo Pizarro <https://github.com/jredondopizarro>`_
-     - `Luca Romanato <https://github.com/LucaRomanato>`_
-     - `Sahil Yadav <https://github.com/sahilyadav27>`_
-     - `Sergio García Heredia <https://github.com/sgh14>`_
+   * - `Alexander Cerviño Cortínez <https://github.com/alexcervino>`_
+     - `Bastien Lacave <https://github.com/BastienLacave>`_
+     - `Cristian Pozo González <https://github.com/cpozogonzalez>`_
+     - `Tanguy Dietrich <https://github.com/YugnatD>`_

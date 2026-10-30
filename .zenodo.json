@@ -13,15 +13,25 @@
             "orcid": "0009-0007-1566-9507"
         },
         {
+            "affiliation": "Instituto de Astrof\u00edsica de Andaluc\u00eda-CSIC, Glorieta de la Astronom\u00eda s/n, 18008 Granada, Spain",
+            "name": "Pozo Gonz\u00e1lez, Cristian",
+            "type": "Researcher"
+        },
+        {
+            "affiliation": "HEPIA HES-SO University of Applied Sciences and Arts Western Switzerland, Geneva, Switzerland",
+            "name": "Dietrich, Tanguy",
+            "type": "Researcher"
+        },
+        {
             "affiliation": "Facultad de Ingenier\u00eda Inform\u00e1tica, Universidad Complutense de Madrid, Madrid, Spain",
             "name": "Sevilla, Jaime",
             "type": "Researcher",
-	    "orcid": "0000-0002-4454-1146"
+	        "orcid": "0000-0002-4454-1146"
         }
     ],
     "creators": [
         {
-            "affiliation": "Instituto de F\u00edsica de Part\u00edculas y del Cosmos, Departamento de EMFTEL, Universidad Complutense de Madrid, Madrid, Spain ",
+            "affiliation": "Instituto de Astrof\u00edsica de Andaluc\u00eda-CSIC, Glorieta de la Astronom\u00eda s/n, 18008 Granada, Spain",
             "name": "Miener, Tjark",
             "orcid": "0000-0003-1821-7964"
         },
