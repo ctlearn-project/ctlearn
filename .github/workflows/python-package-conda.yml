@@ -80,6 +80,12 @@ jobs:
             torch-version: latest
           - os: ubuntu-24.04
             python-version: '3.12'
+            dl1dh-version: nightly
+            ctapipe-version: nightly
+            tensorflow-version: latest
+            torch-version: latest
+          - os: ubuntu-24.04
+            python-version: '3.12'
             dl1dh-version: latest
             tensorflow-version: '2.18.*'
             torch-version: '2.4.*'
@@ -154,6 +160,9 @@ jobs:
             pip install git+https://github.com/cta-observatory/dl1-data-handler.git
           else
             pip install dl1-data-handler
+          fi
+          if [ "${{ matrix.ctapipe-version }}" = "nightly" ]; then
+            pip install git+https://github.com/cta-observatory/ctapipe.git
           fi
           tensorflow_package="tensorflow[and-cuda]"
           if [ "${{ runner.os }}" == "macOS" ]; then

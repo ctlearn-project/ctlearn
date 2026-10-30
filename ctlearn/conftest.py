@@ -20,10 +20,20 @@ from ctapipe.io.hdf5dataformat import (
     SIMULATION_GROUP,
     SIMULATION_RUN_TABLE,
 )
-from ctapipe.tools.process import ProcessorTool
-from ctapipe.utils import get_dataset_path
 from filelock import FileLock
 from traitlets.config.loader import Config
+
+# TODO: Bump minimum ctapipe version to v0.33.0. Clean up imports!
+try:
+    from ctapipe.io.metadata import ProductMetadata as _ProductMetadata
+except ImportError:
+    _ProductMetadata = None
+try:
+    from ctapipe.io.metadata import read_ctao_metadata, write_product_metadata_hdf5
+except ImportError:
+    read_ctao_metadata = None
+from ctapipe.tools.process import ProcessorTool
+from ctapipe.utils import get_dataset_path
 
 from ctlearn.tools.keras.train_model import TrainCTLearnKerasModel
 from ctlearn.tools.pytorch.train_model import TrainCTLearnPyTorchModel
@@ -169,6 +179,8 @@ def dl1_gamma_tel2_file(dl1_tmp_path, gamma_simtel_path):
         "--write-images",
         "--SimTelEventSource.focal_length_choice=EQUIVALENT",
     ]
+    if _ProductMetadata is not None:
+        argv.append("--ProductMetadata.instance=site_id=CTAO-South")
     assert run_tool(ProcessorTool(), argv=argv, cwd=dl1_tmp_path) == 0
     return output
 
@@ -185,6 +197,8 @@ def dl1_gamma_file(dl1_tmp_path, gamma_simtel_path):
         "--write-images",
         "--SimTelEventSource.focal_length_choice=EQUIVALENT",
     ]
+    if _ProductMetadata is not None:
+        argv.append("--ProductMetadata.instance=site_id=CTAO-South")
     assert run_tool(ProcessorTool(), argv=argv, cwd=dl1_tmp_path) == 0
     return output
 
@@ -222,12 +236,29 @@ def dl1_obs_mock_file(dl1_tmp_path, dl1_gamma_file):
             f"{DL0_TEL_POINTING_GROUP}/tel_{tel_id:03d}",
         )
     # Modify the file to mimic an observation file
+    # TODO: Bump minimum ctapipe version to v0.33.0. Clean up here!
+    if read_ctao_metadata is not None:
+        ctao_metadata = read_ctao_metadata(output)
+        ctao_metadata.data.type = "Observation"
+        with tables.open_file(output, mode="r+") as h5_file:
+            write_product_metadata_hdf5(
+                product=ctao_metadata,
+                h5file=h5_file,
+                remove_legacy=True,
+            )
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", tables.NaturalNameWarning)
         with tables.open_file(output, mode="r+") as h5_file:
-            # Update CTA Activity metadata to mimic an observation file
-            h5_file.root._v_attrs["CTA PROCESS TYPE"] = "Observation"
-            h5_file.flush()
+            # TODO: Bump minimum ctapipe version to v0.33.0. Clean up here!
+            if read_ctao_metadata is None:
+                # Update CTA Activity metadata to mimic an observation file
+                if "data.type" in h5_file.root._v_attrs:
+                    h5_file.root._v_attrs["data.type"] = "Observation"
+                elif "CTA PROCESS TYPE" in h5_file.root._v_attrs:
+                    h5_file.root._v_attrs["CTA PROCESS TYPE"] = "Observation"
+                else:
+                    raise IOError("Unsupported or missing reference metadata")
+                h5_file.flush()
             # Remove simulation-related group to mimic an observation file
             pointing_group = FIXED_POINTING_GROUP.rsplit("/", maxsplit=1)[0]
             simulation_run_group = SIMULATION_RUN_TABLE.rsplit("/", maxsplit=1)[0]
@@ -251,6 +282,8 @@ def dl1_proton_file(dl1_tmp_path, proton_simtel_path):
         "--write-images",
         "--SimTelEventSource.focal_length_choice=EQUIVALENT",
     ]
+    if _ProductMetadata is not None:
+        argv.append("--ProductMetadata.instance=site_id=CTAO-South")
     assert run_tool(ProcessorTool(), argv=argv, cwd=dl1_tmp_path) == 0
     return output
 
@@ -269,6 +302,8 @@ def r1_gamma_file(r1_tmp_path, gamma_simtel_path):
         "--SimTelEventSource.focal_length_choice=EQUIVALENT",
         f"--SimTelEventSource.allowed_tels={allowed_tels}",
     ]
+    if _ProductMetadata is not None:
+        argv.append("--ProductMetadata.instance=site_id=CTAO-South")
     assert run_tool(ProcessorTool(), argv=argv, cwd=r1_tmp_path) == 0
     return output
 
@@ -288,6 +323,8 @@ def r1_proton_file(r1_tmp_path, proton_simtel_path):
         "--SimTelEventSource.focal_length_choice=EQUIVALENT",
         f"--SimTelEventSource.allowed_tels={allowed_tels}",
     ]
+    if _ProductMetadata is not None:
+        argv.append("--ProductMetadata.instance=site_id=CTAO-South")
     assert run_tool(ProcessorTool(), argv=argv, cwd=r1_tmp_path) == 0
     return output
 

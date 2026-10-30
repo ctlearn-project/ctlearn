@@ -63,7 +63,7 @@ Core dependencies
 * keras>=3.0
 * astropy
 * ctapipe>=0.29.0
-* dl1_data_handler>=0.14.11
+* dl1_data_handler>=0.14.12
 * numba
 * numpy
 * pandas
