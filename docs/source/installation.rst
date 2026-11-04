@@ -52,8 +52,7 @@ provides the same project-managed environment used by CI.
             $ pixi shell -e dev               # open a shell in the dev environment
             $ pixi clean                      # remove Pixi environments
 
-        Pixi targets Linux x86_64 and Apple Silicon macOS. The Python 3.14 test
-        environment is available on Linux only.
+        Pixi targets Linux x86_64 and Apple Silicon macOS.
 
     .. tab-item:: With Pip
 
