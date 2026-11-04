@@ -1,0 +1,66 @@
+[workspace]
+name = "ctlearn"
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-arm64"]
+
+# Keep the Python minimum aligned with pyproject.toml and install ctlearn from
+# the current checkout.
+[dependencies]
+python = ">=3.12"
+llvmlite = "*"
+
+[target.linux-64.dependencies]
+triton = "*"
+
+[pypi-dependencies]
+ctlearn = { path = ".", editable = true }
+
+[feature.optional.pypi-dependencies]
+matplotlib = "~=3.0"
+pyirf = "~=0.14.0"
+
+[feature.test.dependencies]
+diff-cover = "*"
+filelock = "*"
+pytest = ">=9.0"
+pytest-astropy-header = "*"
+pytest-cov = "*"
+pytest-xdist = "*"
+
+[feature.test.tasks]
+test = "pytest"
+
+[feature.doc.dependencies]
+sphinx = "*"
+sphinx-rtd-theme = "*"
+
+[feature.doc.pypi-dependencies]
+sphinx-changelog = "*"
+sphinx-design = ">=0.7,<0.8"
+
+[feature.dev.dependencies]
+codespell = "*"
+pre-commit = "*"
+ruff = "*"
+setuptools-scm = "*"
+towncrier = "*"
+
+[feature.py312.dependencies]
+python = "3.12.*"
+
+[feature.py313.dependencies]
+python = "3.13.*"
+
+[feature.py314]
+platforms = ["linux-64"]
+
+[feature.py314.dependencies]
+python = "3.14.*"
+
+[environments]
+default = { features = ["py312"], solve-group = "py312" }
+test = { features = ["py312", "test"], solve-group = "py312" }
+dev = { features = ["py312", "optional", "test", "doc", "dev"], solve-group = "py312" }
+test-py312 = { features = ["py312", "test"], solve-group = "py312" }
+test-py313 = { features = ["py313", "test"], solve-group = "py313" }
+test-py314 = { features = ["py314", "test"], solve-group = "py314" }

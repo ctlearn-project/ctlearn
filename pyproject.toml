@@ -89,6 +89,7 @@ docs = [
   "ctlearn[all]",
   "sphinx",
   "sphinx-changelog",
+  "sphinx-design",
   "sphinx-rtd-theme",
 ]
 

@@ -1,4 +1,6 @@
 src/ctlearn/_version.py
+pixi.lock
+.pixi/
 output_dir2/
 *.swp
 *.swo

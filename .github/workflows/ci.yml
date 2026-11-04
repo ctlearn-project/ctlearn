@@ -55,7 +55,59 @@ jobs:
         run: |
           python -c "from ctapipe.utils import get_dataset_path; get_dataset_path('gamma_test_large.simtel.gz'); get_dataset_path('proton_20deg_0deg_run4___cta-prod5-paranal_desert-2147m-Paranal-dark-100evts.simtel.zst')"
 
-  build:
+  pixi:
+    needs: cache-test-data
+    if: >-
+      github.event_name != 'pull_request' ||
+      !contains(github.event.pull_request.labels.*.name, 'documentation-only')
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            python-version: "3.12"
+            pixi-environment: test-py312
+          - os: macos-26
+            python-version: "3.12"
+            pixi-environment: test-py312
+          - os: ubuntu-24.04
+            python-version: "3.13"
+            pixi-environment: test-py313
+          - os: ubuntu-24.04
+            python-version: "3.14"
+            pixi-environment: test-py314
+    runs-on: ${{ matrix.os }}
+    env:
+      PIP_EXTRA_INDEX_URL: "https://download.pytorch.org/whl/cpu"
+    defaults:
+      run:
+        shell: bash -el {0}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Restore ctapipe data cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ctapipe
+          key: ctapipe-data-${{ runner.os }}-v1
+
+      - name: Set up Pixi
+        uses: prefix-dev/setup-pixi@v0.11.2
+        with:
+          pixi-version: v0.78.0
+          environments: ${{ matrix.pixi-environment }}
+          activate-environment: true
+
+      - name: Check Python version
+        env:
+          PYTHON_VERSION: ${{ matrix.python-version }}
+        run: python --version | grep "Python ${PYTHON_VERSION}"
+
+      - name: Run tests
+        run: pixi run -e ${{ matrix.pixi-environment }} test
+
+  pip:
     needs: cache-test-data
     if: >-
       github.event_name != 'pull_request' ||
