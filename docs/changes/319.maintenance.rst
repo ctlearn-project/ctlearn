@@ -1,0 +1,1 @@
+Added Pixi-based installation and development environment setup, with Pixi environments tested in CI.

@@ -1,25 +1,77 @@
-=========================
-Installation instructions
-=========================
+Installation
+============
 
-Install a released version
---------------------------
+User Installation
+-----------------
 
-Download and install `Anaconda <https://www.anaconda.com/download/>`_\ , or, for a minimal installation, `Miniconda <https://conda.io/miniconda.html>`_.
+.. tab-set::
 
-The following command will set up a conda virtual environment, add the
-necessary package channels, and install CTLearn specified version and its dependencies:
+    .. tab-item:: With Pixi
 
-.. code-block:: bash
+        Inside an existing Pixi project, add the released CTLearn package:
 
-   # Linux:
-   mamba create -n ctlearn -c conda-forge python==3.12 llvmlite triton
-   # macOS/Windows:
-   mamba create -n ctlearn -c conda-forge python==3.12 llvmlite
-   conda activate ctlearn
-   pip install ctlearn
+        .. code-block:: shell
 
-For working on the IT-cluster:
+            $ pixi add --pypi ctlearn
+
+    .. tab-item:: With Pip
+
+        .. code-block:: shell
+
+            $ pip install ctlearn
+
+
+Developer Setup
+---------------
+
+As a developer, clone the repository and install CTLearn in development mode.
+We support two methods: *pip/venv* and `Pixi <https://pixi.sh/>`__. Pixi
+provides the same project-managed environment used by CI.
+
+.. tab-set::
+
+    .. tab-item:: With Pixi
+
+        Install Pixi if needed, then clone the repository and install the
+        development environment:
+
+        .. code-block:: shell
+
+            $ git clone https://github.com/ctlearn-project/ctlearn.git
+            $ cd ctlearn
+            $ pixi install -e dev
+
+        Useful commands from the repository directory:
+
+        .. code-block:: shell
+
+            $ pixi run -e dev test            # run the test suite
+            $ pixi run -e test-py313 test     # run tests with Python 3.13
+            $ pixi run -e test-py314 test     # run tests with Python 3.14
+            $ pixi run -e dev make -C docs html
+            $ pixi shell -e dev               # open a shell in the dev environment
+            $ pixi clean                      # remove Pixi environments
+
+        Pixi targets Linux x86_64 and Apple Silicon macOS. The Python 3.14 test
+        environment is available on Linux only.
+
+    .. tab-item:: With Pip
+
+        .. code-block:: shell
+
+            $ git clone https://github.com/ctlearn-project/ctlearn.git
+            $ cd ctlearn
+            $ python -m venv .venv
+            $ source .venv/bin/activate
+            $ python -m pip install --upgrade pip
+            $ python -m pip install -e ".[dev]"
+
+
+Installing on the IT Cluster
+----------------------------
+
+For working on the IT cluster, create a conda environment with the required
+build tools:
 
 .. code-block:: bash
 
@@ -30,31 +82,19 @@ For working on the IT-cluster:
    export FC=$(which x86_64-conda-linux-gnu-gfortran)
    pip install ctlearn
 
-Please do not forget to update your ``LD_LIBRARY_PATH`` to include the necessary paths. For example, you can add the following line to your ``.bashrc`` file:
+Update ``LD_LIBRARY_PATH`` to include the necessary paths. For example, add the
+following line to your ``.bashrc`` file:
 
 .. code-block:: bash
 
    export LD_LIBRARY_PATH=/path/to/your/conda/envs/ctlearn-it-cluster/lib:/path/to/cudnn/lib:$LD_LIBRARY_PATH
 
-.. note::
-   You will need to replace ``/path/to/your/conda/envs/ctlearn-it-cluster/lib`` with the actual path to your conda environment where CTLearn is installed. Similarly, replace ``/path/to/cudnn/lib`` with the path to your system's cuDNN libraries for CUDA 12.
+Replace ``/path/to/your/conda/envs/ctlearn-it-cluster/lib`` with the path to
+your conda environment and ``/path/to/cudnn/lib`` with the path to the system's
+cuDNN libraries for CUDA 12.
 
 
-Installing with pip/setuptools from source for development
-----------------------------------------------------------
-
-First, install Anaconda by following the instructions above. Create a new conda environment that includes all the dependencies for CTLearn. Then, clone the CTLearn repository and install CTLearn into the new conda environment with pip from source:
-
-.. code-block:: bash
-
-   mamba create -n ctlearn -c conda-forge python==3.12 llvmlite
-   conda activate ctlearn
-   cd </ctlearn/installation/path>
-   git clone https://github.com/ctlearn-project/ctlearn.git
-   pip install -e .
-
-
-Core dependencies
+Core Dependencies
 -----------------
 
 * python>=3.12
@@ -69,23 +109,14 @@ Core dependencies
 * pandas
 * pyyaml
 
+
 Uninstall CTLearn
 -----------------
 
-Remove Anaconda Environment
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-First, remove the conda environment in which CTLearn is installed and all its dependencies:
+To remove a conda environment in which CTLearn is installed:
 
 .. code-block:: bash
 
    conda remove --name ctlearn --all
 
-Remove CTLearn
-~~~~~~~~~~~~~~
-
-Next, completely remove CTLearn from your system:
-
-.. code-block:: bash
-
-   rm -rf </installation/path>/ctlearn
+To remove a source checkout, delete its directory.
