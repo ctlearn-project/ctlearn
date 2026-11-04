@@ -102,7 +102,7 @@ jobs:
       - name: Check Python version
         env:
           PYTHON_VERSION: ${{ matrix.python-version }}
-        run: python --version | grep "Python ${PYTHON_VERSION}"
+        run: pixi run -e ${{ matrix.pixi-environment }} python --version | grep "Python ${PYTHON_VERSION}"
 
       - name: Run tests
         run: pixi run -e ${{ matrix.pixi-environment }} test
