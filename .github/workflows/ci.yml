@@ -203,8 +203,21 @@ jobs:
           pip install pylint pylint-exit anybadge eventio pytest flake8
 
       - name: Install package with pip
-        run: pip install -e .[tests]
+        run: |
+          pip install --no-deps -e ".[tests]"
+          python - <<'PY' > "$RUNNER_TEMP/ctlearn-ci-requirements.txt"
+          import tomllib
+          from pathlib import Path
+          from packaging.requirements import Requirement
 
+          project = tomllib.loads(Path("pyproject.toml").read_text())["project"]
+          requirements = project["dependencies"] + project["optional-dependencies"]["tests"]
+          for requirement in requirements:
+              name = Requirement(requirement).name.lower()
+              if name not in {"ctlearn", "tensorflow"}:
+                  print(requirement)
+          PY
+          pip install -r "$RUNNER_TEMP/ctlearn-ci-requirements.txt"
 
       - name: Install pip target dependencies
         run: |
@@ -216,14 +229,10 @@ jobs:
           if [ "${{ matrix.ctapipe-version }}" = "nightly" ]; then
             pip install git+https://github.com/cta-observatory/ctapipe.git
           fi
-          tensorflow_package="tensorflow[and-cuda]"
-          if [ "${{ runner.os }}" == "macOS" ]; then
-            tensorflow_package="tensorflow"
-          fi
           if [ "${{ matrix.tensorflow-version }}" = "latest" ]; then
-            pip install --upgrade "$tensorflow_package"
+            pip install --upgrade tensorflow
           else
-            pip install "${tensorflow_package}==${{ matrix.tensorflow-version }}"
+            pip install "tensorflow==${{ matrix.tensorflow-version }}"
           fi
           if [ "${{ matrix.torch-version }}" = "latest" ]; then
             pip install --upgrade torch torchvision
