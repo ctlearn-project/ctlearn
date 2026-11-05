@@ -257,16 +257,6 @@ jobs:
           matrix.torch-version == 'latest'
         run: pytest --cov --cov-report=xml --cov-report=term-missing
 
-      - name: Store project version for SonarCloud
-        if: >-
-          matrix.os == 'ubuntu-24.04' &&
-          matrix.python-version == '3.12' &&
-          matrix.dl1dh-version == 'latest' &&
-          matrix.tensorflow-version == 'latest' &&
-          matrix.torch-version == 'latest'
-        run: |
-          echo "PROJECT_VERSION=$(python -m setuptools_scm)" >> sonar_env
-
       - name: Upload coverage for SonarCloud
         if: >-
           matrix.os == 'ubuntu-24.04' &&
@@ -277,19 +267,43 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ctlearn-coverage-report
-          path: |
-           coverage.xml
-           sonar_env
+          path: coverage.xml
+
+      - name: Run pytest
+        if: >-
+          matrix.os != 'ubuntu-24.04' ||
+          matrix.python-version != '3.12' ||
+          matrix.dl1dh-version != 'latest' ||
+          matrix.tensorflow-version != 'latest' ||
+          matrix.torch-version != 'latest'
+        run: pytest
+
+  sonar:
+    needs: pip
+    if: >-
+      github.event_name != 'pull_request' ||
+      (
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        !contains(github.event.pull_request.labels.*.name, 'documentation-only')
+      )
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Download coverage report
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: ctlearn-coverage-report
+          path: coverage
 
       - name: Scan pull request with SonarCloud
-        if: >-
-          matrix.os == 'ubuntu-24.04' &&
-          matrix.python-version == '3.12' &&
-          matrix.dl1dh-version == 'latest' &&
-          matrix.tensorflow-version == 'latest' &&
-          matrix.torch-version == 'latest' &&
-          github.event_name == 'pull_request' &&
-          github.event.pull_request.head.repo.full_name == github.repository
+        if: github.event_name == 'pull_request'
         uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2 # v7
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -301,11 +315,10 @@ jobs:
             -Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }}
             -Dsonar.pullrequest.base=${{ github.event.pull_request.base.ref }}
 
-      - name: Run pytest
-        if: >-
-          matrix.os != 'ubuntu-24.04' ||
-          matrix.python-version != '3.12' ||
-          matrix.dl1dh-version != 'latest' ||
-          matrix.tensorflow-version != 'latest' ||
-          matrix.torch-version != 'latest'
-        run: pytest
+      - name: Scan branch with SonarCloud
+        if: github.event_name != 'pull_request'
+        uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2 # v7
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
