@@ -155,7 +155,7 @@ skip = "*.drawio,*.svg,*.egg-info/*"
 
 [tool.coverage.run]
 source = ["src/ctlearn"]
-omit = ["*/tests/*", "*/conftest.py"]
+omit = ["*/tests/*"]
 
 [tool.towncrier]
 package = "ctlearn"
