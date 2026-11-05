@@ -1,0 +1,86 @@
+name: Release PyPI CD
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to build"
+        required: true
+        type: string
+      upload:
+        description: "Upload package to PyPI"
+        required: true
+        type: boolean
+        default: false
+  pull_request:
+    paths:
+      - '.github/workflows/**'
+
+jobs:
+  pypi-publish:
+    name: Publish release to PyPI
+    environment:
+      name: pypi
+      url: https://pypi.org/project/ctlearn/
+    permissions:
+      id-token: write
+      contents: write
+      deployments: write
+      statuses: write
+      actions: write
+      checks: read
+    runs-on: ubuntu-24.04
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up micromamba (Python 3.12)
+        uses: mamba-org/setup-micromamba@4b9113af4fba0e9e1124b252dd6497a419e7396d # v1
+        with:
+          environment-name: ctlearn
+          create-args: >-
+            python=3.12
+            pip
+          cache-environment: true
+
+      - name: Check out release tag
+        if: github.event_name != 'pull_request'
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          tag="${INPUT_TAG:-$RELEASE_TAG}"
+          if [[ -z "$tag" ]] || ! git check-ref-format "refs/tags/$tag"; then
+            echo "::error::Provide a valid release tag."
+            exit 1
+          fi
+          if ! git show-ref --verify --quiet "refs/tags/$tag"; then
+            echo "::error::Tag '$tag' does not exist in this repository."
+            exit 1
+          fi
+          git checkout --detach "refs/tags/$tag"
+
+      - name: Build package
+        shell: micromamba-shell {0}
+        run: |
+          python --version
+          pip install -U build
+          python -m build
+
+      - name: Archive package distributions
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ctlearn-dist-${{ inputs.tag || github.event.release.tag_name || github.sha }}
+          path: dist/*
+          if-no-files-found: error
+
+      - name: Publish package distributions to PyPI
+        if: >-
+          github.event_name == 'release' ||
+          (github.event_name == 'workflow_dispatch' && inputs.upload)
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # release/v1
