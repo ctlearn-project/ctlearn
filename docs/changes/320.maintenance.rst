@@ -1,0 +1,1 @@
+Added SonarCloud analysis to CI, including coverage reporting and quality-gate and coverage badges in the README.
