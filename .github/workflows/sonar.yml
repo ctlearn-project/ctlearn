@@ -16,7 +16,8 @@ jobs:
     runs-on: ubuntu-24.04
     if: >-
       github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event != 'pull_request'
+      github.event.workflow_run.event != 'pull_request' &&
+      github.event.workflow_run.head_repository.full_name == github.event.repository.full_name
     steps:
       - name: Download coverage report
         id: coverage
@@ -59,11 +60,12 @@ jobs:
       - name: Checkout branch or tag
         if: >-
           steps.coverage.outputs.available == 'true' &&
-          github.event.workflow_run.event != 'pull_request'
+          github.event.workflow_run.event != 'pull_request' &&
+          github.event.workflow_run.head_repository.full_name == github.event.repository.full_name
         uses: actions/checkout@v7
         with:
           repository: ${{ github.event.repository.full_name }}
-          ref: ${{ github.event.workflow_run.head_branch }}
+          ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
           clean: false
 
