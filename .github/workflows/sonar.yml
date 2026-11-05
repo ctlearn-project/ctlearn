@@ -14,7 +14,10 @@ jobs:
   sonar:
     name: SonarCloud
     runs-on: ubuntu-24.04
-    if: github.event.workflow_run.conclusion == 'success'
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      (github.event.workflow_run.event != 'pull_request' ||
+       github.event.workflow_run.head_repository.full_name == github.event.repository.full_name)
     steps:
       - name: Download coverage report
         id: coverage
@@ -75,10 +78,10 @@ jobs:
           github.event.workflow_run.event == 'pull_request'
         uses: actions/checkout@v7
         with:
-          ref: refs/pull/${{ env.PR_NUMBER }}/merge
+          repository: ${{ github.event.repository.full_name }}
+          ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
           clean: false
-          allow-unsafe-pr-checkout: true
           persist-credentials: false
 
       - name: Copy coverage report
