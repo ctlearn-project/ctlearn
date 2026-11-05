@@ -14,9 +14,13 @@ CTLearn: Deep Learning for IACT Event Reconstruction
     :target: https://github.com/ctlearn-project/ctlearn/actions/workflows/python-package-conda.yml
     :alt: Continuous Integration
 
-.. image:: https://codecov.io/gh/ctlearn-project/ctlearn/branch/main/graph/badge.svg
-    :target: https://codecov.io/gh/ctlearn-project/ctlearn
-    :alt: Code coverage
+.. image:: https://sonarcloud.io/api/project_badges/measure?project=ctlearn-project_ctlearn&metric=alert_status
+    :target: https://sonarcloud.io/summary/overall?id=ctlearn-project_ctlearn
+    :alt: SonarCloud quality gate
+
+.. image:: https://sonarcloud.io/api/project_badges/measure?project=ctlearn-project_ctlearn&metric=coverage
+    :target: https://sonarcloud.io/component_measures?id=ctlearn-project_ctlearn&metric=coverage
+    :alt: SonarCloud coverage
 
 .. image:: images/CTLearnTextCTinBox_WhiteBkgd.png
    :target: images/CTLearnTextCTinBox_WhiteBkgd.png

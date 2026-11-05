@@ -255,30 +255,38 @@ jobs:
           matrix.dl1dh-version == 'latest' &&
           matrix.tensorflow-version == 'latest' &&
           matrix.torch-version == 'latest'
-        env:
-          BASE_REF: ${{ github.event.pull_request.base.ref }}
-        run: |
-          pytest --cov --cov-report=xml --cov-report=term-missing
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            git fetch --no-tags origin "$BASE_REF:refs/remotes/origin/$BASE_REF"
-            diff-cover coverage.xml --compare-branch="origin/$BASE_REF" \
-              --fail-under=80
-          fi
+        run: pytest --cov --cov-report=xml --cov-report=term-missing
 
-      - name: Upload coverage to Codecov
+      - name: Store info for SonarCloud
         if: >-
           matrix.os == 'ubuntu-24.04' &&
           matrix.python-version == '3.12' &&
           matrix.dl1dh-version == 'latest' &&
           matrix.tensorflow-version == 'latest' &&
-          matrix.torch-version == 'latest' &&
-          (github.event_name != 'pull_request' ||
-           github.event.pull_request.head.repo.full_name == github.repository)
-        uses: codecov/codecov-action@v5
+          matrix.torch-version == 'latest'
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          SOURCE_BRANCH: ${{ github.event.pull_request.head.ref }}
+          TARGET_BRANCH: ${{ github.event.pull_request.base.ref }}
+        run: |
+          echo "PR_NUMBER=${PR_NUMBER}" >> sonar_env
+          echo "SOURCE_BRANCH=${SOURCE_BRANCH}" >> sonar_env
+          echo "TARGET_BRANCH=${TARGET_BRANCH}" >> sonar_env
+          echo "PROJECT_VERSION=$(python -m setuptools_scm)" >> sonar_env
+
+      - name: Upload coverage for SonarCloud
+        if: >-
+          matrix.os == 'ubuntu-24.04' &&
+          matrix.python-version == '3.12' &&
+          matrix.dl1dh-version == 'latest' &&
+          matrix.tensorflow-version == 'latest' &&
+          matrix.torch-version == 'latest'
+        uses: actions/upload-artifact@v4
         with:
-          files: ./coverage.xml
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: true
+          name: ctlearn-coverage-report
+          path: |
+           coverage.xml
+           sonar_env
 
       - name: Run pytest
         if: >-
