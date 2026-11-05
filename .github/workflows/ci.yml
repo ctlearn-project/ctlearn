@@ -257,21 +257,14 @@ jobs:
           matrix.torch-version == 'latest'
         run: pytest --cov --cov-report=xml --cov-report=term-missing
 
-      - name: Store info for SonarCloud
+      - name: Store project version for SonarCloud
         if: >-
           matrix.os == 'ubuntu-24.04' &&
           matrix.python-version == '3.12' &&
           matrix.dl1dh-version == 'latest' &&
           matrix.tensorflow-version == 'latest' &&
           matrix.torch-version == 'latest'
-        env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          SOURCE_BRANCH: ${{ github.event.pull_request.head.ref }}
-          TARGET_BRANCH: ${{ github.event.pull_request.base.ref }}
         run: |
-          echo "PR_NUMBER=${PR_NUMBER}" >> sonar_env
-          echo "SOURCE_BRANCH=${SOURCE_BRANCH}" >> sonar_env
-          echo "TARGET_BRANCH=${TARGET_BRANCH}" >> sonar_env
           echo "PROJECT_VERSION=$(python -m setuptools_scm)" >> sonar_env
 
       - name: Upload coverage for SonarCloud
@@ -287,6 +280,26 @@ jobs:
           path: |
            coverage.xml
            sonar_env
+
+      - name: Scan pull request with SonarCloud
+        if: >-
+          matrix.os == 'ubuntu-24.04' &&
+          matrix.python-version == '3.12' &&
+          matrix.dl1dh-version == 'latest' &&
+          matrix.tensorflow-version == 'latest' &&
+          matrix.torch-version == 'latest' &&
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        uses: SonarSource/sonarqube-scan-action@v7
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
+        with:
+          args: >
+            -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
+            -Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }}
+            -Dsonar.pullrequest.base=${{ github.event.pull_request.base.ref }}
 
       - name: Run pytest
         if: >-
