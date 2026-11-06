@@ -23,7 +23,6 @@ from ctapipe.io import read_table, write_table
 from ctapipe.io.hdf5dataformat import (
     DL1_TEL_GROUP,
     DL1_TEL_POINTING_GROUP,
-    DL1_TEL_TRIGGER_TABLE,
     DL2_EVENT_STATISTICS_GROUP,
     DL2_SUBARRAY_ENERGY_GROUP,
     DL2_SUBARRAY_GEOMETRY_GROUP,
@@ -126,7 +125,7 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
         example_identifiers.keep_columns(TEL_EVENT_KEYS)
         all_identifiers = read_table(
             self.output_path,
-            DL1_TEL_TRIGGER_TABLE,
+            self.tel_trigger_table_path,
         )
         all_identifiers.keep_columns(TEL_EVENT_KEYS + ["time"])
         nonexample_identifiers = setdiff(

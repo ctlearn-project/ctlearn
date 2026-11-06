@@ -25,6 +25,10 @@ from traitlets.config.loader import Config
 
 # TODO: Bump minimum ctapipe version to v0.33.0. Clean up imports!
 try:
+    from ctapipe.io.hdf5dataformat import DL0_TEL_TRIGGER_TABLE
+except ImportError:
+    DL0_TEL_TRIGGER_TABLE = "/dl0/event/telescope/trigger"
+try:
     from ctapipe.io.metadata import ProductMetadata as _ProductMetadata
 except ImportError:
     _ProductMetadata = None
@@ -212,7 +216,19 @@ def dl1_obs_mock_file(dl1_tmp_path, dl1_gamma_file):
     output = dl1_tmp_path / "dl1_obs_mock_file.dl1.h5"
     shutil.copy(dl1_gamma_file, output)
     # Read the trigger table to get the unique telescope IDs and their pointing information
-    trigger_table = read_table(dl1_gamma_file, path=DL1_TEL_TRIGGER_TABLE)
+    # TODO: Bump minimum ctapipe version to v0.33.0. Clean up here!
+    with tables.open_file(output, mode="r") as h5_file:
+        file_attrs = h5_file.root._v_attrs
+        if "data.type" in file_attrs:
+            data_format_version = file_attrs["model.version"]
+        elif "CTA PROCESS TYPE" in file_attrs:
+            data_format_version = file_attrs["CTA PRODUCT DATA MODEL VERSION"]
+        else:
+            raise IOError("Unsupported or missing reference metadata")
+    if int(data_format_version.split(".")[0].replace("v", "")) >= 8:
+        trigger_table = read_table(dl1_gamma_file, path=DL0_TEL_TRIGGER_TABLE)
+    else:
+        trigger_table = read_table(dl1_gamma_file, path=DL1_TEL_TRIGGER_TABLE)
     tel_ids = np.unique(trigger_table["tel_id"])
     time = trigger_table["time"][[0, -1]]
     # Mimic an observation of 20 mins duration by adjusting the time range for the tel pointing tables
