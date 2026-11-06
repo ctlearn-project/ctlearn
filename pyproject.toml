@@ -87,6 +87,7 @@ tests = [
 docs = [
   "ctlearn[all]",
   "sphinx",
+  "sphinx-gallery >= 0.16.0",
   "sphinx-changelog",
   "sphinx-design",
   "sphinx-rtd-theme",
