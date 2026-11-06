@@ -129,38 +129,36 @@ jobs:
         id: ctapipe-version
         run: echo "version=$(python -c 'import ctapipe; print(ctapipe.__version__)')" >> "$GITHUB_OUTPUT"
 
+      - name: Restore tutorial input data
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/ctlearn/tutorial-data
+          key: ctlearn-tutorial-data-${{ runner.os }}-v2
+
       - name: Restore processed tutorial data
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: |
-            ~/.cache/ctlearn/tutorial-data/gamma_prod5.r1.dl1.h5
+            ~/.cache/ctlearn/tutorial-data/gamma_prod5-max100.r1.dl1.h5
             ~/.cache/ctlearn/tutorial-data/ctapipe-*
           key: >-
             ctlearn-tutorial-processed-${{ runner.os }}-${{ steps.ctapipe-version.outputs.version }}-${{ hashFiles('examples/tutorials/explore_public_data.py', 'docs/requirements.txt', 'pyproject.toml') }}
 
       - name: Build documentation and execute tutorials
+        env:
+          CTLEARN_TUTORIAL_MAX_EVENTS: "100"
         run: python -m sphinx -b html --keep-going docs/source docs/build/html
 
-      - name: Upload GitHub Pages artifact
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
+      - name: Upload rendered documentation for review
+        if: >-
+          always() &&
+          (github.event_name == 'pull_request' || github.event_name == 'push')
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
+          name: docs-${{ github.event_name }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: docs/build/html
-
-  deploy-docs:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: docs
-    runs-on: ubuntu-24.04
-    permissions:
-      pages: write
-      id-token: write
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy documentation to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
+          retention-days: 14
+          if-no-files-found: warn
 
   pixi:
     needs: cache-test-data

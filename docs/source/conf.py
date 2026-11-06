@@ -26,6 +26,10 @@ import ctapipe.reco  # noqa: F401
 
 import ctlearn
 
+# Read the full Zenodo inputs on Read the Docs, but bound processing time.
+if "READTHEDOCS" in os.environ:
+    os.environ.setdefault("CTLEARN_TUTORIAL_MAX_EVENTS", "100")
+
 # -- Project information -----------------------------------------------------
 
 project = "CTLearn"
@@ -62,7 +66,7 @@ sphinx_gallery_conf = {
     "examples_dirs": "../../examples/tutorials",
     "gallery_dirs": "auto_tutorials",
     "filename_pattern": r"explore_public_data\.py$",
-    "plot_gallery": "READTHEDOCS" not in os.environ,
+    "plot_gallery": True,
     "abort_on_example_error": True,
 }
 
