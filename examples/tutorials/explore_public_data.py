@@ -179,8 +179,9 @@ for tel_type, allowed_tels in telescope_types.items():
         interval=500,
         blit=False,
     )
+    # Sphinx-Gallery scrapes animations from module globals after execution.
+    globals()[f"{tel_type.lower()}_waveform_animation"] = waveform_animation
     plt.show()
-    plt.close(fig)
 
 ######################################################################
 # Read monoscopic images
