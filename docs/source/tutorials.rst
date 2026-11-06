@@ -12,12 +12,12 @@ four CTAO simulation files from `Zenodo record 7298569
 files require about 3.5 GB of disk space. Downloaded and converted files are
 reused on subsequent runs. By default, data are stored under
 ``~/.cache/ctlearn/tutorial-data``; set ``CTLEARN_TUTORIAL_DATA_DIR`` to use a
-different directory. The CI workflow preloads the source files and caches the
-converted products. The CI docs build limits processing to 100 events per
-input file to keep builds bounded; running the tutorial locally without that
-environment variable processes the full files. The documentation build
-executes the tutorial and embeds its output, including when built by Read the
-Docs. Read the Docs builds limit processing to 100 events per input file.
+different directory. The CI workflow preloads the source files, caches the
+converted products, and limits processing to 100 events per input file to keep
+the documentation build bounded. Running the tutorial locally without that
+environment variable processes the full files. The CI build executes the
+tutorial and embeds its output; successful builds from pushes to ``main`` are
+deployed to GitHub Pages.
 
 To run the complete tutorial locally from the CTLearn repository root, install
 CTLearn with its development dependencies and execute:

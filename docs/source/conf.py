@@ -26,10 +26,6 @@ import ctapipe.reco  # noqa: F401
 
 import ctlearn
 
-# Read the full Zenodo inputs on Read the Docs, but bound processing time.
-if "READTHEDOCS" in os.environ:
-    os.environ.setdefault("CTLEARN_TUTORIAL_MAX_EVENTS", "100")
-
 # -- Project information -----------------------------------------------------
 
 project = "CTLearn"

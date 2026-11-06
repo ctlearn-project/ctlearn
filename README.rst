@@ -30,7 +30,7 @@ CTLearn: Deep Learning for IACT Event Reconstruction
 CTLearn is a package under active development to run deep learning models to analyze data from all major current and future arrays of imaging atmospheric Cherenkov telescopes (IACTs). CTLearn can load R1/DL0/DL1 data from `CTAO <https://www.cta-observatory.org/>`_ (Cherenkov Telescope Array Observatory), `FACT <https://www.isdc.unige.ch/fact/>`_\ , `H.E.S.S. <https://www.mpi-hd.mpg.de/hfm/HESS/>`_\ , `LST-1 <https://www.lst1.iac.es/>`_\ , `MAGIC <https://magic.mpp.mpg.de/>`_\ , and `VERITAS <https://veritas.sao.arizona.edu/>`_ telescopes reduced by `ctapipe <https://github.com/cta-observatory/ctapipe>`_ and processed by `DL1DataHandler <https://github.com/cta-observatory/dl1-data-handler>`_.
 
 * Code, feature requests, bug reports, pull requests: https://github.com/ctlearn-project/ctlearn
-* Documentation: https://ctlearn.readthedocs.io
+* Documentation: https://ctlearn-project.github.io/ctlearn/
 * License: BSD-3
 
 Installation
@@ -53,7 +53,7 @@ The latest version of this package can be installed via pip:
 
    pip install ctlearn
 
-See the documentation for further information like `installation instructions for the IT-cluster <https://ctlearn.readthedocs.io/en/latest/installation.html#install-a-released-version>`_, `installation instructions for developers <https://ctlearn.readthedocs.io/en/latest/installation.html#installing-with-pip-setuptools-from-source-for-development>`_, `package usage <https://ctlearn.readthedocs.io/en/stable/usage.html>`_, and `dependencies <https://ctlearn.readthedocs.io/en/stable/installation.html#dependencies>`_ among other topics.
+See the documentation for further information like `installation instructions for the IT-cluster <https://ctlearn-project.github.io/ctlearn/installation.html#install-a-released-version>`_, `installation instructions for developers <https://ctlearn-project.github.io/ctlearn/installation.html#installing-with-pip-setuptools-from-source-for-development>`_, `package usage <https://ctlearn-project.github.io/ctlearn/usage.html>`_, and `dependencies <https://ctlearn-project.github.io/ctlearn/installation.html#dependencies>`_ among other topics.
 
 
 Citing this software
