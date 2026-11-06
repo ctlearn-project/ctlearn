@@ -6,3 +6,5 @@ sphinx-design
 # The heavy ML frameworks (TensorFlow, PyTorch, ...) are mocked in conf.py.
 ctapipe>=0.29
 dl1_data_handler>=0.14.12
+matplotlib
+sphinx-gallery>=0.16.0

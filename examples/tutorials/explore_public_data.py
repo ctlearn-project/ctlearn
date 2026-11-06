@@ -1,6 +1,6 @@
 """
 Explore Public CTAO Data
-=======================
+========================
 
 Download public CTAO simulation data, convert it with ctapipe, and explore
 waveforms and images using DL1DataHandler.
@@ -10,6 +10,7 @@ downloaded only when this script is run, and existing downloads and converted
 files are reused.
 """
 
+import os
 from pathlib import Path
 
 from ctapipe import __version__ as ctapipe_version
@@ -29,7 +30,12 @@ except ImportError:
 plt.style.use("ggplot")
 print_log = True
 
-TESTDATA_DIR = Path(__file__).resolve().parents[2] / "testdata"
+TESTDATA_DIR = Path(
+    os.environ.get(
+        "CTLEARN_TUTORIAL_DATA_DIR",
+        str(Path.home() / ".cache" / "ctlearn" / "tutorial-data"),
+    )
+)
 TESTDATA_DIR.mkdir(parents=True, exist_ok=True)
 
 ######################################################################
@@ -129,12 +135,18 @@ for tel_type, allowed_tels in telescope_types.items():
     colorbar.set_label("p.e.", fontsize=10)
     title = ax.set_title(f"{tel_type}: calibrated waveform (t = 0 ns)")
 
-    def update(frame):
-        frame_image = calibrated_waveforms[:, :, frame]
-        image.set_data(frame_image)
-        image.set_clim(frame_image.min(), frame_image.max())
-        title.set_text(f"{tel_type}: calibrated waveform (t = {frame} ns)")
-        return image, title
+    def update(
+        frame,
+        waveform=calibrated_waveforms,
+        image_artist=image,
+        title_artist=title,
+        telescope_type=tel_type,
+    ):
+        frame_image = waveform[:, :, frame]
+        image_artist.set_data(frame_image)
+        image_artist.set_clim(frame_image.min(), frame_image.max())
+        title_artist.set_text(f"{telescope_type}: calibrated waveform (t = {frame} ns)")
+        return image_artist, title_artist
 
     waveform_animation = ani.FuncAnimation(
         fig,
