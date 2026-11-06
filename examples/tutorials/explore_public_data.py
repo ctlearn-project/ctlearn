@@ -10,6 +10,13 @@ downloaded only when this script is run, and existing downloads and converted
 files are reused.
 """
 
+######################################################################
+# Imports
+# -------
+#
+# Import the tools used to download and process the public data, then read
+# and visualize the resulting images and waveforms.
+
 import os
 from pathlib import Path
 
@@ -27,8 +34,23 @@ try:
 except ImportError:
     ProductMetadata = None
 
+######################################################################
+# Set a limit on the number of events (optional)
+# ----------------------------------------------
+#
+# By default, the tutorial processes all events. To speed up a test run,
+# set ``CTLEARN_TUTORIAL_MAX_EVENTS`` to a positive integer before running
+# this script, for example ``CTLEARN_TUTORIAL_MAX_EVENTS=100``. The limit
+# applies to each input file. Leave the variable unset to process all events.
+
 plt.style.use("ggplot")
 print_log = True
+
+MAX_EVENTS = os.environ.get("CTLEARN_TUTORIAL_MAX_EVENTS")
+if MAX_EVENTS is not None and int(MAX_EVENTS) < 1:
+    raise ValueError("CTLEARN_TUTORIAL_MAX_EVENTS must be a positive integer")
+MAX_EVENTS_ARGUMENT = f"--max-events={MAX_EVENTS}" if MAX_EVENTS is not None else None
+MAX_EVENTS_SUFFIX = f"-max{MAX_EVENTS}" if MAX_EVENTS is not None else ""
 
 TESTDATA_DIR = Path(
     os.environ.get(
@@ -50,7 +72,7 @@ SIMTEL_URL = (
     "ctapipe-test-data/v1.1.0/gamma_prod5.simtel.zst"
 )
 simtel_path = TESTDATA_DIR / "gamma_prod5.simtel.zst"
-gamma_dl1_path = TESTDATA_DIR / "gamma_prod5.r1.dl1.h5"
+gamma_dl1_path = TESTDATA_DIR / f"gamma_prod5{MAX_EVENTS_SUFFIX}.r1.dl1.h5"
 
 if not simtel_path.is_file():
     download_file(SIMTEL_URL, simtel_path, progress=True)
@@ -66,6 +88,8 @@ if not gamma_dl1_path.is_file():
         "--SimTelEventSource.focal_length_choice=EQUIVALENT",
         "--overwrite",
     ]
+    if MAX_EVENTS_ARGUMENT is not None:
+        argv.append(MAX_EVENTS_ARGUMENT)
     if ProductMetadata is not None:
         argv.append("--ProductMetadata.instance=site_id=CTAO-South")
     result = run_tool(ProcessorTool(), argv=argv, cwd=str(TESTDATA_DIR))
@@ -221,7 +245,7 @@ ZENODO_FILES = [
     "proton_with_images_01.dl2.h5",
 ]
 ZENODO_FILES_URL = "https://zenodo.org/api/records/7298569/files"
-converted_path = TESTDATA_DIR / f"ctapipe-{ctapipe_version}"
+converted_path = TESTDATA_DIR / f"ctapipe-{ctapipe_version}{MAX_EVENTS_SUFFIX}"
 converted_path.mkdir(parents=True, exist_ok=True)
 
 for filename in ZENODO_FILES:
@@ -246,6 +270,8 @@ for filename in ZENODO_FILES:
             "--write-showers",
             "--overwrite",
         ]
+        if MAX_EVENTS_ARGUMENT is not None:
+            argv.append(MAX_EVENTS_ARGUMENT)
         if ProductMetadata is not None:
             argv.append("--ProductMetadata.instance=site_id=CTAO-North")
         result = run_tool(ProcessorTool(), argv=argv, cwd=str(TESTDATA_DIR))
