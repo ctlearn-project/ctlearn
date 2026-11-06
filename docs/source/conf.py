@@ -67,6 +67,7 @@ sphinx_gallery_conf = {
     "gallery_dirs": "auto_tutorials",
     "filename_pattern": r"explore_public_data\.py$",
     "plot_gallery": True,
+    "matplotlib_animations": (True, "jshtml"),
     "abort_on_example_error": True,
 }
 
