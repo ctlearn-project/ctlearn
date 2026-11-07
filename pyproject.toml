@@ -87,6 +87,7 @@ tests = [
 docs = [
   "ctlearn[all]",
   "sphinx",
+  "sphinx-gallery >= 0.16.0",
   "sphinx-changelog",
   "sphinx-design",
   "sphinx-rtd-theme",
@@ -103,7 +104,7 @@ dev = [
 
 [project.urls]
 repository = "https://github.com/ctlearn-project/ctlearn"
-documentation = "https://ctlearn.readthedocs.io/en/latest/"
+documentation = "https://ctlearn-project.github.io/ctlearn/"
 
 [project.scripts]
 ctlearn-train-keras-model = "ctlearn.tools.keras.train_model:main"

@@ -1,0 +1,3 @@
+Build and publish the documentation with GitHub Actions. The CI documentation
+job executes the Sphinx-Gallery tutorial, reuses cached tutorial data, and
+deploys the generated HTML to GitHub Pages on pushes to ``main``.

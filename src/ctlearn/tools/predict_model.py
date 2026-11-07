@@ -61,6 +61,14 @@ from ctapipe.io.hdf5dataformat import (
 
 # TODO: Bump minimum ctapipe version to v0.33.0. Clean up imports!
 try:
+    from ctapipe.io.hdf5dataformat import (
+        DL0_SUBARRAY_TRIGGER_TABLE,
+        DL0_TEL_TRIGGER_TABLE,
+    )
+except ImportError:
+    DL0_SUBARRAY_TRIGGER_TABLE = "/dl0/event/subarray/trigger"
+    DL0_TEL_TRIGGER_TABLE = "/dl0/event/telescope/trigger"
+try:
     from ctao_datamodel.models.dataproducts import Software
     from ctapipe.io.metadata import (
         read_ctao_metadata,
@@ -472,6 +480,15 @@ class PredictCTLearnModel(Tool):
             input_url_signal=[self.input_url],
             parent=self,
         )
+        if (
+            int(self.dl1dh_reader.data_format_version.split(".")[0].replace("v", ""))
+            >= 8
+        ):
+            self.subarray_trigger_table_path = DL0_SUBARRAY_TRIGGER_TABLE
+            self.tel_trigger_table_path = DL0_TEL_TRIGGER_TABLE
+        else:
+            self.subarray_trigger_table_path = DL1_SUBARRAY_TRIGGER_TABLE
+            self.tel_trigger_table_path = DL1_TEL_TRIGGER_TABLE
         self.log.info("Number of events loaded: %s", self.dl1dh_reader.get_n_events())
         # Check if the number of events is enough to form a batch
         if self.dl1dh_reader.get_n_events() < self.batch_size:
@@ -596,10 +613,9 @@ class PredictCTLearnModel(Tool):
         )
         selected_subarray.to_hdf(self.output_path)
         self.log.info("SubarrayDescription was stored in '%s'", self.output_path)
-
         tel_trigger_table = read_table(
             self.output_path,
-            DL1_TEL_TRIGGER_TABLE,
+            self.tel_trigger_table_path,
         )
         mask = np.isin(tel_trigger_table["tel_id"], self.dl1dh_reader.tel_ids)
         tel_trigger_table = tel_trigger_table[mask]
@@ -608,7 +624,7 @@ class PredictCTLearnModel(Tool):
         write_table(
             tel_trigger_table,
             self.output_path,
-            DL1_TEL_TRIGGER_TABLE,
+            self.tel_trigger_table_path,
             overwrite=True,
         )
 
@@ -639,7 +655,7 @@ class PredictCTLearnModel(Tool):
         write_table(
             subarray_trigger_table,
             self.output_path,
-            DL1_SUBARRAY_TRIGGER_TABLE,
+            self.subarray_trigger_table_path,
             overwrite=True,
         )
         # Update the simulation shower table to keep only events present in the subarray trigger table

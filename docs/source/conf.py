@@ -55,7 +55,17 @@ extensions = [
     "sphinx.ext.githubpages",
     "sphinx_changelog",
     "sphinx_design",
+    "sphinx_gallery.gen_gallery",
 ]
+
+sphinx_gallery_conf = {
+    "examples_dirs": "../../examples/tutorials",
+    "gallery_dirs": "auto_tutorials",
+    "filename_pattern": r"explore_public_data\.py$",
+    "plot_gallery": True,
+    "matplotlib_animations": (True, "jshtml"),
+    "abort_on_example_error": True,
+}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
