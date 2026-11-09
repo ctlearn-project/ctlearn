@@ -141,14 +141,14 @@ jobs:
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: |
-            ~/.cache/ctlearn/tutorial-data/gamma_prod5-max10000.r1.dl1.h5
+            ~/.cache/ctlearn/tutorial-data/gamma_prod5-max25000.r1.dl1.h5
             ~/.cache/ctlearn/tutorial-data/ctapipe-*
           key: >-
             ctlearn-tutorial-processed-${{ runner.os }}-${{ steps.ctapipe-version.outputs.version }}-${{ hashFiles('examples/tutorials/explore_public_data.py', 'docs/requirements.txt', 'pyproject.toml') }}
 
       - name: Build documentation and execute tutorials
         env:
-          CTLEARN_TUTORIAL_MAX_EVENTS: "10000"
+          CTLEARN_TUTORIAL_MAX_EVENTS: "25000"
         run: python -m sphinx -b html --keep-going docs/source docs/build/html
 
       - name: Upload rendered documentation for review
