@@ -45,3 +45,5 @@ test/
 *.sh
 output*
 config*
+!docs/source/config/
+!docs/source/config/*.json
