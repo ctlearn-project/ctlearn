@@ -675,6 +675,10 @@ subprocess.run(
 # baseline energy, direction, and classification runs below. Camera and sky
 # direction errors use different units, so they share a panel but have
 # separate y-axes. The figure is also saved in the training output directory.
+# The statistics of the training runs are intentionally very limited, so the
+# training curves are not expected to be smooth or to converge to optimal values.
+# The purpose of this tutorial is to demonstrate the training workflow and the use
+# of CTLearn, rather than to achieve optimal performance on the example dataset.
 
 training_logs = {}
 for run_name in (
