@@ -577,7 +577,8 @@ subprocess.run(
         --DLImageReader.min_telescopes 2 \\
         --TrainCTLearnModel.stack_telescope_images True \\
         --TrainCTLearnModel.n_epochs 5 \\
-        --TrainCTLearnModel.batch_size 2""",
+        --TrainCTLearnModel.batch_size 2 \\
+        --TableQualityQuery.quality_criteria []""",
     shell=True,
     check=True,
 )
@@ -594,7 +595,8 @@ subprocess.run(
         --DLImageReader.min_telescopes 2 \\
         --TrainCTLearnModel.stack_telescope_images True \\
         --TrainCTLearnModel.n_epochs 5 \\
-        --TrainCTLearnModel.batch_size 2""",
+        --TrainCTLearnModel.batch_size 2 \\
+        --TableQualityQuery.quality_criteria []""",
     shell=True,
     check=True,
 )
