@@ -208,7 +208,7 @@ subprocess.run(
         --reco energy \\
         --DLImageReader.focal_length_choice EQUIVALENT \\
         --TrainCTLearnModel.n_epochs 10 \\
-        --TrainCTLearnModel.batch_size 32""",
+        --TrainCTLearnModel.batch_size 16""",
     shell=True,
     check=True,
 )
@@ -223,7 +223,7 @@ subprocess.run(
         --reco energy \\
         --DLImageReader.focal_length_choice EQUIVALENT \\
         --TrainCTLearnModel.n_epochs 10 \\
-        --TrainCTLearnModel.batch_size 32""",
+        --TrainCTLearnModel.batch_size 16""",
     shell=True,
     check=True,
 )
@@ -254,7 +254,7 @@ subprocess.run(
         --reco cameradirection \\
         --DLImageReader.focal_length_choice EQUIVALENT \\
         --TrainCTLearnModel.n_epochs 5 \\
-        --TrainCTLearnModel.batch_size 32""",
+        --TrainCTLearnModel.batch_size 16""",
     shell=True,
     check=True,
 )
@@ -269,7 +269,7 @@ subprocess.run(
         --reco cameradirection \\
         --DLImageReader.focal_length_choice EQUIVALENT \\
         --TrainCTLearnModel.n_epochs 5 \\
-        --TrainCTLearnModel.batch_size 32""",
+        --TrainCTLearnModel.batch_size 16""",
     shell=True,
     check=True,
 )
@@ -285,7 +285,7 @@ subprocess.run(
         --reco skydirection \\
         --DLImageReader.focal_length_choice EQUIVALENT \\
         --TrainCTLearnModel.n_epochs 5 \\
-        --TrainCTLearnModel.batch_size 32""",
+        --TrainCTLearnModel.batch_size 16""",
     shell=True,
     check=True,
 )
@@ -300,7 +300,7 @@ subprocess.run(
         --reco skydirection \\
         --DLImageReader.focal_length_choice EQUIVALENT \\
         --TrainCTLearnModel.n_epochs 5 \\
-        --TrainCTLearnModel.batch_size 32""",
+        --TrainCTLearnModel.batch_size 16""",
     shell=True,
     check=True,
 )
@@ -348,7 +348,7 @@ subprocess.run(
         --reco type \\
         --DLImageReader.focal_length_choice EQUIVALENT \\
         --TrainCTLearnModel.n_epochs 5 \\
-        --TrainCTLearnModel.batch_size 32""",
+        --TrainCTLearnModel.batch_size 16""",
     shell=True,
     check=True,
 )
@@ -365,7 +365,7 @@ subprocess.run(
         --reco type \\
         --DLImageReader.focal_length_choice EQUIVALENT \\
         --TrainCTLearnModel.n_epochs 5 \\
-        --TrainCTLearnModel.batch_size 32""",
+        --TrainCTLearnModel.batch_size 16""",
     shell=True,
     check=True,
 )
@@ -403,7 +403,8 @@ subprocess.run(
         --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_models_example_config.json" \\
         --reco energy \\
         --DLImageReader.focal_length_choice EQUIVALENT \\
-        --TrainCTLearnModel.model_type SingleCNN""",
+        --TrainCTLearnModel.model_type SingleCNN \\
+        --TrainCTLearnModel.batch_size 16""",
     shell=True,
     check=True,
 )
@@ -418,7 +419,8 @@ subprocess.run(
         --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_models_example_config.json" \\
         --reco energy \\
         --DLImageReader.focal_length_choice EQUIVALENT \\
-        --TrainCTLearnModel.model_type SingleCNN""",
+        --TrainCTLearnModel.model_type SingleCNN \\
+        --TrainCTLearnModel.batch_size 16""",
     shell=True,
     check=True,
 )
@@ -507,7 +509,8 @@ subprocess.run(
         --DLImageReader.focal_length_choice EQUIVALENT \\
         --TrainCTLearnModel.model_type LoadedModel \\
         --LoadedModel.load_model_from "$CTLEARN_TUTORIAL_OUTPUT_DIR/keras-singlecnn-energy/ctlearn_model.keras" \\
-        --TrainCTLearnModel.n_epochs 2""",
+        --TrainCTLearnModel.n_epochs 2 \\
+        --TrainCTLearnModel.batch_size 16""",
     shell=True,
     check=True,
 )
@@ -524,7 +527,8 @@ subprocess.run(
         --DLImageReader.focal_length_choice EQUIVALENT \\
         --TrainCTLearnModel.model_type LoadedModel \\
         --PyTorchLoadedModel.load_model_from "$CTLEARN_TUTORIAL_OUTPUT_DIR/pytorch-singlecnn-energy/ctlearn_model.pt" \\
-        --TrainCTLearnModel.n_epochs 2""",
+        --TrainCTLearnModel.n_epochs 2 \\
+        --TrainCTLearnModel.batch_size 16""",
     shell=True,
     check=True,
 )
@@ -571,7 +575,7 @@ subprocess.run(
         --DLImageReader.min_telescopes 2 \\
         --TrainCTLearnModel.stack_telescope_images True \\
         --TrainCTLearnModel.n_epochs 5 \\
-        --TrainCTLearnModel.batch_size 16""",
+        --TrainCTLearnModel.batch_size 8""",
     shell=True,
     check=True,
 )
@@ -588,7 +592,7 @@ subprocess.run(
         --DLImageReader.min_telescopes 2 \\
         --TrainCTLearnModel.stack_telescope_images True \\
         --TrainCTLearnModel.n_epochs 5 \\
-        --TrainCTLearnModel.batch_size 16""",
+        --TrainCTLearnModel.batch_size 8""",
     shell=True,
     check=True,
 )

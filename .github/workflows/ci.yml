@@ -148,7 +148,7 @@ jobs:
 
       - name: Build documentation and execute tutorials
         env:
-          CTLEARN_TUTORIAL_MAX_EVENTS: "100"
+          CTLEARN_TUTORIAL_MAX_EVENTS: "1000"
         run: python -m sphinx -b html --keep-going docs/source docs/build/html
 
       - name: Upload rendered documentation for review
