@@ -209,7 +209,7 @@ subprocess.run(
         --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_train_model_example_config.json" \\
         --reco energy \\
         --DLImageReader.focal_length_choice EQUIVALENT \\
-        --TrainCTLearnModel.n_epochs 10 \\
+        --TrainCTLearnModel.n_epochs 5 \\
         --TrainCTLearnModel.batch_size 4""",
     shell=True,
     check=True,
@@ -224,7 +224,7 @@ subprocess.run(
         --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_train_model_example_config.json" \\
         --reco energy \\
         --DLImageReader.focal_length_choice EQUIVALENT \\
-        --TrainCTLearnModel.n_epochs 10 \\
+        --TrainCTLearnModel.n_epochs 5 \\
         --TrainCTLearnModel.batch_size 4""",
     shell=True,
     check=True,
@@ -349,7 +349,7 @@ subprocess.run(
         --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_train_model_example_config.json" \\
         --reco type \\
         --DLImageReader.focal_length_choice EQUIVALENT \\
-        --TrainCTLearnModel.n_epochs 5 \\
+        --TrainCTLearnModel.n_epochs 3 \\
         --TrainCTLearnModel.batch_size 4""",
     shell=True,
     check=True,
@@ -366,7 +366,7 @@ subprocess.run(
         --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_train_model_example_config.json" \\
         --reco type \\
         --DLImageReader.focal_length_choice EQUIVALENT \\
-        --TrainCTLearnModel.n_epochs 5 \\
+        --TrainCTLearnModel.n_epochs 3 \\
         --TrainCTLearnModel.batch_size 4""",
     shell=True,
     check=True,
@@ -406,6 +406,7 @@ subprocess.run(
         --reco energy \\
         --DLImageReader.focal_length_choice EQUIVALENT \\
         --TrainCTLearnModel.model_type SingleCNN \\
+        --TrainCTLearnModel.n_epochs 2 \\
         --TrainCTLearnModel.batch_size 4""",
     shell=True,
     check=True,
@@ -422,6 +423,7 @@ subprocess.run(
         --reco energy \\
         --DLImageReader.focal_length_choice EQUIVALENT \\
         --TrainCTLearnModel.model_type SingleCNN \\
+        --TrainCTLearnModel.n_epochs 2 \\
         --TrainCTLearnModel.batch_size 4""",
     shell=True,
     check=True,
@@ -637,7 +639,7 @@ subprocess.run(
         --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_train_model_example_config.json" \\
         --config "$CTLEARN_TUTORIAL_CONFIG_DIR/dl1dh_example_config.json" \\
         --reco energy \\
-        --TrainCTLearnModel.n_epochs 5 \\
+        --TrainCTLearnModel.n_epochs 2 \\
         --TrainCTLearnModel.batch_size 2 \\
         --TrainCTLearnModel.validation_split 0.2 \\
         --TrainCTLearnModel.dl1dh_reader_type DLWaveformReader \\
@@ -655,7 +657,7 @@ subprocess.run(
         --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_train_model_example_config.json" \\
         --config "$CTLEARN_TUTORIAL_CONFIG_DIR/dl1dh_example_config.json" \\
         --reco energy \\
-        --TrainCTLearnModel.n_epochs 5 \\
+        --TrainCTLearnModel.n_epochs 2 \\
         --TrainCTLearnModel.batch_size 2 \\
         --TrainCTLearnModel.validation_split 0.2 \\
         --TrainCTLearnModel.dl1dh_reader_type DLWaveformReader \\
@@ -715,8 +717,8 @@ def plot_metric(ax, run_name, metric, label, color, **kwargs):
         )
 
 
-fig, (energy_ax, direction_ax, type_ax) = plt.subplots(
-    1, 3, figsize=(19, 6), constrained_layout=True
+fig, (energy_ax, camera_ax, sky_ax, type_ax) = plt.subplots(
+    1, 4, figsize=(24, 6), constrained_layout=True
 )
 fig.suptitle("CTLearn training curves", fontsize=16)
 
@@ -735,13 +737,12 @@ energy_ax.set_ylabel("Mean absolute error")
 energy_ax.grid(True, alpha=0.3)
 energy_ax.legend(fontsize=8)
 
-sky_ax = direction_ax.twinx()
 for display_name, framework, color in frameworks:
     plot_metric(
-        direction_ax,
+        camera_ax,
         f"{framework}-cameradirection",
         "mae_cameradirection",
-        f"{display_name} camera",
+        display_name,
         color,
         marker="o",
     )
@@ -749,17 +750,20 @@ for display_name, framework, color in frameworks:
         sky_ax,
         f"{framework}-skydirection",
         "mae_skydirection",
-        f"{display_name} sky",
+        display_name,
         color,
         marker="s",
     )
-direction_ax.set_title("Direction")
-direction_ax.set_xlabel("Epoch")
-direction_ax.set_ylabel("Camera direction MAE [m]")
+camera_ax.set_title("Camera direction")
+camera_ax.set_xlabel("Epoch")
+camera_ax.set_ylabel("Mean absolute error [m]")
+camera_ax.grid(True, alpha=0.3)
+camera_ax.legend(fontsize=8)
+sky_ax.set_title("Sky direction")
+sky_ax.set_xlabel("Epoch")
 sky_ax.set_ylabel("Sky direction MAE [deg]")
-direction_ax.grid(True, alpha=0.3)
-direction_ax.legend(loc="upper left", title="Camera", fontsize=8)
-sky_ax.legend(loc="upper right", title="Sky", fontsize=8)
+sky_ax.grid(True, alpha=0.3)
+sky_ax.legend(fontsize=8)
 
 for display_name, framework, color in frameworks:
     for metric, marker in (("accuracy", "o"), ("auc", "s")):
@@ -774,9 +778,9 @@ for display_name, framework, color in frameworks:
 type_ax.set_title("Particle type")
 type_ax.set_xlabel("Epoch")
 type_ax.set_ylabel("Score")
-type_ax.set_ylim(0, 1)
+type_ax.set_ylim(0.4, 0.7)
 type_ax.grid(True, alpha=0.3)
-type_ax.legend(fontsize=8, ncol=2)
+type_ax.legend(fontsize=6, ncol=2, loc="best")
 
 training_curves_path = OUTPUT_DIR / "training-curves.png"
 fig.savefig(training_curves_path, dpi=350)
