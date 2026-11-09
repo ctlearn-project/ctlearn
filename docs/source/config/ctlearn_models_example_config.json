@@ -1,0 +1,74 @@
+{
+    "CTLearnModel": {
+        "init_padding": 0,
+        "head_layers": {
+            "type": [512, 256, 2],
+            "energy": [512, 256, 1],
+            "cameradirection": [512, 256, 2],
+            "skydirection": [512, 256, 2]
+        },
+        "head_activation_function": {
+            "type": "relu",
+            "energy": "relu",
+            "cameradirection": "tanh",
+            "skydirection": "tanh"
+        },
+        "attention_mechanism": "Dual-SE",
+        "attention_reduction_ratio": 16
+    },
+    "SingleCNN": {
+        "name": "My_own_plain_CNN_model",
+        "architecture": [
+            {
+                "filters": 16,
+                "kernel_size": 3,
+                "number": 2
+            },
+            {
+                "filters": 32,
+                "kernel_size": 3,
+                "number": 2
+            },
+            {
+                "filters": 64,
+                "kernel_size": 3,
+                "number": 2
+            }
+        ],
+        "pooling_type": "max",
+        "pooling_parameters": {
+            "size": 2,
+            "strides": 2
+        },
+        "batchnorm": false,
+        "bottleneck_filters": null
+    },
+    "ResNet": {
+        "name": "My_own_ResNet50_model",
+        "init_layer": null,
+        "init_max_pool": null,
+        "residual_block_type": "bottleneck",
+        "architecture": [
+            {
+                "filters": 64,
+                "blocks": 3
+            },
+            {
+                "filters": 128,
+                "blocks": 4
+            },
+            {
+                "filters": 256,
+                "blocks": 6
+            },
+            {
+                "filters": 512,
+                "blocks": 3
+            }
+        ]
+    },
+    "LoadedModel": {
+        "overwrite_head": false,
+        "trainable_backbone": true
+    }
+}

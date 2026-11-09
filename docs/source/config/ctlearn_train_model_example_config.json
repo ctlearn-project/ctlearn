@@ -1,0 +1,22 @@
+{
+    "TrainCTLearnModel": {
+        "dl1dh_reader_type": "DLImageReader",
+        "n_epochs": 10,
+        "batch_size": 64,
+        "validation_split": 0.1,
+        "save_best_validation_only": true,
+        "optimizer": {
+            "name": "Adam",
+            "base_learning_rate": 0.0001,
+            "adam_epsilon": 1.0e-8
+        },
+        "lr_reducing": {
+            "factor": 0.5,
+            "patience": 5,
+            "min_delta": 0.01,
+            "min_lr": 0.000001
+        },
+        "random_seed": 1234,
+        "early_stopping": null
+    }
+}
