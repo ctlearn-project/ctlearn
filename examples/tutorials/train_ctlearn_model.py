@@ -176,6 +176,19 @@ os.environ["CTLEARN_TUTORIAL_MAX_EVENTS_SUFFIX"] = MAX_EVENTS_SUFFIX
 
 print(f"\nTraining outputs: {OUTPUT_DIR}")
 
+
+def run_training_command(command):
+    result = subprocess.run(
+        command,
+        shell=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+    print(result.stdout, end="")
+    result.check_returncode()
+
+
 ######################################################################
 # Part A
 #
@@ -200,7 +213,7 @@ print(f"\nTraining outputs: {OUTPUT_DIR}")
 # predicted values back from logarithmic space to the original linear energy
 # scale in TeV.
 
-subprocess.run(
+run_training_command(
     """ctlearn-train-keras-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
@@ -211,11 +224,9 @@ subprocess.run(
         --DLImageReader.focal_length_choice EQUIVALENT \\
         --TrainCTLearnModel.n_epochs 5 \\
         --TrainCTLearnModel.batch_size 4""",
-    shell=True,
-    check=True,
 )
 
-subprocess.run(
+run_training_command(
     """ctlearn-train-pytorch-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
@@ -226,8 +237,6 @@ subprocess.run(
         --DLImageReader.focal_length_choice EQUIVALENT \\
         --TrainCTLearnModel.n_epochs 5 \\
         --TrainCTLearnModel.batch_size 4""",
-    shell=True,
-    check=True,
 )
 
 ######################################################################
@@ -246,7 +255,7 @@ subprocess.run(
 # final direction expressed in degrees.
 
 # Camera coordinates
-subprocess.run(
+run_training_command(
     """ctlearn-train-keras-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
@@ -257,11 +266,9 @@ subprocess.run(
         --DLImageReader.focal_length_choice EQUIVALENT \\
         --TrainCTLearnModel.n_epochs 5 \\
         --TrainCTLearnModel.batch_size 4""",
-    shell=True,
-    check=True,
 )
 
-subprocess.run(
+run_training_command(
     """ctlearn-train-pytorch-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
@@ -272,12 +279,10 @@ subprocess.run(
         --DLImageReader.focal_length_choice EQUIVALENT \\
         --TrainCTLearnModel.n_epochs 5 \\
         --TrainCTLearnModel.batch_size 4""",
-    shell=True,
-    check=True,
 )
 
 # Sky coordinates
-subprocess.run(
+run_training_command(
     """ctlearn-train-keras-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
@@ -288,11 +293,9 @@ subprocess.run(
         --DLImageReader.focal_length_choice EQUIVALENT \\
         --TrainCTLearnModel.n_epochs 5 \\
         --TrainCTLearnModel.batch_size 4""",
-    shell=True,
-    check=True,
 )
 
-subprocess.run(
+run_training_command(
     """ctlearn-train-pytorch-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
@@ -303,8 +306,6 @@ subprocess.run(
         --DLImageReader.focal_length_choice EQUIVALENT \\
         --TrainCTLearnModel.n_epochs 5 \\
         --TrainCTLearnModel.batch_size 4""",
-    shell=True,
-    check=True,
 )
 
 ######################################################################
@@ -338,7 +339,7 @@ subprocess.run(
 # loss, accuracy, and AUC on a per-epoch basis can help identify potential
 # issues arising from class imbalance or other training problems.
 
-subprocess.run(
+run_training_command(
     """ctlearn-train-keras-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h*" \\
@@ -351,11 +352,9 @@ subprocess.run(
         --DLImageReader.focal_length_choice EQUIVALENT \\
         --TrainCTLearnModel.n_epochs 3 \\
         --TrainCTLearnModel.batch_size 4""",
-    shell=True,
-    check=True,
 )
 
-subprocess.run(
+run_training_command(
     """ctlearn-train-pytorch-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h*" \\
@@ -368,8 +367,6 @@ subprocess.run(
         --DLImageReader.focal_length_choice EQUIVALENT \\
         --TrainCTLearnModel.n_epochs 3 \\
         --TrainCTLearnModel.batch_size 4""",
-    shell=True,
-    check=True,
 )
 
 ######################################################################
@@ -395,7 +392,7 @@ subprocess.run(
 # where predictions need to be made at very high rates and with very low
 # latency, computational efficiency becomes increasingly important.
 
-subprocess.run(
+run_training_command(
     """ctlearn-train-keras-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
@@ -408,11 +405,9 @@ subprocess.run(
         --TrainCTLearnModel.model_type SingleCNN \\
         --TrainCTLearnModel.n_epochs 2 \\
         --TrainCTLearnModel.batch_size 4""",
-    shell=True,
-    check=True,
 )
 
-subprocess.run(
+run_training_command(
     """ctlearn-train-pytorch-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
@@ -425,8 +420,6 @@ subprocess.run(
         --TrainCTLearnModel.model_type SingleCNN \\
         --TrainCTLearnModel.n_epochs 2 \\
         --TrainCTLearnModel.batch_size 4""",
-    shell=True,
-    check=True,
 )
 
 #
@@ -446,7 +439,7 @@ subprocess.run(
 # - Bottleneck blocks, which use a more compact sequence of convolutions to
 #   enable deeper networks while controlling the computational cost.
 
-subprocess.run(
+run_training_command(
     """ctlearn-train-keras-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
@@ -459,11 +452,9 @@ subprocess.run(
         --TrainCTLearnModel.model_type ResNet \\
         --TrainCTLearnModel.n_epochs 2 \\
         --TrainCTLearnModel.batch_size 4""",
-    shell=True,
-    check=True,
 )
 
-subprocess.run(
+run_training_command(
     """ctlearn-train-pytorch-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
@@ -476,8 +467,6 @@ subprocess.run(
         --TrainCTLearnModel.model_type ResNet \\
         --TrainCTLearnModel.n_epochs 2 \\
         --TrainCTLearnModel.batch_size 4""",
-    shell=True,
-    check=True,
 )
 
 ######################################################################
@@ -501,7 +490,7 @@ subprocess.run(
 # The preceding SingleCNN command trains the model loaded below. The copied
 # configuration keeps its prediction head and leaves the backbone trainable.
 
-subprocess.run(
+run_training_command(
     """ctlearn-train-keras-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
@@ -515,11 +504,9 @@ subprocess.run(
         --LoadedModel.load_model_from "$CTLEARN_TUTORIAL_OUTPUT_DIR/keras-singlecnn-energy/ctlearn_model.keras" \\
         --TrainCTLearnModel.n_epochs 2 \\
         --TrainCTLearnModel.batch_size 4""",
-    shell=True,
-    check=True,
 )
 
-subprocess.run(
+run_training_command(
     """ctlearn-train-pytorch-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
@@ -533,8 +520,6 @@ subprocess.run(
         --PyTorchLoadedModel.load_model_from "$CTLEARN_TUTORIAL_OUTPUT_DIR/pytorch-singlecnn-energy/ctlearn_model.pth" \\
         --TrainCTLearnModel.n_epochs 2 \\
         --TrainCTLearnModel.batch_size 4""",
-    shell=True,
-    check=True,
 )
 
 ######################################################################
@@ -567,7 +552,7 @@ subprocess.run(
 # *--TrainCTLearnModel.batch_size* to account for the increased memory
 # consumption.
 
-subprocess.run(
+run_training_command(
     """ctlearn-train-keras-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
@@ -581,11 +566,9 @@ subprocess.run(
         --TrainCTLearnModel.n_epochs 5 \\
         --TrainCTLearnModel.batch_size 2 \\
         --TableQualityQuery.quality_criteria []""",
-    shell=True,
-    check=True,
 )
 
-subprocess.run(
+run_training_command(
     """ctlearn-train-pytorch-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
@@ -599,8 +582,6 @@ subprocess.run(
         --TrainCTLearnModel.n_epochs 5 \\
         --TrainCTLearnModel.batch_size 2 \\
         --TableQualityQuery.quality_criteria []""",
-    shell=True,
-    check=True,
 )
 
 ######################################################################
@@ -631,7 +612,7 @@ if not WAVEFORM_FILE.is_file():
         f"Cached waveform data is missing: {WAVEFORM_FILE}. "
         "Run examples/tutorials/explore_public_data.py first."
     )
-subprocess.run(
+run_training_command(
     """ctlearn-train-keras-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_DATA_DIR" \\
         --pattern-signal "gamma_prod5${CTLEARN_TUTORIAL_MAX_EVENTS_SUFFIX}.r1.dl1.h5" \\
@@ -645,11 +626,9 @@ subprocess.run(
         --TrainCTLearnModel.dl1dh_reader_type DLWaveformReader \\
         --DLWaveformReader.focal_length_choice EQUIVALENT \\
         --TableQualityQuery.quality_criteria []""",
-    shell=True,
-    check=True,
 )
 
-subprocess.run(
+run_training_command(
     """ctlearn-train-pytorch-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_DATA_DIR" \\
         --pattern-signal "gamma_prod5${CTLEARN_TUTORIAL_MAX_EVENTS_SUFFIX}.r1.dl1.h5" \\
@@ -663,8 +642,6 @@ subprocess.run(
         --TrainCTLearnModel.dl1dh_reader_type DLWaveformReader \\
         --DLWaveformReader.focal_length_choice EQUIVALENT \\
         --TableQualityQuery.quality_criteria []""",
-    shell=True,
-    check=True,
 )
 
 ######################################################################
