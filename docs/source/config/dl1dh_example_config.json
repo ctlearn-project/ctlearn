@@ -1,7 +1,7 @@
 {
     "TableQualityQuery": {
         "quality_criteria": [
-            ["> 50 phe", "hillas_intensity > 50"]
+            ["> 1000 phe", "hillas_intensity > 1000"]
         ]
     },
     "DLImageReader": {
