@@ -201,7 +201,7 @@ print(f"\nTraining outputs: {OUTPUT_DIR}")
 # scale in TeV.
 
 subprocess.run(
-    """ctlearn-train-keras-model \\
+    """ctlearn-train-keras-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
         --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/keras-energy" \\
@@ -216,7 +216,7 @@ subprocess.run(
 )
 
 subprocess.run(
-    """ctlearn-train-pytorch-model \\
+    """ctlearn-train-pytorch-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
         --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/pytorch-energy" \\
@@ -247,7 +247,7 @@ subprocess.run(
 
 # Camera coordinates
 subprocess.run(
-    """ctlearn-train-keras-model \\
+    """ctlearn-train-keras-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
         --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/keras-cameradirection" \\
@@ -262,7 +262,7 @@ subprocess.run(
 )
 
 subprocess.run(
-    """ctlearn-train-pytorch-model \\
+    """ctlearn-train-pytorch-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
         --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/pytorch-cameradirection" \\
@@ -278,7 +278,7 @@ subprocess.run(
 
 # Sky coordinates
 subprocess.run(
-    """ctlearn-train-keras-model \\
+    """ctlearn-train-keras-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
         --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/keras-skydirection" \\
@@ -293,7 +293,7 @@ subprocess.run(
 )
 
 subprocess.run(
-    """ctlearn-train-pytorch-model \\
+    """ctlearn-train-pytorch-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
         --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/pytorch-skydirection" \\
@@ -339,7 +339,7 @@ subprocess.run(
 # issues arising from class imbalance or other training problems.
 
 subprocess.run(
-    """ctlearn-train-keras-model \\
+    """ctlearn-train-keras-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h*" \\
         --background "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
@@ -356,7 +356,7 @@ subprocess.run(
 )
 
 subprocess.run(
-    """ctlearn-train-pytorch-model \\
+    """ctlearn-train-pytorch-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h*" \\
         --background "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
@@ -396,7 +396,7 @@ subprocess.run(
 # latency, computational efficiency becomes increasingly important.
 
 subprocess.run(
-    """ctlearn-train-keras-model \\
+    """ctlearn-train-keras-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
         --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/keras-singlecnn-energy" \\
@@ -413,7 +413,7 @@ subprocess.run(
 )
 
 subprocess.run(
-    """ctlearn-train-pytorch-model \\
+    """ctlearn-train-pytorch-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
         --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/pytorch-singlecnn-energy" \\
@@ -447,7 +447,7 @@ subprocess.run(
 #   enable deeper networks while controlling the computational cost.
 
 subprocess.run(
-    """ctlearn-train-keras-model \\
+    """ctlearn-train-keras-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
         --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/keras-resnet-energy" \\
@@ -464,7 +464,7 @@ subprocess.run(
 )
 
 subprocess.run(
-    """ctlearn-train-pytorch-model \\
+    """ctlearn-train-pytorch-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
         --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/pytorch-resnet-energy" \\
@@ -502,7 +502,7 @@ subprocess.run(
 # configuration keeps its prediction head and leaves the backbone trainable.
 
 subprocess.run(
-    """ctlearn-train-keras-model \\
+    """ctlearn-train-keras-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
         --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/keras-transfer-learning-energy" \\
@@ -520,7 +520,7 @@ subprocess.run(
 )
 
 subprocess.run(
-    """ctlearn-train-pytorch-model \\
+    """ctlearn-train-pytorch-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
         --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/pytorch-transfer-learning-energy" \\
@@ -568,7 +568,7 @@ subprocess.run(
 # consumption.
 
 subprocess.run(
-    """ctlearn-train-keras-model \\
+    """ctlearn-train-keras-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
         --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/keras-stereo-energy" \\
@@ -586,7 +586,7 @@ subprocess.run(
 )
 
 subprocess.run(
-    """ctlearn-train-pytorch-model \\
+    """ctlearn-train-pytorch-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
         --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/pytorch-stereo-energy" \\
@@ -632,7 +632,7 @@ if not WAVEFORM_FILE.is_file():
         "Run examples/tutorials/explore_public_data.py first."
     )
 subprocess.run(
-    """ctlearn-train-keras-model \\
+    """ctlearn-train-keras-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_DATA_DIR" \\
         --pattern-signal "gamma_prod5${CTLEARN_TUTORIAL_MAX_EVENTS_SUFFIX}.r1.dl1.h5" \\
         --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/keras-waveform-energy" \\
@@ -650,7 +650,7 @@ subprocess.run(
 )
 
 subprocess.run(
-    """ctlearn-train-pytorch-model \\
+    """ctlearn-train-pytorch-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_DATA_DIR" \\
         --pattern-signal "gamma_prod5${CTLEARN_TUTORIAL_MAX_EVENTS_SUFFIX}.r1.dl1.h5" \\
         --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/pytorch-waveform-energy" \\
@@ -784,7 +784,7 @@ type_ax.set_xlabel("Epoch")
 type_ax.set_ylabel("Score")
 type_ax.set_ylim(0.4, 0.7)
 type_ax.grid(True, alpha=0.3)
-type_ax.legend(fontsize=6, ncol=2, loc="best")
+type_ax.legend(fontsize=8, ncol=2, loc="best")
 
 training_curves_path = OUTPUT_DIR / "training-curves.png"
 fig.savefig(training_curves_path, dpi=350)
