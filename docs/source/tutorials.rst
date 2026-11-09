@@ -39,10 +39,9 @@ training. It uses only the converted gamma-ray and proton ``00`` files for the
 image examples and leaves the ``01`` files untouched for later evaluation.
 The three example JSON configs are copied into
 ``docs/source/config``. The tutorial uses the descriptions
-from the training notebook and runs every example sequentially, including
-during a Sphinx-Gallery build. Training all examples requires a working
-TensorFlow and PyTorch installation and can take substantial time and compute
-resources.
+from the training notebook and executes every example sequentially during
+the documentation build. This requires working TensorFlow and PyTorch
+installations and can take substantial time and compute resources.
 Run the data exploration tutorial first, then execute the training tutorial
 from the repository root:
 

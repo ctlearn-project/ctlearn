@@ -102,6 +102,8 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
+    env:
+      PIP_EXTRA_INDEX_URL: "https://download.pytorch.org/whl/cpu"
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -121,7 +123,7 @@ jobs:
       - name: Install documentation dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install --no-deps .
+          python -m pip install .
           python -m pip install -r docs/requirements.txt
           python -m pip install sphinx sphinx-rtd-theme sphinx-changelog sphinx-design
 
