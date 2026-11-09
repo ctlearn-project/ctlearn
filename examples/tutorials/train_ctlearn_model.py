@@ -1,0 +1,651 @@
+"""
+Train CTLearn models
+====================
+
+Train models for CTAO image and waveform data with CTLearn. The image
+examples use only the gamma-ray and proton ``00`` files; the ``01`` files
+remain untouched for future evaluation tutorials.
+
+Each section explains a training task followed immediately by its literal
+command-line example. Running this script executes every example in order.
+"""
+
+######################################################################
+# Inspect the training environment and cached input data
+# ------------------------------------------------------
+#
+# Run ``explore_public_data.py`` first to download and convert the shared
+# tutorial data. The converted directory is keyed by the ctapipe version and
+# the optional event limit, matching the cache layout used by that tutorial.
+
+import importlib.metadata
+import os
+import subprocess
+from pathlib import Path
+
+from ctapipe import __version__ as ctapipe_version
+
+MAX_EVENTS = os.environ.get("CTLEARN_TUTORIAL_MAX_EVENTS")
+if MAX_EVENTS is not None and int(MAX_EVENTS) < 1:
+    raise ValueError("CTLEARN_TUTORIAL_MAX_EVENTS must be a positive integer")
+MAX_EVENTS_SUFFIX = f"-max{MAX_EVENTS}" if MAX_EVENTS is not None else ""
+
+TESTDATA_DIR = (
+    Path(
+        os.environ.get(
+            "CTLEARN_TUTORIAL_DATA_DIR",
+            str(Path.home() / ".cache" / "ctlearn" / "tutorial-data"),
+        )
+    )
+    .expanduser()
+    .resolve()
+)
+CONVERTED_DIR = TESTDATA_DIR / f"ctapipe-{ctapipe_version}{MAX_EVENTS_SUFFIX}"
+GAMMA_FILE = CONVERTED_DIR / "gamma-diffuse_with_images_00.dl2.h5"
+PROTON_FILE = CONVERTED_DIR / "proton_with_images_00.dl2.h5"
+WAVEFORM_FILE = TESTDATA_DIR / f"gamma_prod5{MAX_EVENTS_SUFFIX}.r1.dl1.h5"
+
+print("Training environment:")
+for distribution in ("ctapipe", "ctlearn", "dl1-data-handler", "keras", "tensorflow"):
+    try:
+        version = importlib.metadata.version(distribution)
+    except importlib.metadata.PackageNotFoundError:
+        version = "not installed"
+    print(f"  {distribution}: {version}")
+
+missing_files = [path for path in (GAMMA_FILE, PROTON_FILE) if not path.is_file()]
+if missing_files:
+    missing = "\n".join(f"  - {path}" for path in missing_files)
+    raise FileNotFoundError(
+        "Cached stereo training data is missing. Run "
+        "examples/tutorials/explore_public_data.py first. Missing files:\n"
+        f"{missing}"
+    )
+
+print("\nCached input files:")
+for path in (GAMMA_FILE, PROTON_FILE):
+    print(f"  {path.name}: {path.stat().st_size / 1024**2:.1f} MiB")
+print("Only the _00 image files are selected; the _01 files are reserved.")
+
+######################################################################
+# Training commands, configs, and outputs
+# ---------------------------------------
+#
+# CTLearn provides ``ctlearn-train-keras-model`` and
+# ``ctlearn-train-pytorch-model`` command-line tools. Use ``--help`` or
+# ``--help-all`` to inspect their options. Each example has a Keras command
+# followed immediately by the equivalent PyTorch command. In a notebook,
+# prefix either command with ``!``.
+#
+# The three JSON configuration files shipped beside this tutorial are copies
+# of the workshop examples:
+#
+# - ``docs/source/config/dl1dh_example_config.json`` selects LST/LSTCam images,
+#   the image and relative peak-time channels, bilinear mapping, and an
+#   example 50,000 p.e. intensity cut. It also specifies NectarCam waveform
+#   settings.
+# - ``docs/source/config/ctlearn_train_model_example_config.json`` sets the
+#   reader, epoch and batch defaults, validation split, Adam optimizer and
+#   learning rate, checkpointing, learning-rate reduction, random seed, and
+#   early stopping.
+# - ``docs/source/config/ctlearn_models_example_config.json`` defines the
+#   prediction heads, attention settings, custom ``SingleCNN`` and ``ResNet``
+#   architectures, and ``LoadedModel`` transfer-learning options.
+
+CONFIG_DIR = Path(__file__).resolve().parents[2] / "docs" / "source" / "config"
+DL1DH_CONFIG = CONFIG_DIR / "dl1dh_example_config.json"
+TRAINING_CONFIG = CONFIG_DIR / "ctlearn_train_model_example_config.json"
+MODEL_CONFIG = CONFIG_DIR / "ctlearn_models_example_config.json"
+for config_path in (DL1DH_CONFIG, TRAINING_CONFIG, MODEL_CONFIG):
+    if not config_path.is_file():
+        raise FileNotFoundError(f"Tutorial configuration is missing: {config_path}")
+
+OUTPUT_DIR = (
+    Path(
+        os.environ.get(
+            "CTLEARN_TUTORIAL_OUTPUT_DIR",
+            str(Path.home() / ".cache" / "ctlearn" / "tutorial-training"),
+        )
+    )
+    .expanduser()
+    .resolve()
+)
+TRAINING_OUTPUTS = (
+    "keras-energy",
+    "pytorch-energy",
+    "keras-cameradirection",
+    "pytorch-cameradirection",
+    "keras-skydirection",
+    "pytorch-skydirection",
+    "keras-classification",
+    "pytorch-classification",
+    "keras-singlecnn-energy",
+    "pytorch-singlecnn-energy",
+    "keras-resnet-energy",
+    "pytorch-resnet-energy",
+    "keras-transfer-learning-energy",
+    "pytorch-transfer-learning-energy",
+    "keras-stereo-energy",
+    "pytorch-stereo-energy",
+    "keras-waveform-energy",
+    "pytorch-waveform-energy",
+)
+existing_outputs = [
+    OUTPUT_DIR / name for name in TRAINING_OUTPUTS if (OUTPUT_DIR / name).exists()
+]
+if existing_outputs:
+    existing = "\n".join(f"  - {path}" for path in existing_outputs)
+    raise FileExistsError(
+        "Training output directories already exist. Set "
+        "CTLEARN_TUTORIAL_OUTPUT_DIR to a new directory before running all "
+        f"examples:\n{existing}"
+    )
+
+os.environ["CTLEARN_TUTORIAL_DATA_DIR"] = str(TESTDATA_DIR)
+os.environ["CTLEARN_TUTORIAL_CONVERTED_DIR"] = str(CONVERTED_DIR)
+os.environ["CTLEARN_TUTORIAL_CONFIG_DIR"] = str(CONFIG_DIR.resolve())
+os.environ["CTLEARN_TUTORIAL_OUTPUT_DIR"] = str(OUTPUT_DIR)
+os.environ["CTLEARN_TUTORIAL_MAX_EVENTS_SUFFIX"] = MAX_EVENTS_SUFFIX
+
+print(f"\nTraining outputs: {OUTPUT_DIR}")
+
+######################################################################
+# Part A
+#
+# Monoscopic CNN-based model training
+# -----------------------------------
+#
+# We first train a basic monoscopic CNN-based model using the default CTLearn
+# model configuration. The model uses a **ThinResNet** backbone for feature
+# extraction and a standard MLP head for the task-specific prediction. We
+# consider three different reconstruction tasks, each trained separately:
+
+######################################################################
+# 1. Primary particle energy regression
+# --------------------------------------
+#
+# The model reconstructs the energy of the primary particle as a continuous
+# value. Internally, CTLearn performs the regression on the energy in TeV and
+# on a logarithmic scale, since the primary-particle energy spans a very wide
+# range. Working in logarithmic space has been found to be more efficient for
+# the regression and is therefore a fixed, non-configurable aspect of the
+# energy reconstruction. During inference, the prediction tool converts the
+# predicted values back from logarithmic space to the original linear energy
+# scale in TeV.
+
+subprocess.run(
+    """ctlearn-train-keras-model \\
+        --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
+        --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
+        --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/keras-energy" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/dl1dh_example_config.json" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_train_model_example_config.json" \\
+        --reco energy \\
+        --DLImageReader.focal_length_choice EQUIVALENT \\
+        --TrainCTLearnModel.n_epochs 10 \\
+        --TrainCTLearnModel.batch_size 32""",
+    shell=True,
+    check=True,
+)
+
+subprocess.run(
+    """ctlearn-train-pytorch-model \\
+        --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
+        --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
+        --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/pytorch-energy" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/dl1dh_example_config.json" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_train_model_example_config.json" \\
+        --reco energy \\
+        --DLImageReader.focal_length_choice EQUIVALENT \\
+        --TrainCTLearnModel.n_epochs 10 \\
+        --TrainCTLearnModel.batch_size 32""",
+    shell=True,
+    check=True,
+)
+
+######################################################################
+# 2. Arrival direction regression
+# -------------------------------
+#
+# The model reconstructs the arrival direction of the primary particle.
+# This can be done in two ways: either using the **cameradirection** task,
+# which transforms the particle origin into the camera frame and performs
+# the regression in camera coordinates, with distances expressed in meters;
+# or using the **skydirection** task, which performs the regression in the
+# sky frame, with field-of-view offsets expressed in degrees. For monoscopic
+# CNN-based models, we generally recommend using the **cameradirection**
+# task. During inference, the prediction tool converts the reconstructed
+# camera coordinates back to the original Alt/Az representation, with the
+# final direction expressed in degrees.
+
+# Camera coordinates
+subprocess.run(
+    """ctlearn-train-keras-model \\
+        --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
+        --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
+        --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/keras-cameradirection" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/dl1dh_example_config.json" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_train_model_example_config.json" \\
+        --reco cameradirection \\
+        --DLImageReader.focal_length_choice EQUIVALENT \\
+        --TrainCTLearnModel.n_epochs 5 \\
+        --TrainCTLearnModel.batch_size 32""",
+    shell=True,
+    check=True,
+)
+
+subprocess.run(
+    """ctlearn-train-pytorch-model \\
+        --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
+        --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
+        --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/pytorch-cameradirection" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/dl1dh_example_config.json" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_train_model_example_config.json" \\
+        --reco cameradirection \\
+        --DLImageReader.focal_length_choice EQUIVALENT \\
+        --TrainCTLearnModel.n_epochs 5 \\
+        --TrainCTLearnModel.batch_size 32""",
+    shell=True,
+    check=True,
+)
+
+# Sky coordinates
+subprocess.run(
+    """ctlearn-train-keras-model \\
+        --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
+        --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
+        --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/keras-skydirection" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/dl1dh_example_config.json" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_train_model_example_config.json" \\
+        --reco skydirection \\
+        --DLImageReader.focal_length_choice EQUIVALENT \\
+        --TrainCTLearnModel.n_epochs 5 \\
+        --TrainCTLearnModel.batch_size 32""",
+    shell=True,
+    check=True,
+)
+
+subprocess.run(
+    """ctlearn-train-pytorch-model \\
+        --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
+        --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
+        --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/pytorch-skydirection" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/dl1dh_example_config.json" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_train_model_example_config.json" \\
+        --reco skydirection \\
+        --DLImageReader.focal_length_choice EQUIVALENT \\
+        --TrainCTLearnModel.n_epochs 5 \\
+        --TrainCTLearnModel.batch_size 32""",
+    shell=True,
+    check=True,
+)
+
+######################################################################
+# 3. Primary particle type classification
+# ---------------------------------------
+#
+# The model performs binary classification of the primary particle type,
+# learning to distinguish between the two particle classes: signal
+# (gamma-ray events) and background (proton events), based on the information
+# contained in the camera image. The input directory containing the signal
+# events can be specified using *--TrainCTLearnModel.input_dir_signal* or the
+# shorthand *--signal*. One or more file patterns can be provided using
+# *--TrainCTLearnModel.file_pattern_signal* or *--pattern-signal*. The
+# corresponding options for the background events are
+# *--TrainCTLearnModel.input_dir_background* / *--background* and
+# *--TrainCTLearnModel.file_pattern_background* / *--pattern-background*.
+#
+# It is recommended to approximately balance the training dataset before
+# training. The training log reports the number of signal and background
+# events remaining after the selection cuts, which can be used to check the
+# class balance. If a significant imbalance is present, the input file
+# patterns should be adjusted to include a more balanced selection of
+# gamma-ray and proton events. CTLearn includes a standard, fixed mechanism
+# that computes class weights and incorporates them into the loss
+# calculation to compensate for differences in the number of signal and
+# background events. However, class weighting is only effective up to a
+# certain degree of class imbalance. It is therefore important to monitor
+# the training carefully, particularly when the input samples are not well
+# balanced. The training logs and learning curves should be inspected
+# throughout the training. In particular, the evolution of metrics such as
+# loss, accuracy, and AUC on a per-epoch basis can help identify potential
+# issues arising from class imbalance or other training problems.
+
+subprocess.run(
+    """ctlearn-train-keras-model \\
+        --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
+        --pattern-signal "gamma-diffuse_with_images_00.dl2.h*" \\
+        --background "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
+        --pattern-background "proton_with_images_00.dl2.h*" \\
+        --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/keras-classification" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/dl1dh_example_config.json" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_train_model_example_config.json" \\
+        --reco type \\
+        --DLImageReader.focal_length_choice EQUIVALENT \\
+        --TrainCTLearnModel.n_epochs 5 \\
+        --TrainCTLearnModel.batch_size 32""",
+    shell=True,
+    check=True,
+)
+
+subprocess.run(
+    """ctlearn-train-pytorch-model \\
+        --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
+        --pattern-signal "gamma-diffuse_with_images_00.dl2.h*" \\
+        --background "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
+        --pattern-background "proton_with_images_00.dl2.h*" \\
+        --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/pytorch-classification" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/dl1dh_example_config.json" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_train_model_example_config.json" \\
+        --reco type \\
+        --DLImageReader.focal_length_choice EQUIVALENT \\
+        --TrainCTLearnModel.n_epochs 5 \\
+        --TrainCTLearnModel.batch_size 32""",
+    shell=True,
+    check=True,
+)
+
+######################################################################
+# Part B
+#
+# Customizing the CTLearn model architecture
+# ------------------------------------------
+#
+# CTLearn provides a flexible configuration system that allows users to
+# customize the neural network architecture.
+#
+# Two main CNN-based architectures are currently implemented: **SingleCNN**
+# and **ResNet**, which can bet set by *--TrainCTLearnModel.model_type*.
+#
+# The **SingleCNN** component implements a plain convolutional neural
+# network consisting of configurable convolutional layers. It can be used
+# to construct very simple and lightweight models, but it can also be
+# configured to create deeper architectures, such as VGG-like networks.
+# This architecture represents the more legacy model structure in CTLearn
+# and was the starting point for early proof-of-concept studies exploring
+# the applicability of CNNs to the problem. For applications closer to the
+# camera hardware and its readout (for the trigger system), particularly
+# where predictions need to be made at very high rates and with very low
+# latency, computational efficiency becomes increasingly important.
+
+subprocess.run(
+    """ctlearn-train-keras-model \\
+        --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
+        --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
+        --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/keras-singlecnn-energy" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/dl1dh_example_config.json" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_train_model_example_config.json" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_models_example_config.json" \\
+        --reco energy \\
+        --DLImageReader.focal_length_choice EQUIVALENT \\
+        --TrainCTLearnModel.model_type SingleCNN""",
+    shell=True,
+    check=True,
+)
+
+subprocess.run(
+    """ctlearn-train-pytorch-model \\
+        --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
+        --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
+        --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/pytorch-singlecnn-energy" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/dl1dh_example_config.json" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_train_model_example_config.json" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_models_example_config.json" \\
+        --reco energy \\
+        --DLImageReader.focal_length_choice EQUIVALENT \\
+        --TrainCTLearnModel.model_type SingleCNN""",
+    shell=True,
+    check=True,
+)
+
+#
+# The **ResNet** component provides the currently preferred architecture for
+# constructing deeper CNN models. Residual networks allow substantially
+# deeper architectures while maintaining efficient training and inference,
+# and they generally provide improved performance compared with the simpler
+# plain CNN architecture. The architecture, number of layers or blocks,
+# number of filters, and other relevant parameters can therefore be
+# configured directly through the CTLearn configuration system, allowing
+# the model complexity to be adapted to the requirements of a particular
+# application. For ResNet architectures, CTLearn currently supports two
+# types of residual blocks:
+#
+# - Basic blocks, which use the simpler residual block structure and are
+#   suitable for relatively lightweight networks.
+# - Bottleneck blocks, which use a more compact sequence of convolutions to
+#   enable deeper networks while controlling the computational cost.
+
+subprocess.run(
+    """ctlearn-train-keras-model \\
+        --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
+        --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
+        --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/keras-resnet-energy" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/dl1dh_example_config.json" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_train_model_example_config.json" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_models_example_config.json" \\
+        --reco energy \\
+        --DLImageReader.focal_length_choice EQUIVALENT \\
+        --TrainCTLearnModel.model_type ResNet \\
+        --TrainCTLearnModel.n_epochs 2 \\
+        --TrainCTLearnModel.batch_size 16""",
+    shell=True,
+    check=True,
+)
+
+subprocess.run(
+    """ctlearn-train-pytorch-model \\
+        --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
+        --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
+        --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/pytorch-resnet-energy" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/dl1dh_example_config.json" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_train_model_example_config.json" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_models_example_config.json" \\
+        --reco energy \\
+        --DLImageReader.focal_length_choice EQUIVALENT \\
+        --TrainCTLearnModel.model_type ResNet \\
+        --TrainCTLearnModel.n_epochs 2 \\
+        --TrainCTLearnModel.batch_size 16""",
+    shell=True,
+    check=True,
+)
+
+######################################################################
+# Using a pre-trained model and transfer learning
+# -----------------------------------------------
+#
+# The LoadedModel component allows a previously trained model following
+# the CTLearnModel structure to be loaded for either resuming training or
+# transfer learning. Transfer learning reuses the learned features of an
+# existing model and adapts them to new, but related, data or tasks. This
+# can reduce training time compared with training a model from scratch.
+#
+# Two parameters are particularly important:
+#
+# - *--LoadedModel.trainable_backbone* controls whether the pre-trained
+#   backbone is frozen (false) or trainable (true).
+# - *--LoadedModel.overwrite_head* controls whether the structure of the
+#   original prediction head is reused (false) or replaced with a new MLP
+#   tailored to the new task or data (true).
+#
+# The preceding SingleCNN command trains the model loaded below. The copied
+# configuration keeps its prediction head and leaves the backbone trainable.
+
+subprocess.run(
+    """ctlearn-train-keras-model \\
+        --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
+        --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
+        --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/keras-transfer-learning-energy" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/dl1dh_example_config.json" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_train_model_example_config.json" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_models_example_config.json" \\
+        --reco energy \\
+        --DLImageReader.focal_length_choice EQUIVALENT \\
+        --TrainCTLearnModel.model_type LoadedModel \\
+        --LoadedModel.load_model_from "$CTLEARN_TUTORIAL_OUTPUT_DIR/keras-singlecnn-energy/ctlearn_model.keras" \\
+        --TrainCTLearnModel.n_epochs 2""",
+    shell=True,
+    check=True,
+)
+
+subprocess.run(
+    """ctlearn-train-pytorch-model \\
+        --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
+        --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
+        --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/pytorch-transfer-learning-energy" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/dl1dh_example_config.json" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_train_model_example_config.json" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_models_example_config.json" \\
+        --reco energy \\
+        --DLImageReader.focal_length_choice EQUIVALENT \\
+        --TrainCTLearnModel.model_type LoadedModel \\
+        --PyTorchLoadedModel.load_model_from "$CTLEARN_TUTORIAL_OUTPUT_DIR/pytorch-singlecnn-energy/ctlearn_model.pt" \\
+        --TrainCTLearnModel.n_epochs 2""",
+    shell=True,
+    check=True,
+)
+
+######################################################################
+# Stereoscopic CNN-based model training
+# -------------------------------------
+#
+# CTLearn currently provides a basic approach for stereoscopic CNN-based
+# model training. The images from the different telescopes are concatenated
+# channel-wise and then passed to a standard, monoscopic CNN backbone as
+# above. In this way, the network can process the combined input while
+# retaining stereoscopic information. An earlier version of CTLearn also
+# included a CNN-RNN architecture, using recurrent neural networks to
+# explicitly handle information from multiple telescopes dynamically. This
+# model has not yet been migrated to the latest CTLearn version based on
+# TensorFlow 2 and Keras 3, so this tutorial focuses on the channel-wise
+# concatenation approach.
+#
+# The main configuration parameters for stereoscopic training are:
+#
+# - *--DLImageReader.mode*: set to "stereo" to enable stereoscopic image
+#   reading
+# - *--DLImageReader.min_telescopes*: defines the minimum number of
+#   telescopes that must participate in an event after the quality cuts.
+# - *--TrainCTLearnModel.stack_telescope_images*: set to true to
+#   stack/concatenate the images from the telescopes.
+#
+# Since the resulting input contains information from multiple telescopes
+# and is therefore larger than the corresponding monoscopic input, it is
+# recommended to reduce the batch size using
+# *--TrainCTLearnModel.batch_size* to account for the increased memory
+# consumption.
+
+subprocess.run(
+    """ctlearn-train-keras-model \\
+        --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
+        --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
+        --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/keras-stereo-energy" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/dl1dh_example_config.json" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_train_model_example_config.json" \\
+        --reco energy \\
+        --DLImageReader.mode stereo \\
+        --DLImageReader.min_telescopes 2 \\
+        --TrainCTLearnModel.stack_telescope_images True \\
+        --TrainCTLearnModel.n_epochs 5 \\
+        --TrainCTLearnModel.batch_size 16""",
+    shell=True,
+    check=True,
+)
+
+subprocess.run(
+    """ctlearn-train-pytorch-model \\
+        --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
+        --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
+        --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/pytorch-stereo-energy" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/dl1dh_example_config.json" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_train_model_example_config.json" \\
+        --reco energy \\
+        --DLImageReader.mode stereo \\
+        --DLImageReader.min_telescopes 2 \\
+        --TrainCTLearnModel.stack_telescope_images True \\
+        --TrainCTLearnModel.n_epochs 5 \\
+        --TrainCTLearnModel.batch_size 16""",
+    shell=True,
+    check=True,
+)
+
+######################################################################
+# CNN-based model training using waveform data
+# --------------------------------------------
+#
+# The final example demonstrates training directly on waveform data. The
+# example dataset used in this tutorial is intentionally very small, so
+# only a few events are available for training. In practical applications,
+# waveform datasets can be very large, often reaching several terabytes,
+# and processing the full waveforms also requires substantial RAM and
+# computational resources. Because the example dataset is so small, the
+# training configuration needs to be adjusted accordingly. We use a very
+# small batch size and increase the validation split to ensure that at
+# least one batch is available for validation. For this example, we select
+# the MST equipped with the NectarCam camera and disable the quality
+# selection, leaving only 10 events. These are divided into 5 batches of 2
+# events, with 20% of the data reserved for validation, corresponding to
+# one validation batch.
+#
+# An important configuration change is required to read waveform data: the
+# *--TrainCTLearnModel.dl1dh_reader_type* option must be set to the
+# appropriate DL1 data reader component for waveform reading
+# (**DLWaveformReader**) rather than the default image reader.
+
+if not WAVEFORM_FILE.is_file():
+    raise FileNotFoundError(
+        f"Cached waveform data is missing: {WAVEFORM_FILE}. "
+        "Run examples/tutorials/explore_public_data.py first."
+    )
+subprocess.run(
+    """ctlearn-train-keras-model \\
+        --signal "$CTLEARN_TUTORIAL_DATA_DIR" \\
+        --pattern-signal "gamma_prod5${CTLEARN_TUTORIAL_MAX_EVENTS_SUFFIX}.r1.dl1.h5" \\
+        --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/keras-waveform-energy" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_train_model_example_config.json" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/dl1dh_example_config.json" \\
+        --reco energy \\
+        --TrainCTLearnModel.n_epochs 5 \\
+        --TrainCTLearnModel.batch_size 2 \\
+        --TrainCTLearnModel.validation_split 0.2 \\
+        --TrainCTLearnModel.dl1dh_reader_type DLWaveformReader \\
+        --DLWaveformReader.focal_length_choice EQUIVALENT \\
+        --TableQualityQuery.quality_criteria []""",
+    shell=True,
+    check=True,
+)
+
+subprocess.run(
+    """ctlearn-train-pytorch-model \\
+        --signal "$CTLEARN_TUTORIAL_DATA_DIR" \\
+        --pattern-signal "gamma_prod5${CTLEARN_TUTORIAL_MAX_EVENTS_SUFFIX}.r1.dl1.h5" \\
+        --output "$CTLEARN_TUTORIAL_OUTPUT_DIR/pytorch-waveform-energy" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/ctlearn_train_model_example_config.json" \\
+        --config "$CTLEARN_TUTORIAL_CONFIG_DIR/dl1dh_example_config.json" \\
+        --reco energy \\
+        --TrainCTLearnModel.n_epochs 5 \\
+        --TrainCTLearnModel.batch_size 2 \\
+        --TrainCTLearnModel.validation_split 0.2 \\
+        --TrainCTLearnModel.dl1dh_reader_type DLWaveformReader \\
+        --DLWaveformReader.focal_length_choice EQUIVALENT \\
+        --TableQualityQuery.quality_criteria []""",
+    shell=True,
+    check=True,
+)
+
+######################################################################
+# Monitoring training with TensorBoard
+# ------------------------------------
+#
+# TensorBoard can be used to monitor the training process live. CTLearn
+# writes training metrics to the output directory, which can then be
+# visualized with TensorBoard. Once started, TensorBoard provides an
+# interactive web interface where metrics such as loss, accuracy, and AUC
+# can be monitored over the course of training. This is useful for checking
+# the training progress and identifying issues such as overfitting or
+# unstable training. The command can also be run directly from a terminal
+# or on a remote/cluster environment, where the TensorBoard web interface
+# can be accessed through the appropriate port forwarding.
+#
+# Start TensorBoard in a separate terminal to compare the completed runs:
+#
+# ``tensorboard --logdir ~/.cache/ctlearn/tutorial-training/``
