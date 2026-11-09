@@ -210,17 +210,3 @@ epub_exclude_files = ["search.html"]
 
 
 # -- Extension configuration -------------------------------------------------
-
-# The heavy ML frameworks are not installed in the docs build environment
-# (see .readthedocs.yaml), so they are mocked to let autodoc import ctlearn.
-autodoc_mock_imports = [
-    "torch",
-    "torchvision",
-    "torchmetrics",
-    "pytorch_lightning",
-    "tensorflow",
-    "tensorboard",
-    "keras",
-    "keras_hexagdly",
-    "pytorch_hexagdly",
-]
