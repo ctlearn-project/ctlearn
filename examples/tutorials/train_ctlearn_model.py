@@ -23,9 +23,9 @@ import os
 import subprocess
 from pathlib import Path
 
-from ctapipe import __version__ as ctapipe_version
 import matplotlib.pyplot as plt
 import pandas as pd
+from ctapipe import __version__ as ctapipe_version
 
 MAX_EVENTS = os.environ.get("CTLEARN_TUTORIAL_MAX_EVENTS")
 if MAX_EVENTS is not None and int(MAX_EVENTS) < 1:
@@ -700,7 +700,9 @@ def plot_metric(ax, run_name, metric, label, color, **kwargs):
     for prefix, split_name, split_style in splits:
         column = f"{prefix}{metric}"
         if column not in log:
-            raise ValueError(f"Column {column!r} is missing from {run_name}/training_log.csv")
+            raise ValueError(
+                f"Column {column!r} is missing from {run_name}/training_log.csv"
+            )
         ax.plot(
             log["epoch"] + 1,
             log[column],
