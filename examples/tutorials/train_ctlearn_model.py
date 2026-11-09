@@ -177,7 +177,7 @@ os.environ["CTLEARN_TUTORIAL_MAX_EVENTS_SUFFIX"] = MAX_EVENTS_SUFFIX
 print(f"\nTraining outputs: {OUTPUT_DIR}")
 
 
-def run_training_command(command):
+def run_command_line(command):
     result = subprocess.run(
         command,
         shell=True,
@@ -211,7 +211,7 @@ def run_training_command(command):
 # predicted values back from logarithmic space to the original linear energy
 # scale in TeV.
 
-run_training_command(
+run_command_line(
     """ctlearn-train-keras-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
@@ -224,7 +224,7 @@ run_training_command(
         --TrainCTLearnModel.batch_size 4""",
 )
 
-run_training_command(
+run_command_line(
     """ctlearn-train-pytorch-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
@@ -253,7 +253,7 @@ run_training_command(
 # final direction expressed in degrees.
 
 # Camera coordinates
-run_training_command(
+run_command_line(
     """ctlearn-train-keras-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
@@ -266,7 +266,7 @@ run_training_command(
         --TrainCTLearnModel.batch_size 4""",
 )
 
-run_training_command(
+run_command_line(
     """ctlearn-train-pytorch-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
@@ -280,7 +280,7 @@ run_training_command(
 )
 
 # Sky coordinates
-run_training_command(
+run_command_line(
     """ctlearn-train-keras-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
@@ -293,7 +293,7 @@ run_training_command(
         --TrainCTLearnModel.batch_size 4""",
 )
 
-run_training_command(
+run_command_line(
     """ctlearn-train-pytorch-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
@@ -314,12 +314,12 @@ run_training_command(
 # learning to distinguish between the two particle classes: signal
 # (gamma-ray events) and background (proton events), based on the information
 # contained in the camera image. The input directory containing the signal
-# events can be specified using *--TrainCTLearnModel.input_dir_signal* or the
-# shorthand *--signal*. One or more file patterns can be provided using
-# *--TrainCTLearnModel.file_pattern_signal* or *--pattern-signal*. The
+# events can be specified using ``--TrainCTLearnModel.input_dir_signal`` or the
+# shorthand ``--signal``. One or more file patterns can be provided using
+# ``--TrainCTLearnModel.file_pattern_signal`` or ``--pattern-signal``. The
 # corresponding options for the background events are
-# *--TrainCTLearnModel.input_dir_background* / *--background* and
-# *--TrainCTLearnModel.file_pattern_background* / *--pattern-background*.
+# ``--TrainCTLearnModel.input_dir_background`` / ``--background`` and
+# ``--TrainCTLearnModel.file_pattern_background`` / ``--pattern-background``.
 #
 # It is recommended to approximately balance the training dataset before
 # training. The training log reports the number of signal and background
@@ -337,7 +337,7 @@ run_training_command(
 # loss, accuracy, and AUC on a per-epoch basis can help identify potential
 # issues arising from class imbalance or other training problems.
 
-run_training_command(
+run_command_line(
     """ctlearn-train-keras-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h*" \\
@@ -352,7 +352,7 @@ run_training_command(
         --TrainCTLearnModel.batch_size 4""",
 )
 
-run_training_command(
+run_command_line(
     """ctlearn-train-pytorch-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h*" \\
@@ -375,7 +375,7 @@ run_training_command(
 # customize the neural network architecture.
 #
 # Two main CNN-based architectures are currently implemented: **SingleCNN**
-# and **ResNet**, which can be set by *--TrainCTLearnModel.model_type*.
+# and **ResNet**, which can be set by ``--TrainCTLearnModel.model_type``.
 
 ######################################################################
 # 1. SingleCNN model
@@ -392,7 +392,7 @@ run_training_command(
 # where predictions need to be made at very high rates and with very low
 # latency, computational efficiency becomes increasingly important.
 
-run_training_command(
+run_command_line(
     """ctlearn-train-keras-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
@@ -407,7 +407,7 @@ run_training_command(
         --TrainCTLearnModel.batch_size 4""",
 )
 
-run_training_command(
+run_command_line(
     """ctlearn-train-pytorch-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
@@ -442,7 +442,7 @@ run_training_command(
 # - Bottleneck blocks, which use a more compact sequence of convolutions to
 #   enable deeper networks while controlling the computational cost.
 
-run_training_command(
+run_command_line(
     """ctlearn-train-keras-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
@@ -457,7 +457,7 @@ run_training_command(
         --TrainCTLearnModel.batch_size 4""",
 )
 
-run_training_command(
+run_command_line(
     """ctlearn-train-pytorch-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
@@ -484,16 +484,16 @@ run_training_command(
 #
 # Two parameters are particularly important:
 #
-# - *--LoadedModel.trainable_backbone* controls whether the pre-trained
+# - ``--LoadedModel.trainable_backbone`` controls whether the pre-trained
 #   backbone is frozen (false) or trainable (true).
-# - *--LoadedModel.overwrite_head* controls whether the structure of the
+# - ``--LoadedModel.overwrite_head`` controls whether the structure of the
 #   original prediction head is reused (false) or replaced with a new MLP
 #   tailored to the new task or data (true).
 #
 # The preceding SingleCNN command trains the model loaded below. The copied
 # configuration keeps its prediction head and leaves the backbone trainable.
 
-run_training_command(
+run_command_line(
     """ctlearn-train-keras-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
@@ -509,7 +509,7 @@ run_training_command(
         --TrainCTLearnModel.batch_size 4""",
 )
 
-run_training_command(
+run_command_line(
     """ctlearn-train-pytorch-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
@@ -542,20 +542,20 @@ run_training_command(
 #
 # The main configuration parameters for stereoscopic training are:
 #
-# - *--DLImageReader.mode*: set to "stereo" to enable stereoscopic image
+# - ``--DLImageReader.mode``: set to "stereo" to enable stereoscopic image
 #   reading
-# - *--DLImageReader.min_telescopes*: defines the minimum number of
+# - ``--DLImageReader.min_telescopes``: defines the minimum number of
 #   telescopes that must participate in an event after the quality cuts.
-# - *--TrainCTLearnModel.stack_telescope_images*: set to true to
+# - ``--TrainCTLearnModel.stack_telescope_images``: set to true to
 #   stack/concatenate the images from the telescopes.
 #
 # Since the resulting input contains information from multiple telescopes
 # and is therefore larger than the corresponding monoscopic input, it is
 # recommended to reduce the batch size using
-# *--TrainCTLearnModel.batch_size* to account for the increased memory
+# ``--TrainCTLearnModel.batch_size`` to account for the increased memory
 # consumption.
 
-run_training_command(
+run_command_line(
     """ctlearn-train-keras-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
@@ -571,7 +571,7 @@ run_training_command(
         --TableQualityQuery.quality_criteria []""",
 )
 
-run_training_command(
+run_command_line(
     """ctlearn-train-pytorch-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_CONVERTED_DIR" \\
         --pattern-signal "gamma-diffuse_with_images_00.dl2.h5" \\
@@ -606,7 +606,7 @@ run_training_command(
 # one validation batch.
 #
 # An important configuration change is required to read waveform data: the
-# *--TrainCTLearnModel.dl1dh_reader_type* option must be set to the
+# ``--TrainCTLearnModel.dl1dh_reader_type`` option must be set to the
 # appropriate DL1 data reader component for waveform reading
 # (**DLWaveformReader**) rather than the default image reader.
 
@@ -615,7 +615,7 @@ if not WAVEFORM_FILE.is_file():
         f"Cached waveform data is missing: {WAVEFORM_FILE}. "
         "Run examples/tutorials/explore_public_data.py first."
     )
-run_training_command(
+run_command_line(
     """ctlearn-train-keras-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_DATA_DIR" \\
         --pattern-signal "gamma_prod5${CTLEARN_TUTORIAL_MAX_EVENTS_SUFFIX}.r1.dl1.h5" \\
@@ -631,7 +631,7 @@ run_training_command(
         --TableQualityQuery.quality_criteria []""",
 )
 
-run_training_command(
+run_command_line(
     """ctlearn-train-pytorch-model --verbose \\
         --signal "$CTLEARN_TUTORIAL_DATA_DIR" \\
         --pattern-signal "gamma_prod5${CTLEARN_TUTORIAL_MAX_EVENTS_SUFFIX}.r1.dl1.h5" \\

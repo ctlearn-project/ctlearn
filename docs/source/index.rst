@@ -18,6 +18,9 @@ CTLearn: Deep Learning for IACT Event Reconstruction
 * Documentation: https://ctlearn-project.github.io/ctlearn/
 * License: BSD-3
 
+Use the version selector in the sidebar to switch between the current
+``main`` documentation and published tagged releases.
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
