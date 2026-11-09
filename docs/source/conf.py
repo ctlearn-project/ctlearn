@@ -23,7 +23,7 @@ sys.path.insert(
 # Import ctapipe.reco before autodoc mocks torch: it walks all scikit-learn
 # submodules, and the scikit-learn torch compatibility layer fails on a mock.
 import ctapipe.reco  # noqa: F401
-from sphinx_gallery.sorting import FunctionSortKey
+from sphinx_gallery.sorting import ExplicitOrder
 
 import ctlearn
 
@@ -37,15 +37,6 @@ author = "CTLearn devs"
 version = ctlearn.__version__
 # The full version, including alpha/beta/rc tags
 release = version
-
-
-def _tutorial_order(filename):
-    priority = {
-        "explore_public_data.py": 0,
-        "train_ctlearn_model.py": 1,
-    }
-    name = os.path.basename(filename)
-    return priority.get(name, 2), name
 
 
 # -- General configuration ---------------------------------------------------
@@ -72,7 +63,13 @@ sphinx_gallery_conf = {
     "examples_dirs": "../../examples/tutorials",
     "gallery_dirs": "auto_tutorials",
     "filename_pattern": r"(explore_public_data|train_ctlearn_model)\.py$",
-    "within_subsection_order": FunctionSortKey(_tutorial_order),
+    "within_subsection_order": ExplicitOrder(
+        [
+            "explore_public_data.py",
+            "train_ctlearn_model.py",
+            "*",
+        ]
+    ),
     "plot_gallery": True,
     "matplotlib_animations": (True, "jshtml"),
     "abort_on_example_error": True,
