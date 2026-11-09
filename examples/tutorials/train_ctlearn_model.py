@@ -190,10 +190,8 @@ def run_training_command(command):
 
 
 ######################################################################
-# Part A
-#
-# Monoscopic CNN-based model training
-# -----------------------------------
+# Part A: Monoscopic CNN-based model training
+# ===========================================
 #
 # We first train a basic monoscopic CNN-based model using the default CTLearn
 # model configuration. The model uses a **ThinResNet** backbone for feature
@@ -370,16 +368,18 @@ run_training_command(
 )
 
 ######################################################################
-# Part B
-#
-# Customizing the CTLearn model architecture
-# ------------------------------------------
+# Part B: Customizing the CTLearn model architecture
+# ==================================================
 #
 # CTLearn provides a flexible configuration system that allows users to
 # customize the neural network architecture.
 #
 # Two main CNN-based architectures are currently implemented: **SingleCNN**
-# and **ResNet**, which can bet set by *--TrainCTLearnModel.model_type*.
+# and **ResNet**, which can be set by *--TrainCTLearnModel.model_type*.
+
+######################################################################
+# 1. SingleCNN model
+# ------------------
 #
 # The **SingleCNN** component implements a plain convolutional neural
 # network consisting of configurable convolutional layers. It can be used
@@ -422,6 +422,9 @@ run_training_command(
         --TrainCTLearnModel.batch_size 4""",
 )
 
+######################################################################
+# 2. ResNet model
+# ---------------
 #
 # The **ResNet** component provides the currently preferred architecture for
 # constructing deeper CNN models. Residual networks allow substantially
@@ -470,8 +473,8 @@ run_training_command(
 )
 
 ######################################################################
-# Using a pre-trained model and transfer learning
-# -----------------------------------------------
+# Part C: Using a pre-trained model and transfer learning
+# =======================================================
 #
 # The LoadedModel component allows a previously trained model following
 # the CTLearnModel structure to be loaded for either resuming training or
@@ -523,8 +526,8 @@ run_training_command(
 )
 
 ######################################################################
-# Stereoscopic CNN-based model training
-# -------------------------------------
+# Part D: Stereoscopic CNN-based model training
+# ---------------------------------------------
 #
 # CTLearn currently provides a basic approach for stereoscopic CNN-based
 # model training. The images from the different telescopes are concatenated
@@ -585,8 +588,8 @@ run_training_command(
 )
 
 ######################################################################
-# CNN-based model training using waveform data
-# --------------------------------------------
+# Part E: CNN-based model training using waveform data
+# ====================================================
 #
 # The final example demonstrates training directly on waveform data. The
 # example dataset used in this tutorial is intentionally very small, so
@@ -645,14 +648,19 @@ run_training_command(
 )
 
 ######################################################################
-# Comparing training curves
-# -------------------------
+# Part F: Comparing training curves
+# =================================
 #
-# Each training run writes its metrics to ``training_log.csv``. Compare the
-# baseline energy, direction, and classification runs below. Camera and sky
-# direction errors use different units, so they share a panel but have
-# separate y-axes. The figure is also saved in the training output directory.
-# The statistics of the training runs are intentionally very limited, so the
+# Each training run writes its metrics to ``training_log.csv`` together
+# with the TensorBoard model checkpoints for training and validation,
+# the final model, the configuration and provenance files.
+#
+# See Part G for instructions on how to monitor the training runs live using
+# TensorBoard. Here, we read the training logs and plot the evolution of the
+# metrics over the training epochs. The plots show the mean absolute error (MAE) for
+# the regression tasks and the accuracy and AUC for the classification task.
+#
+# Note: The statistics of the training runs are intentionally very limited, so the
 # training curves are not expected to be smooth or to converge to optimal values.
 # The purpose of this tutorial is to demonstrate the training workflow and the use
 # of CTLearn, rather than to achieve optimal performance on the example dataset.
@@ -769,8 +777,8 @@ print(f"\nTraining curves saved to {training_curves_path}")
 plt.show()
 
 ######################################################################
-# Monitoring training with TensorBoard
-# ------------------------------------
+# Part G: Monitoring training with TensorBoard
+# ============================================
 #
 # CTLearn also writes TensorBoard event files, which are useful for monitoring
 # metrics live or exploring additional details after training. The tutorial
