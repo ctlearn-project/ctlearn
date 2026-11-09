@@ -24,6 +24,8 @@ import subprocess
 from pathlib import Path
 
 from ctapipe import __version__ as ctapipe_version
+import matplotlib.pyplot as plt
+import pandas as pd
 
 MAX_EVENTS = os.environ.get("CTLEARN_TUTORIAL_MAX_EVENTS")
 if MAX_EVENTS is not None and int(MAX_EVENTS) < 1:
@@ -526,7 +528,7 @@ subprocess.run(
         --reco energy \\
         --DLImageReader.focal_length_choice EQUIVALENT \\
         --TrainCTLearnModel.model_type LoadedModel \\
-        --PyTorchLoadedModel.load_model_from "$CTLEARN_TUTORIAL_OUTPUT_DIR/pytorch-singlecnn-energy/ctlearn_model.pt" \\
+        --PyTorchLoadedModel.load_model_from "$CTLEARN_TUTORIAL_OUTPUT_DIR/pytorch-singlecnn-energy/ctlearn_model.pth" \\
         --TrainCTLearnModel.n_epochs 2 \\
         --TrainCTLearnModel.batch_size 4""",
     shell=True,
@@ -662,19 +664,135 @@ subprocess.run(
 )
 
 ######################################################################
+# Comparing training curves
+# -------------------------
+#
+# Each training run writes its metrics to ``training_log.csv``. Compare the
+# baseline energy, direction, and classification runs below. Camera and sky
+# direction errors use different units, so they share a panel but have
+# separate y-axes. The figure is also saved in the training output directory.
+
+training_logs = {}
+for run_name in (
+    "keras-energy",
+    "pytorch-energy",
+    "keras-cameradirection",
+    "pytorch-cameradirection",
+    "keras-skydirection",
+    "pytorch-skydirection",
+    "keras-classification",
+    "pytorch-classification",
+):
+    log_path = OUTPUT_DIR / run_name / "training_log.csv"
+    if not log_path.is_file():
+        raise FileNotFoundError(f"Training log is missing: {log_path}")
+    training_logs[run_name] = pd.read_csv(log_path)
+
+frameworks = (
+    ("Keras", "keras", "tab:blue"),
+    ("PyTorch", "pytorch", "tab:orange"),
+)
+splits = (("", "train", "-"), ("val_", "validation", "--"))
+
+
+def plot_metric(ax, run_name, metric, label, color, **kwargs):
+    log = training_logs[run_name]
+    for prefix, split_name, split_style in splits:
+        column = f"{prefix}{metric}"
+        if column not in log:
+            raise ValueError(f"Column {column!r} is missing from {run_name}/training_log.csv")
+        ax.plot(
+            log["epoch"] + 1,
+            log[column],
+            color=color,
+            linestyle=split_style,
+            label=f"{label} - {split_name}",
+            **kwargs,
+        )
+
+
+fig, (energy_ax, direction_ax, type_ax) = plt.subplots(
+    1, 3, figsize=(19, 6), constrained_layout=True
+)
+fig.suptitle("CTLearn training curves", fontsize=16)
+
+for display_name, framework, color in frameworks:
+    plot_metric(
+        energy_ax,
+        f"{framework}-energy",
+        "mae_energy",
+        display_name,
+        color,
+        marker="o",
+    )
+energy_ax.set_title("Energy")
+energy_ax.set_xlabel("Epoch")
+energy_ax.set_ylabel("Mean absolute error")
+energy_ax.grid(True, alpha=0.3)
+energy_ax.legend(fontsize=8)
+
+sky_ax = direction_ax.twinx()
+for display_name, framework, color in frameworks:
+    plot_metric(
+        direction_ax,
+        f"{framework}-cameradirection",
+        "mae_cameradirection",
+        f"{display_name} camera",
+        color,
+        marker="o",
+    )
+    plot_metric(
+        sky_ax,
+        f"{framework}-skydirection",
+        "mae_skydirection",
+        f"{display_name} sky",
+        color,
+        marker="s",
+    )
+direction_ax.set_title("Direction")
+direction_ax.set_xlabel("Epoch")
+direction_ax.set_ylabel("Camera direction MAE [m]")
+sky_ax.set_ylabel("Sky direction MAE [deg]")
+direction_ax.grid(True, alpha=0.3)
+direction_ax.legend(loc="upper left", title="Camera", fontsize=8)
+sky_ax.legend(loc="upper right", title="Sky", fontsize=8)
+
+for display_name, framework, color in frameworks:
+    for metric, marker in (("accuracy", "o"), ("auc", "s")):
+        plot_metric(
+            type_ax,
+            f"{framework}-classification",
+            metric,
+            f"{display_name} {metric}",
+            color,
+            marker=marker,
+        )
+type_ax.set_title("Particle type")
+type_ax.set_xlabel("Epoch")
+type_ax.set_ylabel("Score")
+type_ax.set_ylim(0, 1)
+type_ax.grid(True, alpha=0.3)
+type_ax.legend(fontsize=8, ncol=2)
+
+training_curves_path = OUTPUT_DIR / "training-curves.png"
+fig.savefig(training_curves_path, dpi=350)
+print(f"\nTraining curves saved to {training_curves_path}")
+plt.show()
+
+######################################################################
 # Monitoring training with TensorBoard
 # ------------------------------------
 #
-# TensorBoard can be used to monitor the training process live. CTLearn
-# writes training metrics to the output directory, which can then be
-# visualized with TensorBoard. Once started, TensorBoard provides an
-# interactive web interface where metrics such as loss, accuracy, and AUC
-# can be monitored over the course of training. This is useful for checking
-# the training progress and identifying issues such as overfitting or
-# unstable training. The command can also be run directly from a terminal
-# or on a remote/cluster environment, where the TensorBoard web interface
-# can be accessed through the appropriate port forwarding.
+# CTLearn also writes TensorBoard event files, which are useful for monitoring
+# metrics live or exploring additional details after training. The tutorial
+# does not launch TensorBoard; to monitor a run while it is training, start it
+# in a separate terminal and point it at the tutorial output directory:
 #
-# Start TensorBoard in a separate terminal to compare the completed runs:
+# .. code-block:: console
 #
-# ``tensorboard --logdir ~/.cache/ctlearn/tutorial-training/``
+#    tensorboard --logdir "$HOME/.cache/ctlearn/tutorial-training/"
+#
+# Open the URL printed by TensorBoard in a browser. If you set
+# ``CTLEARN_TUTORIAL_OUTPUT_DIR`` to a different location, use that directory
+# in the command instead. On a remote or cluster environment, use the
+# appropriate port forwarding to access the TensorBoard web interface.
