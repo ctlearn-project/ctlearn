@@ -40,7 +40,7 @@ except ImportError:
 #
 # By default, the tutorial processes all events. To speed up a test run,
 # set ``CTLEARN_TUTORIAL_MAX_EVENTS`` to a positive integer before running
-# this script, for example ``CTLEARN_TUTORIAL_MAX_EVENTS=100``. The limit
+# this script, for example ``CTLEARN_TUTORIAL_MAX_EVENTS=500``. The limit
 # applies to each input file. Leave the variable unset to process all events.
 
 plt.style.use("ggplot")
