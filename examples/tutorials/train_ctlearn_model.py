@@ -92,7 +92,31 @@ print("Only the _00 image files are selected; the _01 files are reserved.")
 #   prediction heads, attention settings, custom ``SingleCNN`` and ``ResNet``
 #   architectures, and ``LoadedModel`` transfer-learning options.
 
-CONFIG_DIR = Path(__file__).resolve().parents[2] / "docs" / "source" / "config"
+def find_config_dir():
+    roots = []
+    script_path = globals().get("__file__")
+    if script_path is not None:
+        roots.append(Path(script_path).resolve().parents[2])
+    roots.extend((Path.cwd(), *Path.cwd().parents))
+
+    config_names = (
+        "dl1dh_example_config.json",
+        "ctlearn_train_model_example_config.json",
+        "ctlearn_models_example_config.json",
+    )
+    for root in roots:
+        config_dir = root / "docs" / "source" / "config"
+        if all((config_dir / name).is_file() for name in config_names):
+            return config_dir
+
+    raise FileNotFoundError(
+        "Could not locate tutorial configs under docs/source/config. "
+        "Run this tutorial from the CTLearn repository or build it with "
+        "Sphinx-Gallery."
+    )
+
+
+CONFIG_DIR = find_config_dir()
 DL1DH_CONFIG = CONFIG_DIR / "dl1dh_example_config.json"
 TRAINING_CONFIG = CONFIG_DIR / "ctlearn_train_model_example_config.json"
 MODEL_CONFIG = CONFIG_DIR / "ctlearn_models_example_config.json"
