@@ -99,7 +99,7 @@ else:
     print(f"Using existing processed file: {gamma_dl1_path}")
 
 ######################################################################
-# Part A: Read calibrated waveforms
+# Part A1: Read calibrated waveforms
 # =================================
 #
 # DL1DataHandler can read calibrated waveforms and map each camera into a
@@ -184,7 +184,7 @@ for tel_type, allowed_tels in telescope_types.items():
     plt.show()
 
 ######################################################################
-# Part B: Read monoscopic images
+# Part B1: Read monoscopic images
 # ==============================
 #
 # The image reader returns integrated charge and relative peak-time images.
@@ -283,7 +283,7 @@ for filename in ZENODO_FILES:
         print(f"Using existing ctapipe output: {output_path}")
 
 ######################################################################
-# Part C: Read stereo images
+# Part C1: Read stereo images
 # ==========================
 #
 # Finally, combine gamma and proton events in stereo mode and plot the

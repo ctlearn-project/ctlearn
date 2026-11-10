@@ -198,7 +198,7 @@ def run_command_line(command):
 
 
 ######################################################################
-# Part A: Monoscopic CNN-based model training
+# Part A2: Monoscopic CNN-based model training
 # ===========================================
 #
 # We first train a basic monoscopic CNN-based model using the default CTLearn
@@ -376,7 +376,7 @@ run_command_line(
 )
 
 ######################################################################
-# Part B: Customizing the CTLearn model architecture
+# Part B2: Customizing the CTLearn model architecture
 # ==================================================
 #
 # CTLearn provides a flexible configuration system that allows users to
@@ -481,7 +481,7 @@ run_command_line(
 )
 
 ######################################################################
-# Part C: Using a pre-trained model and transfer learning
+# Part C2: Using a pre-trained model and transfer learning
 # =======================================================
 #
 # The LoadedModel component allows a previously trained model following
@@ -534,7 +534,7 @@ run_command_line(
 )
 
 ######################################################################
-# Part D: Stereoscopic CNN-based model training
+# Part D2: Stereoscopic CNN-based model training
 # ---------------------------------------------
 #
 # CTLearn currently provides a basic approach for stereoscopic CNN-based
@@ -596,7 +596,7 @@ run_command_line(
 )
 
 ######################################################################
-# Part E: CNN-based model training using waveform data
+# Part E2: CNN-based model training using waveform data
 # ====================================================
 #
 # The final example demonstrates training directly on waveform data. The
@@ -656,7 +656,7 @@ run_command_line(
 )
 
 ######################################################################
-# Part F: Comparing training curves
+# Part F2: Comparing training curves
 # =================================
 #
 # Each training run writes its metrics to ``training_log.csv`` together
@@ -785,7 +785,7 @@ print(f"\nTraining curves saved to {training_curves_path}")
 plt.show()
 
 ######################################################################
-# Part G: Monitoring training with TensorBoard
+# Part G2: Monitoring training with TensorBoard
 # ============================================
 #
 # CTLearn also writes TensorBoard event files, which are useful for monitoring

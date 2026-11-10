@@ -163,7 +163,7 @@ run_command_line("ctlearn-predict-mono-model -h")
 run_command_line("ctlearn-predict-stereo-model -h")
 
 ######################################################################
-# Part A: Monoscopic CNN-based model inference
+# Part A3: Monoscopic CNN-based model inference
 # ============================================
 #
 # We perform inference using the three previously trained CTLearn models from
@@ -245,7 +245,7 @@ run_command_line(
 )
 
 ######################################################################
-# Part B: Exploring the produced CTLearn DL2 data
+# Part B3: Exploring the produced CTLearn DL2 data
 # ===============================================
 #
 # In the following cells, we will explore the DL2 predictions produced by the
@@ -639,7 +639,7 @@ plt.show()
 # of the data, and verifying that the predictions are stored correctly.
 
 ######################################################################
-# Part C: Stereoscopic CNN-based model inference
+# Part C3: Stereoscopic CNN-based model inference
 # ==============================================
 #
 # We perform inference with the previously trained stereoscopic energy model.
@@ -713,7 +713,7 @@ run_command_line(
 )
 
 ######################################################################
-# Part D: CNN-based model inference using waveform data
+# Part D3: CNN-based model inference using waveform data
 # -----------------------------------------------------
 #
 # We perform inference with the previously trained mono energy model using
@@ -771,7 +771,7 @@ run_command_line(
 )
 
 ######################################################################
-# Part E: CNN-based model inference using LST-1 lstchain data
+# Part E3: CNN-based model inference using LST-1 lstchain data
 # ===========================================================
 #
 # The following three cells demonstrate the prediction tool for LST-1 DL1
