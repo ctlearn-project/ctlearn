@@ -21,15 +21,37 @@ CTLearn: Deep Learning for IACT Event Reconstruction
 Use the version selector in the sidebar to switch between the current
 ``main`` documentation and published tagged releases.
 
+.. grid:: 1 2 3 3
+   :gutter: 3
+
+   .. grid-item-card:: User Guide
+      :link: userguide
+      :link-type: doc
+
+      Explore the public CTAO data tutorials, train CTLearn models, and run
+      inference on image and waveform data.
+
+   .. grid-item-card:: Developer Guide
+      :link: devguide
+      :link-type: doc
+
+      Set up a development environment and contribute to CTLearn.
+
+   .. grid-item-card:: API Docs
+      :link: api
+      :link-type: doc
+
+      Browse the CTLearn Python package and its modules.
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
 
-   installation
+   devguide
    usage
-   tutorials
+   userguide
    supplementary
-   modules
+   api
    changelog
 
 Documentation

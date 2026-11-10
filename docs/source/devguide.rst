@@ -65,6 +65,13 @@ provides the same project-managed environment used by CI.
             $ python -m pip install --upgrade pip
             $ python -m pip install -e ".[dev]"
 
+Contributing
+------------
+
+.. toctree::
+   :maxdepth: 1
+
+   contributing
 
 Installing on the IT Cluster
 ----------------------------

@@ -1,6 +1,6 @@
 """
-**Tutorial 2**: Train CTLearn models
-====================================
+**Tutorial 2** Train CTLearn models
+===================================
 
 Train models for CTAO image and waveform data with CTLearn. The image
 examples use only the gamma-ray and proton ``00`` files; the ``01`` files
@@ -198,8 +198,8 @@ def run_command_line(command):
 
 
 ######################################################################
-# *Part A2*: Monoscopic CNN-based model training
-# ==============================================
+# *Part A2* Monoscopic CNN-based model training
+# =============================================
 #
 # We first train a basic monoscopic CNN-based model using the default CTLearn
 # model configuration. The model uses a **ThinResNet** backbone for feature
@@ -376,8 +376,8 @@ run_command_line(
 )
 
 ######################################################################
-# *Part B2*: Customizing the CTLearn model architecture
-# =====================================================
+# *Part B2* Customizing the CTLearn model architecture
+# ====================================================
 #
 # CTLearn provides a flexible configuration system that allows users to
 # customize the neural network architecture.
@@ -481,8 +481,8 @@ run_command_line(
 )
 
 ######################################################################
-# *Part C2*: Using a pre-trained model and transfer learning
-# ==========================================================
+# *Part C2* Using a pre-trained model and transfer learning
+# =========================================================
 #
 # The LoadedModel component allows a previously trained model following
 # the CTLearnModel structure to be loaded for either resuming training or
@@ -534,8 +534,8 @@ run_command_line(
 )
 
 ######################################################################
-# *Part D2*: Stereoscopic CNN-based model training
-# ================================================
+# *Part D2* Stereoscopic CNN-based model training
+# ===============================================
 #
 # CTLearn currently provides a basic approach for stereoscopic CNN-based
 # model training. The images from the different telescopes are concatenated
@@ -596,8 +596,8 @@ run_command_line(
 )
 
 ######################################################################
-# *Part E2*: CNN-based model training using waveform data
-# =======================================================
+# *Part E2* CNN-based model training using waveform data
+# ======================================================
 #
 # The final example demonstrates training directly on waveform data. The
 # example dataset used in this tutorial is intentionally very small, so
@@ -656,8 +656,8 @@ run_command_line(
 )
 
 ######################################################################
-# *Part F2*: Comparing training curves
-# ====================================
+# *Part F2* Comparing training curves
+# ===================================
 #
 # Each training run writes its metrics to ``training_log.csv`` together
 # with the TensorBoard model checkpoints for training and validation,
@@ -785,8 +785,8 @@ print(f"\nTraining curves saved to {training_curves_path}")
 plt.show()
 
 ######################################################################
-# *Part G2*: Monitoring training with TensorBoard
-# ===============================================
+# *Part G2* Monitoring training with TensorBoard
+# ==============================================
 #
 # CTLearn also writes TensorBoard event files, which are useful for monitoring
 # metrics live or exploring additional details after training. The tutorial
