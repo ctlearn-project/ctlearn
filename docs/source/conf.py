@@ -62,11 +62,14 @@ extensions = [
 sphinx_gallery_conf = {
     "examples_dirs": "../../examples/tutorials",
     "gallery_dirs": "auto_tutorials",
-    "filename_pattern": r"(explore_public_data|train_ctlearn_model)\.py$",
+    "filename_pattern": (
+        r"(explore_public_data|train_ctlearn_model|predict_ctlearn_model)\.py$"
+    ),
     "within_subsection_order": ExplicitOrder(
         [
             "explore_public_data.py",
             "train_ctlearn_model.py",
+            "predict_ctlearn_model.py",
             "*",
         ]
     ),

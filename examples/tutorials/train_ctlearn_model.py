@@ -1,6 +1,6 @@
 """
-Train CTLearn models
-====================
+Tutorial 2: Train CTLearn models
+================================
 
 Train models for CTAO image and waveform data with CTLearn. The image
 examples use only the gamma-ray and proton ``00`` files; the ``01`` files
@@ -178,6 +178,7 @@ print(f"\nTraining outputs: {OUTPUT_DIR}")
 
 
 def run_command_line(command):
+    print(f"Running command: $ {command.strip()}")
     result = subprocess.run(
         command,
         shell=True,
@@ -200,7 +201,7 @@ def run_command_line(command):
 
 ######################################################################
 # 1. Primary particle energy regression
-# --------------------------------------
+# -------------------------------------
 #
 # The model reconstructs the energy of the primary particle as a continuous
 # value. Internally, CTLearn performs the regression on the energy in TeV and
