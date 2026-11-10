@@ -5,6 +5,13 @@ Tutorial 2: Train CTLearn models
 Train models for CTAO image and waveform data with CTLearn. The image
 examples use only the gamma-ray and proton ``00`` files; the ``01`` files
 remain untouched for future evaluation tutorials.
+The tutorial is intenionally kept simple and uses only a small fraction
+of the available statistics to keep the training time manageable.
+The resulting performance metrics are not representative of a production-level
+analysis nor should they be compared directly with published results. The main
+goal is to illustrate the analysis workflow and to become familiar with the
+command-line tools and the DL2 data format. This tutorial can be modified from
+the users to use larger datasets and more statistics to obtain meaningful results.
 
 Each section explains a training task followed immediately by its literal
 command-line example. Running this script executes every example in order.
