@@ -2,18 +2,31 @@
 Tutorial 3: Perform inference with CTlearn models
 =================================================
 
-For this notebook, one would need to download the HDF5 data files from the
-CTAO opendata folder (https://cloud.iaa.es/index.php/s/77d6MK4rGfanSKx) and
-the trained models of ``train_ctlearn_model.py``.
+Predict the CTAO image and waveform data using the CTLearn models
+from the second tutorial ``train_ctlearn_model.py``. The predictions
+are stored in DL2 files following the CTAO reference data model.
+The tutorial also shows how to visualize the classifier performance,
+energy resolution, and angular resolution of the predicted events.
+The tutorial is intenionally kept simple and uses only a small fraction
+of the available statistics to keep the prediction time manageable.
+The resulting performance metrics are not representative of a production-level
+analysis nor should they be compared directly with published results. The main
+goal is to illustrate the analysis workflow and to become familiar with the
+command-line tools and the DL2 data format. This tutorial can be modified from
+the users to use larger datasets and more statistics to obtain meaningful results.
+
+Each section explains a prediction task followed immediately by its literal
+command-line example. Running this script executes every example in order.
 """
 
 ######################################################################
 # Check paths, environments, CTAO test data, and trained models
 # -------------------------------------------------------------
 #
-# The executable tutorial uses the shared downloaded data and the Keras and
-# PyTorch models produced by ``train_ctlearn_model.py``. In a notebook, prefix
-# the displayed command-line examples with ``!``.
+# The executable tutorial uses the shared downloaded and processed data
+# from ``explore_public_data.py`` and the Keras and PyTorch models produced
+# by ``train_ctlearn_model.py``. In a notebook, prefix the displayed
+# command-line examples with ``!``.
 
 import os
 import subprocess
@@ -26,7 +39,6 @@ import numpy as np
 from astropy.table import Column, Table
 from ctapipe import __version__ as ctapipe_version
 from ctapipe.io import TableLoader, write_table
-from matplotlib.colors import LogNorm
 from sklearn.metrics import auc, roc_curve
 
 from ctlearn.tools.utils import get_lst1_subarray_description
@@ -186,6 +198,7 @@ run_command_line(
         --type_model "$CTLEARN_TUTORIAL_OUTPUT_DIR/keras-classification/ctlearn_model.keras" \\
         --energy_model "$CTLEARN_TUTORIAL_OUTPUT_DIR/keras-energy/ctlearn_model.keras" \\
         --cameradirection_model "$CTLEARN_TUTORIAL_OUTPUT_DIR/keras-cameradirection/ctlearn_model.keras" \\
+        --PredictCTLearnModel.batch_size 16 \\
         --overwrite"""
 )
 run_command_line(
@@ -196,6 +209,7 @@ run_command_line(
         --type_model "$CTLEARN_TUTORIAL_OUTPUT_DIR/keras-classification/ctlearn_model.keras" \\
         --energy_model "$CTLEARN_TUTORIAL_OUTPUT_DIR/keras-energy/ctlearn_model.keras" \\
         --cameradirection_model "$CTLEARN_TUTORIAL_OUTPUT_DIR/keras-cameradirection/ctlearn_model.keras" \\
+        --PredictCTLearnModel.batch_size 16 \\
         --overwrite"""
 )
 
@@ -215,6 +229,7 @@ run_command_line(
         --type_model "$CTLEARN_TUTORIAL_OUTPUT_DIR/pytorch-classification/ctlearn_model.pth" \\
         --energy_model "$CTLEARN_TUTORIAL_OUTPUT_DIR/pytorch-energy/ctlearn_model.pth" \\
         --cameradirection_model "$CTLEARN_TUTORIAL_OUTPUT_DIR/pytorch-cameradirection/ctlearn_model.pth" \\
+        --PredictCTLearnModel.batch_size 16 \\
         --overwrite"""
 )
 run_command_line(
@@ -225,6 +240,7 @@ run_command_line(
         --type_model "$CTLEARN_TUTORIAL_OUTPUT_DIR/pytorch-classification/ctlearn_model.pth" \\
         --energy_model "$CTLEARN_TUTORIAL_OUTPUT_DIR/pytorch-energy/ctlearn_model.pth" \\
         --cameradirection_model "$CTLEARN_TUTORIAL_OUTPUT_DIR/pytorch-cameradirection/ctlearn_model.pth" \\
+        --PredictCTLearnModel.batch_size 16 \\
         --overwrite"""
 )
 
@@ -471,7 +487,6 @@ energy_mesh = axes[0].pcolormesh(
     true_energy_edges,
     reco_energy_edges,
     np.ma.masked_where(hist_energy == 0, hist_energy).T,
-    norm=LogNorm(vmin=1, vmax=hist_energy.max()),
     cmap="viridis",
     shading="auto",
 )
@@ -502,7 +517,6 @@ altitude_mesh = axes[1].pcolormesh(
     true_altitude_edges,
     reco_altitude_edges,
     np.ma.masked_where(hist_altitude == 0, hist_altitude).T,
-    norm=LogNorm(vmin=1, vmax=hist_altitude.max()),
     cmap="viridis",
     shading="auto",
 )
@@ -529,7 +543,6 @@ azimuth_mesh = axes[2].pcolormesh(
     true_azimuth_edges,
     reco_azimuth_edges,
     np.ma.masked_where(hist_azimuth == 0, hist_azimuth).T,
-    norm=LogNorm(vmin=1, vmax=hist_azimuth.max()),
     cmap="viridis",
     shading="auto",
 )
