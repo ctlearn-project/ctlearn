@@ -1,6 +1,6 @@
 """
-Explore Public CTAO Data
-========================
+Tutorial 1: Explore Public CTAO Data
+====================================
 
 Download public CTAO simulation data, convert it with ctapipe, and explore
 waveforms and images using DL1DataHandler.
@@ -99,8 +99,8 @@ else:
     print(f"Using existing processed file: {gamma_dl1_path}")
 
 ######################################################################
-# Read calibrated waveforms
-# -------------------------
+# Part A: Read calibrated waveforms
+# =================================
 #
 # DL1DataHandler can read calibrated waveforms and map each camera into a
 # regular image. Here we display an animation of the waveform samples for
@@ -184,8 +184,8 @@ for tel_type, allowed_tels in telescope_types.items():
     plt.show()
 
 ######################################################################
-# Read monoscopic images
-# ----------------------
+# Part B: Read monoscopic images
+# ==============================
 #
 # The image reader returns integrated charge and relative peak-time images.
 # The mapper is selected for each camera type.
@@ -231,8 +231,8 @@ for tel_type, allowed_tels in telescope_types.items():
         plt.show()
 
 ######################################################################
-# Download and convert the stereo data
-# ------------------------------------
+# Download and convert the stereoscopic simulated CTAO data
+# ---------------------------------------------------------
 #
 # The Zenodo files contain CTAO open-source gamma and proton simulations.
 # Convert each file with the installed ctapipe version, and store converted
@@ -283,8 +283,8 @@ for filename in ZENODO_FILES:
         print(f"Using existing ctapipe output: {output_path}")
 
 ######################################################################
-# Read stereo images
-# ------------------
+# Part C: Read stereo images
+# ==========================
 #
 # Finally, combine gamma and proton events in stereo mode and plot the
 # integrated charge and relative peak-time image from each telescope.

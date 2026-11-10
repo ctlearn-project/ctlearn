@@ -86,6 +86,8 @@ tests = [
 
 docs = [
   "ctlearn[all]",
+  "ctaplot",
+  "scikit-learn",
   "sphinx",
   "sphinx-gallery >= 0.16.0",
   "sphinx-changelog",
