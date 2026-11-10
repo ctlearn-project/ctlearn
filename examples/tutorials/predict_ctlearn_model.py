@@ -1,6 +1,6 @@
 """
-Tutorial 3: Perform inference with CTlearn models
-=================================================
+**Tutorial 3**: Perform inference with CTlearn models
+=====================================================
 
 Predict the CTAO image and waveform data using the CTLearn models
 from the second tutorial ``train_ctlearn_model.py``. The predictions
@@ -163,8 +163,8 @@ run_command_line("ctlearn-predict-mono-model -h")
 run_command_line("ctlearn-predict-stereo-model -h")
 
 ######################################################################
-# Part A3: Monoscopic CNN-based model inference
-# ============================================
+# *Part A3*: Monoscopic CNN-based model inference
+# ===============================================
 #
 # We perform inference using the three previously trained CTLearn models from
 # ``train_ctlearn_model.py``: the primary particle type (classification),
@@ -245,8 +245,8 @@ run_command_line(
 )
 
 ######################################################################
-# Part B3: Exploring the produced CTLearn DL2 data
-# ===============================================
+# *Part B3*: Exploring the produced CTLearn DL2 data
+# ==================================================
 #
 # In the following cells, we will explore the DL2 predictions produced by the
 # CTLearn models. Keep in mind that, for this hands-on tutorial, we trained
@@ -639,8 +639,8 @@ plt.show()
 # of the data, and verifying that the predictions are stored correctly.
 
 ######################################################################
-# Part C3: Stereoscopic CNN-based model inference
-# ==============================================
+# *Part C3*: Stereoscopic CNN-based model inference
+# =================================================
 #
 # We perform inference with the previously trained stereoscopic energy model.
 # The telescope images are combined channel-wise and passed to the CNN,
@@ -713,8 +713,8 @@ run_command_line(
 )
 
 ######################################################################
-# Part D3: CNN-based model inference using waveform data
-# -----------------------------------------------------
+# *Part D3*: CNN-based model inference using waveform data
+# ========================================================
 #
 # We perform inference with the previously trained mono energy model using
 # waveform data. The configuration must be consistent with the training
@@ -771,8 +771,8 @@ run_command_line(
 )
 
 ######################################################################
-# Part E3: CNN-based model inference using LST-1 lstchain data
-# ===========================================================
+# *Part E3*: CNN-based model inference using LST-1 lstchain data
+# ==============================================================
 #
 # The following three cells demonstrate the prediction tool for LST-1 DL1
 # data in the lstchain format. Since LST-1 data are private to the LST-1
