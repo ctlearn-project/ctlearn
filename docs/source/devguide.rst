@@ -1,5 +1,5 @@
-Installation
-============
+Getting Started
+===============
 
 User Installation
 -----------------
@@ -109,20 +109,8 @@ Core Dependencies
 * keras>=3.0
 * astropy
 * ctapipe>=0.29.0
-* dl1_data_handler>=0.14.12
+* dl1_data_handler>=0.14.13
 * numba
 * numpy
 * pandas
 * pyyaml
-
-
-Uninstall CTLearn
------------------
-
-To remove a conda environment in which CTLearn is installed:
-
-.. code-block:: bash
-
-   conda remove --name ctlearn --all
-
-To remove a source checkout, delete its directory.
