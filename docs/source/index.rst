@@ -21,6 +21,16 @@ CTLearn: Deep Learning for IACT Event Reconstruction
 Use the version selector in the sidebar to switch between the current
 ``main`` documentation and published tagged releases.
 
+.. toctree::
+  :maxdepth: 1
+  :hidden:
+   devguide
+   usage
+   userguide
+   supplementary
+   api
+   changelog
+
 .. grid:: 1 2 3 3
    :gutter: 3
 
@@ -42,11 +52,3 @@ Use the version selector in the sidebar to switch between the current
       :link-type: doc
 
       Browse the CTLearn Python package and its modules.
-
-
-Documentation
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
