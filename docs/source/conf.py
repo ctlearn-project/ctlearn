@@ -28,7 +28,7 @@ from sphinx_gallery.sorting import ExplicitOrder
 import ctlearn
 
 # -- Project information -----------------------------------------------------
-pyproject_path = Path(__file__).parent.parent / "pyproject.toml"
+pyproject_path = Path(__file__).resolve().parents[2] / "pyproject.toml"
 pyproject = tomllib.loads(pyproject_path.read_text())
 project = pyproject["project"]["name"]
 author = pyproject["project"]["authors"][0]["name"]
