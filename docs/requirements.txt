@@ -5,7 +5,7 @@ sphinx-design
 # Dependencies for autodoc and the executable Sphinx-Gallery tutorials.
 # The Sphinx autodoc configuration mocks the heavy ML frameworks.
 ctapipe>=0.29
-dl1_data_handler>=0.14.12
+dl1_data_handler>=0.14.13
 matplotlib
 ctaplot
 scikit-learn

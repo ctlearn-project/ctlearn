@@ -1,7 +1,7 @@
 CTLearn tutorials
 =================
 
-Step-by-step examples for downloading and exploring public CTAO data,
+Step-by-step examples for downloading and exploring public simulated CTAO data,
 training CTLearn models, and running inference on image and waveform data.
 
 The tutorials use small datasets to keep the examples manageable. Their
