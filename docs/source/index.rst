@@ -43,16 +43,6 @@ Use the version selector in the sidebar to switch between the current
 
       Browse the CTLearn Python package and its modules.
 
-.. toctree::
-   :maxdepth: 2
-   :caption: Contents:
-
-   devguide
-   usage
-   userguide
-   supplementary
-   api
-   changelog
 
 Documentation
 ==================
