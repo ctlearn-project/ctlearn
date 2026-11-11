@@ -12,26 +12,29 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
+import datetime
 import os
 import sys
+import tomllib
+from pathlib import Path
 
 # Point Sphinx to the source directory where `ctlearn` lives
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src"))
 )
 
-# Import ctapipe.reco before autodoc mocks torch: it walks all scikit-learn
-# submodules, and the scikit-learn torch compatibility layer fails on a mock.
-import ctapipe.reco  # noqa: F401
 from sphinx_gallery.sorting import ExplicitOrder
 
 import ctlearn
 
 # -- Project information -----------------------------------------------------
-
-project = "CTLearn"
-copyright = "2022, CTLearn devs"
-author = "CTLearn devs"
+pyproject_path = Path(__file__).parent.parent / "pyproject.toml"
+pyproject = tomllib.loads(pyproject_path.read_text())
+project = pyproject["project"]["name"]
+author = pyproject["project"]["authors"][0]["name"]
+copyright = "{}.  Last updated {}".format(
+    author, datetime.datetime.now().strftime("%d %b %Y %H:%M")
+)
 
 # The short X.Y version
 version = ctlearn.__version__
@@ -113,7 +116,7 @@ pygments_style = None
 #
 
 html_favicon = r"_static/ctlearn_favicon.ico"
-html_logo = r"_static/ctlearn_logo.png"
+html_logo = r"_static/ctlearn_logo_transparent.png"
 
 html_theme = "pydata_sphinx_theme"
 
@@ -127,11 +130,12 @@ version_switcher_url = "https://ctlearn-project.github.io/ctlearn/versions.json"
 html_theme_options = {
     "navbar_start": ["navbar-logo", "version-switcher"],
     "navbar_center": ["navbar-nav"],
-    "navbar_end": ["navbar-icon-links"],
+    "navbar_end": ["theme-switcher", "navbar-icon-links"],
     "switcher": {
         "json_url": version_switcher_url,
         "version_match": version_match,
     },
+    "icon_links_label": "Quick Links",
     "icon_links": [
         {
             "name": "GitHub",
@@ -150,6 +154,7 @@ html_theme_options = {
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
+html_context = {"default_mode": "dark"}
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
