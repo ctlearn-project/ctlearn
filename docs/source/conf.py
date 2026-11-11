@@ -111,6 +111,10 @@ pygments_style = None
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
+
+html_favicon = r"_static/ctlearn_favicon.ico"
+html_logo = r"_static/ctlearn_logo.png"
+
 html_theme = "pydata_sphinx_theme"
 
 version_match = os.getenv("CTLEARN_DOCS_VERSION", "main")
