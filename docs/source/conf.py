@@ -148,6 +148,11 @@ html_theme_options = {
             "icon": "fab fa-python",
         },
     ],
+    "announcement": """
+        <p>This is not production-ready code yet. Although stable
+        releases are available, users should expect changes to the code
+        before a 1.0 release arrives.</p>
+    """,
 }
 
 # Add any paths that contain custom static files (such as style sheets) here,
