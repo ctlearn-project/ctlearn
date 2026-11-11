@@ -134,3 +134,4 @@ in ``ViTables``:
    :maxdepth: 1
 
    auto_tutorials/index
+   usage

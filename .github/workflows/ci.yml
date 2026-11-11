@@ -104,6 +104,7 @@ jobs:
       contents: read
     env:
       PIP_EXTRA_INDEX_URL: "https://download.pytorch.org/whl/cpu"
+      CTLEARN_DOCS_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || 'main' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -125,7 +126,7 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install .
           python -m pip install -r docs/requirements.txt
-          python -m pip install sphinx sphinx-rtd-theme sphinx-changelog sphinx-design
+          python -m pip install sphinx pydata-sphinx-theme sphinx-changelog sphinx-design
 
       - name: Get ctapipe version for processed-data cache
         id: ctapipe-version
@@ -240,13 +241,37 @@ jobs:
               versions = []
 
           versions = [item for item in versions if item["version"] != version]
-          versions.append({"version": version, "path": version_path, "title": title})
+          versions.append(
+              {
+                  "version": version,
+                  "name": title,
+                  "url": (
+                      "https://ctlearn-project.github.io/ctlearn/"
+                      f"{version_path}/"
+                  ),
+              }
+          )
           versions.sort(
               key=lambda item: (item["version"] != "main", item["version"])
           )
           versions[1:] = sorted(
               versions[1:], key=lambda item: item["version"], reverse=True
           )
+          versions = [
+              {
+                  "version": item["version"],
+                  "name": item.get("name", item.get("title", item["version"])),
+                  "url": (
+                      item["url"]
+                      if "url" in item
+                      else (
+                          "https://ctlearn-project.github.io/ctlearn/"
+                          f"{item['path']}/"
+                      )
+                  ),
+              }
+              for item in versions
+          ]
           manifest_path.write_text(json.dumps(versions, indent=2) + "\n")
           PY
 

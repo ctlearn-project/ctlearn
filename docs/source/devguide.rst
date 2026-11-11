@@ -1,4 +1,4 @@
-Getting Started
+Developer Guide
 ===============
 
 User Installation
@@ -114,3 +114,8 @@ Core Dependencies
 * numpy
 * pandas
 * pyyaml
+
+.. toctree::
+   :hidden:
+
+   supplementary
