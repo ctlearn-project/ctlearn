@@ -1,21 +1,13 @@
-.. CTLearn documentation master file, created by
-   sphinx-quickstart on Mon Mar 28 13:43:00 2022.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+.. title:: CTLearn
 
 :html_theme.sidebar_secondary.remove: true
 :html_theme.sidebar_primary.remove: true
 
-CTLearn: Deep Learning for IACT Event Reconstruction
-====================================================
-
 .. image:: _static/ctlearn_logo_transparent.png
+   :alt: CTLearn Logo
    :align: center
    :width: 75%
-
-.. CAUTION:: This is not production-ready code yet. Although stable
-   releases are available, users should expect changes to the code
-   before a 1.0 release arrives.
+   :class: dark-light
 
 .. toctree::
    :maxdepth: 1
