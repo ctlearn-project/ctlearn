@@ -13,7 +13,7 @@ maintainers = [
     {name = "Tjark Miener", email = "tmiener@iaa.csic.es"},
     {name = "Daniel Nieto", email = "d.nieto@ucm.es"},
 ]
-license = "BSD-3-Clause"
+license = {text = "BSD-3-Clause"}
 classifiers = [
     "License :: OSI Approved :: BSD License",
     "Intended Audience :: Science/Research",
