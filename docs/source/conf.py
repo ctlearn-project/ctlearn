@@ -124,6 +124,7 @@ html_theme = "sphinx_rtd_theme"
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
 html_js_files = ["version-switcher.js"]
+html_css_files = ["top-nav.css"]
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.

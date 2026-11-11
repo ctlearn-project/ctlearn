@@ -1,0 +1,11 @@
+{% extends "!layout.html" %}
+
+{% block document %}
+<nav class="ctlearn-top-nav" aria-label="Main navigation">
+  <a href="{{ pathto('userguide') }}"{% if pagename == 'userguide' or pagename.startswith('auto_tutorials/') %} aria-current="page"{% endif %}>User Guide</a>
+  <a href="{{ pathto('devguide') }}"{% if pagename == 'devguide' %} aria-current="page"{% endif %}>Developer Guide</a>
+  <a href="{{ pathto('api') }}"{% if pagename == 'api' %} aria-current="page"{% endif %}>API Docs</a>
+  <a href="{{ pathto('changelog') }}"{% if pagename == 'changelog' %} aria-current="page"{% endif %}>Changelog</a>
+</nav>
+{{ super() }}
+{% endblock %}
