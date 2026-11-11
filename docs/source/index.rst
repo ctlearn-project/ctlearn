@@ -3,23 +3,19 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
+:html_theme.sidebar_secondary.remove: true
+:html_theme.sidebar_primary.remove: true
+
 CTLearn: Deep Learning for IACT Event Reconstruction
 ====================================================
 
-.. image:: ../../images/CTLearnTextCTinBox_WhiteBkgd.png
+.. image:: _static/ctlearn_logo_transparent.png
    :align: center
    :width: 75%
 
 .. CAUTION:: This is not production-ready code yet. Although stable
    releases are available, users should expect changes to the code
    before a 1.0 release arrives.
-
-* Code, feature requests, bug reports, pull requests: https://github.com/ctlearn-project/ctlearn
-* Documentation: https://ctlearn-project.github.io/ctlearn/
-* License: BSD-3
-
-Use the version selector in the header to switch between the current
-``main`` documentation and published tagged releases.
 
 .. toctree::
    :maxdepth: 1
