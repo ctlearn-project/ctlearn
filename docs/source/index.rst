@@ -3,16 +3,15 @@
 :html_theme.sidebar_secondary.remove: true
 :html_theme.sidebar_primary.remove: true
 
-**Version**: |version| **Date**: |today|
-
 .. image:: _static/ctlearn_logo_transparent.png
    :alt: CTLearn Logo
    :align: center
-   :width: 90%
+   :width: 80%
    :class: dark-light
 
-.. raw:: html
-   <div style="height: 20px;"></div>
+
+**Version**: |version| **Date**: |today|
+
 
 .. toctree::
    :maxdepth: 1
