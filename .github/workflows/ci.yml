@@ -222,59 +222,6 @@ jobs:
           fi
           touch "$site_dir/.nojekyll"
 
-          python - "$site_dir/versions.json" "$VERSION" "$version_path" "$REF" <<'PY'
-          import json
-          import sys
-          from pathlib import Path
-
-          manifest_path = Path(sys.argv[1])
-          version, version_path, ref = sys.argv[2:]
-          if ref == "refs/heads/main":
-              version = "main"
-              title = "main (development)"
-          else:
-              title = version
-
-          if manifest_path.exists():
-              versions = json.loads(manifest_path.read_text())
-          else:
-              versions = []
-
-          versions = [item for item in versions if item["version"] != version]
-          versions.append(
-              {
-                  "version": version,
-                  "name": title,
-                  "url": (
-                      "https://ctlearn-project.github.io/ctlearn/"
-                      f"{version_path}/"
-                  ),
-              }
-          )
-          versions.sort(
-              key=lambda item: (item["version"] != "main", item["version"])
-          )
-          versions[1:] = sorted(
-              versions[1:], key=lambda item: item["version"], reverse=True
-          )
-          versions = [
-              {
-                  "version": item["version"],
-                  "name": item.get("name", item.get("title", item["version"])),
-                  "url": (
-                      item["url"]
-                      if "url" in item
-                      else (
-                          "https://ctlearn-project.github.io/ctlearn/"
-                          f"{item['path']}/"
-                      )
-                  ),
-              }
-              for item in versions
-          ]
-          manifest_path.write_text(json.dumps(versions, indent=2) + "\n")
-          PY
-
           git -C "$site_dir" add -A
           if ! git -C "$site_dir" diff --cached --quiet; then
             git -C "$site_dir" -c user.name="github-actions[bot]" \

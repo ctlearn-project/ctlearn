@@ -14,6 +14,7 @@
 #
 import datetime
 import os
+import subprocess
 import sys
 import tomllib
 from pathlib import Path
@@ -40,6 +41,24 @@ copyright = "{}.  Last updated {}".format(
 version = ctlearn.__version__
 # The full version, including alpha/beta/rc tags
 release = version
+
+
+def _release_date():
+    """Date of the documented commit: the release day for tagged builds."""
+    try:
+        return subprocess.run(
+            ["git", "log", "-1", "--format=%cs"],
+            cwd=Path(__file__).resolve().parent,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return ""
+
+
+# Replaces |today|; falls back to the build date when git is unavailable.
+today = _release_date() if os.getenv("CTLEARN_DOCS_VERSION", "main") != "main" else ""
 
 
 # -- General configuration ---------------------------------------------------
@@ -121,7 +140,7 @@ html_logo = r"_static/ctlearn_logo_transparent.png"
 html_theme = "pydata_sphinx_theme"
 
 version_match = os.getenv("CTLEARN_DOCS_VERSION", "main")
-version_switcher_url = "https://ctlearn-project.github.io/ctlearn/versions.json"
+version_switcher_url = "https://ctlearn-project.github.io/ctlearn/_static/switcher.json"
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
