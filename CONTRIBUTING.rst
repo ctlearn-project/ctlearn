@@ -35,6 +35,22 @@ all files, use:
 
    pre-commit run --all-files
 
+Documentation builds
+--------------------
+
+For documentation-only pull requests, apply the ``documentation-only`` label
+to skip the pip and Pixi test jobs and the dependent SonarCloud scan. The
+documentation build still runs, as do the lint and data-cache jobs and any
+other applicable workflow checks. Removing the label restores the skipped
+pull request jobs. The label does not affect push builds, including pushes to
+``main`` and tags, or the release workflow.
+
+To speed up a pull request's documentation build, apply the
+``skip-docs-tutorials`` label. The documentation and tutorial pages are still
+built, but the tutorials are not executed, so their outputs are omitted.
+Removing the label restores tutorial execution. Push builds always execute the
+tutorials, regardless of pull request labels.
+
 Changelog entries
 -----------------
 

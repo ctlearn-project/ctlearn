@@ -29,6 +29,8 @@ jobs:
   cache-test-data:
     needs: lint
     runs-on: ubuntu-24.04
+    env:
+      SKIP_DOCS_TUTORIALS: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'skip-docs-tutorials') }}
     steps:
       - name: Cache ctapipe data
         id: cache-ctapipe
@@ -38,6 +40,7 @@ jobs:
           key: ctapipe-data-${{ runner.os }}-v1
 
       - name: Cache tutorial data
+        if: env.SKIP_DOCS_TUTORIALS != 'true'
         id: cache-tutorial-data
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
@@ -47,7 +50,7 @@ jobs:
       - name: Set up Python
         if: >-
           steps.cache-ctapipe.outputs.cache-hit != 'true' ||
-          steps.cache-tutorial-data.outputs.cache-hit != 'true'
+          (env.SKIP_DOCS_TUTORIALS != 'true' && steps.cache-tutorial-data.outputs.cache-hit != 'true')
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: '3.12'
@@ -55,7 +58,7 @@ jobs:
       - name: Install ctapipe
         if: >-
           steps.cache-ctapipe.outputs.cache-hit != 'true' ||
-          steps.cache-tutorial-data.outputs.cache-hit != 'true'
+          (env.SKIP_DOCS_TUTORIALS != 'true' && steps.cache-tutorial-data.outputs.cache-hit != 'true')
         run: pip install ctapipe
 
       - name: Download ctapipe test data
@@ -64,7 +67,7 @@ jobs:
           python -c "from ctapipe.utils import get_dataset_path; get_dataset_path('gamma_test_large.simtel.gz'); get_dataset_path('proton_20deg_0deg_run4___cta-prod5-paranal_desert-2147m-Paranal-dark-100evts.simtel.zst')"
 
       - name: Download tutorial data
-        if: steps.cache-tutorial-data.outputs.cache-hit != 'true'
+        if: env.SKIP_DOCS_TUTORIALS != 'true' && steps.cache-tutorial-data.outputs.cache-hit != 'true'
         run: |
           python - <<'PY'
           from pathlib import Path
@@ -105,6 +108,7 @@ jobs:
     env:
       PIP_EXTRA_INDEX_URL: "https://download.pytorch.org/whl/cpu"
       CTLEARN_DOCS_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || 'main' }}
+      SKIP_DOCS_TUTORIALS: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'skip-docs-tutorials') }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -129,16 +133,19 @@ jobs:
           python -m pip install sphinx pydata-sphinx-theme sphinx-changelog sphinx-design
 
       - name: Get ctapipe version for processed-data cache
+        if: env.SKIP_DOCS_TUTORIALS != 'true'
         id: ctapipe-version
         run: echo "version=$(python -c 'import ctapipe; print(ctapipe.__version__)')" >> "$GITHUB_OUTPUT"
 
       - name: Restore tutorial input data
+        if: env.SKIP_DOCS_TUTORIALS != 'true'
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.cache/ctlearn/tutorial-data
           key: ctlearn-tutorial-data-${{ runner.os }}-v2
 
       - name: Restore processed tutorial data
+        if: env.SKIP_DOCS_TUTORIALS != 'true'
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: |
@@ -147,10 +154,15 @@ jobs:
           key: >-
             ctlearn-tutorial-processed-${{ runner.os }}-v2-max500-${{ steps.ctapipe-version.outputs.version }}-${{ hashFiles('examples/tutorials/explore_public_data.py', 'docs/requirements.txt', 'pyproject.toml') }}
 
-      - name: Build documentation and execute tutorials
+      - name: Build documentation
         env:
           CTLEARN_TUTORIAL_MAX_EVENTS: "500"
-        run: python -m sphinx -b html --keep-going docs/source docs/build/html
+        run: |
+          if [[ "$SKIP_DOCS_TUTORIALS" == "true" ]]; then
+            python -m sphinx -b html --keep-going -D sphinx_gallery_conf.plot_gallery=0 docs/source docs/build/html
+          else
+            python -m sphinx -b html --keep-going docs/source docs/build/html
+          fi
 
       - name: Upload rendered documentation for review
         if: >-
