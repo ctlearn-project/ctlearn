@@ -12,6 +12,7 @@ output_dir2/
 *.tar.gz
 *.pbtxt
 *.png
+!docs/source/_static/ctlearn_favicon.png
 *.csv
 *~
 *.log
@@ -32,6 +33,7 @@ dist
 # Sphinx documentation
 docs/build/
 docs/source/auto_tutorials/
+docs/source/user-guide/auto_tutorials/
 docs/source/sg_execution_times.rst
 build/
 # Default pytorch output
