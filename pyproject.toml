@@ -93,6 +93,7 @@ docs = [
   "sphinx-changelog",
   "sphinx-design",
   "sphinx-rtd-theme",
+  "pydata-sphinx-theme",
 ]
 
 dev = [

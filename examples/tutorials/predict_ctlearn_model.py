@@ -86,18 +86,18 @@ def find_config_dir():
     roots = []
     script_path = globals().get("__file__")
     if script_path is not None:
-        roots.append(Path(script_path).resolve().parents[2])
+        script_dir = Path(script_path).resolve().parent
+        roots.extend((script_dir, *script_dir.parents))
     roots.extend((Path.cwd(), *Path.cwd().parents))
 
     for root in roots:
-        config_dir = root / "docs" / "source" / "config"
-        if (config_dir / "dl1dh_example_config.json").is_file():
-            return config_dir
+        for config_dir in (root / "config", root / "docs" / "source" / "config"):
+            if (config_dir / "dl1dh_example_config.json").is_file():
+                return config_dir
 
     raise FileNotFoundError(
-        "Could not locate tutorial configs under docs/source/config. "
-        "Run this tutorial from the CTLearn repository or build it with "
-        "Sphinx-Gallery."
+        "Could not locate tutorial configs in config/ or docs/source/config/. "
+        "Extract the complete tutorial ZIP or run from the CTLearn repository."
     )
 
 
@@ -114,7 +114,7 @@ if missing_files:
     missing = "\n".join(f"  - {path}" for path in missing_files)
     raise FileNotFoundError(
         "Held-out tutorial data is missing. Run "
-        "examples/tutorials/explore_public_data.py first. Missing files:\n"
+        "explore_public_data.py first. Missing files:\n"
         f"{missing}"
     )
 
@@ -735,7 +735,7 @@ WAVEFORM_FILE = DATA_DIR / f"gamma_prod5{MAX_EVENTS_SUFFIX}.r1.dl1.h5"
 if not WAVEFORM_FILE.is_file():
     raise FileNotFoundError(
         f"Cached waveform data is missing: {WAVEFORM_FILE}. "
-        "Run examples/tutorials/explore_public_data.py first."
+        "Run explore_public_data.py first."
     )
 
 ######################################################################

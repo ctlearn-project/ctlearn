@@ -67,7 +67,7 @@ if missing_files:
     missing = "\n".join(f"  - {path}" for path in missing_files)
     raise FileNotFoundError(
         "Cached stereo training data is missing. Run "
-        "examples/tutorials/explore_public_data.py first. Missing files:\n"
+        "explore_public_data.py first. Missing files:\n"
         f"{missing}"
     )
 
@@ -86,18 +86,18 @@ print("Only the _00 image files are selected; the _01 files are reserved.")
 # followed immediately by the equivalent PyTorch command. In a notebook,
 # prefix either command with ``!``.
 #
-# The three JSON configuration files shipped beside this tutorial are copies
-# of the workshop examples:
+# The three JSON configuration files are in ``docs/source/config`` in the
+# repository and in ``config`` in the downloaded tutorial ZIPs:
 #
-# - ``docs/source/config/dl1dh_example_config.json`` selects LST/LSTCam images,
+# - ``dl1dh_example_config.json`` selects LST/LSTCam images,
 #   the image and relative peak-time channels, bilinear mapping, and an
 #   example 50,000 p.e. intensity cut. It also specifies NectarCam waveform
 #   settings.
-# - ``docs/source/config/ctlearn_train_model_example_config.json`` sets the
+# - ``ctlearn_train_model_example_config.json`` sets the
 #   reader, epoch and batch defaults, validation split, Adam optimizer and
 #   learning rate, checkpointing, learning-rate reduction, random seed, and
 #   early stopping.
-# - ``docs/source/config/ctlearn_models_example_config.json`` defines the
+# - ``ctlearn_models_example_config.json`` defines the
 #   prediction heads, attention settings, custom ``SingleCNN`` and ``ResNet``
 #   architectures, and ``LoadedModel`` transfer-learning options.
 
@@ -106,7 +106,8 @@ def find_config_dir():
     roots = []
     script_path = globals().get("__file__")
     if script_path is not None:
-        roots.append(Path(script_path).resolve().parents[2])
+        script_dir = Path(script_path).resolve().parent
+        roots.extend((script_dir, *script_dir.parents))
     roots.extend((Path.cwd(), *Path.cwd().parents))
 
     config_names = (
@@ -115,14 +116,13 @@ def find_config_dir():
         "ctlearn_models_example_config.json",
     )
     for root in roots:
-        config_dir = root / "docs" / "source" / "config"
-        if all((config_dir / name).is_file() for name in config_names):
-            return config_dir
+        for config_dir in (root / "config", root / "docs" / "source" / "config"):
+            if all((config_dir / name).is_file() for name in config_names):
+                return config_dir
 
     raise FileNotFoundError(
-        "Could not locate tutorial configs under docs/source/config. "
-        "Run this tutorial from the CTLearn repository or build it with "
-        "Sphinx-Gallery."
+        "Could not locate tutorial configs in config/ or docs/source/config/. "
+        "Extract the complete tutorial ZIP or run from the CTLearn repository."
     )
 
 
@@ -621,7 +621,7 @@ run_command_line(
 if not WAVEFORM_FILE.is_file():
     raise FileNotFoundError(
         f"Cached waveform data is missing: {WAVEFORM_FILE}. "
-        "Run examples/tutorials/explore_public_data.py first."
+        "Run explore_public_data.py first."
     )
 run_command_line(
     """ctlearn-train-keras-model --verbose \\

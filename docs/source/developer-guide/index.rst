@@ -1,32 +1,16 @@
+.. _dev-guide:
+
+***************
 Developer Guide
-===============
+***************
 
-User Installation
------------------
+.. currentmodule:: ctlearn
 
-.. tab-set::
-
-    .. tab-item:: With Pixi
-
-        Inside an existing Pixi project, add the released CTLearn package:
-
-        .. code-block:: shell
-
-            $ pixi add --pypi ctlearn
-
-    .. tab-item:: With Pip
-
-        .. code-block:: shell
-
-            $ pip install ctlearn
-
-
-Developer Setup
----------------
+Getting Started for Developers
+------------------------------
 
 As a developer, clone the repository and install CTLearn in development mode.
-We support two methods: *pip/venv* and `Pixi <https://pixi.sh/>`__. Pixi
-provides the same project-managed environment used by CI.
+We support two methods: *pip/venv* and `Pixi <https://pixi.sh/>`__.
 
 .. tab-set::
 
@@ -73,31 +57,6 @@ Contributing
 
    contributing
 
-Installing on the IT Cluster
-----------------------------
-
-For working on the IT cluster, create a conda environment with the required
-build tools:
-
-.. code-block:: bash
-
-   mamba create -n ctlearn-it-cluster -c conda-forge python==3.12 h5py scipy llvmlite gcc_linux-64 gxx_linux-64 openblas gfortran_linux-64
-   conda activate ctlearn-it-cluster
-   export CC=$(which x86_64-conda-linux-gnu-gcc)
-   export CXX=$(which x86_64-conda-linux-gnu-g++)
-   export FC=$(which x86_64-conda-linux-gnu-gfortran)
-   pip install ctlearn
-
-Update ``LD_LIBRARY_PATH`` to include the necessary paths. For example, add the
-following line to your ``.bashrc`` file:
-
-.. code-block:: bash
-
-   export LD_LIBRARY_PATH=/path/to/your/conda/envs/ctlearn-it-cluster/lib:/path/to/cudnn/lib:$LD_LIBRARY_PATH
-
-Replace ``/path/to/your/conda/envs/ctlearn-it-cluster/lib`` with the path to
-your conda environment and ``/path/to/cudnn/lib`` with the path to the system's
-cuDNN libraries for CUDA 12.
 
 
 Core Dependencies
@@ -114,8 +73,3 @@ Core Dependencies
 * numpy
 * pandas
 * pyyaml
-
-.. toctree::
-   :hidden:
-
-   supplementary

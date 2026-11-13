@@ -16,7 +16,9 @@ import datetime
 import os
 import subprocess
 import sys
+import tempfile
 import tomllib
+import zipfile
 from pathlib import Path
 
 # Point Sphinx to the source directory where `ctlearn` lives
@@ -83,7 +85,7 @@ extensions = [
 
 sphinx_gallery_conf = {
     "examples_dirs": "../../examples/tutorials",
-    "gallery_dirs": "auto_tutorials",
+    "gallery_dirs": "user-guide/auto_tutorials",
     "filename_pattern": (
         r"(explore_public_data|train_ctlearn_model|predict_ctlearn_model)\.py$"
     ),
@@ -96,6 +98,9 @@ sphinx_gallery_conf = {
         ]
     ),
     "plot_gallery": True,
+    "default_thumb_file": str(
+        Path(__file__).parent / "_static" / "ctlearn_favicon.png"
+    ),
     "matplotlib_animations": (True, "jshtml"),
     "abort_on_example_error": True,
 }
@@ -122,7 +127,7 @@ language = "en"
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = []
+exclude_patterns = ["user-guide/tutorials.rst"]
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = None
@@ -266,3 +271,45 @@ epub_exclude_files = ["search.html"]
 
 
 # -- Extension configuration -------------------------------------------------
+
+
+def add_tutorial_configs_to_zips(app):
+    """Include the tutorial configs in Sphinx-Gallery downloads."""
+    source_dir = Path(app.srcdir)
+    gallery_dir = source_dir / "user-guide" / "auto_tutorials"
+    configs = [
+        source_dir / "config" / name
+        for name in (
+            "dl1dh_example_config.json",
+            "ctlearn_train_model_example_config.json",
+            "ctlearn_models_example_config.json",
+        )
+    ]
+    archives = [
+        gallery_dir / name
+        for name in (
+            "auto_tutorials_python.zip",
+            "auto_tutorials_jupyter.zip",
+            "explore_public_data.zip",
+            "train_ctlearn_model.zip",
+            "predict_ctlearn_model.zip",
+        )
+    ]
+    config_names = {f"config/{config.name}" for config in configs}
+    for archive in archives:
+        with tempfile.TemporaryDirectory(dir=gallery_dir) as temporary_dir:
+            updated = Path(temporary_dir) / archive.name
+            with (
+                zipfile.ZipFile(archive) as original,
+                zipfile.ZipFile(updated, "w") as replacement,
+            ):
+                for item in original.infolist():
+                    if item.filename not in config_names:
+                        replacement.writestr(item, original.read(item))
+                for config in configs:
+                    replacement.write(config, f"config/{config.name}")
+            updated.replace(archive)
+
+
+def setup(app):
+    app.connect("builder-inited", add_tutorial_configs_to_zips, priority=600)
