@@ -1,0 +1,12 @@
+[
+  {
+    "name": "dev",
+    "version": "main",
+    "url": "https://ctlearn-project.github.io/ctlearn/main/"
+  },
+  {
+    "name": "legacy (Read the Docs)",
+    "version": "legacy",
+    "url": "https://ctlearn.readthedocs.io/en/stable/"
+  }
+]

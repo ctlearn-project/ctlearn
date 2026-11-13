@@ -6,14 +6,14 @@ build-backend = "setuptools.build_meta"
 name = "ctlearn"
 description = "CTLearn is a package under active development to run deep learning models to analyze data from all major current and future arrays of imaging atmospheric Cherenkov telescopes (IACTs)."
 readme = "README.rst"
-license = {text = "BSD-3-Clause"}
 authors = [
-    {name = "Ari Brill"},
-    {name = "Bryan Kim"},
-    {name = "Tjark Miener"},
-    {name = "Daniel Nieto", email = "d.nieto@ucm.es"}
+    {name = "CTLearn devs"},
 ]
-
+maintainers = [
+    {name = "Tjark Miener", email = "tmiener@iaa.csic.es"},
+    {name = "Daniel Nieto", email = "d.nieto@ucm.es"},
+]
+license = {text = "BSD-3-Clause"}
 classifiers = [
     "License :: OSI Approved :: BSD License",
     "Intended Audience :: Science/Research",
@@ -30,7 +30,7 @@ requires-python = ">=3.12"
 dependencies = [
     "astropy",
     "ctapipe>=0.29",
-    "dl1_data_handler>=0.14.12",
+    "dl1_data_handler>=0.14.13",
     "numba",
     "numpy",
     "pandas",
@@ -86,10 +86,14 @@ tests = [
 
 docs = [
   "ctlearn[all]",
+  "ctaplot",
+  "scikit-learn",
   "sphinx",
+  "sphinx-gallery >= 0.16.0",
   "sphinx-changelog",
   "sphinx-design",
   "sphinx-rtd-theme",
+  "pydata-sphinx-theme",
 ]
 
 dev = [
@@ -103,7 +107,7 @@ dev = [
 
 [project.urls]
 repository = "https://github.com/ctlearn-project/ctlearn"
-documentation = "https://ctlearn.readthedocs.io/en/latest/"
+documentation = "https://ctlearn-project.github.io/ctlearn/"
 
 [project.scripts]
 ctlearn-train-keras-model = "ctlearn.tools.keras.train_model:main"

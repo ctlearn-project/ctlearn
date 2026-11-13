@@ -1,8 +1,12 @@
 sphinx
-sphinx_rtd_theme
+pydata-sphinx-theme
 sphinx-changelog
 sphinx-design
-# Light-weight runtime dependencies needed by autodoc to import ctlearn.
-# The heavy ML frameworks (TensorFlow, PyTorch, ...) are mocked in conf.py.
+# Dependencies for autodoc and the executable Sphinx-Gallery tutorials.
+# The Sphinx autodoc configuration mocks the heavy ML frameworks.
 ctapipe>=0.29
-dl1_data_handler>=0.14.12
+dl1_data_handler>=0.14.13
+matplotlib
+ctaplot
+scikit-learn
+sphinx-gallery>=0.16.0

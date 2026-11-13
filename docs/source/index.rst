@@ -1,36 +1,47 @@
-.. CTLearn documentation master file, created by
-   sphinx-quickstart on Mon Mar 28 13:43:00 2022.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+.. title:: Home
 
-CTLearn: Deep Learning for IACT Event Reconstruction
-====================================================
+:html_theme.sidebar_secondary.remove: true
+:html_theme.sidebar_primary.remove: true
 
-.. image:: ../../images/CTLearnTextCTinBox_WhiteBkgd.png
+.. _ctlearn:
+
+.. image:: _static/ctlearn_logo_transparent.png
+   :alt: CTLearn Logo
    :align: center
-   :width: 75%
+   :width: 80%
+   :class: dark-light
 
-.. CAUTION:: This is not production-ready code yet. Although stable
-   releases are available, users should expect changes to the code
-   before a 1.0 release arrives.
 
-* Code, feature requests, bug reports, pull requests: https://github.com/ctlearn-project/ctlearn
-* Documentation: https://ctlearn.readthedocs.io
-* License: BSD-3
+**Version**: |version| **Date**: |today|
+
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :maxdepth: 1
+   :hidden:
 
-   installation
-   usage
-   supplementary
-   modules
+   user-guide/index
+   developer-guide/index
+   api-reference/index
    changelog
 
-Documentation
-==================
+.. grid:: 1 2 3 3
+   :gutter: 3
 
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   .. grid-item-card:: User Guide
+      :link: user-guide/index
+      :link-type: doc
+
+      Explore the public simulated CTAO data tutorials, train CTLearn models, and run
+      inference on image and waveform data.
+
+   .. grid-item-card:: Developer Guide
+      :link: developer-guide/index
+      :link-type: doc
+
+      Set up a development environment and contribute to CTLearn.
+
+   .. grid-item-card:: API Docs
+      :link: api-reference/index
+      :link-type: doc
+
+      Browse the CTLearn Python package and its modules.

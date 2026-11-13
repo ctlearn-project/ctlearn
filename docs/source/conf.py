@@ -12,30 +12,55 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
+import datetime
 import os
+import subprocess
 import sys
+import tempfile
+import tomllib
+import zipfile
+from pathlib import Path
 
 # Point Sphinx to the source directory where `ctlearn` lives
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src"))
 )
 
-# Import ctapipe.reco before autodoc mocks torch: it walks all scikit-learn
-# submodules, and the scikit-learn torch compatibility layer fails on a mock.
-import ctapipe.reco  # noqa: F401
+from sphinx_gallery.sorting import ExplicitOrder
 
 import ctlearn
 
 # -- Project information -----------------------------------------------------
-
-project = "CTLearn"
-copyright = "2022, CTLearn devs"
-author = "CTLearn devs"
+pyproject_path = Path(__file__).resolve().parents[2] / "pyproject.toml"
+pyproject = tomllib.loads(pyproject_path.read_text())
+project = pyproject["project"]["name"]
+author = pyproject["project"]["authors"][0]["name"]
+copyright = "{}.  Last updated {}".format(
+    author, datetime.datetime.now().strftime("%d %b %Y %H:%M")
+)
 
 # The short X.Y version
 version = ctlearn.__version__
 # The full version, including alpha/beta/rc tags
 release = version
+
+
+def _release_date():
+    """Date of the documented commit: the release day for tagged builds."""
+    try:
+        return subprocess.run(
+            ["git", "log", "-1", "--format=%cs"],
+            cwd=Path(__file__).resolve().parent,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return ""
+
+
+# Replaces |today|; falls back to the build date when git is unavailable.
+today = _release_date() if os.getenv("CTLEARN_DOCS_VERSION", "main") != "main" else ""
 
 
 # -- General configuration ---------------------------------------------------
@@ -55,7 +80,30 @@ extensions = [
     "sphinx.ext.githubpages",
     "sphinx_changelog",
     "sphinx_design",
+    "sphinx_gallery.gen_gallery",
 ]
+
+sphinx_gallery_conf = {
+    "examples_dirs": "../../examples/tutorials",
+    "gallery_dirs": "user-guide/auto_tutorials",
+    "filename_pattern": (
+        r"(explore_public_data|train_ctlearn_model|predict_ctlearn_model)\.py$"
+    ),
+    "within_subsection_order": ExplicitOrder(
+        [
+            "explore_public_data.py",
+            "train_ctlearn_model.py",
+            "predict_ctlearn_model.py",
+            "*",
+        ]
+    ),
+    "plot_gallery": True,
+    "default_thumb_file": str(
+        Path(__file__).parent / "_static" / "ctlearn_favicon.png"
+    ),
+    "matplotlib_animations": (True, "jshtml"),
+    "abort_on_example_error": True,
+}
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]
@@ -79,7 +127,7 @@ language = "en"
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = []
+exclude_patterns = ["user-guide/tutorials.rst"]
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = None
@@ -90,18 +138,52 @@ pygments_style = None
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = "sphinx_rtd_theme"
+
+html_favicon = r"_static/ctlearn_favicon.ico"
+html_logo = r"_static/ctlearn_logo_transparent.png"
+
+html_theme = "pydata_sphinx_theme"
+
+version_match = os.getenv("CTLEARN_DOCS_VERSION", "main")
+version_switcher_url = "https://ctlearn-project.github.io/ctlearn/_static/switcher.json"
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-# html_theme_options = {}
+html_theme_options = {
+    "navbar_start": ["navbar-logo", "version-switcher"],
+    "navbar_center": ["navbar-nav"],
+    "navbar_end": ["theme-switcher", "navbar-icon-links"],
+    "switcher": {
+        "json_url": version_switcher_url,
+        "version_match": version_match,
+    },
+    "icon_links_label": "Quick Links",
+    "icon_links": [
+        {
+            "name": "GitHub",
+            "url": "https://github.com/ctlearn-project/ctlearn",
+            "icon": "fab fa-github",
+        },
+        {
+            "name": "PyPI",
+            "url": "https://pypi.org/project/ctlearn/",
+            "icon": "fab fa-python",
+        },
+    ],
+    "announcement": """
+        <p>This is not production-ready code yet. Although stable
+        releases are available, users should expect changes to the code
+        before a 1.0 release arrives.</p>
+    """,
+}
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
+html_context = {"default_mode": "dark"}
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
@@ -190,16 +272,44 @@ epub_exclude_files = ["search.html"]
 
 # -- Extension configuration -------------------------------------------------
 
-# The heavy ML frameworks are not installed in the docs build environment
-# (see .readthedocs.yaml), so they are mocked to let autodoc import ctlearn.
-autodoc_mock_imports = [
-    "torch",
-    "torchvision",
-    "torchmetrics",
-    "pytorch_lightning",
-    "tensorflow",
-    "tensorboard",
-    "keras",
-    "keras_hexagdly",
-    "pytorch_hexagdly",
-]
+
+def add_tutorial_configs_to_zips(app):
+    """Include the tutorial configs in Sphinx-Gallery downloads."""
+    source_dir = Path(app.srcdir)
+    gallery_dir = source_dir / "user-guide" / "auto_tutorials"
+    configs = [
+        source_dir / "config" / name
+        for name in (
+            "dl1dh_example_config.json",
+            "ctlearn_train_model_example_config.json",
+            "ctlearn_models_example_config.json",
+        )
+    ]
+    archives = [
+        gallery_dir / name
+        for name in (
+            "auto_tutorials_python.zip",
+            "auto_tutorials_jupyter.zip",
+            "explore_public_data.zip",
+            "train_ctlearn_model.zip",
+            "predict_ctlearn_model.zip",
+        )
+    ]
+    config_names = {f"config/{config.name}" for config in configs}
+    for archive in archives:
+        with tempfile.TemporaryDirectory(dir=gallery_dir) as temporary_dir:
+            updated = Path(temporary_dir) / archive.name
+            with (
+                zipfile.ZipFile(archive) as original,
+                zipfile.ZipFile(updated, "w") as replacement,
+            ):
+                for item in original.infolist():
+                    if item.filename not in config_names:
+                        replacement.writestr(item, original.read(item))
+                for config in configs:
+                    replacement.write(config, f"config/{config.name}")
+            updated.replace(archive)
+
+
+def setup(app):
+    app.connect("builder-inited", add_tutorial_configs_to_zips, priority=600)
