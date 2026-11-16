@@ -3,9 +3,13 @@ Contributing to CTLearn
 =======================
 
 CTLearn is open source and welcomes contributions from the community!
+CTLearn follows the same code style and development guidelines as the ctapipe
+community. We recommend reviewing the `ctapipe Developer Guide
+<https://ctapipe.readthedocs.io/en/stable/developer-guide/index.html>`_ in
+detail and following the guidelines below:
 
 Contributing guidelines
------------------------
+^^^^^^^^^^^^^^^^^^^^^^^
 
 In CTLearn we follow the "fork-and-pull" Git workflow:
 
@@ -16,8 +20,13 @@ In CTLearn we follow the "fork-and-pull" Git workflow:
 * Push your work back up to your fork on GitHub
 * Submit a Pull Request so the core developer team can review your changes
 
+Some CI features are unavailable for pull requests from forks. Frequent
+contributors and those preparing pull requests with significant changes
+can contact the maintainers to request write access and contribute from a
+branch in the main repository instead of a fork.
+
 Code quality
-------------
+^^^^^^^^^^^^
 
 CTLearn uses pre-commit hooks for whitespace and file checks, spelling, and
 Ruff linting and formatting. Install the development dependencies and set up
@@ -35,8 +44,12 @@ all files, use:
 
    pre-commit run --all-files
 
+CI also runs ``SonarQube`` analysis through ``SonarCloud`` on pull requests from this
+repository. It checks code quality, including potential bugs, security issues,
+maintainability, and test coverage.
+
 Documentation builds
---------------------
+^^^^^^^^^^^^^^^^^^^^
 
 For documentation-only pull requests, apply the ``documentation-only`` label
 to skip the pip and Pixi test jobs and the dependent SonarCloud scan. The
@@ -52,7 +65,7 @@ Removing the label restores tutorial execution. Push builds always execute the
 tutorials, regardless of pull request labels.
 
 Changelog entries
------------------
+^^^^^^^^^^^^^^^^^
 
 Every pull request should include a Towncrier fragment describing its user-facing
 changes. See ``docs/changes/README.md`` for the naming conventions and supported
@@ -60,12 +73,12 @@ categories. If a change does not warrant a changelog entry, maintainers can appl
 the ``no-changelog-needed`` pull request label.
 
 Issues
-------
+^^^^^^
 
 Feel free to submit issues and enhancement requests through our `issues page on GitHub <https://github.com/ctlearn-project/ctlearn/issues>`_.
 
 Copyright and License
----------------------
+^^^^^^^^^^^^^^^^^^^^^
 
 CTLearn is licensed under the `BSD 3-Clause License <https://opensource.org/licenses/BSD-3-Clause>`_.
 

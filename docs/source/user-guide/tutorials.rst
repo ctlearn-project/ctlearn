@@ -1,3 +1,5 @@
+.. _ctlearn-tutorials:
+
 CTLearn tutorials
 =================
 

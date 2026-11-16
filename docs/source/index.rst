@@ -31,8 +31,7 @@
       :link: user-guide/index
       :link-type: doc
 
-      Explore the public simulated CTAO data tutorials, train CTLearn models, and run
-      inference on image and waveform data.
+      Install the latest CTLearn version, learn the basics, and explore tutorials.
 
    .. grid-item-card:: Developer Guide
       :link: developer-guide/index
