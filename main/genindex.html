@@ -1,0 +1,1159 @@
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="./" data-theme="dark">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Index &#8212; ctlearn 0.11.1.dev67+g2baf2dbbc documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "dark";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "dark";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=75c7c72ae941e8b558d8" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=75c7c72ae941e8b558d8" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css?v=c83e6b79" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=6a604523" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="_static/scripts/fontawesome.js?digest=75c7c72ae941e8b558d8"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8" />
+
+    <script src="_static/documentation_options.js?v=efa1cbec"></script>
+    <script src="_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/sg-tags.js?v=d80f6fa4"></script>
+    <script data-sd-tabs-storage-prefix="sphinx-design-tab-id-" src="_static/design-tabs.js?v=fcb327ea"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'genindex';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.24.0';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://ctlearn-project.github.io/ctlearn/_static/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'main';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="icon" href="_static/ctlearn_favicon.ico"/>
+    <link rel="index" title="Index" href="#" />
+    <link rel="search" title="Search" href="search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="color-scheme" content="light dark"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.11.1.dev67+g2baf2dbbc" />
+  
+    
+    <script src="_static/searchtools.js"></script>
+    <script src="_static/language_data.js"></script>
+    <script src="searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="dark">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+<aside class="bd-header-announcement" aria-label="Announcement">
+  <div class="bd-header-announcement__content">
+        <p>This is not production-ready code yet. Although stable
+        releases are available, users should expect changes to the code
+        before a 1.0 release arrives.</p>
+    </div>
+</aside>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button type="button" class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation" aria-expanded="false" aria-controls="pst-primary-sidebar-modal">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+  
+    
+    
+    
+    <img src="_static/ctlearn_logo_transparent.png" class="logo__image only-dark" alt="ctlearn 0.11.1.dev67+g2baf2dbbc documentation - Home"/>
+    <img src="_static/ctlearn_logo_transparent.png" class="logo__image only-light pst-js-only" alt="ctlearn 0.11.1.dev67+g2baf2dbbc documentation - Home"/>
+  
+  
+</a></div>
+    
+      <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="user-guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="developer-guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api-reference/index.html">
+    API Docs
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="changelog.html">
+    Change Log
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Quick Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/ctlearn-project/ctlearn" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/ctlearn/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal" tabindex="-1"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="user-guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="developer-guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="api-reference/index.html">
+    API Docs
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="changelog.html">
+    Change Log
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Quick Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/ctlearn-project/ctlearn" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/ctlearn/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none"></div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+
+<h1 id="index">Index</h1>
+
+<div class="genindex-jumpbox">
+ <a href="#A"><strong>A</strong></a>
+ | <a href="#B"><strong>B</strong></a>
+ | <a href="#C"><strong>C</strong></a>
+ | <a href="#D"><strong>D</strong></a>
+ | <a href="#E"><strong>E</strong></a>
+ | <a href="#F"><strong>F</strong></a>
+ | <a href="#G"><strong>G</strong></a>
+ | <a href="#H"><strong>H</strong></a>
+ | <a href="#I"><strong>I</strong></a>
+ | <a href="#K"><strong>K</strong></a>
+ | <a href="#L"><strong>L</strong></a>
+ | <a href="#M"><strong>M</strong></a>
+ | <a href="#N"><strong>N</strong></a>
+ | <a href="#O"><strong>O</strong></a>
+ | <a href="#P"><strong>P</strong></a>
+ | <a href="#R"><strong>R</strong></a>
+ | <a href="#S"><strong>S</strong></a>
+ | <a href="#T"><strong>T</strong></a>
+ | <a href="#V"><strong>V</strong></a>
+ | <a href="#W"><strong>W</strong></a>
+ 
+</div>
+<h2 id="A">A</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.aliases">aliases (ctlearn.tools.predict_LST1.LST1PredictionTool attribute)</a>
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.aliases">(ctlearn.tools.predict_model.PredictCTLearnModel attribute)</a>
+</li>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.aliases">(ctlearn.tools.train_model.TrainCTLearnModel attribute)</a>
+</li>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.model.ResNet.architecture">architecture (ctlearn.core.model.ResNet attribute)</a>
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#ctlearn.core.model.SingleCNN.architecture">(ctlearn.core.model.SingleCNN attribute)</a>
+</li>
+      </ul></li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.model.CTLearnModel.attention_mechanism">attention_mechanism (ctlearn.core.model.CTLearnModel attribute)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.model.CTLearnModel.attention_reduction_ratio">attention_reduction_ratio (ctlearn.core.model.CTLearnModel attribute)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="B">B</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.pytorch.model.BasicBlock">BasicBlock (class in ctlearn.core.pytorch.model)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.batch_size">batch_size (ctlearn.tools.predict_LST1.LST1PredictionTool attribute)</a>
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.batch_size">(ctlearn.tools.predict_model.PredictCTLearnModel attribute)</a>
+</li>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.batch_size">(ctlearn.tools.train_model.TrainCTLearnModel attribute)</a>
+</li>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.model.SingleCNN.batchnorm">batchnorm (ctlearn.core.model.SingleCNN attribute)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.model.SingleCNN.bottleneck_filters">bottleneck_filters (ctlearn.core.model.SingleCNN attribute)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.pytorch.model.BottleneckBlock">BottleneckBlock (class in ctlearn.core.pytorch.model)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.keras.model.build_fully_connect_keras_head">build_fully_connect_keras_head() (in module ctlearn.core.keras.model)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.pytorch.model.build_fully_connect_pytorch_head">build_fully_connect_pytorch_head() (in module ctlearn.core.pytorch.model)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="C">C</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.keras.attention.channel_squeeze_excite_block">channel_squeeze_excite_block() (in module ctlearn.core.keras.attention)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.channels">channels (ctlearn.tools.predict_LST1.LST1PredictionTool attribute)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.pytorch.attention.ChannelSqueezeExciteBlock">ChannelSqueezeExciteBlock (class in ctlearn.core.pytorch.attention)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.classes">classes (ctlearn.tools.predict_LST1.LST1PredictionTool attribute)</a>
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.classes">(ctlearn.tools.predict_model.PredictCTLearnModel attribute)</a>
+</li>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.classes">(ctlearn.tools.train_model.TrainCTLearnModel attribute)</a>
+</li>
+      </ul></li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.model.CTLearnModel.conv_backend">conv_backend (ctlearn.core.model.CTLearnModel attribute)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.model.ConvBackend">ConvBackend (class in ctlearn.core.model)</a>
+</li>
+      <li>
+    ctlearn
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#module-ctlearn">module</a>
+</li>
+      </ul></li>
+      <li>
+    ctlearn.core.keras.attention
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#module-ctlearn.core.keras.attention">module</a>
+</li>
+      </ul></li>
+      <li>
+    ctlearn.core.keras.model
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#module-ctlearn.core.keras.model">module</a>
+</li>
+      </ul></li>
+      <li>
+    ctlearn.core.keras.sequence
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#module-ctlearn.core.keras.sequence">module</a>
+</li>
+      </ul></li>
+      <li>
+    ctlearn.core.model
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#module-ctlearn.core.model">module</a>
+</li>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li>
+    ctlearn.core.pytorch.attention
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#module-ctlearn.core.pytorch.attention">module</a>
+</li>
+      </ul></li>
+      <li>
+    ctlearn.core.pytorch.dataset
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#module-ctlearn.core.pytorch.dataset">module</a>
+</li>
+      </ul></li>
+      <li>
+    ctlearn.core.pytorch.model
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#module-ctlearn.core.pytorch.model">module</a>
+</li>
+      </ul></li>
+      <li>
+    ctlearn.tools.keras.train_model
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#module-ctlearn.tools.keras.train_model">module</a>
+</li>
+      </ul></li>
+      <li>
+    ctlearn.tools.predict_LST1
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#module-ctlearn.tools.predict_LST1">module</a>
+</li>
+      </ul></li>
+      <li>
+    ctlearn.tools.predict_model
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#module-ctlearn.tools.predict_model">module</a>
+</li>
+      </ul></li>
+      <li>
+    ctlearn.tools.pytorch.train_model
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#module-ctlearn.tools.pytorch.train_model">module</a>
+</li>
+      </ul></li>
+      <li>
+    ctlearn.tools.train_model
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#module-ctlearn.tools.train_model">module</a>
+</li>
+      </ul></li>
+      <li>
+    ctlearn.tools.utils
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#module-ctlearn.tools.utils">module</a>
+</li>
+      </ul></li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.model.CTLearnModel">CTLearnModel (class in ctlearn.core.model)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="D">D</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.deduplicate_first_valid">deduplicate_first_valid() (ctlearn.tools.predict_model.PredictCTLearnModel method)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.keras.train_model.TrainCTLearnKerasModel.description">description (ctlearn.tools.keras.train_model.TrainCTLearnKerasModel attribute)</a>
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.description">(ctlearn.tools.predict_LST1.LST1PredictionTool attribute)</a>
+</li>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.pytorch.train_model.TrainCTLearnPyTorchModel.description">(ctlearn.tools.pytorch.train_model.TrainCTLearnPyTorchModel attribute)</a>
+</li>
+      </ul></li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.dl1_features">dl1_features (ctlearn.tools.predict_LST1.LST1PredictionTool attribute)</a>
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.dl1_features">(ctlearn.tools.predict_model.PredictCTLearnModel attribute)</a>
+</li>
+      </ul></li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.dl1dh_reader_type">dl1dh_reader_type (ctlearn.tools.predict_model.PredictCTLearnModel attribute)</a>
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.dl1dh_reader_type">(ctlearn.tools.train_model.TrainCTLearnModel attribute)</a>
+</li>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.dl2_subarray">dl2_subarray (ctlearn.tools.predict_LST1.LST1PredictionTool attribute)</a>
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.dl2_subarray">(ctlearn.tools.predict_model.PredictCTLearnModel attribute)</a>
+</li>
+      </ul></li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.dl2_telescope">dl2_telescope (ctlearn.tools.predict_LST1.LST1PredictionTool attribute)</a>
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.dl2_telescope">(ctlearn.tools.predict_model.PredictCTLearnModel attribute)</a>
+</li>
+      </ul></li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.keras.attention.dual_squeeze_excite_block">dual_squeeze_excite_block() (in module ctlearn.core.keras.attention)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.pytorch.attention.DualSqueezeExciteBlock">DualSqueezeExciteBlock (class in ctlearn.core.pytorch.attention)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="E">E</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.early_stopping">early_stopping (ctlearn.tools.train_model.TrainCTLearnModel attribute)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.keras.train_model.TrainCTLearnKerasModel.examples">examples (ctlearn.tools.keras.train_model.TrainCTLearnKerasModel attribute)</a>
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.examples">(ctlearn.tools.predict_LST1.LST1PredictionTool attribute)</a>
+</li>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.pytorch.train_model.TrainCTLearnPyTorchModel.examples">(ctlearn.tools.pytorch.train_model.TrainCTLearnPyTorchModel attribute)</a>
+</li>
+      </ul></li>
+  </ul></td>
+</tr></table>
+
+<h2 id="F">F</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.file_pattern_background">file_pattern_background (ctlearn.tools.train_model.TrainCTLearnModel attribute)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.file_pattern_signal">file_pattern_signal (ctlearn.tools.train_model.TrainCTLearnModel attribute)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.finish">finish() (ctlearn.tools.predict_LST1.LST1PredictionTool method)</a>
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.finish">(ctlearn.tools.predict_model.PredictCTLearnModel method)</a>
+</li>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.finish">(ctlearn.tools.train_model.TrainCTLearnModel method)</a>
+</li>
+      </ul></li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.flags">flags (ctlearn.tools.predict_LST1.LST1PredictionTool attribute)</a>
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.flags">(ctlearn.tools.predict_model.PredictCTLearnModel attribute)</a>
+</li>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.focal_length_choice">focal_length_choice (ctlearn.tools.predict_LST1.LST1PredictionTool attribute)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.pytorch.attention.ChannelSqueezeExciteBlock.forward">forward() (ctlearn.core.pytorch.attention.ChannelSqueezeExciteBlock method)</a>
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#ctlearn.core.pytorch.attention.DualSqueezeExciteBlock.forward">(ctlearn.core.pytorch.attention.DualSqueezeExciteBlock method)</a>
+</li>
+        <li><a href="api-reference/ctlearn.html#ctlearn.core.pytorch.attention.SpatialSqueezeExciteBlock.forward">(ctlearn.core.pytorch.attention.SpatialSqueezeExciteBlock method)</a>
+</li>
+        <li><a href="api-reference/ctlearn.html#ctlearn.core.pytorch.model.BasicBlock.forward">(ctlearn.core.pytorch.model.BasicBlock method)</a>
+</li>
+        <li><a href="api-reference/ctlearn.html#ctlearn.core.pytorch.model.BottleneckBlock.forward">(ctlearn.core.pytorch.model.BottleneckBlock method)</a>
+</li>
+        <li><a href="api-reference/ctlearn.html#ctlearn.core.pytorch.model.MultiFullyConnectedHead.forward">(ctlearn.core.pytorch.model.MultiFullyConnectedHead method)</a>
+</li>
+      </ul></li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.utils.FrameworkType">FrameworkType (class in ctlearn.tools.utils)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="G">G</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.utils.get_lst1_subarray_description">get_lst1_subarray_description() (in module ctlearn.tools.utils)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.get_repository_url">get_repository_url() (in module ctlearn)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="H">H</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.model.CTLearnModel.head_activation_function">head_activation_function (ctlearn.core.model.CTLearnModel attribute)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.model.CTLearnModel.head_layers">head_layers (ctlearn.core.model.CTLearnModel attribute)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="I">I</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.image_mapper_type">image_mapper_type (ctlearn.tools.predict_LST1.LST1PredictionTool attribute)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.model.ResNet.init_layer">init_layer (ctlearn.core.model.ResNet attribute)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.model.ResNet.init_max_pool">init_max_pool (ctlearn.core.model.ResNet attribute)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.model.CTLearnModel.init_padding">init_padding (ctlearn.core.model.CTLearnModel attribute)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.input_dir_background">input_dir_background (ctlearn.tools.train_model.TrainCTLearnModel attribute)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.input_dir_signal">input_dir_signal (ctlearn.tools.train_model.TrainCTLearnModel attribute)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.input_url">input_url (ctlearn.tools.predict_LST1.LST1PredictionTool attribute)</a>
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.input_url">(ctlearn.tools.predict_model.PredictCTLearnModel attribute)</a>
+</li>
+      </ul></li>
+  </ul></td>
+</tr></table>
+
+<h2 id="K">K</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.utils.FrameworkType.KERAS">KERAS (ctlearn.tools.utils.FrameworkType attribute)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.keras.model.KerasConvBackend">KerasConvBackend (class in ctlearn.core.keras.model)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.keras.model.KerasLoadedModel">KerasLoadedModel (class in ctlearn.core.keras.model)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.keras.model.KerasResNet">KerasResNet (class in ctlearn.core.keras.model)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.keras.sequence.KerasSequence">KerasSequence (class in ctlearn.core.keras.sequence)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.keras.model.KerasSingleCNN">KerasSingleCNN (class in ctlearn.core.keras.model)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="L">L</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.load_cameradirection_model_from">load_cameradirection_model_from (ctlearn.tools.predict_LST1.LST1PredictionTool attribute)</a>
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.load_cameradirection_model_from">(ctlearn.tools.predict_model.PredictCTLearnModel attribute)</a>
+</li>
+      </ul></li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.load_energy_model_from">load_energy_model_from (ctlearn.tools.predict_LST1.LST1PredictionTool attribute)</a>
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.load_energy_model_from">(ctlearn.tools.predict_model.PredictCTLearnModel attribute)</a>
+</li>
+      </ul></li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.model.LoadedModel.load_model_from">load_model_from (ctlearn.core.model.LoadedModel attribute)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.load_skydirection_model_from">load_skydirection_model_from (ctlearn.tools.predict_model.PredictCTLearnModel attribute)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.load_type_model_from">load_type_model_from (ctlearn.tools.predict_LST1.LST1PredictionTool attribute)</a>
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.load_type_model_from">(ctlearn.tools.predict_model.PredictCTLearnModel attribute)</a>
+</li>
+      </ul></li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.model.LoadedModel">LoadedModel (class in ctlearn.core.model)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.keras.train_model.LoggingModelCheckpoint">LoggingModelCheckpoint (class in ctlearn.tools.keras.train_model)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.lr_reducing">lr_reducing (ctlearn.tools.train_model.TrainCTLearnModel attribute)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool">LST1PredictionTool (class in ctlearn.tools.predict_LST1)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="M">M</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.utils.model_conv_backend">model_conv_backend() (in module ctlearn.tools.utils)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.model_type">model_type (ctlearn.tools.train_model.TrainCTLearnModel attribute)</a>
+</li>
+      <li>
+    module
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#module-ctlearn">ctlearn</a>
+</li>
+        <li><a href="api-reference/ctlearn.html#module-ctlearn.core.keras.attention">ctlearn.core.keras.attention</a>
+</li>
+        <li><a href="api-reference/ctlearn.html#module-ctlearn.core.keras.model">ctlearn.core.keras.model</a>
+</li>
+        <li><a href="api-reference/ctlearn.html#module-ctlearn.core.keras.sequence">ctlearn.core.keras.sequence</a>
+</li>
+        <li><a href="api-reference/ctlearn.html#module-ctlearn.core.model">ctlearn.core.model</a>
+</li>
+        <li><a href="api-reference/ctlearn.html#module-ctlearn.core.pytorch.attention">ctlearn.core.pytorch.attention</a>
+</li>
+        <li><a href="api-reference/ctlearn.html#module-ctlearn.core.pytorch.dataset">ctlearn.core.pytorch.dataset</a>
+</li>
+        <li><a href="api-reference/ctlearn.html#module-ctlearn.core.pytorch.model">ctlearn.core.pytorch.model</a>
+</li>
+        <li><a href="api-reference/ctlearn.html#module-ctlearn.tools.keras.train_model">ctlearn.tools.keras.train_model</a>
+</li>
+        <li><a href="api-reference/ctlearn.html#module-ctlearn.tools.predict_LST1">ctlearn.tools.predict_LST1</a>
+</li>
+        <li><a href="api-reference/ctlearn.html#module-ctlearn.tools.predict_model">ctlearn.tools.predict_model</a>
+</li>
+        <li><a href="api-reference/ctlearn.html#module-ctlearn.tools.pytorch.train_model">ctlearn.tools.pytorch.train_model</a>
+</li>
+        <li><a href="api-reference/ctlearn.html#module-ctlearn.tools.train_model">ctlearn.tools.train_model</a>
+</li>
+        <li><a href="api-reference/ctlearn.html#module-ctlearn.tools.utils">ctlearn.tools.utils</a>
+</li>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.pytorch.model.MultiFullyConnectedHead">MultiFullyConnectedHead (class in ctlearn.core.pytorch.model)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="N">N</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.n_epochs">n_epochs (ctlearn.tools.train_model.TrainCTLearnModel attribute)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.model.ResNet.name">name (ctlearn.core.model.ResNet attribute)</a>
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#ctlearn.core.model.SingleCNN.name">(ctlearn.core.model.SingleCNN attribute)</a>
+</li>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.keras.train_model.TrainCTLearnKerasModel.name">(ctlearn.tools.keras.train_model.TrainCTLearnKerasModel attribute)</a>
+</li>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.name">(ctlearn.tools.predict_LST1.LST1PredictionTool attribute)</a>
+</li>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.pytorch.train_model.TrainCTLearnPyTorchModel.name">(ctlearn.tools.pytorch.train_model.TrainCTLearnPyTorchModel attribute)</a>
+</li>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.pytorch.train_model.TrainCTLearnPyTorchModel.num_workers">num_workers (ctlearn.tools.pytorch.train_model.TrainCTLearnPyTorchModel attribute)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="O">O</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.keras.sequence.KerasSequence.on_epoch_end">on_epoch_end() (ctlearn.core.keras.sequence.KerasSequence method)</a>
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.keras.train_model.LoggingModelCheckpoint.on_epoch_end">(ctlearn.tools.keras.train_model.LoggingModelCheckpoint method)</a>
+</li>
+      </ul></li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.optimizer">optimizer (ctlearn.tools.train_model.TrainCTLearnModel attribute)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.output_dir">output_dir (ctlearn.tools.train_model.TrainCTLearnModel attribute)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.output_path">output_path (ctlearn.tools.predict_LST1.LST1PredictionTool attribute)</a>
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.output_path">(ctlearn.tools.predict_model.PredictCTLearnModel attribute)</a>
+</li>
+      </ul></li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.override_obs_id">override_obs_id (ctlearn.tools.predict_LST1.LST1PredictionTool attribute)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.overwrite">overwrite (ctlearn.tools.predict_LST1.LST1PredictionTool attribute)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.model.LoadedModel.overwrite_head">overwrite_head (ctlearn.core.model.LoadedModel attribute)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="P">P</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.pytorch.train_model.TrainCTLearnPyTorchModel.persistent_workers">persistent_workers (ctlearn.tools.pytorch.train_model.TrainCTLearnPyTorchModel attribute)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.model.SingleCNN.pooling_parameters">pooling_parameters (ctlearn.core.model.SingleCNN attribute)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.model.SingleCNN.pooling_type">pooling_type (ctlearn.core.model.SingleCNN attribute)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel">PredictCTLearnModel (class in ctlearn.tools.predict_model)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.prefixes">prefixes (ctlearn.tools.predict_LST1.LST1PredictionTool attribute)</a>
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.prefixes">(ctlearn.tools.predict_model.PredictCTLearnModel attribute)</a>
+</li>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.utils.FrameworkType.PYTORCH">PYTORCH (ctlearn.tools.utils.FrameworkType attribute)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.pytorch.model.PyTorchConvBackend">PyTorchConvBackend (class in ctlearn.core.pytorch.model)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.pytorch.dataset.PyTorchDataset">PyTorchDataset (class in ctlearn.core.pytorch.dataset)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.pytorch.model.PyTorchLoadedModel">PyTorchLoadedModel (class in ctlearn.core.pytorch.model)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.pytorch.model.PyTorchResNet">PyTorchResNet (class in ctlearn.core.pytorch.model)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.pytorch.model.PyTorchSingleCNN">PyTorchSingleCNN (class in ctlearn.core.pytorch.model)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="R">R</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.random_seed">random_seed (ctlearn.tools.train_model.TrainCTLearnModel attribute)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.reco_tasks">reco_tasks (ctlearn.tools.train_model.TrainCTLearnModel attribute)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.model.ResNet.residual_block_type">residual_block_type (ctlearn.core.model.ResNet attribute)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.model.ResNet">ResNet (class in ctlearn.core.model)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="S">S</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.save_best_validation_only">save_best_validation_only (ctlearn.tools.train_model.TrainCTLearnModel attribute)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.setup">setup() (ctlearn.tools.predict_LST1.LST1PredictionTool method)</a>
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.setup">(ctlearn.tools.predict_model.PredictCTLearnModel method)</a>
+</li>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.setup">(ctlearn.tools.train_model.TrainCTLearnModel method)</a>
+</li>
+      </ul></li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.pytorch.model.BasicBlock.setup_attention">setup_attention() (ctlearn.core.pytorch.model.BasicBlock method)</a>
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#ctlearn.core.pytorch.model.BottleneckBlock.setup_attention">(ctlearn.core.pytorch.model.BottleneckBlock method)</a>
+</li>
+      </ul></li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.keras.train_model.TrainCTLearnKerasModel.setup_framework">setup_framework() (ctlearn.tools.keras.train_model.TrainCTLearnKerasModel method)</a>
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.pytorch.train_model.TrainCTLearnPyTorchModel.setup_framework">(ctlearn.tools.pytorch.train_model.TrainCTLearnPyTorchModel method)</a>
+</li>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.setup_framework">(ctlearn.tools.train_model.TrainCTLearnModel method)</a>
+</li>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.utils.setup_framework">(in module ctlearn.tools.utils)</a>
+</li>
+      </ul></li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.model.SingleCNN">SingleCNN (class in ctlearn.core.model)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.sort_by_intensity">sort_by_intensity (ctlearn.tools.predict_model.PredictCTLearnModel attribute)</a>
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.sort_by_intensity">(ctlearn.tools.train_model.TrainCTLearnModel attribute)</a>
+</li>
+      </ul></li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.keras.attention.spatial_squeeze_excite_block">spatial_squeeze_excite_block() (in module ctlearn.core.keras.attention)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.pytorch.attention.SpatialSqueezeExciteBlock">SpatialSqueezeExciteBlock (class in ctlearn.core.pytorch.attention)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.stack_telescope_images">stack_telescope_images (ctlearn.tools.predict_model.PredictCTLearnModel attribute)</a>
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.stack_telescope_images">(ctlearn.tools.train_model.TrainCTLearnModel attribute)</a>
+</li>
+      </ul></li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.keras.train_model.TrainCTLearnKerasModel.start">start() (ctlearn.tools.keras.train_model.TrainCTLearnKerasModel method)</a>
+
+      <ul>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.start">(ctlearn.tools.predict_LST1.LST1PredictionTool method)</a>
+</li>
+        <li><a href="api-reference/ctlearn.html#ctlearn.tools.pytorch.train_model.TrainCTLearnPyTorchModel.start">(ctlearn.tools.pytorch.train_model.TrainCTLearnPyTorchModel method)</a>
+</li>
+      </ul></li>
+  </ul></td>
+</tr></table>
+
+<h2 id="T">T</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.core.model.LoadedModel.trainable_backbone">trainable_backbone (ctlearn.core.model.LoadedModel attribute)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.keras.train_model.TrainCTLearnKerasModel">TrainCTLearnKerasModel (class in ctlearn.tools.keras.train_model)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel">TrainCTLearnModel (class in ctlearn.tools.train_model)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.pytorch.train_model.TrainCTLearnPyTorchModel">TrainCTLearnPyTorchModel (class in ctlearn.tools.pytorch.train_model)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="V">V</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.utils.validate_conv_backend">validate_conv_backend() (in module ctlearn.tools.utils)</a>
+</li>
+  </ul></td>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.utils.validate_trait_dict">validate_trait_dict() (in module ctlearn.tools.utils)</a>
+</li>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.validation_split">validation_split (ctlearn.tools.train_model.TrainCTLearnModel attribute)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+<h2 id="W">W</h2>
+<table style="width: 100%" class="indextable genindextable"><tr>
+  <td style="width: 33%; vertical-align: top;"><ul>
+      <li><a href="api-reference/ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.write_provenance">write_provenance() (ctlearn.tools.train_model.TrainCTLearnModel method)</a>
+</li>
+  </ul></td>
+</tr></table>
+
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8"></script>
+<script defer src="_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright CTLearn devs.  Last updated 16 Nov 2026 16:12.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.1.1.
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.24.0.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

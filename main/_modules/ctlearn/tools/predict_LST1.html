@@ -1,0 +1,1708 @@
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" data-theme="dark">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ctlearn.tools.predict_LST1 &#8212; ctlearn 0.11.1.dev67+g2baf2dbbc documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "dark";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "dark";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=75c7c72ae941e8b558d8" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=75c7c72ae941e8b558d8" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=c83e6b79" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=6a604523" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../../_static/scripts/fontawesome.js?digest=75c7c72ae941e8b558d8"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8" />
+
+    <script src="../../../_static/documentation_options.js?v=efa1cbec"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
+    <script data-sd-tabs-storage-prefix="sphinx-design-tab-id-" src="../../../_static/design-tabs.js?v=fcb327ea"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/ctlearn/tools/predict_LST1';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.24.0';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://ctlearn-project.github.io/ctlearn/_static/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'main';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="icon" href="../../../_static/ctlearn_favicon.ico"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="color-scheme" content="light dark"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.11.1.dev67+g2baf2dbbc" />
+  
+    
+    <script src="../../../_static/searchtools.js"></script>
+    <script src="../../../_static/language_data.js"></script>
+    <script src="../../../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="dark">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+<aside class="bd-header-announcement" aria-label="Announcement">
+  <div class="bd-header-announcement__content">
+        <p>This is not production-ready code yet. Although stable
+        releases are available, users should expect changes to the code
+        before a 1.0 release arrives.</p>
+    </div>
+</aside>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button type="button" class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation" aria-expanded="false" aria-controls="pst-primary-sidebar-modal">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+    
+    <img src="../../../_static/ctlearn_logo_transparent.png" class="logo__image only-dark" alt="ctlearn 0.11.1.dev67+g2baf2dbbc documentation - Home"/>
+    <img src="../../../_static/ctlearn_logo_transparent.png" class="logo__image only-light pst-js-only" alt="ctlearn 0.11.1.dev67+g2baf2dbbc documentation - Home"/>
+  
+  
+</a></div>
+    
+      <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../user-guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../developer-guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api-reference/index.html">
+    API Docs
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../changelog.html">
+    Change Log
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Quick Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/ctlearn-project/ctlearn" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/ctlearn/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal" tabindex="-1"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../user-guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../developer-guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api-reference/index.html">
+    API Docs
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../changelog.html">
+    Change Log
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Quick Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/ctlearn-project/ctlearn" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/ctlearn/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-house"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    
+    <li class="breadcrumb-item"><a href="../../ctlearn.html" class="nav-link">ctlearn</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">ctlearn.tools.predict_LST1</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for ctlearn.tools.predict_LST1</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""</span>
+<span class="sd">Predict the gammaness, energy and arrival direction from lstchain DL1 data.</span>
+<span class="sd">"""</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"LST1PredictionTool"</span><span class="p">]</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">atexit</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tables</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">astropy</span><span class="w"> </span><span class="kn">import</span> <span class="n">units</span> <span class="k">as</span> <span class="n">u</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.coordinates</span><span class="w"> </span><span class="kn">import</span> <span class="n">AltAz</span><span class="p">,</span> <span class="n">SkyCoord</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.table</span><span class="w"> </span><span class="kn">import</span> <span class="n">Table</span><span class="p">,</span> <span class="n">join</span><span class="p">,</span> <span class="n">setdiff</span><span class="p">,</span> <span class="n">vstack</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.time</span><span class="w"> </span><span class="kn">import</span> <span class="n">Time</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctapipe.containers</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ParticleClassificationContainer</span><span class="p">,</span>
+    <span class="n">ReconstructedEnergyContainer</span><span class="p">,</span>
+    <span class="n">ReconstructedGeometryContainer</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctapipe.coordinates</span><span class="w"> </span><span class="kn">import</span> <span class="n">CameraFrame</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctapipe.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">Tool</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctapipe.core.tool</span><span class="w"> </span><span class="kn">import</span> <span class="n">ToolConfigurationError</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctapipe.core.traits</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">Bool</span><span class="p">,</span>
+    <span class="n">CaselessStrEnum</span><span class="p">,</span>
+    <span class="n">ComponentName</span><span class="p">,</span>
+    <span class="n">Dict</span><span class="p">,</span>
+    <span class="n">Int</span><span class="p">,</span>
+    <span class="n">List</span><span class="p">,</span>
+    <span class="n">Path</span><span class="p">,</span>
+    <span class="n">UseEnum</span><span class="p">,</span>
+    <span class="n">classes_with_traits</span><span class="p">,</span>
+    <span class="n">flag</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctapipe.instrument.optics</span><span class="w"> </span><span class="kn">import</span> <span class="n">FocalLengthKind</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctapipe.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">read_table</span><span class="p">,</span> <span class="n">write_table</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctapipe.io.hdf5dataformat</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">DL1_SUBARRAY_TRIGGER_TABLE</span><span class="p">,</span>
+    <span class="n">DL1_TEL_GROUP</span><span class="p">,</span>
+    <span class="n">DL1_TEL_PARAMETERS_GROUP</span><span class="p">,</span>
+    <span class="n">DL1_TEL_POINTING_GROUP</span><span class="p">,</span>
+    <span class="n">DL1_TEL_TRIGGER_TABLE</span><span class="p">,</span>
+    <span class="n">DL2_SUBARRAY_ENERGY_GROUP</span><span class="p">,</span>
+    <span class="n">DL2_SUBARRAY_GEOMETRY_GROUP</span><span class="p">,</span>
+    <span class="n">DL2_SUBARRAY_PARTICLETYPE_GROUP</span><span class="p">,</span>
+    <span class="n">DL2_TEL_ENERGY_GROUP</span><span class="p">,</span>
+    <span class="n">DL2_TEL_GEOMETRY_GROUP</span><span class="p">,</span>
+    <span class="n">DL2_TEL_PARTICLETYPE_GROUP</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctapipe.reco.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">add_defaults_and_meta</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dl1_data_handler.image_mapper</span><span class="w"> </span><span class="kn">import</span> <span class="n">ImageMapper</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dl1_data_handler.reader</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">TableQualityQuery</span><span class="p">,</span>
+    <span class="n">get_unmapped_image</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctlearn</span><span class="w"> </span><span class="kn">import</span> <span class="n">__version__</span> <span class="k">as</span> <span class="n">ctlearn_version</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctlearn.tools.utils</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">FrameworkType</span><span class="p">,</span>
+    <span class="n">get_lst1_subarray_description</span><span class="p">,</span>
+    <span class="n">model_conv_backend</span><span class="p">,</span>
+    <span class="n">setup_framework</span><span class="p">,</span>
+    <span class="n">validate_conv_backend</span><span class="p">,</span>
+    <span class="n">validate_trait_dict</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">SUBARRAY_EVENT_KEYS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"obs_id"</span><span class="p">,</span> <span class="s2">"event_id"</span><span class="p">]</span>
+<span class="n">TELESCOPE_EVENT_KEYS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"obs_id"</span><span class="p">,</span> <span class="s2">"event_id"</span><span class="p">,</span> <span class="s2">"tel_id"</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="LST1PredictionTool">
+<a class="viewcode-back" href="../../../api-reference/ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">LST1PredictionTool</span><span class="p">(</span><span class="n">Tool</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Tool to predict the gammaness, energy and arrival direction from lstchain DL1 data.</span>
+
+<span class="sd">    This tool is used to predict the gammaness, energy and arrival direction</span>
+<span class="sd">    from pixel-wise image data in lstchain format. The tool loads the trained models</span>
+<span class="sd">    from the specified paths and performs inference on the input data. The</span>
+<span class="sd">    input data is expected to be in the DL1 format of lstchain and the output data is</span>
+<span class="sd">    stored in the DL2 format of ctapipe. Besides the DL2 predictions, the tool creates</span>
+<span class="sd">    the SubarrayDescription of the LST-1 telescope and stores it in the output file.</span>
+<span class="sd">    In addition, the tool also creates the trigger, pointing and DL1 parameters tables</span>
+<span class="sd">    and stores them in the output file.</span>
+
+<span class="sd">    CAUTION: The tool is designed to work with the DL1 data format of lstchain only.</span>
+<span class="sd">    """</span>
+
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">"ctlearn-predict-LST1"</span>
+    <span class="n">description</span> <span class="o">=</span> <span class="vm">__doc__</span>
+
+    <span class="n">examples</span> <span class="o">=</span> <span class="s2">"""</span>
+<span class="s2">    To predict from DL1 lstchain data using trained CTLearn models:</span>
+<span class="s2">    &gt; ctlearn-predict-LST1 </span><span class="se">\</span>
+<span class="s2">        --input_url input.subrun.lstchain.dl1.h5 </span><span class="se">\</span>
+<span class="s2">        --LST1PredictionTool.batch_size=64 </span><span class="se">\</span>
+<span class="s2">        --LST1PredictionTool.channels=cleaned_image </span><span class="se">\</span>
+<span class="s2">        --LST1PredictionTool.channels=cleaned_relative_peak_time </span><span class="se">\</span>
+<span class="s2">        --LST1PredictionTool.image_mapper_type=BilinearMapper </span><span class="se">\</span>
+<span class="s2">        --type_model="/path/to/your/type/ctlearn_model(.keras/.pth)" </span><span class="se">\</span>
+<span class="s2">        --energy_model="/path/to/your/energy/ctlearn_model(.keras/.pth)" </span><span class="se">\</span>
+<span class="s2">        --cameradirection_model="/path/to/your/direction/ctlearn_model(.keras/.pth)" </span><span class="se">\</span>
+<span class="s2">        --output output.dl2.h5 </span><span class="se">\</span>
+<span class="s2">        --overwrite </span><span class="se">\</span>
+<span class="s2">    """</span>
+
+    <span class="n">input_url</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Input LST-1 HDF5 files including pixel-wise image data"</span><span class="p">,</span>
+        <span class="n">allow_none</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">exists</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">directory_ok</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">file_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">tag</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">dl1_features</span> <span class="o">=</span> <span class="n">Bool</span><span class="p">(</span>
+        <span class="n">default_value</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">allow_none</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Set whether to include the dl1 feature vectors in the output file."</span><span class="p">,</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">tag</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">dl2_telescope</span> <span class="o">=</span> <span class="n">Bool</span><span class="p">(</span>
+        <span class="n">default_value</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">allow_none</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Set whether to include dl2 telescope-event-wise data in the output file."</span><span class="p">,</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">tag</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">dl2_subarray</span> <span class="o">=</span> <span class="n">Bool</span><span class="p">(</span>
+        <span class="n">default_value</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">allow_none</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Set whether to include dl2 subarray-event-wise data in the output file."</span><span class="p">,</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">tag</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">prefixes</span> <span class="o">=</span> <span class="n">Dict</span><span class="p">(</span>
+        <span class="n">default_value</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">"type"</span><span class="p">:</span> <span class="s2">"CTLearnClassifier"</span><span class="p">,</span>
+            <span class="s2">"energy"</span><span class="p">:</span> <span class="s2">"CTLearnRegressor"</span><span class="p">,</span>
+            <span class="s2">"cameradirection"</span><span class="p">:</span> <span class="s2">"CTLearnCameraReconstructor"</span><span class="p">,</span>
+            <span class="s2">"all"</span><span class="p">:</span> <span class="s2">"CTLearn"</span><span class="p">,</span>
+        <span class="p">},</span>
+        <span class="n">allow_none</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"Name of the reconstruction algorithm used "</span>
+            <span class="s2">"to generate the dl2 data for each task."</span>
+        <span class="p">),</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">tag</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">load_type_model_from</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span>
+        <span class="n">default_value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"Path to a Keras model file (Keras3) "</span>
+            <span class="s2">"for the classification of the primary particle type."</span>
+        <span class="p">),</span>
+        <span class="n">allow_none</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">exists</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">directory_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">file_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">tag</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">load_energy_model_from</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span>
+        <span class="n">default_value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"Path to a Keras model file (Keras3) "</span>
+            <span class="s2">"for the regression of the primary particle energy."</span>
+        <span class="p">),</span>
+        <span class="n">allow_none</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">exists</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">directory_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">file_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">tag</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">load_cameradirection_model_from</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span>
+        <span class="n">default_value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"Path to a Keras model file (Keras3) "</span>
+            <span class="s2">"for the regression of the primary particle arrival direction "</span>
+            <span class="s2">"based on the camera coordinate offsets."</span>
+        <span class="p">),</span>
+        <span class="n">allow_none</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">exists</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">directory_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">file_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">tag</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">batch_size</span> <span class="o">=</span> <span class="n">Int</span><span class="p">(</span>
+        <span class="n">default_value</span><span class="o">=</span><span class="mi">64</span><span class="p">,</span>
+        <span class="n">allow_none</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Size of the batch to perform inference of the neural network."</span><span class="p">,</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">tag</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">channels</span> <span class="o">=</span> <span class="n">List</span><span class="p">(</span>
+        <span class="n">trait</span><span class="o">=</span><span class="n">CaselessStrEnum</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="s2">"image"</span><span class="p">,</span>
+                <span class="s2">"cleaned_image"</span><span class="p">,</span>
+                <span class="s2">"peak_time"</span><span class="p">,</span>
+                <span class="s2">"relative_peak_time"</span><span class="p">,</span>
+                <span class="s2">"cleaned_peak_time"</span><span class="p">,</span>
+                <span class="s2">"cleaned_relative_peak_time"</span><span class="p">,</span>
+            <span class="p">]</span>
+        <span class="p">),</span>
+        <span class="n">default_value</span><span class="o">=</span><span class="p">[</span><span class="s2">"cleaned_image"</span><span class="p">,</span> <span class="s2">"cleaned_relative_peak_time"</span><span class="p">],</span>
+        <span class="n">allow_none</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"Set the input channels to be loaded from the DL1 event data. "</span>
+            <span class="s2">"image: integrated charges, "</span>
+            <span class="s2">"cleaned_image: integrated charges cleaned with the DL1 cleaning mask, "</span>
+            <span class="s2">"peak_time: extracted peak arrival times, "</span>
+            <span class="s2">"relative_peak_time: extracted relative peak arrival times, "</span>
+            <span class="s2">"cleaned_peak_time: extracted peak arrival times cleaned with the DL1 cleaning mask, "</span>
+            <span class="s2">"cleaned_relative_peak_time: extracted relative peak arrival times cleaned with the DL1 cleaning mask."</span>
+        <span class="p">),</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">tag</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">image_mapper_type</span> <span class="o">=</span> <span class="n">ComponentName</span><span class="p">(</span><span class="n">ImageMapper</span><span class="p">,</span> <span class="n">default_value</span><span class="o">=</span><span class="s2">"BilinearMapper"</span><span class="p">)</span><span class="o">.</span><span class="n">tag</span><span class="p">(</span>
+        <span class="n">config</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+
+    <span class="n">focal_length_choice</span> <span class="o">=</span> <span class="n">UseEnum</span><span class="p">(</span>
+        <span class="n">FocalLengthKind</span><span class="p">,</span>
+        <span class="n">default_value</span><span class="o">=</span><span class="n">FocalLengthKind</span><span class="o">.</span><span class="n">EFFECTIVE</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"If both nominal and effective focal lengths are available, "</span>
+            <span class="s2">" which one to use for the `~ctapipe.coordinates.CameraFrame` attached"</span>
+            <span class="s2">" to the `~ctapipe.instrument.CameraGeometry` instances in the"</span>
+            <span class="s2">" `~ctapipe.instrument.SubarrayDescription` which will be used in"</span>
+            <span class="s2">" CameraFrame to TelescopeFrame coordinate transforms."</span>
+            <span class="s2">" The 'nominal' focal length is the one used during "</span>
+            <span class="s2">" the simulation, the 'effective' focal length is computed using specialized "</span>
+            <span class="s2">" ray-tracing from a point light source"</span>
+        <span class="p">),</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">tag</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">override_obs_id</span> <span class="o">=</span> <span class="n">Int</span><span class="p">(</span>
+        <span class="n">default_value</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">allow_none</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="p">(</span>
+            <span class="s2">"Use the given obs_id instead of the default one. "</span>
+            <span class="s2">"Needed to merge subruns later with ctapipe-merge."</span>
+        <span class="p">),</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">tag</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">output_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span>
+        <span class="n">default_value</span><span class="o">=</span><span class="s2">"./output.dl2.h5"</span><span class="p">,</span>
+        <span class="n">allow_none</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">"Output path to save the dl2 prediction results"</span><span class="p">,</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">tag</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">overwrite</span> <span class="o">=</span> <span class="n">Bool</span><span class="p">(</span><span class="n">help</span><span class="o">=</span><span class="s2">"Overwrite output file if it exists"</span><span class="p">)</span><span class="o">.</span><span class="n">tag</span><span class="p">(</span><span class="n">config</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">aliases</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="p">(</span><span class="s2">"i"</span><span class="p">,</span> <span class="s2">"input_url"</span><span class="p">):</span> <span class="s2">"LST1PredictionTool.input_url"</span><span class="p">,</span>
+        <span class="p">(</span><span class="s2">"t"</span><span class="p">,</span> <span class="s2">"type_model"</span><span class="p">):</span> <span class="s2">"LST1PredictionTool.load_type_model_from"</span><span class="p">,</span>
+        <span class="p">(</span><span class="s2">"e"</span><span class="p">,</span> <span class="s2">"energy_model"</span><span class="p">):</span> <span class="s2">"LST1PredictionTool.load_energy_model_from"</span><span class="p">,</span>
+        <span class="p">(</span>
+            <span class="s2">"d"</span><span class="p">,</span>
+            <span class="s2">"cameradirection_model"</span><span class="p">,</span>
+        <span class="p">):</span> <span class="s2">"LST1PredictionTool.load_cameradirection_model_from"</span><span class="p">,</span>
+        <span class="p">(</span><span class="s2">"o"</span><span class="p">,</span> <span class="s2">"output"</span><span class="p">):</span> <span class="s2">"LST1PredictionTool.output_path"</span><span class="p">,</span>
+    <span class="p">}</span>
+
+    <span class="n">flags</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">"overwrite"</span><span class="p">:</span> <span class="p">(</span>
+            <span class="p">{</span><span class="s2">"LST1PredictionTool"</span><span class="p">:</span> <span class="p">{</span><span class="s2">"overwrite"</span><span class="p">:</span> <span class="kc">True</span><span class="p">}},</span>
+            <span class="s2">"Overwrite existing files"</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">}</span>
+
+    <span class="n">flags</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="o">**</span><span class="n">flag</span><span class="p">(</span>
+            <span class="s2">"dl1-features"</span><span class="p">,</span>
+            <span class="s2">"LST1PredictionTool.dl1_features"</span><span class="p">,</span>
+            <span class="s2">"Include dl1 features"</span><span class="p">,</span>
+            <span class="s2">"Exclude dl1 features"</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="o">**</span><span class="n">flag</span><span class="p">(</span>
+            <span class="s2">"dl2-telescope"</span><span class="p">,</span>
+            <span class="s2">"LST1PredictionTool.dl2_telescope"</span><span class="p">,</span>
+            <span class="s2">"Include dl2 telescope-event-wise data in the output file"</span><span class="p">,</span>
+            <span class="s2">"Exclude dl2 telescope-event-wise data in the output file"</span><span class="p">,</span>
+        <span class="p">),</span>
+        <span class="o">**</span><span class="n">flag</span><span class="p">(</span>
+            <span class="s2">"dl2-subarray"</span><span class="p">,</span>
+            <span class="s2">"LST1PredictionTool.dl2_subarray"</span><span class="p">,</span>
+            <span class="s2">"Include dl2 subarray-event-wise data in the output file"</span><span class="p">,</span>
+            <span class="s2">"Exclude dl2 subarray-event-wise data in the output file"</span><span class="p">,</span>
+        <span class="p">),</span>
+    <span class="p">}</span>
+
+    <span class="n">classes</span> <span class="o">=</span> <span class="n">classes_with_traits</span><span class="p">(</span><span class="n">ImageMapper</span><span class="p">)</span>
+
+<div class="viewcode-block" id="LST1PredictionTool.setup">
+<a class="viewcode-back" href="../../../api-reference/ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.setup">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setup</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Initialize the tool configuration, validate parameters, and setup data handlers.</span>
+
+<span class="sd">        This method is the first part of the tool execution lifecycle. It validates input arguments,</span>
+<span class="sd">        sets up the configuration dictionary, configures the output file, and prepares the DataReader</span>
+<span class="sd">        to ensure everything is ready before the core processing begins.</span>
+<span class="sd">        """</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"ctlearn version </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">ctlearn_version</span><span class="p">)</span>
+        <span class="c1"># Validate the prefixes trait dictionary</span>
+        <span class="n">validate_trait_dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">,</span> <span class="p">[</span><span class="s2">"type"</span><span class="p">,</span> <span class="s2">"energy"</span><span class="p">,</span> <span class="s2">"cameradirection"</span><span class="p">,</span> <span class="s2">"all"</span><span class="p">])</span>
+        <span class="c1"># Save dl1 image and parameters tree schemas and tel id for easy access</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">image_table_path</span> <span class="o">=</span> <span class="s2">"/dl1/event/telescope/image/LST_LSTCam"</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">parameter_table_name</span> <span class="o">=</span> <span class="s2">"/dl1/event/telescope/parameters/LST_LSTCam"</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tel_id</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="c1"># Collect all configured model path attributes</span>
+        <span class="n">model_paths</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">load_type_model_from</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">load_energy_model_from</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">load_cameradirection_model_from</span><span class="p">,</span>
+        <span class="p">]</span>
+        <span class="c1"># Reads the model paths and set up the Keras or PyTorch framework</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">framework_type</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_devices</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">strategy</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">setup_framework</span><span class="p">(</span><span class="n">model_paths</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Framework selected: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">framework_type</span><span class="o">.</span><span class="n">value</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">framework_type</span> <span class="o">==</span> <span class="n">FrameworkType</span><span class="o">.</span><span class="n">KERAS</span><span class="p">:</span>
+            <span class="n">atexit</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">strategy</span><span class="o">.</span><span class="n">_extended</span><span class="o">.</span><span class="n">_collective_ops</span><span class="o">.</span><span class="n">_lock</span><span class="o">.</span><span class="n">locked</span><span class="p">)</span>  <span class="c1"># type: ignore</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">"Using Keras MirroredStrategy with </span><span class="si">%d</span><span class="s2"> replica(s)."</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_devices</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">framework_type</span> <span class="o">==</span> <span class="n">FrameworkType</span><span class="o">.</span><span class="n">PYTORCH</span><span class="p">:</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">device</span> <span class="o">==</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">"cpu"</span><span class="p">):</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Using PyTorch CPU device."</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="s2">"Using PyTorch GPU device(s). Count: </span><span class="si">%d</span><span class="s2">"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_devices</span>
+                <span class="p">)</span>
+        <span class="c1"># Load the models from the specified paths</span>
+        <span class="n">input_shape_type</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">backbone_type</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">head_type</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_model</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">load_type_model_from</span>
+        <span class="p">)</span>
+        <span class="n">input_shape_energy</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">backbone_energy</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">head_energy</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_load_model</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">load_energy_model_from</span>
+        <span class="p">)</span>
+        <span class="n">input_shape_direction</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">backbone_direction</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">head_direction</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_load_model</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">load_cameradirection_model_from</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="c1"># Get the number of rows in the table</span>
+        <span class="k">with</span> <span class="n">tables</span><span class="o">.</span><span class="n">open_file</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input_url</span><span class="p">)</span> <span class="k">as</span> <span class="n">input_file</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">table_length</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">input_file</span><span class="o">.</span><span class="n">get_node</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">image_table_path</span><span class="p">))</span>
+        <span class="c1"># Get the SubarrayDescription of the LST-1 telescope</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">subarray</span> <span class="o">=</span> <span class="n">get_lst1_subarray_description</span><span class="p">(</span>
+            <span class="n">focal_length_choice</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">focal_length_choice</span>
+        <span class="p">)</span>
+        <span class="c1"># Write the SubarrayDescription to the output file</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">subarray</span><span class="o">.</span><span class="n">to_hdf</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span> <span class="n">overwrite</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">overwrite</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"SubarrayDescription was stored in '</span><span class="si">%s</span><span class="s2">'"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">)</span>
+        <span class="c1"># Initialize the Table data quality query</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">quality_query</span> <span class="o">=</span> <span class="n">TableQualityQuery</span><span class="p">(</span><span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">)</span>
+        <span class="c1"># Copy the pixel rotation of the camera geometry of the subarray in a variable</span>
+        <span class="c1"># since the ImageMapper will be derotated the pixels. The pixel rotation</span>
+        <span class="c1"># is needed to create a rotated camera frame in order to transform the</span>
+        <span class="c1"># predicted camera coordinate offsets back to the correct Alt/Az coordinates.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pix_rotation</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">subarray</span><span class="o">.</span><span class="n">tel</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">tel_id</span><span class="p">]</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">geometry</span><span class="o">.</span><span class="n">pix_rotation</span>
+        <span class="c1"># Create the ImageMapper</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">image_mapper</span> <span class="o">=</span> <span class="n">ImageMapper</span><span class="o">.</span><span class="n">from_name</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">image_mapper_type</span><span class="p">,</span>
+            <span class="n">geometry</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">subarray</span><span class="o">.</span><span class="n">tel</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">tel_id</span><span class="p">]</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">geometry</span><span class="p">,</span>
+            <span class="n">subarray</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">subarray</span><span class="p">,</span>
+            <span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="c1"># Check if the input shape of the model matches the image shape of the ImageMapper</span>
+        <span class="k">for</span> <span class="n">input_shape</span> <span class="ow">in</span> <span class="p">[</span>
+            <span class="n">input_shape_type</span><span class="p">,</span>
+            <span class="n">input_shape_energy</span><span class="p">,</span>
+            <span class="n">input_shape_direction</span><span class="p">,</span>
+        <span class="p">]:</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="n">input_shape</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+                <span class="ow">and</span> <span class="n">input_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">image_mapper</span><span class="o">.</span><span class="n">image_shape</span>
+            <span class="p">):</span>
+                <span class="k">raise</span> <span class="n">ToolConfigurationError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"The input shape of the model ('</span><span class="si">{</span><span class="n">input_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">') does not match "</span>
+                    <span class="sa">f</span><span class="s2">"the image shape of the ImageMapper ('</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">image_mapper</span><span class="o">.</span><span class="n">image_shape</span><span class="si">}</span><span class="s2">'). "</span>
+                    <span class="sa">f</span><span class="s2">"Use e.g. '--BilinearMapper.interpolation_image_shape=</span><span class="si">{</span><span class="n">input_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s2">' ."</span>
+                <span class="p">)</span>
+        <span class="c1"># Validate that the ImageMapper and each loaded model's conv backend agree</span>
+        <span class="n">image_mappers</span> <span class="o">=</span> <span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">image_mapper_type</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">image_mapper</span><span class="p">}</span>
+        <span class="k">for</span> <span class="n">loaded_model</span> <span class="ow">in</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">backbone_type</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_type_model_from</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">backbone_energy</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_energy_model_from</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">backbone_direction</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_cameradirection_model_from</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
+            <span class="k">else</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="p">):</span>
+            <span class="k">if</span> <span class="n">loaded_model</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">validate_conv_backend</span><span class="p">(</span><span class="n">image_mappers</span><span class="p">,</span> <span class="n">model_conv_backend</span><span class="p">(</span><span class="n">loaded_model</span><span class="p">))</span>
+
+        <span class="c1"># Get offset and scaling of images</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transforms</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transforms</span><span class="p">[</span><span class="s2">"image_scale"</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transforms</span><span class="p">[</span><span class="s2">"image_offset"</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transforms</span><span class="p">[</span><span class="s2">"peak_time_scale"</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">transforms</span><span class="p">[</span><span class="s2">"peak_time_offset"</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="c1"># Get the number of rows in the table</span>
+        <span class="k">with</span> <span class="n">tables</span><span class="o">.</span><span class="n">open_file</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input_url</span><span class="p">)</span> <span class="k">as</span> <span class="n">input_file</span><span class="p">:</span>
+            <span class="n">img_table_v_attrs</span> <span class="o">=</span> <span class="n">input_file</span><span class="o">.</span><span class="n">get_node</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">image_table_path</span><span class="p">)</span><span class="o">.</span><span class="n">_v_attrs</span>
+            <span class="c1"># Check transform values while the input file is still open.</span>
+            <span class="k">if</span> <span class="s2">"CTAFIELD_3_TRANSFORM_SCALE"</span> <span class="ow">in</span> <span class="n">img_table_v_attrs</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">transforms</span><span class="p">[</span><span class="s2">"image_scale"</span><span class="p">]</span> <span class="o">=</span> <span class="n">img_table_v_attrs</span><span class="p">[</span>
+                    <span class="s2">"CTAFIELD_3_TRANSFORM_SCALE"</span>
+                <span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">transforms</span><span class="p">[</span><span class="s2">"image_offset"</span><span class="p">]</span> <span class="o">=</span> <span class="n">img_table_v_attrs</span><span class="p">[</span>
+                    <span class="s2">"CTAFIELD_3_TRANSFORM_OFFSET"</span>
+                <span class="p">]</span>
+            <span class="k">if</span> <span class="s2">"CTAFIELD_4_TRANSFORM_SCALE"</span> <span class="ow">in</span> <span class="n">img_table_v_attrs</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">transforms</span><span class="p">[</span><span class="s2">"peak_time_scale"</span><span class="p">]</span> <span class="o">=</span> <span class="n">img_table_v_attrs</span><span class="p">[</span>
+                    <span class="s2">"CTAFIELD_4_TRANSFORM_SCALE"</span>
+                <span class="p">]</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">transforms</span><span class="p">[</span><span class="s2">"peak_time_offset"</span><span class="p">]</span> <span class="o">=</span> <span class="n">img_table_v_attrs</span><span class="p">[</span>
+                    <span class="s2">"CTAFIELD_4_TRANSFORM_OFFSET"</span>
+                <span class="p">]</span></div>
+
+
+<div class="viewcode-block" id="LST1PredictionTool.start">
+<a class="viewcode-back" href="../../../api-reference/ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.start">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Execute the core logic of the tool.</span>
+
+<span class="sd">        Depending on the tool, this method either orchestrates the training and validation</span>
+<span class="sd">        loops across epochs, or it iterates through the input dataset to generate</span>
+<span class="sd">        and save model predictions to the output file.</span>
+<span class="sd">        """</span>
+        <span class="n">all_identifiers</span> <span class="o">=</span> <span class="n">read_table</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input_url</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">parameter_table_name</span><span class="p">)</span>
+        <span class="n">all_identifiers</span><span class="o">.</span><span class="n">meta</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">override_obs_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">all_identifiers</span><span class="p">[</span><span class="s2">"obs_id"</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">override_obs_id</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">obs_id</span> <span class="o">=</span> <span class="n">all_identifiers</span><span class="p">[</span><span class="s2">"obs_id"</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">parameter_table</span> <span class="o">=</span> <span class="n">all_identifiers</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">tel_az</span> <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">Quantity</span><span class="p">(</span><span class="n">parameter_table</span><span class="p">[</span><span class="s2">"az_tel"</span><span class="p">],</span> <span class="n">unit</span><span class="o">=</span><span class="n">u</span><span class="o">.</span><span class="n">rad</span><span class="p">)</span>
+        <span class="n">tel_alt</span> <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">Quantity</span><span class="p">(</span><span class="n">parameter_table</span><span class="p">[</span><span class="s2">"alt_tel"</span><span class="p">],</span> <span class="n">unit</span><span class="o">=</span><span class="n">u</span><span class="o">.</span><span class="n">rad</span><span class="p">)</span>
+        <span class="n">event_type</span> <span class="o">=</span> <span class="n">parameter_table</span><span class="p">[</span><span class="s2">"event_type"</span><span class="p">]</span>
+        <span class="n">time</span> <span class="o">=</span> <span class="n">Time</span><span class="p">(</span><span class="n">parameter_table</span><span class="p">[</span><span class="s2">"dragon_time"</span><span class="p">]</span> <span class="o">*</span> <span class="n">u</span><span class="o">.</span><span class="n">s</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">"unix"</span><span class="p">)</span>
+        <span class="c1"># Create the pointing table</span>
+        <span class="c1"># This table is used to store the telescope pointing per event</span>
+        <span class="n">pointing_table</span> <span class="o">=</span> <span class="n">Table</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">"time"</span><span class="p">:</span> <span class="n">time</span><span class="p">,</span>
+                <span class="s2">"azimuth"</span><span class="p">:</span> <span class="n">tel_az</span><span class="p">,</span>
+                <span class="s2">"altitude"</span><span class="p">:</span> <span class="n">tel_alt</span><span class="p">,</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+        <span class="n">write_table</span><span class="p">(</span>
+            <span class="n">pointing_table</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL1_TEL_POINTING_GROUP</span><span class="si">}</span><span class="s2">/tel_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">tel_id</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+            <span class="n">overwrite</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">overwrite</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="s2">"DL1 telescope pointing table was stored in '</span><span class="si">%s</span><span class="s2">' under '</span><span class="si">%s</span><span class="s2">'"</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL1_TEL_POINTING_GROUP</span><span class="si">}</span><span class="s2">/tel_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">tel_id</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="c1"># Set the time format to MJD since in the other table we store the time in MJD</span>
+        <span class="n">time</span><span class="o">.</span><span class="n">format</span> <span class="o">=</span> <span class="s2">"mjd"</span>
+        <span class="c1"># Keep only the necessary columns for the creation of tables</span>
+        <span class="n">all_identifiers</span><span class="o">.</span><span class="n">keep_columns</span><span class="p">(</span><span class="n">TELESCOPE_EVENT_KEYS</span><span class="p">)</span>
+        <span class="c1"># Create the dl1 telescope trigger table</span>
+        <span class="n">trigger_table</span> <span class="o">=</span> <span class="n">all_identifiers</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">trigger_table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span><span class="n">time</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"time"</span><span class="p">)</span>
+        <span class="n">trigger_table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"n_trigger_pixels"</span><span class="p">)</span>
+        <span class="n">write_table</span><span class="p">(</span>
+            <span class="n">trigger_table</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+            <span class="n">DL1_TEL_TRIGGER_TABLE</span><span class="p">,</span>
+            <span class="n">overwrite</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">overwrite</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="s2">"DL1 telescope trigger table was stored in '</span><span class="si">%s</span><span class="s2">' under '</span><span class="si">%s</span><span class="s2">'"</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+            <span class="n">DL1_TEL_TRIGGER_TABLE</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">trigger_table</span><span class="o">.</span><span class="n">keep_columns</span><span class="p">([</span><span class="s2">"obs_id"</span><span class="p">,</span> <span class="s2">"event_id"</span><span class="p">,</span> <span class="s2">"time"</span><span class="p">])</span>
+        <span class="n">trigger_table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="nb">len</span><span class="p">(</span><span class="n">trigger_table</span><span class="p">),</span> <span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="s2">"tel_with_trigger"</span>
+        <span class="p">)</span>
+        <span class="n">trigger_table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span><span class="n">event_type</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"event_type"</span><span class="p">)</span>
+        <span class="c1"># Save the dl1 subrray trigger table to the output file</span>
+        <span class="n">write_table</span><span class="p">(</span>
+            <span class="n">trigger_table</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+            <span class="n">DL1_SUBARRAY_TRIGGER_TABLE</span><span class="p">,</span>
+            <span class="n">overwrite</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">overwrite</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="s2">"DL1 subarray trigger table was stored in '</span><span class="si">%s</span><span class="s2">' under '</span><span class="si">%s</span><span class="s2">'"</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+            <span class="n">DL1_SUBARRAY_TRIGGER_TABLE</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="c1"># Create the dl1 parameters table</span>
+        <span class="n">parameter_table</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span><span class="s2">"intensity"</span><span class="p">,</span> <span class="s2">"hillas_intensity"</span><span class="p">)</span>
+        <span class="n">parameter_table</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span><span class="s2">"x"</span><span class="p">,</span> <span class="s2">"hillas_x"</span><span class="p">)</span>
+        <span class="n">parameter_table</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span><span class="s2">"y"</span><span class="p">,</span> <span class="s2">"hillas_y"</span><span class="p">)</span>
+        <span class="n">parameter_table</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span><span class="s2">"phi"</span><span class="p">,</span> <span class="s2">"hillas_phi"</span><span class="p">)</span>
+        <span class="n">parameter_table</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span><span class="s2">"psi"</span><span class="p">,</span> <span class="s2">"hillas_psi"</span><span class="p">)</span>
+        <span class="n">parameter_table</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span><span class="s2">"length"</span><span class="p">,</span> <span class="s2">"hillas_length"</span><span class="p">)</span>
+        <span class="n">parameter_table</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span><span class="s2">"length_uncertainty"</span><span class="p">,</span> <span class="s2">"hillas_length_uncertainty"</span><span class="p">)</span>
+        <span class="n">parameter_table</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span><span class="s2">"width"</span><span class="p">,</span> <span class="s2">"hillas_width"</span><span class="p">)</span>
+        <span class="n">parameter_table</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span><span class="s2">"width_uncertainty"</span><span class="p">,</span> <span class="s2">"hillas_width_uncertainty"</span><span class="p">)</span>
+        <span class="n">parameter_table</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span><span class="s2">"skewness"</span><span class="p">,</span> <span class="s2">"hillas_skewness"</span><span class="p">)</span>
+        <span class="n">parameter_table</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span><span class="s2">"kurtosis"</span><span class="p">,</span> <span class="s2">"hillas_kurtosis"</span><span class="p">)</span>
+        <span class="n">parameter_table</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span><span class="s2">"time_gradient"</span><span class="p">,</span> <span class="s2">"timing_deviation"</span><span class="p">)</span>
+        <span class="n">parameter_table</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span><span class="s2">"intercept"</span><span class="p">,</span> <span class="s2">"timing_intercept"</span><span class="p">)</span>
+        <span class="n">parameter_table</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span><span class="s2">"n_pixels"</span><span class="p">,</span> <span class="s2">"morphology_n_pixels"</span><span class="p">)</span>
+        <span class="n">parameter_table</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span><span class="s2">"n_islands"</span><span class="p">,</span> <span class="s2">"morphology_n_islands"</span><span class="p">)</span>
+        <span class="n">parameter_table</span><span class="o">.</span><span class="n">keep_columns</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="s2">"obs_id"</span><span class="p">,</span>
+                <span class="s2">"event_id"</span><span class="p">,</span>
+                <span class="s2">"hillas_intensity"</span><span class="p">,</span>
+                <span class="s2">"hillas_x"</span><span class="p">,</span>
+                <span class="s2">"hillas_y"</span><span class="p">,</span>
+                <span class="s2">"hillas_phi"</span><span class="p">,</span>
+                <span class="s2">"hillas_psi"</span><span class="p">,</span>
+                <span class="s2">"hillas_length"</span><span class="p">,</span>
+                <span class="s2">"hillas_length_uncertainty"</span><span class="p">,</span>
+                <span class="s2">"hillas_width"</span><span class="p">,</span>
+                <span class="s2">"hillas_width_uncertainty"</span><span class="p">,</span>
+                <span class="s2">"hillas_skewness"</span><span class="p">,</span>
+                <span class="s2">"hillas_kurtosis"</span><span class="p">,</span>
+                <span class="s2">"timing_deviation"</span><span class="p">,</span>
+                <span class="s2">"timing_intercept"</span><span class="p">,</span>
+                <span class="s2">"morphology_n_pixels"</span><span class="p">,</span>
+                <span class="s2">"morphology_n_islands"</span><span class="p">,</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+        <span class="n">parameter_table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tel_id</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"tel_id"</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+        <span class="c1"># Save the dl1 parameters table to the output file</span>
+        <span class="n">write_table</span><span class="p">(</span>
+            <span class="n">parameter_table</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL1_TEL_PARAMETERS_GROUP</span><span class="si">}</span><span class="s2">/tel_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">tel_id</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+            <span class="n">overwrite</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">overwrite</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="s2">"DL1 parameters table was stored in '</span><span class="si">%s</span><span class="s2">' under '</span><span class="si">%s</span><span class="s2">'"</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL1_TEL_PARAMETERS_GROUP</span><span class="si">}</span><span class="s2">/tel_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">tel_id</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Add additional columns to the parameter table</span>
+        <span class="c1"># which are not present in the originl DL1 parameter table.</span>
+        <span class="c1"># They are needed for applying the quality selection.</span>
+        <span class="n">parameter_table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span><span class="n">event_type</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"event_type"</span><span class="p">)</span>
+        <span class="n">parameter_table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span><span class="n">tel_az</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"tel_az"</span><span class="p">)</span>
+        <span class="n">parameter_table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span><span class="n">tel_alt</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"tel_alt"</span><span class="p">)</span>
+        <span class="c1"># Only select cosmic events for the prediction</span>
+        <span class="n">parameter_table</span> <span class="o">=</span> <span class="n">parameter_table</span><span class="p">[</span><span class="n">parameter_table</span><span class="p">[</span><span class="s2">"event_type"</span><span class="p">]</span> <span class="o">==</span> <span class="mi">32</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Starting the prediction..."</span><span class="p">)</span>
+        <span class="n">event_id</span><span class="p">,</span> <span class="n">tel_azimuth</span><span class="p">,</span> <span class="n">tel_altitude</span><span class="p">,</span> <span class="n">trigger_time</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[]</span>
+        <span class="n">prediction</span><span class="p">,</span> <span class="n">energy</span><span class="p">,</span> <span class="n">cam_coord_offset_x</span><span class="p">,</span> <span class="n">cam_coord_offset_y</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[]</span>
+        <span class="n">classification_fvs</span><span class="p">,</span> <span class="n">energy_fvs</span><span class="p">,</span> <span class="n">direction_fvs</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[]</span>
+        <span class="c1"># Iterate over the data in chunks based on the batch size</span>
+        <span class="k">for</span> <span class="n">start</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">table_length</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">):</span>
+            <span class="n">stop</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">start</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">table_length</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"Processing chunk from '</span><span class="si">%d</span><span class="s2">' to '</span><span class="si">%d</span><span class="s2">'."</span><span class="p">,</span> <span class="n">start</span><span class="p">,</span> <span class="n">stop</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="c1"># Read the data</span>
+            <span class="n">dl1_table</span> <span class="o">=</span> <span class="n">read_table</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">input_url</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">image_table_path</span><span class="p">,</span> <span class="n">start</span><span class="o">=</span><span class="n">start</span><span class="p">,</span> <span class="n">stop</span><span class="o">=</span><span class="n">stop</span>
+            <span class="p">)</span>
+            <span class="c1"># Join the dl1 table with the parameter table to perform quality selection</span>
+            <span class="n">dl1_table</span> <span class="o">=</span> <span class="n">join</span><span class="p">(</span>
+                <span class="n">left</span><span class="o">=</span><span class="n">dl1_table</span><span class="p">,</span>
+                <span class="n">right</span><span class="o">=</span><span class="n">parameter_table</span><span class="p">,</span>
+                <span class="n">keys</span><span class="o">=</span><span class="p">[</span><span class="s2">"event_id"</span><span class="p">],</span>
+            <span class="p">)</span>
+            <span class="n">dl1_table</span> <span class="o">=</span> <span class="n">join</span><span class="p">(</span>
+                <span class="n">left</span><span class="o">=</span><span class="n">dl1_table</span><span class="p">,</span>
+                <span class="n">right</span><span class="o">=</span><span class="n">trigger_table</span><span class="p">,</span>
+                <span class="n">keys</span><span class="o">=</span><span class="p">[</span><span class="s2">"event_id"</span><span class="p">],</span>
+            <span class="p">)</span>
+            <span class="c1"># Initialize a boolean mask to True for all events in the sliced dl1 table</span>
+            <span class="n">passes_quality_checks</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dl1_table</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+            <span class="c1"># Quality selection based on the dl1b parameter</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">quality_query</span><span class="p">:</span>
+                <span class="n">passes_quality_checks</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">quality_query</span><span class="o">.</span><span class="n">get_table_mask</span><span class="p">(</span><span class="n">dl1_table</span><span class="p">)</span>
+            <span class="c1"># Apply the mask to filter events that are not fulfilling the quality criteria</span>
+            <span class="n">dl1_table</span> <span class="o">=</span> <span class="n">dl1_table</span><span class="p">[</span><span class="n">passes_quality_checks</span><span class="p">]</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">dl1_table</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">debug</span><span class="p">(</span><span class="s2">"No events passed the quality selection."</span><span class="p">)</span>
+                <span class="k">continue</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">event</span> <span class="ow">in</span> <span class="n">dl1_table</span><span class="p">:</span>
+                <span class="c1"># Get the unmapped image</span>
+                <span class="n">image</span> <span class="o">=</span> <span class="n">get_unmapped_image</span><span class="p">(</span><span class="n">event</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">channels</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">transforms</span><span class="p">)</span>
+                <span class="n">data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">image_mapper</span><span class="o">.</span><span class="n">map_image</span><span class="p">(</span><span class="n">image</span><span class="p">))</span>
+            <span class="n">input_data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+            <span class="n">event_id</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">dl1_table</span><span class="p">[</span><span class="s2">"event_id"</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+            <span class="n">tel_azimuth</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">dl1_table</span><span class="p">[</span><span class="s2">"tel_az"</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+            <span class="n">tel_altitude</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">dl1_table</span><span class="p">[</span><span class="s2">"tel_alt"</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">)</span>
+            <span class="n">trigger_time</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">dl1_table</span><span class="p">[</span><span class="s2">"time"</span><span class="p">]</span><span class="o">.</span><span class="n">mjd</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_type_model_from</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">fvs</span><span class="p">,</span> <span class="n">preds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_predict_batch</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">backbone_type</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">head_type</span><span class="p">,</span> <span class="n">input_data</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">framework_type</span> <span class="o">==</span> <span class="n">FrameworkType</span><span class="o">.</span><span class="n">PYTORCH</span><span class="p">:</span>
+                    <span class="kn">from</span><span class="w"> </span><span class="nn">scipy.special</span><span class="w"> </span><span class="kn">import</span> <span class="n">softmax</span>
+
+                    <span class="n">preds</span> <span class="o">=</span> <span class="n">softmax</span><span class="p">(</span><span class="n">preds</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                <span class="n">classification_fvs</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">fvs</span><span class="p">)</span>
+                <span class="n">prediction</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">preds</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">])</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_energy_model_from</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">fvs</span><span class="p">,</span> <span class="n">preds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_predict_batch</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">backbone_energy</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">head_energy</span><span class="p">,</span> <span class="n">input_data</span>
+                <span class="p">)</span>
+                <span class="n">energy_fvs</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">fvs</span><span class="p">)</span>
+                <span class="n">energy</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">preds</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">])</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_cameradirection_model_from</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">fvs</span><span class="p">,</span> <span class="n">preds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_predict_batch</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">backbone_direction</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">head_direction</span><span class="p">,</span> <span class="n">input_data</span>
+                <span class="p">)</span>
+                <span class="n">direction_fvs</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">fvs</span><span class="p">)</span>
+                <span class="n">cam_coord_offset_x</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">preds</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">])</span>
+                <span class="n">cam_coord_offset_y</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">preds</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">])</span>
+
+        <span class="c1"># Create the prediction tables</span>
+        <span class="n">example_identifiers</span> <span class="o">=</span> <span class="n">Table</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">"obs_id"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">event_id</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">obs_id</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">),</span>
+                <span class="s2">"event_id"</span><span class="p">:</span> <span class="n">event_id</span><span class="p">,</span>
+                <span class="s2">"tel_id"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">event_id</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">tel_id</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">int</span><span class="p">),</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+        <span class="n">nonexample_identifiers</span> <span class="o">=</span> <span class="n">setdiff</span><span class="p">(</span>
+            <span class="n">all_identifiers</span><span class="p">,</span> <span class="n">example_identifiers</span><span class="p">,</span> <span class="n">keys</span><span class="o">=</span><span class="n">TELESCOPE_EVENT_KEYS</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">nonexample_identifiers</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">nonexample_identifiers</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">TELESCOPE_EVENT_KEYS</span><span class="p">)</span>
+        <span class="c1"># Create the feature vector table</span>
+        <span class="n">feature_vector_table</span> <span class="o">=</span> <span class="n">example_identifiers</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">fvs_columns_list</span><span class="p">,</span> <span class="n">fvs_shapes_list</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_type_model_from</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">classification_tel_table</span> <span class="o">=</span> <span class="n">example_identifiers</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="n">classification_tel_table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span>
+                <span class="n">prediction</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'type'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_prediction"</span>
+            <span class="p">)</span>
+            <span class="c1"># Produce output table with NaNs for missing predictions</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">nonexample_identifiers</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">nan_table</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_nan_table</span><span class="p">(</span>
+                    <span class="n">nonexample_identifiers</span><span class="p">,</span>
+                    <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'type'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_prediction"</span><span class="p">],</span>
+                    <span class="n">shapes</span><span class="o">=</span><span class="p">[(</span><span class="nb">len</span><span class="p">(</span><span class="n">nonexample_identifiers</span><span class="p">),)],</span>
+                <span class="p">)</span>
+                <span class="n">classification_tel_table</span> <span class="o">=</span> <span class="n">vstack</span><span class="p">([</span><span class="n">classification_tel_table</span><span class="p">,</span> <span class="n">nan_table</span><span class="p">])</span>
+            <span class="n">classification_tel_table</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">TELESCOPE_EVENT_KEYS</span><span class="p">)</span>
+            <span class="n">classification_is_valid</span> <span class="o">=</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span>
+                <span class="n">classification_tel_table</span><span class="p">[</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'type'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_prediction"</span>
+                <span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">,</span>
+                <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">classification_tel_table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span>
+                <span class="n">classification_is_valid</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'type'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_is_valid"</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="c1"># Add the default values and meta data to the table</span>
+            <span class="n">add_defaults_and_meta</span><span class="p">(</span>
+                <span class="n">classification_tel_table</span><span class="p">,</span>
+                <span class="n">ParticleClassificationContainer</span><span class="p">,</span>
+                <span class="n">prefix</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s2">"type"</span><span class="p">],</span>
+                <span class="n">add_tel_prefix</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="c1"># Save the prediction to the output file</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dl2_telescope</span><span class="p">:</span>
+                <span class="n">write_table</span><span class="p">(</span>
+                    <span class="n">classification_tel_table</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL2_TEL_PARTICLETYPE_GROUP</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'type'</span><span class="p">]</span><span class="si">}</span><span class="s2">/tel_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">tel_id</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                    <span class="n">overwrite</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">overwrite</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="s2">"DL2 prediction data was stored in '</span><span class="si">%s</span><span class="s2">' under '</span><span class="si">%s</span><span class="s2">'"</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL2_TEL_PARTICLETYPE_GROUP</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'type'</span><span class="p">]</span><span class="si">}</span><span class="s2">/tel_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">tel_id</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="c1"># Write the mono telescope prediction to the subarray prediction table</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dl2_subarray</span><span class="p">:</span>
+                <span class="n">classification_subarray_table</span> <span class="o">=</span> <span class="n">classification_tel_table</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+                <span class="n">classification_subarray_table</span><span class="o">.</span><span class="n">remove_column</span><span class="p">(</span><span class="s2">"tel_id"</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">colname</span> <span class="ow">in</span> <span class="n">classification_subarray_table</span><span class="o">.</span><span class="n">colnames</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="s2">"_tel_"</span> <span class="ow">in</span> <span class="n">colname</span><span class="p">:</span>
+                        <span class="n">classification_subarray_table</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span>
+                            <span class="n">colname</span><span class="p">,</span> <span class="n">colname</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"_tel"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
+                        <span class="p">)</span>
+                <span class="n">classification_subarray_table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span>
+                    <span class="p">[[</span><span class="n">val</span><span class="p">]</span> <span class="k">for</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">classification_is_valid</span><span class="p">],</span>
+                    <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'type'</span><span class="p">]</span><span class="si">}</span><span class="s2">_telescopes"</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="c1"># Save the prediction to the output file</span>
+                <span class="n">write_table</span><span class="p">(</span>
+                    <span class="n">classification_subarray_table</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL2_SUBARRAY_PARTICLETYPE_GROUP</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'type'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                    <span class="n">overwrite</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">overwrite</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="s2">"DL2 prediction data was stored in '</span><span class="si">%s</span><span class="s2">' under '</span><span class="si">%s</span><span class="s2">'"</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL2_SUBARRAY_PARTICLETYPE_GROUP</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'type'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="c1"># Adding the feature vectors for the classification</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dl1_features</span><span class="p">:</span>
+                <span class="n">is_valid_col</span> <span class="o">=</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">classification_fvs</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+                <span class="n">feature_vector_table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span>
+                    <span class="n">classification_fvs</span><span class="p">,</span>
+                    <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'all'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_particletype_feature_vectors"</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">nonexample_identifiers</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">fvs_columns_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'all'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_particletype_feature_vectors"</span>
+                    <span class="p">)</span>
+                    <span class="n">fvs_shapes_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="p">(</span>
+                            <span class="nb">len</span><span class="p">(</span><span class="n">nonexample_identifiers</span><span class="p">),</span>
+                            <span class="n">classification_fvs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_energy_model_from</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">energy_tel_table</span> <span class="o">=</span> <span class="n">example_identifiers</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="c1"># Convert the reconstructed energy from log10(TeV) to TeV</span>
+            <span class="n">reco_energy</span> <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">Quantity</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">power</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">energy</span><span class="p">)),</span> <span class="n">unit</span><span class="o">=</span><span class="n">u</span><span class="o">.</span><span class="n">TeV</span><span class="p">)</span>
+            <span class="c1"># Add the reconstructed energy to the prediction table</span>
+            <span class="n">energy_tel_table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span>
+                <span class="n">reco_energy</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'energy'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_energy"</span>
+            <span class="p">)</span>
+            <span class="c1"># Produce output table with NaNs for missing predictions</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">nonexample_identifiers</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">nan_table</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_nan_table</span><span class="p">(</span>
+                    <span class="n">nonexample_identifiers</span><span class="p">,</span>
+                    <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'energy'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_energy"</span><span class="p">],</span>
+                    <span class="n">shapes</span><span class="o">=</span><span class="p">[(</span><span class="nb">len</span><span class="p">(</span><span class="n">nonexample_identifiers</span><span class="p">),)],</span>
+                <span class="p">)</span>
+                <span class="n">energy_tel_table</span> <span class="o">=</span> <span class="n">vstack</span><span class="p">([</span><span class="n">energy_tel_table</span><span class="p">,</span> <span class="n">nan_table</span><span class="p">])</span>
+            <span class="n">energy_tel_table</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">TELESCOPE_EVENT_KEYS</span><span class="p">)</span>
+            <span class="n">energy_is_valid</span> <span class="o">=</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span>
+                <span class="n">energy_tel_table</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'energy'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_energy"</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">,</span>
+                <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">energy_tel_table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span>
+                <span class="n">energy_is_valid</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'energy'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_is_valid"</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="c1"># Add the default values and meta data to the table</span>
+            <span class="n">add_defaults_and_meta</span><span class="p">(</span>
+                <span class="n">energy_tel_table</span><span class="p">,</span>
+                <span class="n">ReconstructedEnergyContainer</span><span class="p">,</span>
+                <span class="n">prefix</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s2">"energy"</span><span class="p">],</span>
+                <span class="n">add_tel_prefix</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="c1"># Save the prediction to the output file</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dl2_telescope</span><span class="p">:</span>
+                <span class="n">write_table</span><span class="p">(</span>
+                    <span class="n">energy_tel_table</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL2_TEL_ENERGY_GROUP</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'energy'</span><span class="p">]</span><span class="si">}</span><span class="s2">/tel_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">tel_id</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                    <span class="n">overwrite</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">overwrite</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="s2">"DL2 prediction data was stored in '</span><span class="si">%s</span><span class="s2">' under '</span><span class="si">%s</span><span class="s2">'"</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL2_TEL_ENERGY_GROUP</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'energy'</span><span class="p">]</span><span class="si">}</span><span class="s2">/tel_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">tel_id</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="c1"># Write the mono telescope prediction to the subarray prediction table</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dl2_subarray</span><span class="p">:</span>
+                <span class="n">energy_subarray_table</span> <span class="o">=</span> <span class="n">energy_tel_table</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+                <span class="n">energy_subarray_table</span><span class="o">.</span><span class="n">remove_column</span><span class="p">(</span><span class="s2">"tel_id"</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">colname</span> <span class="ow">in</span> <span class="n">energy_subarray_table</span><span class="o">.</span><span class="n">colnames</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="s2">"_tel_"</span> <span class="ow">in</span> <span class="n">colname</span><span class="p">:</span>
+                        <span class="n">energy_subarray_table</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span>
+                            <span class="n">colname</span><span class="p">,</span> <span class="n">colname</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"_tel"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
+                        <span class="p">)</span>
+                <span class="n">energy_subarray_table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span>
+                    <span class="p">[[</span><span class="n">val</span><span class="p">]</span> <span class="k">for</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">energy_is_valid</span><span class="p">],</span>
+                    <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'energy'</span><span class="p">]</span><span class="si">}</span><span class="s2">_telescopes"</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="c1"># Save the prediction to the output file</span>
+                <span class="n">write_table</span><span class="p">(</span>
+                    <span class="n">energy_subarray_table</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL2_SUBARRAY_ENERGY_GROUP</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'energy'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                    <span class="n">overwrite</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">overwrite</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="s2">"DL2 prediction data was stored in '</span><span class="si">%s</span><span class="s2">' under '</span><span class="si">%s</span><span class="s2">'"</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL2_SUBARRAY_ENERGY_GROUP</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'energy'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="c1"># Adding the feature vectors for the energy regression</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dl1_features</span><span class="p">:</span>
+                <span class="n">is_valid_col</span> <span class="o">=</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">energy_fvs</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+                <span class="n">feature_vector_table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span>
+                    <span class="n">energy_fvs</span><span class="p">,</span>
+                    <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'all'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_energy_feature_vectors"</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">nonexample_identifiers</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">fvs_columns_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'all'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_energy_feature_vectors"</span>
+                    <span class="p">)</span>
+                    <span class="n">fvs_shapes_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="p">(</span>
+                            <span class="nb">len</span><span class="p">(</span><span class="n">nonexample_identifiers</span><span class="p">),</span>
+                            <span class="n">energy_fvs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_cameradirection_model_from</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">direction_tel_table</span> <span class="o">=</span> <span class="n">example_identifiers</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="c1"># Set the telescope position</span>
+            <span class="n">tel_ground_frame</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">subarray</span><span class="o">.</span><span class="n">tel_coords</span><span class="p">[</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">subarray</span><span class="o">.</span><span class="n">tel_ids_to_indices</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">tel_id</span><span class="p">)</span>
+            <span class="p">]</span>
+            <span class="c1"># Set the telescope pointing with the trigger timestamp and the telescope position</span>
+            <span class="n">trigger_time</span> <span class="o">=</span> <span class="n">Time</span><span class="p">(</span><span class="n">trigger_time</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">"mjd"</span><span class="p">)</span>
+            <span class="n">altaz</span> <span class="o">=</span> <span class="n">AltAz</span><span class="p">(</span>
+                <span class="n">location</span><span class="o">=</span><span class="n">tel_ground_frame</span><span class="o">.</span><span class="n">to_earth_location</span><span class="p">(),</span>
+                <span class="n">obstime</span><span class="o">=</span><span class="n">trigger_time</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="c1"># Set the telescope pointing</span>
+            <span class="n">tel_pointing</span> <span class="o">=</span> <span class="n">SkyCoord</span><span class="p">(</span>
+                <span class="n">az</span><span class="o">=</span><span class="n">u</span><span class="o">.</span><span class="n">Quantity</span><span class="p">(</span><span class="n">tel_azimuth</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="n">u</span><span class="o">.</span><span class="n">rad</span><span class="p">),</span>
+                <span class="n">alt</span><span class="o">=</span><span class="n">u</span><span class="o">.</span><span class="n">Quantity</span><span class="p">(</span><span class="n">tel_altitude</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="n">u</span><span class="o">.</span><span class="n">rad</span><span class="p">),</span>
+                <span class="n">frame</span><span class="o">=</span><span class="n">altaz</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="c1"># Set a new camera frame with the pixel rotation of the camera</span>
+            <span class="n">camera_frame</span> <span class="o">=</span> <span class="n">CameraFrame</span><span class="p">(</span>
+                <span class="n">focal_length</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">subarray</span><span class="o">.</span><span class="n">tel</span><span class="p">[</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">tel_id</span>
+                <span class="p">]</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">geometry</span><span class="o">.</span><span class="n">frame</span><span class="o">.</span><span class="n">focal_length</span><span class="p">,</span>
+                <span class="n">rotation</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pix_rotation</span><span class="p">,</span>
+                <span class="n">telescope_pointing</span><span class="o">=</span><span class="n">tel_pointing</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="c1"># Set the camera coordinate offset</span>
+            <span class="n">cam_coord_offset</span> <span class="o">=</span> <span class="n">SkyCoord</span><span class="p">(</span>
+                <span class="n">x</span><span class="o">=</span><span class="n">u</span><span class="o">.</span><span class="n">Quantity</span><span class="p">(</span><span class="n">cam_coord_offset_x</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="n">u</span><span class="o">.</span><span class="n">m</span><span class="p">),</span>
+                <span class="n">y</span><span class="o">=</span><span class="n">u</span><span class="o">.</span><span class="n">Quantity</span><span class="p">(</span><span class="n">cam_coord_offset_y</span><span class="p">,</span> <span class="n">unit</span><span class="o">=</span><span class="n">u</span><span class="o">.</span><span class="n">m</span><span class="p">),</span>
+                <span class="n">frame</span><span class="o">=</span><span class="n">camera_frame</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="c1"># Transform the true Alt/Az coordinates to camera coordinates</span>
+            <span class="n">reco_direction</span> <span class="o">=</span> <span class="n">cam_coord_offset</span><span class="o">.</span><span class="n">transform_to</span><span class="p">(</span><span class="n">altaz</span><span class="p">)</span>
+            <span class="c1"># Add the reconstructed direction (az, alt) to the prediction table</span>
+            <span class="n">direction_tel_table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span>
+                <span class="n">reco_direction</span><span class="o">.</span><span class="n">az</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">deg</span><span class="p">),</span>
+                <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'cameradirection'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_az"</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">direction_tel_table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span>
+                <span class="n">reco_direction</span><span class="o">.</span><span class="n">alt</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">deg</span><span class="p">),</span>
+                <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'cameradirection'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_alt"</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="c1"># Produce output table with NaNs for missing predictions</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">nonexample_identifiers</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">nan_table</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_nan_table</span><span class="p">(</span>
+                    <span class="n">nonexample_identifiers</span><span class="p">,</span>
+                    <span class="n">columns</span><span class="o">=</span><span class="p">[</span>
+                        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'cameradirection'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_az"</span><span class="p">,</span>
+                        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'cameradirection'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_alt"</span><span class="p">,</span>
+                    <span class="p">],</span>
+                    <span class="n">shapes</span><span class="o">=</span><span class="p">[</span>
+                        <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">nonexample_identifiers</span><span class="p">),),</span>
+                        <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">nonexample_identifiers</span><span class="p">),),</span>
+                    <span class="p">],</span>
+                <span class="p">)</span>
+                <span class="n">direction_tel_table</span> <span class="o">=</span> <span class="n">vstack</span><span class="p">([</span><span class="n">direction_tel_table</span><span class="p">,</span> <span class="n">nan_table</span><span class="p">])</span>
+            <span class="n">direction_tel_table</span><span class="o">.</span><span class="n">keep_columns</span><span class="p">(</span>
+                <span class="n">TELESCOPE_EVENT_KEYS</span>
+                <span class="o">+</span> <span class="p">[</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'cameradirection'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_az"</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'cameradirection'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_alt"</span><span class="p">,</span>
+                <span class="p">]</span>
+            <span class="p">)</span>
+            <span class="n">direction_tel_table</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">TELESCOPE_EVENT_KEYS</span><span class="p">)</span>
+            <span class="n">direction_is_valid</span> <span class="o">=</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span>
+                <span class="n">direction_tel_table</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'cameradirection'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_az"</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">,</span>
+                <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">direction_tel_table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span>
+                <span class="n">direction_is_valid</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'cameradirection'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_is_valid"</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="c1"># Add the default values and meta data to the table</span>
+            <span class="n">add_defaults_and_meta</span><span class="p">(</span>
+                <span class="n">direction_tel_table</span><span class="p">,</span>
+                <span class="n">ReconstructedGeometryContainer</span><span class="p">,</span>
+                <span class="n">prefix</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s2">"cameradirection"</span><span class="p">],</span>
+                <span class="n">add_tel_prefix</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="c1"># Save the prediction to the output file</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dl2_telescope</span><span class="p">:</span>
+                <span class="n">write_table</span><span class="p">(</span>
+                    <span class="n">direction_tel_table</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL2_TEL_GEOMETRY_GROUP</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'cameradirection'</span><span class="p">]</span><span class="si">}</span><span class="s2">/tel_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">tel_id</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                    <span class="n">overwrite</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">overwrite</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="s2">"DL2 prediction data was stored in '</span><span class="si">%s</span><span class="s2">' under '</span><span class="si">%s</span><span class="s2">'"</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL2_TEL_GEOMETRY_GROUP</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'cameradirection'</span><span class="p">]</span><span class="si">}</span><span class="s2">/tel_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">tel_id</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="c1"># Write the mono telescope prediction to the subarray prediction table</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dl2_subarray</span><span class="p">:</span>
+                <span class="n">direction_subarray_table</span> <span class="o">=</span> <span class="n">direction_tel_table</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+                <span class="n">direction_subarray_table</span><span class="o">.</span><span class="n">remove_column</span><span class="p">(</span><span class="s2">"tel_id"</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">colname</span> <span class="ow">in</span> <span class="n">direction_subarray_table</span><span class="o">.</span><span class="n">colnames</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="s2">"_tel_"</span> <span class="ow">in</span> <span class="n">colname</span><span class="p">:</span>
+                        <span class="n">direction_subarray_table</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span>
+                            <span class="n">colname</span><span class="p">,</span> <span class="n">colname</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">"_tel"</span><span class="p">,</span> <span class="s2">""</span><span class="p">)</span>
+                        <span class="p">)</span>
+                <span class="n">direction_subarray_table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span>
+                    <span class="p">[[</span><span class="n">val</span><span class="p">]</span> <span class="k">for</span> <span class="n">val</span> <span class="ow">in</span> <span class="n">direction_is_valid</span><span class="p">],</span>
+                    <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'cameradirection'</span><span class="p">]</span><span class="si">}</span><span class="s2">_telescopes"</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="c1"># Save the prediction to the output file</span>
+                <span class="n">write_table</span><span class="p">(</span>
+                    <span class="n">direction_subarray_table</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL2_SUBARRAY_GEOMETRY_GROUP</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'cameradirection'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                    <span class="n">overwrite</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">overwrite</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="s2">"DL2 prediction data was stored in '</span><span class="si">%s</span><span class="s2">' under '</span><span class="si">%s</span><span class="s2">'"</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL2_SUBARRAY_GEOMETRY_GROUP</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'cameradirection'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="c1"># Adding the feature vectors for the arrival direction regression</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dl1_features</span><span class="p">:</span>
+                <span class="n">is_valid_col</span> <span class="o">=</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">direction_fvs</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+                <span class="n">feature_vector_table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span>
+                    <span class="n">direction_fvs</span><span class="p">,</span>
+                    <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'all'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_geometry_feature_vectors"</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="n">nonexample_identifiers</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">fvs_columns_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'all'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_geometry_feature_vectors"</span>
+                    <span class="p">)</span>
+                    <span class="n">fvs_shapes_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="p">(</span>
+                            <span class="nb">len</span><span class="p">(</span><span class="n">nonexample_identifiers</span><span class="p">),</span>
+                            <span class="n">direction_fvs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
+        <span class="c1"># Produce output table with NaNs for missing predictions</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dl1_features</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">nonexample_identifiers</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">nonexample_identifiers</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">nan_table</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_create_nan_table</span><span class="p">(</span>
+                        <span class="n">nonexample_identifiers</span><span class="p">,</span>
+                        <span class="n">columns</span><span class="o">=</span><span class="n">fvs_columns_list</span><span class="p">,</span>
+                        <span class="n">shapes</span><span class="o">=</span><span class="n">fvs_shapes_list</span><span class="p">,</span>
+                    <span class="p">)</span>
+                    <span class="n">feature_vector_table</span> <span class="o">=</span> <span class="n">vstack</span><span class="p">([</span><span class="n">feature_vector_table</span><span class="p">,</span> <span class="n">nan_table</span><span class="p">])</span>
+                    <span class="n">is_valid_col</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span>
+                        <span class="p">(</span>
+                            <span class="n">is_valid_col</span><span class="p">,</span>
+                            <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">nonexample_identifiers</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">),</span>
+                        <span class="p">)</span>
+                    <span class="p">)</span>
+            <span class="c1"># Add is_valid column to the feature vector table</span>
+            <span class="n">feature_vector_table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span>
+                <span class="n">is_valid_col</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'all'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_is_valid"</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="c1"># Save the prediction to the output file</span>
+            <span class="n">write_table</span><span class="p">(</span>
+                <span class="n">feature_vector_table</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL1_TEL_GROUP</span><span class="si">}</span><span class="s2">/features/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'all'</span><span class="p">]</span><span class="si">}</span><span class="s2">/tel_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">tel_id</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="n">overwrite</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">overwrite</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">"DL1 feature vectors was stored in '</span><span class="si">%s</span><span class="s2">' under '</span><span class="si">%s</span><span class="s2">'"</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL1_TEL_GROUP</span><span class="si">}</span><span class="s2">/features/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'all'</span><span class="p">]</span><span class="si">}</span><span class="s2">/tel_</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">tel_id</span><span class="si">:</span><span class="s2">03d</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="LST1PredictionTool.finish">
+<a class="viewcode-back" href="../../../api-reference/ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.finish">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">finish</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Perform final cleanup and save metadata after the core logic completes.</span>
+
+<span class="sd">        This method writes provenance data (such as configuration and execution context)</span>
+<span class="sd">        to the output file, finalizes tables, and ensures all file handlers are safely closed.</span>
+<span class="sd">        """</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Tool is shutting down"</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_predict_batch</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">backbone</span><span class="p">,</span> <span class="n">head</span><span class="p">,</span> <span class="n">input_data</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Run batch inference through a backbone and head model using Keras or PyTorch.</span>
+
+<span class="sd">        Dispatches model execution based on ``self.framework_type``. For PyTorch,</span>
+<span class="sd">        converts input data to Tensors, transposes to channels-first format (NCHW),</span>
+<span class="sd">        places inputs on the targeted device, runs inference without gradient tracking</span>
+<span class="sd">        (``torch.no_grad()``), and returns NumPy outputs on CPU.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        backbone : keras.Model or torch.nn.Module</span>
+<span class="sd">            The feature extractor network that processes raw input data into</span>
+<span class="sd">            feature representations.</span>
+<span class="sd">        head : keras.Model or torch.nn.Module</span>
+<span class="sd">            The task-specific head network that computes final predictions</span>
+<span class="sd">            from feature vectors.</span>
+<span class="sd">        input_data : np.ndarray</span>
+<span class="sd">            Batch of image data following the Keras convention.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        fvs : np.ndarray</span>
+<span class="sd">            Extracted feature vectors for the batch.</span>
+<span class="sd">        preds : np.ndarray</span>
+<span class="sd">            Model output predictions for the batch.</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">framework_type</span> <span class="o">==</span> <span class="n">FrameworkType</span><span class="o">.</span><span class="n">KERAS</span><span class="p">:</span>
+            <span class="n">fvs</span> <span class="o">=</span> <span class="n">backbone</span><span class="o">.</span><span class="n">predict_on_batch</span><span class="p">(</span><span class="n">input_data</span><span class="p">)</span>
+            <span class="n">preds</span> <span class="o">=</span> <span class="n">head</span><span class="o">.</span><span class="n">predict_on_batch</span><span class="p">(</span><span class="n">fvs</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">fvs</span><span class="p">,</span> <span class="n">preds</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">framework_type</span> <span class="o">==</span> <span class="n">FrameworkType</span><span class="o">.</span><span class="n">PYTORCH</span><span class="p">:</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+            <span class="n">tensor_data</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">input_data</span><span class="p">)</span><span class="o">.</span><span class="n">float</span><span class="p">()</span>
+            <span class="c1"># Convert Channels-Last (N, H, W, C) to Channels-First (N, C, H, W)</span>
+            <span class="k">if</span> <span class="n">tensor_data</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">4</span><span class="p">:</span>
+                <span class="n">tensor_data</span> <span class="o">=</span> <span class="n">tensor_data</span><span class="o">.</span><span class="n">permute</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+            <span class="n">tensor_data</span> <span class="o">=</span> <span class="n">tensor_data</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+
+            <span class="k">def</span><span class="w"> </span><span class="nf">_to_numpy</span><span class="p">(</span><span class="n">val</span><span class="p">):</span>
+<span class="w">                </span><span class="sd">"""</span>
+<span class="sd">                Convert Astropy columns or arrays to native NumPy format for prediction.</span>
+<span class="sd">                """</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                    <span class="c1"># Extract the tensor value from the dictionary (e.g., {'energy': tensor(...)})</span>
+                    <span class="n">val</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">val</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">val</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
+                    <span class="k">return</span> <span class="n">val</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+                <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">val</span><span class="p">)</span>
+
+            <span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+                <span class="n">fvs</span> <span class="o">=</span> <span class="n">backbone</span><span class="p">(</span><span class="n">tensor_data</span><span class="p">)</span>
+                <span class="n">preds</span> <span class="o">=</span> <span class="n">head</span><span class="p">(</span><span class="n">fvs</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">fvs</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">_to_numpy</span><span class="p">(</span><span class="n">preds</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_load_model</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Load a trained model and extract its input shape, backbone, and head.</span>
+
+<span class="sd">        Supports both Keras and PyTorch frameworks based on ``self.framework_type``.</span>
+<span class="sd">        For PyTorch models, the model is set to evaluation mode (``.eval()``) and its</span>
+<span class="sd">        ``backbone`` and ``head`` submodules are extracted.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        path : str, pathlib.Path, or None</span>
+<span class="sd">            Path to the saved model file. If ``None``, the function immediately returns ``None`` elements.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        input_shape : tuple of int or None</span>
+<span class="sd">            Input feature tensor shape (excluding batch dimension), or ``None`` if ``path``</span>
+<span class="sd">            is ``None`` or framework is PyTorch.</span>
+<span class="sd">        backbone : keras.Model, torch.nn.Module, or None</span>
+<span class="sd">            Feature extraction backbone of the model, or ``None`` if ``path`` is ``None``.</span>
+<span class="sd">        head : keras.Model, torch.nn.Module, or None</span>
+<span class="sd">            Output prediction head of the model, or ``None`` if ``path`` is ``None``.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        TypeError</span>
+<span class="sd">            If the loaded PyTorch object is not an instance of ``torch.nn.Module``</span>
+<span class="sd">            (e.g., when a ``state_dict`` is loaded instead of the full model).</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Loading the model from </span><span class="si">%s</span><span class="s2">."</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">_split_keras_model</span><span class="p">(</span><span class="n">model</span><span class="p">):</span>
+<span class="w">            </span><span class="sd">"""Split the Keras model into backbone and head."""</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">keras</span>
+
+            <span class="c1"># Get the backbone model which is the second layer of the model</span>
+            <span class="n">backbone</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">get_layer</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="c1"># Create a new head model with the same layers as the original model.</span>
+            <span class="c1"># The output of the backbone model is the input of the head model.</span>
+            <span class="n">backbone_output_shape</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">input</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">backbone_output_shape</span>
+            <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="mi">2</span><span class="p">:]:</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">layer</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+            <span class="n">head</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">Model</span><span class="p">(</span><span class="n">inputs</span><span class="o">=</span><span class="n">backbone_output_shape</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="n">x</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">backbone</span><span class="p">,</span> <span class="n">head</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">framework_type</span> <span class="o">==</span> <span class="n">FrameworkType</span><span class="o">.</span><span class="n">KERAS</span><span class="p">:</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">keras</span>
+
+            <span class="n">model</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">saving</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+            <span class="n">input_shape</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">input_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+            <span class="n">backbone</span><span class="p">,</span> <span class="n">head</span> <span class="o">=</span> <span class="n">_split_keras_model</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">input_shape</span><span class="p">,</span> <span class="n">backbone</span><span class="p">,</span> <span class="n">head</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">framework_type</span> <span class="o">==</span> <span class="n">FrameworkType</span><span class="o">.</span><span class="n">PYTORCH</span><span class="p">:</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
+
+            <span class="n">model</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">map_location</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">weights_only</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+            <span class="c1"># Extract model and check config if it's a checkpoint dictionary</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">"model"</span> <span class="ow">in</span> <span class="n">model</span><span class="p">:</span>
+                <span class="n">saved_config</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ctlearn_config"</span><span class="p">,</span> <span class="p">{})</span>
+                <span class="n">current_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="k">else</span> <span class="p">{}</span>
+
+                <span class="k">if</span> <span class="s2">"DLDataReader"</span> <span class="ow">in</span> <span class="n">saved_config</span> <span class="ow">and</span> <span class="s2">"DLDataReader"</span> <span class="ow">in</span> <span class="n">current_config</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">saved_val</span> <span class="ow">in</span> <span class="n">saved_config</span><span class="p">[</span><span class="s2">"DLDataReader"</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                        <span class="n">current_val</span> <span class="o">=</span> <span class="n">current_config</span><span class="p">[</span><span class="s2">"DLDataReader"</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">current_val</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">current_val</span> <span class="o">!=</span> <span class="n">saved_val</span><span class="p">:</span>
+                            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                                <span class="sa">f</span><span class="s2">"Configuration mismatch: The model was trained with DLDataReader.</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">saved_val</span><span class="si">}</span><span class="s2">, "</span>
+                                <span class="sa">f</span><span class="s2">"but you are trying to predict with </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">current_val</span><span class="si">}</span><span class="s2">. "</span>
+                                <span class="s2">"Adjust the prediction configuration to match."</span>
+                            <span class="p">)</span>
+                <span class="n">model</span> <span class="o">=</span> <span class="n">model</span><span class="p">[</span><span class="s2">"model"</span><span class="p">]</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"Expected a PyTorch 'nn.Module' object at '</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">', "</span>
+                    <span class="sa">f</span><span class="s2">"but got '</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">model</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">'. "</span>
+                    <span class="s2">"Ensure the model was saved via 'torch.save(model, path)' "</span>
+                    <span class="s2">"rather than 'torch.save(model.state_dict(), path)'."</span>
+                <span class="p">)</span>
+            <span class="n">model</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span>
+
+            <span class="n">backbone</span><span class="p">,</span> <span class="n">head</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">backbone</span><span class="p">,</span> <span class="n">model</span><span class="o">.</span><span class="n">head</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">num_devices</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">backbone</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">DataParallel</span><span class="p">(</span><span class="n">backbone</span><span class="p">)</span>
+                <span class="n">head</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">DataParallel</span><span class="p">(</span><span class="n">head</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="n">backbone</span><span class="p">,</span> <span class="n">head</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_create_nan_table</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nonexample_identifiers</span><span class="p">,</span> <span class="n">columns</span><span class="p">,</span> <span class="n">shapes</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Create a table with NaNs for missing predictions.</span>
+
+<span class="sd">        This method creates a table with NaNs for missing predictions for the non-example identifiers.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">        -----------</span>
+<span class="sd">        nonexample_identifiers : astropy.table.Table</span>
+<span class="sd">            Table containing the non-example identifiers.</span>
+<span class="sd">        columns : list of str</span>
+<span class="sd">            List of column names to create in the table.</span>
+<span class="sd">        shapes : list of shapes</span>
+<span class="sd">            List of shapes for the columns to create in the table.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">        --------</span>
+<span class="sd">        nan_table : astropy.table.Table</span>
+<span class="sd">            Table containing NaNs for missing predictions.</span>
+<span class="sd">        """</span>
+        <span class="c1"># Create a table with NaNs for missing predictions</span>
+        <span class="n">nan_table</span> <span class="o">=</span> <span class="n">nonexample_identifiers</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">column_name</span><span class="p">,</span> <span class="n">shape</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">columns</span><span class="p">,</span> <span class="n">shapes</span><span class="p">):</span>
+            <span class="n">nan_table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">full</span><span class="p">(</span><span class="n">shape</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span><span class="p">),</span> <span class="n">name</span><span class="o">=</span><span class="n">column_name</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">nan_table</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Main entry point for the command-line tool.</span>
+
+<span class="sd">    This function instantiates the Tool class and invokes its `run()` method,</span>
+<span class="sd">    which sequentially executes the `setup()`, `start()`, and `finish()` methods.</span>
+<span class="sd">    """</span>
+    <span class="c1"># Run the tool</span>
+    <span class="n">tool</span> <span class="o">=</span> <span class="n">LST1PredictionTool</span><span class="p">()</span>
+    <span class="n">tool</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright CTLearn devs.  Last updated 16 Nov 2026 16:12.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.1.1.
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.24.0.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

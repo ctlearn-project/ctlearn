@@ -1,0 +1,764 @@
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../" data-theme="dark">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>CTLearn tutorials &#8212; ctlearn 0.11.1.dev67+g2baf2dbbc documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "dark";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "dark";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=75c7c72ae941e8b558d8" rel="stylesheet" />
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=75c7c72ae941e8b558d8" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=c83e6b79" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=6a604523" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../_static/scripts/fontawesome.js?digest=75c7c72ae941e8b558d8"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8" />
+<link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8" />
+
+    <script src="../../_static/documentation_options.js?v=efa1cbec"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/sg-tags.js?v=d80f6fa4"></script>
+    <script data-sd-tabs-storage-prefix="sphinx-design-tab-id-" src="../../_static/design-tabs.js?v=fcb327ea"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'user-guide/auto_tutorials/index';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.24.0';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://ctlearn-project.github.io/ctlearn/_static/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'main';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="icon" href="../../_static/ctlearn_favicon.ico"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="Tutorial 1 Explore Public CTAO Data" href="explore_public_data.html" />
+    <link rel="prev" title="User Guide" href="../index.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="color-scheme" content="light dark"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.11.1.dev67+g2baf2dbbc" />
+  
+    
+    <script src="../../_static/searchtools.js"></script>
+    <script src="../../_static/language_data.js"></script>
+    <script src="../../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="dark">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+<aside class="bd-header-announcement" aria-label="Announcement">
+  <div class="bd-header-announcement__content">
+        <p>This is not production-ready code yet. Although stable
+        releases are available, users should expect changes to the code
+        before a 1.0 release arrives.</p>
+    </div>
+</aside>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button type="button" class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation" aria-expanded="false" aria-controls="pst-primary-sidebar-modal">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../index.html">
+  
+  
+  
+  
+  
+    
+    
+    
+    <img src="../../_static/ctlearn_logo_transparent.png" class="logo__image only-dark" alt="ctlearn 0.11.1.dev67+g2baf2dbbc documentation - Home"/>
+    <img src="../../_static/ctlearn_logo_transparent.png" class="logo__image only-light pst-js-only" alt="ctlearn 0.11.1.dev67+g2baf2dbbc documentation - Home"/>
+  
+  
+</a></div>
+    
+      <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../developer-guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../api-reference/index.html">
+    API Docs
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../changelog.html">
+    Change Log
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Quick Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/ctlearn-project/ctlearn" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/ctlearn/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button type="button" class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page" aria-expanded="false" aria-controls="pst-secondary-sidebar-modal">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal" tabindex="-1"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../developer-guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../api-reference/index.html">
+    API Docs
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../changelog.html">
+    Change Log
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Quick Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/ctlearn-project/ctlearn" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/ctlearn/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item pst-sidebar-collapse"><button type="button" id="pst-collapse-sidebar-button" aria-expanded="true" aria-controls="pst-primary-sidebar">
+  <svg class="pst-icon" role="img" aria-hidden="true" focusable="false" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
+    <path fill="currentColor" d="M3 15.5C2.36232 15.5 1.74874 15.2564 1.28478 14.8189C0.820828 14.3815 0.541576 13.7832 0.504167 13.1467L0.5 13L0.5 3C0.499965 2.36232 0.743605 1.74874 1.18107 1.28478C1.61854 0.820828 2.21676 0.541576 2.85333 0.504167L3 0.5L13 0.5C13.6377 0.499965 14.2513 0.743605 14.7152 1.18107C15.1792 1.61854 15.4584 2.21676 15.4958 2.85333L15.5 3L15.5 13C15.5 13.6377 15.2564 14.2513 14.8189 14.7152C14.3815 15.1792 13.7832 15.4584 13.1467 15.4958L13 15.5L3 15.5ZM3 13.8333L10.5 13.8333L10.5 2.16667L3 2.16667C2.79589 2.16669 2.59889 2.24163 2.44636 2.37726C2.29383 2.5129 2.19638 2.69979 2.1725 2.9025L2.16667 3L2.16667 13C2.16669 13.2041 2.24163 13.4011 2.37726 13.5536C2.5129 13.7062 2.69979 13.8036 2.9025 13.8275L3 13.8333ZM6.65583 10.325L6.5775 10.2558L4.91083 8.58917C4.76735 8.44567 4.68116 8.25476 4.66843 8.05223C4.65569 7.84971 4.71729 7.6495 4.84167 7.48917L4.91083 7.41083L6.5775 5.74417C6.72747 5.59471 6.9287 5.50794 7.14032 5.50148C7.35194 5.49502 7.55809 5.56935 7.7169 5.70937C7.8757 5.8494 7.97525 6.04463 7.99533 6.25539C8.01541 6.46616 7.95451 6.67667 7.825 6.84417L7.75583 6.9225L6.67917 8L7.75583 9.0775C7.89931 9.22099 7.98551 9.41191 7.99824 9.61443C8.01097 9.81695 7.94938 10.0172 7.825 10.1775L7.75583 10.2558C7.61234 10.3993 7.42142 10.4855 7.2189 10.4982C7.01638 10.511 6.81617 10.4494 6.65583 10.325Z"/>
+  </svg>
+  <span class="pst-collapse-sidebar-label">Collapse Sidebar</span>
+  <span class="pst-expand-sidebar-label">Expand Sidebar</span>
+</button></div>
+        <div class="sidebar-primary-item">
+
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active has-children"><a aria-current="page" class="current reference internal" href="#">CTLearn tutorials</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="explore_public_data.html"><strong>Tutorial 1</strong> Explore Public CTAO Data</a></li>
+
+
+
+<li class="toctree-l2"><a class="reference internal" href="train_ctlearn_model.html"><strong>Tutorial 2</strong> Train CTLearn models</a></li>
+
+
+
+
+
+
+
+<li class="toctree-l2"><a class="reference internal" href="predict_ctlearn_model.html"><strong>Tutorial 3</strong> Perform inference with CTlearn models</a></li>
+
+
+
+
+
+</ul>
+</details></li>
+<li class="toctree-l1"><a class="reference internal" href="../supplementary.html">Supplementary scripts</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-house"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">User Guide</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">CTLearn tutorials</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="ctlearn-tutorials">
+<span id="id1"></span><h1>CTLearn tutorials<a class="headerlink" href="#ctlearn-tutorials" title="Link to this heading">#</a></h1>
+<p>Step-by-step examples for downloading and exploring public simulated CTAO data,
+training CTLearn models, and running inference on image and waveform data.</p>
+<p>The tutorials use small datasets to keep the examples manageable. Their
+performance metrics are for demonstrating the workflow and are not
+representative of a production-level analysis. <strong>Tutorial 1 (T1)</strong> downloads and
+converts the public simulation data and explores its waveforms and images.
+<strong>Tutorial 2 (T2)</strong> trains CTLearn models with Keras and PyTorch using image and
+waveform data. <strong>Tutorial 3 (T3)</strong> runs inference with those models, explores the
+resulting DL2 data, and plots classification and reconstruction performance.</p>
+<div class="sd-tab-set docutils">
+<input checked="checked" id="sd-tab-item-0" name="sd-tab-set-0" type="radio">
+<label aria-controls="sd-tab-item-0-content" class="sd-tab-label" for="sd-tab-item-0">
+<strong>T1</strong>: Data exploration</label><div class="sd-tab-content docutils" id="sd-tab-item-0-content">
+<p>This tutorial downloads a small SimTel sample for the monoscopic examples and
+four CTAO simulation files from <a class="reference external" href="https://zenodo.org/records/7298569">Zenodo record 7298569</a> for the stereo example. The four Zenodo
+files comprise gamma-ray and proton samples, each from two runs, <code class="docutils literal notranslate"><span class="pre">00</span></code>
+and <code class="docutils literal notranslate"><span class="pre">01</span></code>. The <code class="docutils literal notranslate"><span class="pre">00</span></code> run files are used for training in Tutorial 2,
+while the <code class="docutils literal notranslate"><span class="pre">01</span></code> run files are held out for prediction in Tutorial 3.
+Together, they require about 3.5 GB of disk space. By default, data are stored under
+<code class="docutils literal notranslate"><span class="pre">~/.cache/ctlearn/tutorial-data</span></code>; set <code class="docutils literal notranslate"><span class="pre">CTLEARN_TUTORIAL_DATA_DIR</span></code> to use a
+different directory. Set <code class="docutils literal notranslate"><span class="pre">CTLEARN_TUTORIAL_MAX_EVENTS</span></code> to a positive integer
+(for example, <code class="docutils literal notranslate"><span class="pre">500</span></code>) to limit event processing per input file. Leave it unset to
+process the full files, and use the same setting for all three tutorials.
+The CI workflow preloads the source files, caches the converted products, and
+sets the limit to 500 events per input file.</p>
+</div>
+<input id="sd-tab-item-1" name="sd-tab-set-0" type="radio">
+<label aria-controls="sd-tab-item-1-content" class="sd-tab-label" for="sd-tab-item-1">
+<strong>T2</strong>: Training models</label><div class="sd-tab-content docutils" id="sd-tab-item-1-content">
+<p>The training tutorial documents monoscopic energy and direction regression,
+gamma/proton classification, custom <code class="docutils literal notranslate"><span class="pre">SingleCNN</span></code> and <code class="docutils literal notranslate"><span class="pre">ResNet</span></code> architectures,
+transfer learning with <code class="docutils literal notranslate"><span class="pre">LoadedModel</span></code>, stereo image stacking, and waveform
+training. It uses only the converted gamma-ray and proton <code class="docutils literal notranslate"><span class="pre">00</span></code> files for the
+image examples and leaves the <code class="docutils literal notranslate"><span class="pre">01</span></code> files untouched for later evaluation in
+Tutorial 3. The three example JSON configs are in <code class="docutils literal notranslate"><span class="pre">docs/source/config</span></code> in the
+repository or <code class="docutils literal notranslate"><span class="pre">config</span></code> in the downloaded ZIP. The tutorial uses the descriptions
+from the training notebook and executes every example sequentially during
+the documentation build. This requires working TensorFlow and PyTorch
+installations and can take substantial time and compute resources.</p>
+<p>Live training monitoring is available through TensorBoard. Start TensorBoard
+in a separate terminal window and point it to the training output directory
+and open a browser with the URL printed by TensorBoard (typically
+<code class="docutils literal notranslate"><span class="pre">http://localhost:6006</span></code>).</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>tensorboard<span class="w"> </span>--logdir<span class="w"> </span><span class="nv">$HOME</span>/.cache/ctlearn/tutorial-training/
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Cluster users have to set up port forwarding to access TensorBoard in their browser.
+For example, if you are using a cluster with a login node, you can set up port
+forwarding like this:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>ssh<span class="w"> </span>-L<span class="w"> </span><span class="m">6006</span>:localhost:6006<span class="w"> </span>user@cluster-login-node
+</pre></div>
+</div>
+</div>
+</div>
+<input id="sd-tab-item-2" name="sd-tab-set-0" type="radio">
+<label aria-controls="sd-tab-item-2-content" class="sd-tab-label" for="sd-tab-item-2">
+<strong>T3</strong>: Predicting models</label><div class="sd-tab-content docutils" id="sd-tab-item-2-content">
+<p>The prediction tutorial runs the Keras and PyTorch models produced by the
+training tutorial on the held-out <code class="docutils literal notranslate"><span class="pre">01</span></code> CTAO simulation files. Each command
+shows the model file path and configuration options explicitly. It plots
+classification scores and ROC/AUC for both frameworks, plus regression
+migration matrices and energy and angular resolution. The shared DL1 reader
+configuration is shown in each command and controls telescope selection,
+image channels, image mapping, and quality cuts. The tutorial also demonstrates
+stereo prediction, waveform inference, and the LST-1 tool using a generated
+mock DL1 file. The waveform example reuses training data only to demonstrate
+the workflow; it is not an evaluation.</p>
+<p>The classifier and resolution figures are demonstrations on small samples
+and should not be used for scientific conclusions or interpreted as production
+instrument response functions. DL2 files are written to the same output directory
+and can be inspected with <code class="docutils literal notranslate"><span class="pre">ViTables</span></code>. The following command opens the DL2 files
+in <code class="docutils literal notranslate"><span class="pre">ViTables</span></code>:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>vitables
+$<span class="w"> </span>vitables<span class="w"> </span><span class="nv">$HOME</span>/.cache/ctlearn/tutorial-training/predictions/*.dl2.h5
+</pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Cluster users have to make sure to allow X11 forwarding to run <code class="docutils literal notranslate"><span class="pre">ViTables</span></code>.
+For example, if you are using a cluster with a login node, you can set up
+X11 forwarding like this:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>ssh<span class="w"> </span>-X<span class="w"> </span>user@cluster-login-node
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<p>Download the Python or Jupyter ZIP for all examples using the links at the
+bottom of this gallery, and extract it. Each individual tutorial page also
+offers a ZIP containing that tutorial and its notebook. The ZIPs include a
+<code class="docutils literal notranslate"><span class="pre">config/</span></code> directory with the JSON configuration files; keep it alongside the
+scripts or notebooks. Choose how to obtain and run the tutorials:</p>
+<div class="sd-tab-set docutils">
+<input checked="checked" id="sd-tab-item-3" name="sd-tab-set-1" type="radio">
+<label aria-controls="sd-tab-item-3-content" class="sd-tab-label" for="sd-tab-item-3">
+Python ZIP</label><div class="sd-tab-content docutils" id="sd-tab-item-3-content">
+<p>Download the Python ZIP for all examples using the link at the bottom
+of this gallery.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">"ctlearn[docs]"</span>
+$<span class="w"> </span>unzip<span class="w"> </span>auto_tutorials_python.zip<span class="w"> </span>-d<span class="w"> </span>ctlearn-tutorials
+$<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>ctlearn-tutorials
+$<span class="w"> </span><span class="nb">export</span><span class="w"> </span><span class="nv">CTLEARN_TUTORIAL_DATA_DIR</span><span class="o">=</span><span class="nv">$HOME</span>/.cache/ctlearn/tutorial-data<span class="w"> </span><span class="c1"># optional: set a different cache location</span>
+$<span class="w"> </span><span class="nb">export</span><span class="w"> </span><span class="nv">CTLEARN_TUTORIAL_MAX_EVENTS</span><span class="o">=</span><span class="m">500</span><span class="w"> </span><span class="c1"># optional: limit events for fast execution of tutorials</span>
+$<span class="w"> </span>python<span class="w"> </span>explore_public_data.py
+$<span class="w"> </span>python<span class="w"> </span>train_ctlearn_model.py
+$<span class="w"> </span>python<span class="w"> </span>predict_ctlearn_model.py
+</pre></div>
+</div>
+</div>
+<input id="sd-tab-item-4" name="sd-tab-set-1" type="radio">
+<label aria-controls="sd-tab-item-4-content" class="sd-tab-label" for="sd-tab-item-4">
+Jupyter ZIP</label><div class="sd-tab-content docutils" id="sd-tab-item-4-content">
+<p>Download the Jupyter ZIP for all examples using the link at the bottom
+of this gallery. Start Jupyter in the extracted directory, then open
+and run the notebooks in order: <code class="docutils literal notranslate"><span class="pre">explore_public_data.ipynb</span></code>,
+<code class="docutils literal notranslate"><span class="pre">train_ctlearn_model.ipynb</span></code>, and <code class="docutils literal notranslate"><span class="pre">predict_ctlearn_model.ipynb</span></code>.</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span><span class="s2">"ctlearn[docs]"</span><span class="w"> </span>notebook
+$<span class="w"> </span>unzip<span class="w"> </span>auto_tutorials_jupyter.zip<span class="w"> </span>-d<span class="w"> </span>ctlearn-tutorials
+$<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>ctlearn-tutorials
+$<span class="w"> </span><span class="nb">export</span><span class="w"> </span><span class="nv">CTLEARN_TUTORIAL_DATA_DIR</span><span class="o">=</span><span class="nv">$HOME</span>/.cache/ctlearn/tutorial-data<span class="w"> </span><span class="c1"># optional: set a different cache location</span>
+$<span class="w"> </span><span class="nb">export</span><span class="w"> </span><span class="nv">CTLEARN_TUTORIAL_MAX_EVENTS</span><span class="o">=</span><span class="m">500</span><span class="w"> </span><span class="c1"># optional: limit events for fast execution of tutorials</span>
+$<span class="w"> </span>jupyter<span class="w"> </span>notebook
+</pre></div>
+</div>
+</div>
+<input id="sd-tab-item-5" name="sd-tab-set-1" type="radio">
+<label aria-controls="sd-tab-item-5-content" class="sd-tab-label" for="sd-tab-item-5">
+Git Clone</label><div class="sd-tab-content docutils" id="sd-tab-item-5-content">
+<p>Alternatively, clone the repository and install its documentation dependencies:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/ctlearn-project/ctlearn.git
+$<span class="w"> </span><span class="nb">cd</span><span class="w"> </span>ctlearn
+$<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span><span class="s2">".[docs]"</span>
+$<span class="w"> </span><span class="nb">export</span><span class="w"> </span><span class="nv">CTLEARN_TUTORIAL_DATA_DIR</span><span class="o">=</span><span class="nv">$HOME</span>/.cache/ctlearn/tutorial-data<span class="w"> </span><span class="c1"># optional: set a different cache location</span>
+$<span class="w"> </span><span class="nb">export</span><span class="w"> </span><span class="nv">CTLEARN_TUTORIAL_MAX_EVENTS</span><span class="o">=</span><span class="m">500</span><span class="w"> </span><span class="c1"># optional: limit events for fast execution of tutorials</span>
+$<span class="w"> </span>python<span class="w"> </span>examples/tutorials/explore_public_data.py
+$<span class="w"> </span>python<span class="w"> </span>examples/tutorials/train_ctlearn_model.py
+$<span class="w"> </span>python<span class="w"> </span>examples/tutorials/predict_ctlearn_model.py
+</pre></div>
+</div>
+</div>
+</div>
+<p>Run the tutorials in order: the training tutorial uses data prepared by
+Tutorial 1, and the prediction tutorial uses models created by Tutorial 2.</p>
+<div id='sg-tag-list' class='sphx-glr-tag-list'></div><div class="sphx-glr-thumbnails"><div class="sphx-glr-thumbcontainer" tooltip="Download public CTAO simulation data, convert it with ctapipe, and explore waveforms and images using DL1DataHandler."><img alt="" src="../../_images/sphx_glr_explore_public_data_thumb.gif" />
+<p><a class="reference internal" href="explore_public_data.html"><span class="doc">Tutorial 1 Explore Public CTAO Data</span></a></p>
+  <div class="sphx-glr-thumbnail-title">Tutorial 1 Explore Public CTAO Data</div>
+</div><div class="sphx-glr-thumbcontainer" tooltip="Train models for CTAO image and waveform data with CTLearn. The image examples use only the gamma-ray and proton 00 files; the 01 files remain untouched for future evaluation tutorials. The tutorial is intenionally kept simple and uses only a small fraction of the available statistics to keep the training time manageable. The resulting performance metrics are not representative of a production-level analysis nor should they be compared directly with published results. The main goal is to illustrate the analysis workflow and to become familiar with the command-line tools and the DL2 data format. This tutorial can be modified from the users to use larger datasets and more statistics to obtain meaningful results."><img alt="" src="../../_images/sphx_glr_train_ctlearn_model_thumb.png" />
+<p><a class="reference internal" href="train_ctlearn_model.html"><span class="doc">Tutorial 2 Train CTLearn models</span></a></p>
+  <div class="sphx-glr-thumbnail-title">Tutorial 2 Train CTLearn models</div>
+</div><div class="sphx-glr-thumbcontainer" tooltip="Predict the CTAO image and waveform data using the CTLearn models from the second tutorial train_ctlearn_model.py. The predictions are stored in DL2 files following the CTAO reference data model. The tutorial also shows how to visualize the classifier performance, energy resolution, and angular resolution of the predicted events. The tutorial is intentionally kept simple and uses only a small fraction of the available statistics to keep the prediction time manageable. The resulting performance metrics are not representative of a production-level analysis nor should they be compared directly with published results. The main goal is to illustrate the analysis workflow and to become familiar with the command-line tools and the DL2 data format. This tutorial can be modified from the users to use larger datasets and more statistics to obtain meaningful results."><img alt="" src="../../_images/sphx_glr_predict_ctlearn_model_thumb.png" />
+<p><a class="reference internal" href="predict_ctlearn_model.html"><span class="doc">Tutorial 3 Perform inference with CTlearn models</span></a></p>
+  <div class="sphx-glr-thumbnail-title">Tutorial 3 Perform inference with CTlearn models</div>
+</div></div><div class="toctree-wrapper compound">
+</div>
+<div class="sphx-glr-footer sphx-glr-footer-gallery docutils container">
+<div class="sphx-glr-download sphx-glr-download-python docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/c79e5b8d12bb824ff0f77b55cc11aea6/auto_tutorials_python.zip"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">all</span> <span class="pre">examples</span> <span class="pre">in</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">auto_tutorials_python.zip</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
+<p><a class="reference download internal" download="" href="../../_downloads/5574a25d1388b4cb9de70d40b2fcd31b/auto_tutorials_jupyter.zip"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">all</span> <span class="pre">examples</span> <span class="pre">in</span> <span class="pre">Jupyter</span> <span class="pre">notebooks:</span> <span class="pre">auto_tutorials_jupyter.zip</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="../index.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">User Guide</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="explore_public_data.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title"><strong>Tutorial 1</strong> Explore Public CTAO Data</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal" tabindex="-1"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+
+  <div class="tocsection sourcelink">
+    <a href="../../_sources/user-guide/auto_tutorials/index.rst.txt">
+      <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8"></script>
+<script defer src="../../_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright CTLearn devs.  Last updated 16 Nov 2026 16:12.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.1.1.
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.24.0.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

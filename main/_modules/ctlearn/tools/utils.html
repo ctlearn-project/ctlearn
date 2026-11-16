@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" data-theme="dark">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ctlearn.tools.utils &#8212; ctlearn 0.11.1.dev67+g2baf2dbbc documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "dark";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "dark";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=75c7c72ae941e8b558d8" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=75c7c72ae941e8b558d8" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=c83e6b79" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=6a604523" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../../_static/scripts/fontawesome.js?digest=75c7c72ae941e8b558d8"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8" />
+
+    <script src="../../../_static/documentation_options.js?v=efa1cbec"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
+    <script data-sd-tabs-storage-prefix="sphinx-design-tab-id-" src="../../../_static/design-tabs.js?v=fcb327ea"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/ctlearn/tools/utils';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.24.0';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://ctlearn-project.github.io/ctlearn/_static/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'main';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="icon" href="../../../_static/ctlearn_favicon.ico"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="color-scheme" content="light dark"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.11.1.dev67+g2baf2dbbc" />
+  
+    
+    <script src="../../../_static/searchtools.js"></script>
+    <script src="../../../_static/language_data.js"></script>
+    <script src="../../../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="dark">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+<aside class="bd-header-announcement" aria-label="Announcement">
+  <div class="bd-header-announcement__content">
+        <p>This is not production-ready code yet. Although stable
+        releases are available, users should expect changes to the code
+        before a 1.0 release arrives.</p>
+    </div>
+</aside>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button type="button" class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation" aria-expanded="false" aria-controls="pst-primary-sidebar-modal">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+    
+    <img src="../../../_static/ctlearn_logo_transparent.png" class="logo__image only-dark" alt="ctlearn 0.11.1.dev67+g2baf2dbbc documentation - Home"/>
+    <img src="../../../_static/ctlearn_logo_transparent.png" class="logo__image only-light pst-js-only" alt="ctlearn 0.11.1.dev67+g2baf2dbbc documentation - Home"/>
+  
+  
+</a></div>
+    
+      <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../user-guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../developer-guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api-reference/index.html">
+    API Docs
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../changelog.html">
+    Change Log
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Quick Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/ctlearn-project/ctlearn" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/ctlearn/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal" tabindex="-1"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../user-guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../developer-guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api-reference/index.html">
+    API Docs
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../changelog.html">
+    Change Log
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Quick Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/ctlearn-project/ctlearn" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/ctlearn/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-house"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    
+    <li class="breadcrumb-item"><a href="../../ctlearn.html" class="nav-link">ctlearn</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">ctlearn.tools.utils</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for ctlearn.tools.utils</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""</span>
+<span class="sd">Utility functions for the CTLearn tools.</span>
+<span class="sd">"""</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pathlib</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">enum</span><span class="w"> </span><span class="kn">import</span> <span class="n">Enum</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">importlib.resources</span><span class="w"> </span><span class="kn">import</span> <span class="n">as_file</span><span class="p">,</span> <span class="n">files</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">keras_hexagdly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">hgly</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctapipe.core</span><span class="w"> </span><span class="kn">import</span> <span class="n">Provenance</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctapipe.core.traits</span><span class="w"> </span><span class="kn">import</span> <span class="n">TraitError</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctapipe.instrument</span><span class="w"> </span><span class="kn">import</span> <span class="n">SubarrayDescription</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctapipe.instrument.optics</span><span class="w"> </span><span class="kn">import</span> <span class="n">FocalLengthKind</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">"validate_trait_dict"</span><span class="p">,</span>
+    <span class="s2">"get_lst1_subarray_description"</span><span class="p">,</span>
+    <span class="s2">"FrameworkType"</span><span class="p">,</span>
+    <span class="s2">"setup_framework"</span><span class="p">,</span>
+    <span class="s2">"validate_conv_backend"</span><span class="p">,</span>
+    <span class="s2">"model_conv_backend"</span><span class="p">,</span>
+<span class="p">]</span>
+
+
+<div class="viewcode-block" id="validate_trait_dict">
+<a class="viewcode-back" href="../../../api-reference/ctlearn.html#ctlearn.tools.utils.validate_trait_dict">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_trait_dict</span><span class="p">(</span><span class="n">trait_dict</span><span class="p">,</span> <span class="n">required_keys</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Validate that a dictionary contains all required keys.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    trait_dict : dict</span>
+<span class="sd">        Dictionary to validate.</span>
+<span class="sd">    required_keys : set</span>
+<span class="sd">        Set of required keys.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    bool</span>
+<span class="sd">        True if the dictionary contains all required keys.  Otherwise, raises a TraitError.</span>
+<span class="sd">    """</span>
+    <span class="n">missing_keys</span> <span class="o">=</span> <span class="n">required_keys</span> <span class="o">-</span> <span class="n">trait_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">missing_keys</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="n">TraitError</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Dict is missing required key(s): </span><span class="si">{</span><span class="s1">', '</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">missing_keys</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+    <span class="k">return</span> <span class="kc">True</span></div>
+
+
+
+<div class="viewcode-block" id="get_lst1_subarray_description">
+<a class="viewcode-back" href="../../../api-reference/ctlearn.html#ctlearn.tools.utils.get_lst1_subarray_description">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">get_lst1_subarray_description</span><span class="p">(</span><span class="n">focal_length_choice</span><span class="o">=</span><span class="n">FocalLengthKind</span><span class="o">.</span><span class="n">EFFECTIVE</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Load subarray description from bundled file</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    focal_length_choice : FocalLengthKind</span>
+<span class="sd">        Choice of focal length to use.  Options are ``FocalLengthKind.EQUIVALENT``</span>
+<span class="sd">        and ``FocalLengthKind.EFFECTIVE``. Default is ``FocalLengthKind.EFFECTIVE``.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    SubarrayDescription</span>
+<span class="sd">        Subarray description of the LST-1 telescope.</span>
+<span class="sd">    """</span>
+    <span class="k">with</span> <span class="n">as_file</span><span class="p">(</span><span class="n">files</span><span class="p">(</span><span class="s2">"ctlearn"</span><span class="p">)</span> <span class="o">/</span> <span class="s2">"resources/LST-1_SubarrayDescription.h5"</span><span class="p">)</span> <span class="k">as</span> <span class="n">path</span><span class="p">:</span>
+        <span class="n">Provenance</span><span class="p">()</span><span class="o">.</span><span class="n">add_input_file</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">role</span><span class="o">=</span><span class="s2">"SubarrayDescription"</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">SubarrayDescription</span><span class="o">.</span><span class="n">from_hdf</span><span class="p">(</span>
+            <span class="n">path</span><span class="p">,</span> <span class="n">focal_length_choice</span><span class="o">=</span><span class="n">focal_length_choice</span>
+        <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="FrameworkType">
+<a class="viewcode-back" href="../../../api-reference/ctlearn.html#ctlearn.tools.utils.FrameworkType">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">FrameworkType</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Deep learning framework type enumeration.</span>
+
+<span class="sd">    This enumeration specifies which deep learning framework to use for</span>
+<span class="sd">    model training and inference. CTLearn supports both Keras (TensorFlow backend)</span>
+<span class="sd">    and PyTorch frameworks.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        KERAS (int): Use Keras/TensorFlow framework (value: 1)</span>
+<span class="sd">            - Advantages: High-level API, easy to use, good for prototyping</span>
+<span class="sd">            - TensorFlow 2.x with Keras API</span>
+<span class="sd">            - Suitable for production deployment</span>
+
+<span class="sd">        PYTORCH (int): Use PyTorch framework (value: 2)</span>
+<span class="sd">            - Advantages: Dynamic computation graphs, flexible, research-friendly</span>
+<span class="sd">            - PyTorch 1.x or 2.x</span>
+<span class="sd">            - Better for custom architectures and experimental models</span>
+
+<span class="sd">    Example:</span>
+<span class="sd">        &gt;&gt;&gt; from ctlearn.core.ctlearn_enum import FrameworkType</span>
+<span class="sd">        &gt;&gt;&gt; framework = FrameworkType.PYTORCH</span>
+<span class="sd">        &gt;&gt;&gt; print(framework.name)  # 'PYTORCH'</span>
+<span class="sd">        &gt;&gt;&gt; print(framework.value)  # 'PyTorch'</span>
+<span class="sd">    """</span>
+
+    <span class="n">KERAS</span> <span class="o">=</span> <span class="s2">"Keras"</span>
+    <span class="n">PYTORCH</span> <span class="o">=</span> <span class="s2">"PyTorch"</span></div>
+
+
+
+<div class="viewcode-block" id="setup_framework">
+<a class="viewcode-back" href="../../../api-reference/ctlearn.html#ctlearn.tools.utils.setup_framework">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">setup_framework</span><span class="p">(</span><span class="n">model_paths</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Detects the deep learning framework from model paths, ensures consistency,</span>
+<span class="sd">    and configures the hardware devices for distributed or single-device execution.</span>
+
+<span class="sd">    This function iterates through the provided model paths, infers the framework</span>
+<span class="sd">    (Keras or PyTorch) based on file extensions, and ensures all models belong</span>
+<span class="sd">    to the same framework. It then initializes the appropriate hardware setup</span>
+<span class="sd">    (e.g., MirroredStrategy for Keras, CUDA/CPU device for PyTorch).</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    model_paths : list of str or pathlib.Path or None</span>
+<span class="sd">        A list of paths pointing to the saved model files. `None` values are ignored.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple</span>
+<span class="sd">        A tuple containing:</span>
+<span class="sd">        - framework_type (FrameworkType): The identified framework enum (FrameworkType.KERAS or FrameworkType.PYTORCH).</span>
+<span class="sd">        - num_devices (int): The number of devices available/configured for the framework.</span>
+<span class="sd">        - strategy (tf.distribute.Strategy or None): The TensorFlow distribution strategy if Keras is detected, else None.</span>
+<span class="sd">        - device (torch.device or None): The PyTorch target device if PyTorch is detected, else None.</span>
+
+<span class="sd">    Raises</span>
+<span class="sd">    ------</span>
+<span class="sd">    IOError</span>
+<span class="sd">        If no valid model paths are provided, or if multiple inconsistent frameworks</span>
+<span class="sd">        are detected across the provided paths.</span>
+<span class="sd">    """</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_detect_framework</span><span class="p">(</span><span class="n">path_val</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Determines framework based on file extension.</span>
+<span class="sd">        Returns 'Keras', 'PyTorch', or raises TraitError.</span>
+<span class="sd">        """</span>
+        <span class="n">path</span> <span class="o">=</span> <span class="n">pathlib</span><span class="o">.</span><span class="n">Path</span><span class="p">(</span><span class="n">path_val</span><span class="p">)</span>
+        <span class="n">ext</span> <span class="o">=</span> <span class="n">path</span><span class="o">.</span><span class="n">suffix</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">ext</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">".keras"</span><span class="p">,</span> <span class="s2">".h5"</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="n">FrameworkType</span><span class="p">[</span><span class="s2">"KERAS"</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">ext</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">".pt"</span><span class="p">,</span> <span class="s2">".pth"</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="n">FrameworkType</span><span class="p">[</span><span class="s2">"PYTORCH"</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">TraitError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"Invalid model extension '</span><span class="si">{</span><span class="n">ext</span><span class="si">}</span><span class="s2">' for file '</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">'. "</span>
+                <span class="s2">"Expected '.keras' or '.h5' for Keras, or '.pt' or '.pth' for PyTorch."</span>
+            <span class="p">)</span>
+
+    <span class="c1"># Detect frameworks from all non-None paths</span>
+    <span class="n">detected_frameworks</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">model_paths</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">detected_frameworks</span><span class="p">[</span><span class="n">path</span><span class="p">]</span> <span class="o">=</span> <span class="n">_detect_framework</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+    <span class="c1"># Fail immediately if no valid model paths are provided</span>
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">detected_frameworks</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span>
+            <span class="s2">"No model paths were specified. At least one valid model path "</span>
+            <span class="s2">"(.keras/.h5 for Keras, or .pt/.pth for PyTorch) must be provided."</span>
+        <span class="p">)</span>
+    <span class="c1"># Verify consistency across specified paths</span>
+    <span class="n">unique_frameworks</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">detected_frameworks</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">unique_frameworks</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">details</span> <span class="o">=</span> <span class="s2">", "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">p</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">fw</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">p</span><span class="p">,</span> <span class="n">fw</span> <span class="ow">in</span> <span class="n">detected_frameworks</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+        <span class="k">raise</span> <span class="ne">IOError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"Inconsistent model frameworks detected across paths: </span><span class="si">{</span><span class="n">details</span><span class="si">}</span><span class="s2">. "</span>
+            <span class="s2">"All specified model files must belong to the same framework."</span>
+        <span class="p">)</span>
+    <span class="c1"># Set framework directly from the detected FrameworkType enum</span>
+    <span class="n">framework_type</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="n">unique_frameworks</span><span class="p">))</span>
+    <span class="c1"># Configure framework-specific hardware/device setup</span>
+    <span class="n">strategy</span><span class="p">,</span> <span class="n">device</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+    <span class="k">if</span> <span class="n">framework_type</span> <span class="o">==</span> <span class="n">FrameworkType</span><span class="o">.</span><span class="n">KERAS</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">tensorflow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tf</span>
+
+        <span class="n">strategy</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">distribute</span><span class="o">.</span><span class="n">MirroredStrategy</span><span class="p">()</span>
+        <span class="n">num_devices</span> <span class="o">=</span> <span class="n">strategy</span><span class="o">.</span><span class="n">num_replicas_in_sync</span>
+    <span class="k">elif</span> <span class="n">framework_type</span> <span class="o">==</span> <span class="n">FrameworkType</span><span class="o">.</span><span class="n">PYTORCH</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+
+        <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+            <span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">"cuda"</span><span class="p">)</span>
+            <span class="n">num_devices</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">device_count</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">device</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">"cpu"</span><span class="p">)</span>
+            <span class="n">num_devices</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">framework_type</span><span class="p">,</span> <span class="n">num_devices</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="n">device</span></div>
+
+
+
+<div class="viewcode-block" id="validate_conv_backend">
+<a class="viewcode-back" href="../../../api-reference/ctlearn.html#ctlearn.tools.utils.validate_conv_backend">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">validate_conv_backend</span><span class="p">(</span><span class="n">image_mappers</span><span class="p">,</span> <span class="n">conv_backend</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Validate that the image mapper(s) used to build the input and the</span>
+<span class="sd">    model's convolution backend agree with each other.</span>
+
+<span class="sd">    ``HexagdlyMapper`` output is hex-addressed and must be paired with a</span>
+<span class="sd">    model built with ``conv_backend="hexagdly"``; a square-mapped input</span>
+<span class="sd">    (e.g. from ``BilinearMapper``) must be paired with</span>
+<span class="sd">    ``conv_backend="square"``. Nothing else currently enforces this pairing,</span>
+<span class="sd">    so a mismatch would otherwise silently train/predict on geometrically</span>
+<span class="sd">    meaningless input.</span>
+
+<span class="sd">    Since ``image_mapper_type`` is a ``TelescopeParameter``, each telescope</span>
+<span class="sd">    type can be given a different mapper. A model has a single</span>
+<span class="sd">    ``conv_backend``, so mixing hex-addressed and square-mapped telescope</span>
+<span class="sd">    types in one run cannot be valid either way and is rejected explicitly.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    image_mappers : dict</span>
+<span class="sd">        Dictionary of ``dl1_data_handler.image_mapper.ImageMapper`` instances,</span>
+<span class="sd">        keyed by camera name, as built by ``DLDataReader.image_mappers``.</span>
+<span class="sd">    conv_backend : str</span>
+<span class="sd">        The model's ``conv_backend`` trait value (``"square"`` or</span>
+<span class="sd">        ``"hexagdly"``).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    bool</span>
+<span class="sd">        True if the mapper(s) and conv backend agree. Otherwise, raises a</span>
+<span class="sd">        ValueError.</span>
+<span class="sd">    """</span>
+    <span class="n">hex_cameras</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span>
+        <span class="n">camera</span>
+        <span class="k">for</span> <span class="n">camera</span><span class="p">,</span> <span class="n">mapper</span> <span class="ow">in</span> <span class="n">image_mappers</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">mapper</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"HexagdlyMapper"</span>
+    <span class="p">)</span>
+    <span class="n">square_cameras</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">image_mappers</span><span class="p">)</span> <span class="o">-</span> <span class="nb">set</span><span class="p">(</span><span class="n">hex_cameras</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">hex_cameras</span> <span class="ow">and</span> <span class="n">square_cameras</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">"Mixed hex-addressed and square-mapped image mappers are not "</span>
+            <span class="sa">f</span><span class="s2">"supported by a single model: HexagdlyMapper is used for "</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">hex_cameras</span><span class="si">}</span><span class="s2">, but </span><span class="si">{</span><span class="n">square_cameras</span><span class="si">}</span><span class="s2"> use a square mapper. A model "</span>
+            <span class="s2">"has one conv_backend, so every telescope type must use the same "</span>
+            <span class="s2">"kind of mapper."</span>
+        <span class="p">)</span>
+    <span class="n">mapper_is_hex</span> <span class="o">=</span> <span class="nb">bool</span><span class="p">(</span><span class="n">hex_cameras</span><span class="p">)</span>
+    <span class="n">model_is_hex</span> <span class="o">=</span> <span class="n">conv_backend</span> <span class="o">==</span> <span class="s2">"hexagdly"</span>
+    <span class="k">if</span> <span class="n">mapper_is_hex</span> <span class="o">!=</span> <span class="n">model_is_hex</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">"Mismatch between image_mapper_type and the model's conv_backend: "</span>
+            <span class="sa">f</span><span class="s2">"HexagdlyMapper in use = </span><span class="si">{</span><span class="n">mapper_is_hex</span><span class="si">}</span><span class="s2">, conv_backend = </span><span class="si">{</span><span class="n">conv_backend</span><span class="si">!r}</span><span class="s2">. "</span>
+            <span class="s2">"HexagdlyMapper output must be paired with a model built with "</span>
+            <span class="s2">"conv_backend='hexagdly', and a square-mapped input (e.g. from "</span>
+            <span class="s2">"BilinearMapper) must be paired with conv_backend='square'."</span>
+        <span class="p">)</span>
+    <span class="k">return</span> <span class="kc">True</span></div>
+
+
+
+<div class="viewcode-block" id="model_conv_backend">
+<a class="viewcode-back" href="../../../api-reference/ctlearn.html#ctlearn.tools.utils.model_conv_backend">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">model_conv_backend</span><span class="p">(</span><span class="n">model</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Determine the convolution backend a (possibly loaded-from-disk) Keras</span>
+<span class="sd">    or PyTorch model actually uses, by inspecting its layers directly.</span>
+
+<span class="sd">    Used at prediction time, where models are loaded via</span>
+<span class="sd">    ``keras.saving.load_model`` or ``torch.load`` rather than built through</span>
+<span class="sd">    ``CTLearnModel.from_name``, so no ``conv_backend`` trait is available to</span>
+<span class="sd">    read -- the loaded layers are the only ground truth for what the model</span>
+<span class="sd">    was actually built with.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    model : keras.Model or torch.nn.Module</span>
+<span class="sd">        A (possibly nested) Keras model or PyTorch module to inspect.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    str</span>
+<span class="sd">        ``"hexagdly"`` if any layer in the model (recursing into nested</span>
+<span class="sd">        sub-models) is a ``keras_hexagdly`` or ``pytorch_hexagdly`` layer,</span>
+<span class="sd">        otherwise ``"square"``.</span>
+<span class="sd">    """</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_uses_hexagdly</span><span class="p">(</span><span class="n">layer</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Determine if Hexagdly is used within the neural network model architecture.</span>
+<span class="sd">        """</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="p">(</span><span class="n">hgly</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">,</span> <span class="n">hgly</span><span class="o">.</span><span class="n">MaxPool2d</span><span class="p">)):</span>
+            <span class="k">return</span> <span class="kc">True</span>
+        <span class="n">sublayers</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="s2">"layers"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">sublayers</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">any</span><span class="p">(</span><span class="n">_uses_hexagdly</span><span class="p">(</span><span class="n">sub</span><span class="p">)</span> <span class="k">for</span> <span class="n">sub</span> <span class="ow">in</span> <span class="n">sublayers</span><span class="p">)</span>
+
+    <span class="c1"># A PyTorch model can only exist once torch is imported, so this check</span>
+    <span class="c1"># never imports torch (or pytorch_hexagdly) for a Keras model.</span>
+    <span class="n">torch</span> <span class="o">=</span> <span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"torch"</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">torch</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">pytorch_hexagdly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">phgly</span>
+
+        <span class="k">if</span> <span class="nb">any</span><span class="p">(</span><span class="nb">isinstance</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="p">(</span><span class="n">phgly</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">,</span> <span class="n">phgly</span><span class="o">.</span><span class="n">MaxPool2d</span><span class="p">))</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">modules</span><span class="p">()):</span>
+            <span class="k">return</span> <span class="s2">"hexagdly"</span>
+
+    <span class="k">return</span> <span class="s2">"hexagdly"</span> <span class="k">if</span> <span class="n">_uses_hexagdly</span><span class="p">(</span><span class="n">model</span><span class="p">)</span> <span class="k">else</span> <span class="s2">"square"</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright CTLearn devs.  Last updated 16 Nov 2026 16:12.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.1.1.
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.24.0.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

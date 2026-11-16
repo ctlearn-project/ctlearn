@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" data-theme="dark">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ctlearn.tools.keras.train_model &#8212; ctlearn 0.11.1.dev67+g2baf2dbbc documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "dark";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "dark";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=75c7c72ae941e8b558d8" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=75c7c72ae941e8b558d8" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery.css?v=c83e6b79" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-design.min.css?v=6a604523" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../../../_static/scripts/fontawesome.js?digest=75c7c72ae941e8b558d8"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8" />
+
+    <script src="../../../../_static/documentation_options.js?v=efa1cbec"></script>
+    <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../../_static/sg-tags.js?v=d80f6fa4"></script>
+    <script data-sd-tabs-storage-prefix="sphinx-design-tab-id-" src="../../../../_static/design-tabs.js?v=fcb327ea"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/ctlearn/tools/keras/train_model';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.24.0';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://ctlearn-project.github.io/ctlearn/_static/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'main';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="icon" href="../../../../_static/ctlearn_favicon.ico"/>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="color-scheme" content="light dark"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.11.1.dev67+g2baf2dbbc" />
+  
+    
+    <script src="../../../../_static/searchtools.js"></script>
+    <script src="../../../../_static/language_data.js"></script>
+    <script src="../../../../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="dark">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+<aside class="bd-header-announcement" aria-label="Announcement">
+  <div class="bd-header-announcement__content">
+        <p>This is not production-ready code yet. Although stable
+        releases are available, users should expect changes to the code
+        before a 1.0 release arrives.</p>
+    </div>
+</aside>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button type="button" class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation" aria-expanded="false" aria-controls="pst-primary-sidebar-modal">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+    
+    <img src="../../../../_static/ctlearn_logo_transparent.png" class="logo__image only-dark" alt="ctlearn 0.11.1.dev67+g2baf2dbbc documentation - Home"/>
+    <img src="../../../../_static/ctlearn_logo_transparent.png" class="logo__image only-light pst-js-only" alt="ctlearn 0.11.1.dev67+g2baf2dbbc documentation - Home"/>
+  
+  
+</a></div>
+    
+      <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../user-guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../developer-guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../api-reference/index.html">
+    API Docs
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../changelog.html">
+    Change Log
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Quick Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/ctlearn-project/ctlearn" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/ctlearn/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal" tabindex="-1"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../user-guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../developer-guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../api-reference/index.html">
+    API Docs
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../changelog.html">
+    Change Log
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Quick Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/ctlearn-project/ctlearn" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/ctlearn/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-house"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    
+    <li class="breadcrumb-item"><a href="../../../ctlearn.html" class="nav-link">ctlearn</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">ctlearn.tools.keras.train_model</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for ctlearn.tools.keras.train_model</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""</span>
+<span class="sd">Tool to train a Keras-based ``CTLearnModel``on R1/DL1a data using the ``DLDataReader`` and ``DLDataLoader``.</span>
+<span class="sd">"""</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"LoggingModelCheckpoint"</span><span class="p">,</span> <span class="s2">"TrainCTLearnKerasModel"</span><span class="p">]</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">atexit</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">keras</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tensorflow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tf</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctlearn.core.keras.sequence</span><span class="w"> </span><span class="kn">import</span> <span class="n">KerasSequence</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctlearn.core.model</span><span class="w"> </span><span class="kn">import</span> <span class="n">CTLearnModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctlearn.tools.train_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">TrainCTLearnModel</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctlearn.tools.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">model_conv_backend</span><span class="p">,</span> <span class="n">validate_conv_backend</span>
+
+
+<div class="viewcode-block" id="LoggingModelCheckpoint">
+<a class="viewcode-back" href="../../../../api-reference/ctlearn.html#ctlearn.tools.keras.train_model.LoggingModelCheckpoint">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">LoggingModelCheckpoint</span><span class="p">(</span><span class="n">keras</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">ModelCheckpoint</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Log checkpoint updates through the ctapipe tool logger.</span>
+
+<span class="sd">    This keeps Keras checkpoint messages within the logging system used by</span>
+<span class="sd">    ctapipe tools, while preserving ``ModelCheckpoint``'s save behavior.</span>
+<span class="sd">    """</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">logger</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Initialize the checkpoint callback with the owning tool's logger."""</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logger</span> <span class="o">=</span> <span class="n">logger</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+<div class="viewcode-block" id="LoggingModelCheckpoint.on_epoch_end">
+<a class="viewcode-back" href="../../../../api-reference/ctlearn.html#ctlearn.tools.keras.train_model.LoggingModelCheckpoint.on_epoch_end">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">on_epoch_end</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">epoch</span><span class="p">,</span> <span class="n">logs</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Save the checkpoint and log whether the monitored metric improved."""</span>
+        <span class="n">logs</span> <span class="o">=</span> <span class="n">logs</span> <span class="ow">or</span> <span class="p">{}</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_best_only</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Epoch </span><span class="si">%d</span><span class="s2">: saving model to </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">epoch</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">)</span>
+            <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">on_epoch_end</span><span class="p">(</span><span class="n">epoch</span><span class="p">,</span> <span class="n">logs</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">"Epoch </span><span class="si">%d</span><span class="s2">: finished saving model to </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">epoch</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">filepath</span>
+            <span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="n">current</span> <span class="o">=</span> <span class="n">logs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">monitor</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">current</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">on_epoch_end</span><span class="p">(</span><span class="n">epoch</span><span class="p">,</span> <span class="n">logs</span><span class="p">)</span>
+            <span class="k">return</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">monitor_op</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_set_monitor_op</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_is_improvement</span><span class="p">(</span><span class="n">current</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">best</span><span class="p">):</span>
+            <span class="n">previous_best</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">best</span>
+            <span class="n">previous_loss</span> <span class="o">=</span> <span class="s2">"None"</span> <span class="k">if</span> <span class="n">previous_best</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">previous_best</span><span class="si">:</span><span class="s2">.5f</span><span class="si">}</span><span class="s2">"</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">"Epoch </span><span class="si">%d</span><span class="s2">: </span><span class="si">%s</span><span class="s2"> improved from </span><span class="si">%s</span><span class="s2"> to </span><span class="si">%.5f</span><span class="s2">, saving model to </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span>
+                <span class="n">epoch</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">monitor</span><span class="p">,</span>
+                <span class="n">previous_loss</span><span class="p">,</span>
+                <span class="nb">float</span><span class="p">(</span><span class="n">current</span><span class="p">),</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">filepath</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">on_epoch_end</span><span class="p">(</span><span class="n">epoch</span><span class="p">,</span> <span class="n">logs</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">"Epoch </span><span class="si">%d</span><span class="s2">: finished saving model to </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="n">epoch</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">filepath</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">"Epoch </span><span class="si">%d</span><span class="s2">: </span><span class="si">%s</span><span class="s2"> did not improve from </span><span class="si">%.5f</span><span class="s2">"</span><span class="p">,</span>
+                <span class="n">epoch</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">monitor</span><span class="p">,</span>
+                <span class="nb">float</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">best</span><span class="p">),</span>
+            <span class="p">)</span>
+            <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">on_epoch_end</span><span class="p">(</span><span class="n">epoch</span><span class="p">,</span> <span class="n">logs</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TrainCTLearnKerasModel">
+<a class="viewcode-back" href="../../../../api-reference/ctlearn.html#ctlearn.tools.keras.train_model.TrainCTLearnKerasModel">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TrainCTLearnKerasModel</span><span class="p">(</span><span class="n">TrainCTLearnModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Tool to train a ``~ctlearn.core.model.CTLearnModel`` Keras-based model on R1/DL1a data.</span>
+
+<span class="sd">    The tool trains a CTLearn Keras-based model on the input data (R1 calibrated waveforms or DL1a images) and</span>
+<span class="sd">    saves the trained model in the output directory. The input data is loaded from the input directories</span>
+<span class="sd">    for signal and background events using the ``~dl1_data_handler.reader.DLDataReader`` and</span>
+<span class="sd">    ``~dl1_data_handler.loader.DLDataLoader``. The tool supports the following reconstruction tasks:</span>
+<span class="sd">    - Classification of the primary particle type (gamma/proton)</span>
+<span class="sd">    - Regression of the primary particle energy</span>
+<span class="sd">    - Regression of the primary particle arrival direction based on the offsets in camera coordinates</span>
+<span class="sd">    - Regression of the primary particle arrival direction based on the offsets in sky coordinates</span>
+<span class="sd">    """</span>
+
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">"ctlearn-train-keras-model"</span>
+    <span class="n">description</span> <span class="o">=</span> <span class="vm">__doc__</span>
+
+    <span class="n">examples</span> <span class="o">=</span> <span class="s2">"""</span>
+<span class="s2">    To train a Keras-based CTLearn model for the classification of the primary particle type:</span>
+<span class="s2">    &gt; ctlearn-train-keras-model </span><span class="se">\</span>
+<span class="s2">        --signal /path/to/your/gammas_dl1_dir/ </span><span class="se">\</span>
+<span class="s2">        --pattern-signal "gamma_*_run1.dl1.h5" </span><span class="se">\</span>
+<span class="s2">        --pattern-signal "gamma_*_run10.dl1.h5" </span><span class="se">\</span>
+<span class="s2">        --background /path/to/your/protons_dl1_dir/ </span><span class="se">\</span>
+<span class="s2">        --pattern-background "proton_*_run1.dl1.h5" </span><span class="se">\</span>
+<span class="s2">        --pattern-background "proton_*_run10.dl1.h5" </span><span class="se">\</span>
+<span class="s2">        --output /path/to/your/type/ </span><span class="se">\</span>
+<span class="s2">        --reco type </span><span class="se">\</span>
+
+<span class="s2">    To train a Keras-based CTLearn model for the regression of the primary particle energy:</span>
+<span class="s2">    &gt; ctlearn-train-keras-model </span><span class="se">\</span>
+<span class="s2">        --signal /path/to/your/gammas_dl1_dir/ </span><span class="se">\</span>
+<span class="s2">        --pattern-signal "gamma_*_run1.dl1.h5" </span><span class="se">\</span>
+<span class="s2">        --pattern-signal "gamma_*_run10.dl1.h5" </span><span class="se">\</span>
+<span class="s2">        --output /path/to/your/energy/ </span><span class="se">\</span>
+<span class="s2">        --reco energy </span><span class="se">\</span>
+
+<span class="s2">    To train a Keras-based CTLearn model for the regression of the primary particle</span>
+<span class="s2">    arrival direction based on the offsets in camera coordinates:</span>
+<span class="s2">    &gt; ctlearn-train-keras-model </span><span class="se">\</span>
+<span class="s2">        --signal /path/to/your/gammas_dl1_dir/ </span><span class="se">\</span>
+<span class="s2">        --pattern-signal "gamma_*_run1.dl1.h5" </span><span class="se">\</span>
+<span class="s2">        --pattern-signal "gamma_*_run10.dl1.h5" </span><span class="se">\</span>
+<span class="s2">        --output /path/to/your/direction/ </span><span class="se">\</span>
+<span class="s2">        --reco cameradirection </span><span class="se">\</span>
+
+<span class="s2">    To train a Keras-based CTLearn model for the regression of the primary particle</span>
+<span class="s2">    arrival direction based on the offsets in sky coordinates:</span>
+<span class="s2">    &gt; ctlearn-train-keras-model </span><span class="se">\</span>
+<span class="s2">        --signal /path/to/your/gammas_dl1_dir/ </span><span class="se">\</span>
+<span class="s2">        --pattern-signal "gamma_*_run1.dl1.h5" </span><span class="se">\</span>
+<span class="s2">        --pattern-signal "gamma_*_run10.dl1.h5" </span><span class="se">\</span>
+<span class="s2">        --output /path/to/your/direction/ </span><span class="se">\</span>
+<span class="s2">        --reco skydirection </span><span class="se">\</span>
+<span class="s2">    """</span>
+
+<div class="viewcode-block" id="TrainCTLearnKerasModel.setup_framework">
+<a class="viewcode-back" href="../../../../api-reference/ctlearn.html#ctlearn.tools.keras.train_model.TrainCTLearnKerasModel.setup_framework">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setup_framework</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Initialize the backend-specific parameters (e.g., PyTorch or Keras devices and distributed strategies).</span>
+
+<span class="sd">        This method ensures that the hardware accelerators (like GPUs) are properly allocated</span>
+<span class="sd">        and configures things like precision mixed-training and multi-processing workers.</span>
+<span class="sd">        """</span>
+        <span class="c1"># Create a MirroredStrategy.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">strategy</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">distribute</span><span class="o">.</span><span class="n">MirroredStrategy</span><span class="p">()</span>
+        <span class="n">atexit</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">strategy</span><span class="o">.</span><span class="n">_extended</span><span class="o">.</span><span class="n">_collective_ops</span><span class="o">.</span><span class="n">_lock</span><span class="o">.</span><span class="n">locked</span><span class="p">)</span>  <span class="c1"># type: ignore</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Number of devices: </span><span class="si">%s</span><span class="s2">"</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">strategy</span><span class="o">.</span><span class="n">num_replicas_in_sync</span><span class="p">)</span>
+
+        <span class="c1"># Init the DLDataLoader for the</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">training_loader</span> <span class="o">=</span> <span class="n">KerasSequence</span><span class="p">(</span>
+            <span class="n">DLDataReader</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dl1dh_reader</span><span class="p">,</span>
+            <span class="n">indices</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">training_indices</span><span class="p">,</span>
+            <span class="n">tasks</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">reco_tasks</span><span class="p">,</span>
+            <span class="n">batch_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">strategy</span><span class="o">.</span><span class="n">num_replicas_in_sync</span><span class="p">,</span>
+            <span class="n">random_seed</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">random_seed</span><span class="p">,</span>
+            <span class="n">sort_by_intensity</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sort_by_intensity</span><span class="p">,</span>
+            <span class="n">stack_telescope_images</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">stack_telescope_images</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">validation_loader</span> <span class="o">=</span> <span class="n">KerasSequence</span><span class="p">(</span>
+            <span class="n">DLDataReader</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dl1dh_reader</span><span class="p">,</span>
+            <span class="n">indices</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">validation_indices</span><span class="p">,</span>
+            <span class="n">tasks</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">reco_tasks</span><span class="p">,</span>
+            <span class="n">batch_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">strategy</span><span class="o">.</span><span class="n">num_replicas_in_sync</span><span class="p">,</span>
+            <span class="n">random_seed</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">random_seed</span><span class="p">,</span>
+            <span class="n">sort_by_intensity</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sort_by_intensity</span><span class="p">,</span>
+            <span class="n">stack_telescope_images</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">stack_telescope_images</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Set up the callbacks</span>
+        <span class="n">lamba_callback</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">LambdaCallback</span><span class="p">(</span>
+            <span class="n">on_epoch_begin</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_on_epoch_begin</span><span class="p">,</span>
+            <span class="n">on_epoch_end</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_on_epoch_end</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="c1"># Model checkpoint callback</span>
+        <span class="n">monitor</span> <span class="o">=</span> <span class="s2">"val_loss"</span>
+        <span class="n">monitor_mode</span> <span class="o">=</span> <span class="s2">"min"</span>
+        <span class="n">model_path</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">output_dir</span><span class="si">}</span><span class="s2">/ctlearn_model.keras"</span>
+        <span class="n">model_checkpoint_callback</span> <span class="o">=</span> <span class="n">LoggingModelCheckpoint</span><span class="p">(</span>
+            <span class="n">logger</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="p">,</span>
+            <span class="n">filepath</span><span class="o">=</span><span class="n">model_path</span><span class="p">,</span>
+            <span class="n">monitor</span><span class="o">=</span><span class="n">monitor</span><span class="p">,</span>
+            <span class="n">verbose</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="n">mode</span><span class="o">=</span><span class="n">monitor_mode</span><span class="p">,</span>
+            <span class="n">save_best_only</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">save_best_validation_only</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="c1"># Tensorboard callback</span>
+        <span class="n">tensorboard_callback</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">TensorBoard</span><span class="p">(</span>
+            <span class="n">log_dir</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">output_dir</span><span class="p">,</span> <span class="n">histogram_freq</span><span class="o">=</span><span class="mi">1</span>
+        <span class="p">)</span>
+        <span class="c1"># CSV logger callback</span>
+        <span class="n">csv_logger_callback</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">CSVLogger</span><span class="p">(</span>
+            <span class="n">filename</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">output_dir</span><span class="si">}</span><span class="s2">/training_log.csv"</span><span class="p">,</span> <span class="n">append</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">callbacks</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">lamba_callback</span><span class="p">,</span>
+            <span class="n">model_checkpoint_callback</span><span class="p">,</span>
+            <span class="n">tensorboard_callback</span><span class="p">,</span>
+            <span class="n">csv_logger_callback</span><span class="p">,</span>
+        <span class="p">]</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">early_stopping</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># EarlyStopping callback</span>
+            <span class="n">early_stopping_callback</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">EarlyStopping</span><span class="p">(</span>
+                <span class="n">monitor</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">early_stopping</span><span class="p">[</span><span class="s2">"monitor"</span><span class="p">],</span>
+                <span class="n">patience</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">early_stopping</span><span class="p">[</span><span class="s2">"patience"</span><span class="p">],</span>
+                <span class="n">verbose</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">early_stopping</span><span class="p">[</span><span class="s2">"verbose"</span><span class="p">],</span>
+                <span class="n">restore_best_weights</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">early_stopping</span><span class="p">[</span><span class="s2">"restore_best_weights"</span><span class="p">],</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">early_stopping_callback</span><span class="p">)</span>
+
+        <span class="c1"># Learning rate reducing callback</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">lr_reducing</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">lr_reducing_callback</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">ReduceLROnPlateau</span><span class="p">(</span>
+                <span class="n">monitor</span><span class="o">=</span><span class="n">monitor</span><span class="p">,</span>
+                <span class="n">factor</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">lr_reducing</span><span class="p">[</span><span class="s2">"factor"</span><span class="p">],</span>
+                <span class="n">patience</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">lr_reducing</span><span class="p">[</span><span class="s2">"patience"</span><span class="p">],</span>
+                <span class="n">mode</span><span class="o">=</span><span class="n">monitor_mode</span><span class="p">,</span>
+                <span class="n">verbose</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                <span class="n">min_delta</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">lr_reducing</span><span class="p">[</span><span class="s2">"min_delta"</span><span class="p">],</span>
+                <span class="n">min_lr</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">lr_reducing</span><span class="p">[</span><span class="s2">"min_lr"</span><span class="p">],</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">lr_reducing_callback</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_on_epoch_begin</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">epoch</span><span class="p">,</span> <span class="n">logs</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_epoch_start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_on_epoch_end</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">epoch</span><span class="p">,</span> <span class="n">logs</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">epoch_duration</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_epoch_start_time</span>
+        <span class="n">metrics_summary</span> <span class="o">=</span> <span class="s2">" - "</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="nb">float</span><span class="p">(</span><span class="n">value</span><span class="p">)</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">"</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="p">(</span><span class="n">logs</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="s2">"Epoch </span><span class="si">%d</span><span class="s2">/</span><span class="si">%d</span><span class="s2"> - </span><span class="si">%s</span><span class="s2"> - time: </span><span class="si">%.2f</span><span class="s2">s"</span><span class="p">,</span>
+            <span class="n">epoch</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">n_epochs</span><span class="p">,</span>
+            <span class="n">metrics_summary</span><span class="p">,</span>
+            <span class="n">epoch_duration</span><span class="p">,</span>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="TrainCTLearnKerasModel.start">
+<a class="viewcode-back" href="../../../../api-reference/ctlearn.html#ctlearn.tools.keras.train_model.TrainCTLearnKerasModel.start">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Execute the core logic of the tool.</span>
+
+<span class="sd">        Depending on the tool, this method either orchestrates the training and validation</span>
+<span class="sd">        loops across epochs, or it iterates through the input dataset to generate</span>
+<span class="sd">        and save model predictions to the output file.</span>
+<span class="sd">        """</span>
+
+        <span class="c1"># Open a strategy scope.</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">strategy</span><span class="o">.</span><span class="n">scope</span><span class="p">():</span>
+            <span class="c1"># Construct the model</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Setting up the Keras model."</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">CTLearnModel</span><span class="o">.</span><span class="n">from_name</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"Keras</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">model_type</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="n">input_shape</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">training_loader</span><span class="o">.</span><span class="n">input_shape</span><span class="p">,</span>
+                <span class="n">tasks</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">reco_tasks</span><span class="p">,</span>
+                <span class="n">parent</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">model</span>
+
+            <span class="c1"># Validate that the image mapper(s) and the model's conv backend</span>
+            <span class="c1"># agree. This inspects the built model's layers rather than reading</span>
+            <span class="c1"># the conv_backend trait, because LoadedModel wraps an already</span>
+            <span class="c1"># trained model whose trait keeps its default value regardless of</span>
+            <span class="c1"># what that model was actually built with.</span>
+            <span class="n">validate_conv_backend</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">dl1dh_reader</span><span class="o">.</span><span class="n">image_mappers</span><span class="p">,</span> <span class="n">model_conv_backend</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
+            <span class="p">)</span>
+
+            <span class="c1"># Select optimizer with appropriate arguments</span>
+            <span class="n">optimizers</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">"Adadelta"</span><span class="p">:</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">keras</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Adadelta</span><span class="p">(</span>
+                    <span class="n">learning_rate</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">learning_rate</span>
+                <span class="p">),</span>
+                <span class="s2">"Adam"</span><span class="p">:</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">keras</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span>
+                    <span class="n">learning_rate</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">learning_rate</span><span class="p">,</span> <span class="n">epsilon</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">adam_epsilon</span>
+                <span class="p">),</span>
+                <span class="s2">"RMSProp"</span><span class="p">:</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">keras</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">RMSprop</span><span class="p">(</span>
+                    <span class="n">learning_rate</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">learning_rate</span>
+                <span class="p">),</span>
+                <span class="s2">"SGD"</span><span class="p">:</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">keras</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">SGD</span><span class="p">(</span><span class="n">learning_rate</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">learning_rate</span><span class="p">),</span>
+            <span class="p">}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">opt</span> <span class="o">=</span> <span class="n">optimizers</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="p">[</span><span class="s2">"name"</span><span class="p">]]()</span>
+
+            <span class="c1"># Get the losses and metrics for the model</span>
+            <span class="n">losses</span><span class="p">,</span> <span class="n">metrics</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_losses_and_mertics</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">reco_tasks</span><span class="p">)</span>
+            <span class="c1"># Compile the model</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Compiling CTLearn model."</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="n">optimizer</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">opt</span><span class="p">,</span> <span class="n">loss</span><span class="o">=</span><span class="n">losses</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="n">metrics</span><span class="p">)</span>
+
+        <span class="c1"># Train and evaluate the model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Training and evaluating..."</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">training_loader</span><span class="p">,</span>
+            <span class="n">validation_data</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">validation_loader</span><span class="p">,</span>
+            <span class="n">epochs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">n_epochs</span><span class="p">,</span>
+            <span class="n">class_weight</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dl1dh_reader</span><span class="o">.</span><span class="n">class_weight</span><span class="p">,</span>
+            <span class="n">callbacks</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">callbacks</span><span class="p">,</span>
+            <span class="n">verbose</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Training and evaluating finished successfully!"</span><span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_get_losses_and_mertics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tasks</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Build the fully connected head for the CTLearn model.</span>
+
+<span class="sd">        Function to build the fully connected head of the CTLearn model using the specified parameters.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        inputs : keras.layers.Layer</span>
+<span class="sd">            Keras layer of the model.</span>
+<span class="sd">        layers : dict</span>
+<span class="sd">            Dictionary containing the number of neurons (as value) in the fully connected head for each task (as key).</span>
+<span class="sd">        tasks : list</span>
+<span class="sd">            List of tasks to build the head for.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        logits : dict</span>
+<span class="sd">            Dictionary containing the logits for each task.</span>
+<span class="sd">        """</span>
+        <span class="n">losses</span><span class="p">,</span> <span class="n">metrics</span> <span class="o">=</span> <span class="p">{},</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="s2">"type"</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">reco_tasks</span><span class="p">:</span>
+            <span class="n">losses</span><span class="p">[</span><span class="s2">"type"</span><span class="p">]</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">losses</span><span class="o">.</span><span class="n">CategoricalCrossentropy</span><span class="p">(</span>
+                <span class="n">reduction</span><span class="o">=</span><span class="s2">"sum_over_batch_size"</span>
+            <span class="p">)</span>
+            <span class="n">metrics</span><span class="p">[</span><span class="s2">"type"</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">CategoricalAccuracy</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">"accuracy"</span><span class="p">),</span>
+                <span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">AUC</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">"auc"</span><span class="p">),</span>
+            <span class="p">]</span>
+            <span class="c1"># Temp fix till keras support class weights for multiple outputs or I wrote custom loss</span>
+            <span class="c1"># https://github.com/keras-team/keras/issues/11735</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">tasks</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">losses</span> <span class="o">=</span> <span class="n">losses</span><span class="p">[</span><span class="s2">"type"</span><span class="p">]</span>
+                <span class="n">metrics</span> <span class="o">=</span> <span class="n">metrics</span><span class="p">[</span><span class="s2">"type"</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s2">"energy"</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">reco_tasks</span><span class="p">:</span>
+            <span class="n">losses</span><span class="p">[</span><span class="s2">"energy"</span><span class="p">]</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">losses</span><span class="o">.</span><span class="n">MeanAbsoluteError</span><span class="p">(</span>
+                <span class="n">reduction</span><span class="o">=</span><span class="s2">"sum_over_batch_size"</span>
+            <span class="p">)</span>
+            <span class="n">metrics</span><span class="p">[</span><span class="s2">"energy"</span><span class="p">]</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">MeanAbsoluteError</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">"mae_energy"</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s2">"cameradirection"</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">reco_tasks</span><span class="p">:</span>
+            <span class="n">losses</span><span class="p">[</span><span class="s2">"cameradirection"</span><span class="p">]</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">losses</span><span class="o">.</span><span class="n">MeanAbsoluteError</span><span class="p">(</span>
+                <span class="n">reduction</span><span class="o">=</span><span class="s2">"sum_over_batch_size"</span>
+            <span class="p">)</span>
+            <span class="n">metrics</span><span class="p">[</span><span class="s2">"cameradirection"</span><span class="p">]</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">MeanAbsoluteError</span><span class="p">(</span>
+                <span class="n">name</span><span class="o">=</span><span class="s2">"mae_cameradirection"</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="s2">"skydirection"</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">reco_tasks</span><span class="p">:</span>
+            <span class="n">losses</span><span class="p">[</span><span class="s2">"skydirection"</span><span class="p">]</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">losses</span><span class="o">.</span><span class="n">MeanAbsoluteError</span><span class="p">(</span>
+                <span class="n">reduction</span><span class="o">=</span><span class="s2">"sum_over_batch_size"</span>
+            <span class="p">)</span>
+            <span class="n">metrics</span><span class="p">[</span><span class="s2">"skydirection"</span><span class="p">]</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">MeanAbsoluteError</span><span class="p">(</span>
+                <span class="n">name</span><span class="o">=</span><span class="s2">"mae_skydirection"</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">losses</span><span class="p">,</span> <span class="n">metrics</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Main entry point for the command-line tool.</span>
+
+<span class="sd">    This function instantiates the Tool class and invokes its `run()` method,</span>
+<span class="sd">    which sequentially executes the `setup()`, `start()`, and `finish()` methods.</span>
+<span class="sd">    """</span>
+    <span class="c1"># Run the tool</span>
+    <span class="n">tool</span> <span class="o">=</span> <span class="n">TrainCTLearnKerasModel</span><span class="p">()</span>
+    <span class="n">tool</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright CTLearn devs.  Last updated 16 Nov 2026 16:12.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.1.1.
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.24.0.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
