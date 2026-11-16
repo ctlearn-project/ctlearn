@@ -9,6 +9,17 @@ Developer Guide
 Getting Started for Developers
 ------------------------------
 
+.. warning::
+
+   The following guide is used only if you want to *develop* the
+   CTLearn package, if you just want to write code that uses it
+   as a dependency, you can install CTLearn from PyPI.
+   See :ref:`user-guide`.
+
+
+Installation for Developers
+===========================
+
 As a developer, clone the repository and install CTLearn in development mode.
 We support two methods: *pip/venv* and `Pixi <https://pixi.sh/>`__.
 
@@ -49,18 +60,13 @@ We support two methods: *pip/venv* and `Pixi <https://pixi.sh/>`__.
             $ python -m pip install --upgrade pip
             $ python -m pip install -e ".[dev]"
 
-Contributing
-------------
-
-.. toctree::
-   :maxdepth: 1
-
-   contributing
-
-
+.. include:: ../../../CONTRIBUTING.rst
 
 Core Dependencies
------------------
+=================
+
+The following list shows CTLearn's most important dependencies and their minimum
+versions where specified. We recommend installing the latest releases.
 
 * python>=3.12
 * torch>=2.4.0
