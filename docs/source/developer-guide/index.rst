@@ -68,14 +68,14 @@ Core Dependencies
 The following list shows CTLearn's most important dependencies and their minimum
 versions where specified. We recommend installing the latest releases.
 
-* python>=3.12
-* torch>=2.4.0
-* tensorflow>=2.18
-* keras>=3.0
-* astropy
-* ctapipe>=0.29.0
-* dl1_data_handler>=0.14.13
-* numba
-* numpy
-* pandas
-* pyyaml
+* ``python``>=3.12
+* ``torch``>=2.4.0
+* ``tensorflow``>=2.18
+* ``keras``>=3.0
+* ``astropy``
+* ``ctapipe``>=0.29.0
+* ``dl1_data_handler``>=0.14.13
+* ``numba``
+* ``numpy``
+* ``pandas``
+* ``pyyaml``

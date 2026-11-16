@@ -7,7 +7,7 @@ from the second tutorial ``train_ctlearn_model.py``. The predictions
 are stored in DL2 files following the CTAO reference data model.
 The tutorial also shows how to visualize the classifier performance,
 energy resolution, and angular resolution of the predicted events.
-The tutorial is intenionally kept simple and uses only a small fraction
+The tutorial is intentionally kept simple and uses only a small fraction
 of the available statistics to keep the prediction time manageable.
 The resulting performance metrics are not representative of a production-level
 analysis nor should they be compared directly with published results. The main
