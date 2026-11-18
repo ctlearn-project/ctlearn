@@ -1,0 +1,7 @@
+PyTorchResNet
+=============
+
+.. currentmodule:: ctlearn.core
+
+.. autoclass:: PyTorchResNet
+   :show-inheritance:

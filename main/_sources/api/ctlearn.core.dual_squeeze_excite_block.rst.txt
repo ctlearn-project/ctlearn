@@ -1,0 +1,6 @@
+dual_squeeze_excite_block
+=========================
+
+.. currentmodule:: ctlearn.core
+
+.. autofunction:: dual_squeeze_excite_block

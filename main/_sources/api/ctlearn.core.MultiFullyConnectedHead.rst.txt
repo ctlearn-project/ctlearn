@@ -1,0 +1,17 @@
+MultiFullyConnectedHead
+=======================
+
+.. currentmodule:: ctlearn.core
+
+.. autoclass:: MultiFullyConnectedHead
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~MultiFullyConnectedHead.forward
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: forward

@@ -7,7 +7,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>API Docs &#8212; ctlearn 0.11.1.dev74+g5237fdbf0 documentation</title>
+    <title>API Docs &#8212; ctlearn 0.11.1.dev76+g983cf3354 documentation</title>
   
   
   
@@ -30,6 +30,7 @@
 <link href="../_static/styles/pydata-sphinx-theme.css?digest=75c7c72ae941e8b558d8" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=4ae1632d" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=c83e6b79" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
@@ -44,7 +45,7 @@
   <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8" />
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8" />
 
-    <script src="../_static/documentation_options.js?v=5d984b10"></script>
+    <script src="../_static/documentation_options.js?v=b45de6ec"></script>
     <script src="../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -61,12 +62,12 @@
     <link rel="icon" href="../_static/ctlearn_favicon.ico"/>
     <link rel="index" title="Index" href="../genindex.html" />
     <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="ctlearn package" href="ctlearn.html" />
+    <link rel="next" title="Core Structures (~ctlearn.core)" href="core/index.html" />
     <link rel="prev" title="Developer Guide" href="../developer-guide/index.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="color-scheme" content="light dark"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.11.1.dev74+g5237fdbf0" />
+  <meta name="docsearch:version" content="0.11.1.dev76+g983cf3354" />
   
     
     <script src="../_static/searchtools.js"></script>
@@ -143,8 +144,8 @@
     
     
     
-    <img src="../_static/ctlearn_logo_transparent.png" class="logo__image only-dark" alt="ctlearn 0.11.1.dev74+g5237fdbf0 documentation - Home"/>
-    <img src="../_static/ctlearn_logo_transparent.png" class="logo__image only-light pst-js-only" alt="ctlearn 0.11.1.dev74+g5237fdbf0 documentation - Home"/>
+    <img src="../_static/ctlearn_logo_transparent.png" class="logo__image only-dark" alt="ctlearn 0.11.1.dev76+g983cf3354 documentation - Home"/>
+    <img src="../_static/ctlearn_logo_transparent.png" class="logo__image only-light pst-js-only" alt="ctlearn 0.11.1.dev76+g983cf3354 documentation - Home"/>
   
   
 </a></div>
@@ -319,7 +320,7 @@
       
       
       <dialog id="pst-primary-sidebar-modal" tabindex="-1"></dialog>
-      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
         
 
   
@@ -438,26 +439,6 @@
     
   </div>
   
-    <div class="sidebar-primary-items__start sidebar-primary__section">
-        <div class="sidebar-primary-item pst-sidebar-collapse"><button type="button" id="pst-collapse-sidebar-button" aria-expanded="true" aria-controls="pst-primary-sidebar">
-  <svg class="pst-icon" role="img" aria-hidden="true" focusable="false" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg">
-    <path fill="currentColor" d="M3 15.5C2.36232 15.5 1.74874 15.2564 1.28478 14.8189C0.820828 14.3815 0.541576 13.7832 0.504167 13.1467L0.5 13L0.5 3C0.499965 2.36232 0.743605 1.74874 1.18107 1.28478C1.61854 0.820828 2.21676 0.541576 2.85333 0.504167L3 0.5L13 0.5C13.6377 0.499965 14.2513 0.743605 14.7152 1.18107C15.1792 1.61854 15.4584 2.21676 15.4958 2.85333L15.5 3L15.5 13C15.5 13.6377 15.2564 14.2513 14.8189 14.7152C14.3815 15.1792 13.7832 15.4584 13.1467 15.4958L13 15.5L3 15.5ZM3 13.8333L10.5 13.8333L10.5 2.16667L3 2.16667C2.79589 2.16669 2.59889 2.24163 2.44636 2.37726C2.29383 2.5129 2.19638 2.69979 2.1725 2.9025L2.16667 3L2.16667 13C2.16669 13.2041 2.24163 13.4011 2.37726 13.5536C2.5129 13.7062 2.69979 13.8036 2.9025 13.8275L3 13.8333ZM6.65583 10.325L6.5775 10.2558L4.91083 8.58917C4.76735 8.44567 4.68116 8.25476 4.66843 8.05223C4.65569 7.84971 4.71729 7.6495 4.84167 7.48917L4.91083 7.41083L6.5775 5.74417C6.72747 5.59471 6.9287 5.50794 7.14032 5.50148C7.35194 5.49502 7.55809 5.56935 7.7169 5.70937C7.8757 5.8494 7.97525 6.04463 7.99533 6.25539C8.01541 6.46616 7.95451 6.67667 7.825 6.84417L7.75583 6.9225L6.67917 8L7.75583 9.0775C7.89931 9.22099 7.98551 9.41191 7.99824 9.61443C8.01097 9.81695 7.94938 10.0172 7.825 10.1775L7.75583 10.2558C7.61234 10.3993 7.42142 10.4855 7.2189 10.4982C7.01638 10.511 6.81617 10.4494 6.65583 10.325Z"/>
-  </svg>
-  <span class="pst-collapse-sidebar-label">Collapse Sidebar</span>
-  <span class="pst-expand-sidebar-label">Expand Sidebar</span>
-</button></div>
-        <div class="sidebar-primary-item">
-
-<nav class="bd-docs-nav bd-links"
-     aria-label="Section Navigation">
-  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="ctlearn.html">ctlearn package</a></li>
-</ul>
-</div>
-</nav></div>
-    </div>
-  
   
   <div class="sidebar-primary-items__end sidebar-primary__section">
       <div class="sidebar-primary-item">
@@ -511,243 +492,11 @@
                 <article class="bd-article">
                   
   <section id="api-docs">
-<h1>API Docs<a class="headerlink" href="#api-docs" title="Link to this heading">#</a></h1>
+<span id="id1"></span><h1>API Docs<a class="headerlink" href="#api-docs" title="Link to this heading">#</a></h1>
 <div class="toctree-wrapper compound">
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="ctlearn.html">ctlearn package</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="ctlearn.html#tools">Tools</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ctlearn.html#module-ctlearn.tools.train_model">ctlearn.tools.train_model module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnModel</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.aliases"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnModel.aliases</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.batch_size"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnModel.batch_size</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.classes"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnModel.classes</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.dl1dh_reader_type"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnModel.dl1dh_reader_type</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.early_stopping"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnModel.early_stopping</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.file_pattern_background"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnModel.file_pattern_background</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.file_pattern_signal"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnModel.file_pattern_signal</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.finish"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnModel.finish()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.input_dir_background"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnModel.input_dir_background</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.input_dir_signal"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnModel.input_dir_signal</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.lr_reducing"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnModel.lr_reducing</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.model_type"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnModel.model_type</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.n_epochs"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnModel.n_epochs</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.optimizer"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnModel.optimizer</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.output_dir"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnModel.output_dir</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.random_seed"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnModel.random_seed</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.reco_tasks"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnModel.reco_tasks</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.save_best_validation_only"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnModel.save_best_validation_only</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.setup"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnModel.setup()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.setup_framework"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnModel.setup_framework()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.sort_by_intensity"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnModel.sort_by_intensity</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.stack_telescope_images"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnModel.stack_telescope_images</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.validation_split"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnModel.validation_split</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.train_model.TrainCTLearnModel.write_provenance"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnModel.write_provenance()</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="ctlearn.html#module-ctlearn.tools.keras.train_model">ctlearn.tools.keras.train_model module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.tools.keras.train_model.LoggingModelCheckpoint"><code class="docutils literal notranslate"><span class="pre">LoggingModelCheckpoint</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.keras.train_model.LoggingModelCheckpoint.on_epoch_end"><code class="docutils literal notranslate"><span class="pre">LoggingModelCheckpoint.on_epoch_end()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.tools.keras.train_model.TrainCTLearnKerasModel"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnKerasModel</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.keras.train_model.TrainCTLearnKerasModel.description"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnKerasModel.description</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.keras.train_model.TrainCTLearnKerasModel.examples"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnKerasModel.examples</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.keras.train_model.TrainCTLearnKerasModel.name"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnKerasModel.name</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.keras.train_model.TrainCTLearnKerasModel.setup_framework"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnKerasModel.setup_framework()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.keras.train_model.TrainCTLearnKerasModel.start"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnKerasModel.start()</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="ctlearn.html#module-ctlearn.tools.pytorch.train_model">ctlearn.tools.pytorch.train_model module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.tools.pytorch.train_model.TrainCTLearnPyTorchModel"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnPyTorchModel</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.pytorch.train_model.TrainCTLearnPyTorchModel.description"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnPyTorchModel.description</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.pytorch.train_model.TrainCTLearnPyTorchModel.examples"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnPyTorchModel.examples</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.pytorch.train_model.TrainCTLearnPyTorchModel.name"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnPyTorchModel.name</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.pytorch.train_model.TrainCTLearnPyTorchModel.num_workers"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnPyTorchModel.num_workers</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.pytorch.train_model.TrainCTLearnPyTorchModel.persistent_workers"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnPyTorchModel.persistent_workers</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.pytorch.train_model.TrainCTLearnPyTorchModel.setup_framework"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnPyTorchModel.setup_framework()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.pytorch.train_model.TrainCTLearnPyTorchModel.start"><code class="docutils literal notranslate"><span class="pre">TrainCTLearnPyTorchModel.start()</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="ctlearn.html#module-ctlearn.tools.predict_model">ctlearn.tools.predict_model module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel"><code class="docutils literal notranslate"><span class="pre">PredictCTLearnModel</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.aliases"><code class="docutils literal notranslate"><span class="pre">PredictCTLearnModel.aliases</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.batch_size"><code class="docutils literal notranslate"><span class="pre">PredictCTLearnModel.batch_size</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.classes"><code class="docutils literal notranslate"><span class="pre">PredictCTLearnModel.classes</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.deduplicate_first_valid"><code class="docutils literal notranslate"><span class="pre">PredictCTLearnModel.deduplicate_first_valid()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.dl1_features"><code class="docutils literal notranslate"><span class="pre">PredictCTLearnModel.dl1_features</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.dl1dh_reader_type"><code class="docutils literal notranslate"><span class="pre">PredictCTLearnModel.dl1dh_reader_type</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.dl2_subarray"><code class="docutils literal notranslate"><span class="pre">PredictCTLearnModel.dl2_subarray</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.dl2_telescope"><code class="docutils literal notranslate"><span class="pre">PredictCTLearnModel.dl2_telescope</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.finish"><code class="docutils literal notranslate"><span class="pre">PredictCTLearnModel.finish()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.flags"><code class="docutils literal notranslate"><span class="pre">PredictCTLearnModel.flags</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.input_url"><code class="docutils literal notranslate"><span class="pre">PredictCTLearnModel.input_url</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.load_cameradirection_model_from"><code class="docutils literal notranslate"><span class="pre">PredictCTLearnModel.load_cameradirection_model_from</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.load_energy_model_from"><code class="docutils literal notranslate"><span class="pre">PredictCTLearnModel.load_energy_model_from</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.load_skydirection_model_from"><code class="docutils literal notranslate"><span class="pre">PredictCTLearnModel.load_skydirection_model_from</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.load_type_model_from"><code class="docutils literal notranslate"><span class="pre">PredictCTLearnModel.load_type_model_from</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.output_path"><code class="docutils literal notranslate"><span class="pre">PredictCTLearnModel.output_path</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.prefixes"><code class="docutils literal notranslate"><span class="pre">PredictCTLearnModel.prefixes</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.setup"><code class="docutils literal notranslate"><span class="pre">PredictCTLearnModel.setup()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.sort_by_intensity"><code class="docutils literal notranslate"><span class="pre">PredictCTLearnModel.sort_by_intensity</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_model.PredictCTLearnModel.stack_telescope_images"><code class="docutils literal notranslate"><span class="pre">PredictCTLearnModel.stack_telescope_images</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="ctlearn.html#module-ctlearn.tools.predict_LST1">ctlearn.tools.predict_LST1 module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool"><code class="docutils literal notranslate"><span class="pre">LST1PredictionTool</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.aliases"><code class="docutils literal notranslate"><span class="pre">LST1PredictionTool.aliases</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.batch_size"><code class="docutils literal notranslate"><span class="pre">LST1PredictionTool.batch_size</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.channels"><code class="docutils literal notranslate"><span class="pre">LST1PredictionTool.channels</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.classes"><code class="docutils literal notranslate"><span class="pre">LST1PredictionTool.classes</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.description"><code class="docutils literal notranslate"><span class="pre">LST1PredictionTool.description</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.dl1_features"><code class="docutils literal notranslate"><span class="pre">LST1PredictionTool.dl1_features</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.dl2_subarray"><code class="docutils literal notranslate"><span class="pre">LST1PredictionTool.dl2_subarray</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.dl2_telescope"><code class="docutils literal notranslate"><span class="pre">LST1PredictionTool.dl2_telescope</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.examples"><code class="docutils literal notranslate"><span class="pre">LST1PredictionTool.examples</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.finish"><code class="docutils literal notranslate"><span class="pre">LST1PredictionTool.finish()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.flags"><code class="docutils literal notranslate"><span class="pre">LST1PredictionTool.flags</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.focal_length_choice"><code class="docutils literal notranslate"><span class="pre">LST1PredictionTool.focal_length_choice</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.image_mapper_type"><code class="docutils literal notranslate"><span class="pre">LST1PredictionTool.image_mapper_type</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.input_url"><code class="docutils literal notranslate"><span class="pre">LST1PredictionTool.input_url</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.load_cameradirection_model_from"><code class="docutils literal notranslate"><span class="pre">LST1PredictionTool.load_cameradirection_model_from</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.load_energy_model_from"><code class="docutils literal notranslate"><span class="pre">LST1PredictionTool.load_energy_model_from</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.load_type_model_from"><code class="docutils literal notranslate"><span class="pre">LST1PredictionTool.load_type_model_from</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.name"><code class="docutils literal notranslate"><span class="pre">LST1PredictionTool.name</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.output_path"><code class="docutils literal notranslate"><span class="pre">LST1PredictionTool.output_path</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.override_obs_id"><code class="docutils literal notranslate"><span class="pre">LST1PredictionTool.override_obs_id</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.overwrite"><code class="docutils literal notranslate"><span class="pre">LST1PredictionTool.overwrite</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.prefixes"><code class="docutils literal notranslate"><span class="pre">LST1PredictionTool.prefixes</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.setup"><code class="docutils literal notranslate"><span class="pre">LST1PredictionTool.setup()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.predict_LST1.LST1PredictionTool.start"><code class="docutils literal notranslate"><span class="pre">LST1PredictionTool.start()</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="ctlearn.html#module-ctlearn.tools.utils">ctlearn.tools.utils module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.tools.utils.FrameworkType"><code class="docutils literal notranslate"><span class="pre">FrameworkType</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.utils.FrameworkType.KERAS"><code class="docutils literal notranslate"><span class="pre">FrameworkType.KERAS</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.tools.utils.FrameworkType.PYTORCH"><code class="docutils literal notranslate"><span class="pre">FrameworkType.PYTORCH</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.tools.utils.get_lst1_subarray_description"><code class="docutils literal notranslate"><span class="pre">get_lst1_subarray_description()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.tools.utils.model_conv_backend"><code class="docutils literal notranslate"><span class="pre">model_conv_backend()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.tools.utils.setup_framework"><code class="docutils literal notranslate"><span class="pre">setup_framework()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.tools.utils.validate_conv_backend"><code class="docutils literal notranslate"><span class="pre">validate_conv_backend()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.tools.utils.validate_trait_dict"><code class="docutils literal notranslate"><span class="pre">validate_trait_dict()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="ctlearn.html#core">Core</a></li>
-<li class="toctree-l2"><a class="reference internal" href="ctlearn.html#module-ctlearn.core.model">ctlearn.core.model module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.core.model.CTLearnModel"><code class="docutils literal notranslate"><span class="pre">CTLearnModel</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.core.model.CTLearnModel.attention_mechanism"><code class="docutils literal notranslate"><span class="pre">CTLearnModel.attention_mechanism</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.core.model.CTLearnModel.attention_reduction_ratio"><code class="docutils literal notranslate"><span class="pre">CTLearnModel.attention_reduction_ratio</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.core.model.CTLearnModel.conv_backend"><code class="docutils literal notranslate"><span class="pre">CTLearnModel.conv_backend</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.core.model.CTLearnModel.head_activation_function"><code class="docutils literal notranslate"><span class="pre">CTLearnModel.head_activation_function</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.core.model.CTLearnModel.head_layers"><code class="docutils literal notranslate"><span class="pre">CTLearnModel.head_layers</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.core.model.CTLearnModel.init_padding"><code class="docutils literal notranslate"><span class="pre">CTLearnModel.init_padding</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.core.model.ConvBackend"><code class="docutils literal notranslate"><span class="pre">ConvBackend</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.core.model.LoadedModel"><code class="docutils literal notranslate"><span class="pre">LoadedModel</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.core.model.LoadedModel.load_model_from"><code class="docutils literal notranslate"><span class="pre">LoadedModel.load_model_from</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.core.model.LoadedModel.overwrite_head"><code class="docutils literal notranslate"><span class="pre">LoadedModel.overwrite_head</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.core.model.LoadedModel.trainable_backbone"><code class="docutils literal notranslate"><span class="pre">LoadedModel.trainable_backbone</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.core.model.ResNet"><code class="docutils literal notranslate"><span class="pre">ResNet</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.core.model.ResNet.architecture"><code class="docutils literal notranslate"><span class="pre">ResNet.architecture</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.core.model.ResNet.init_layer"><code class="docutils literal notranslate"><span class="pre">ResNet.init_layer</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.core.model.ResNet.init_max_pool"><code class="docutils literal notranslate"><span class="pre">ResNet.init_max_pool</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.core.model.ResNet.name"><code class="docutils literal notranslate"><span class="pre">ResNet.name</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.core.model.ResNet.residual_block_type"><code class="docutils literal notranslate"><span class="pre">ResNet.residual_block_type</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.core.model.SingleCNN"><code class="docutils literal notranslate"><span class="pre">SingleCNN</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.core.model.SingleCNN.architecture"><code class="docutils literal notranslate"><span class="pre">SingleCNN.architecture</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.core.model.SingleCNN.batchnorm"><code class="docutils literal notranslate"><span class="pre">SingleCNN.batchnorm</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.core.model.SingleCNN.bottleneck_filters"><code class="docutils literal notranslate"><span class="pre">SingleCNN.bottleneck_filters</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.core.model.SingleCNN.name"><code class="docutils literal notranslate"><span class="pre">SingleCNN.name</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.core.model.SingleCNN.pooling_parameters"><code class="docutils literal notranslate"><span class="pre">SingleCNN.pooling_parameters</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.core.model.SingleCNN.pooling_type"><code class="docutils literal notranslate"><span class="pre">SingleCNN.pooling_type</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="ctlearn.html#module-ctlearn.core.keras.model">ctlearn.core.keras.model module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.core.keras.model.KerasConvBackend"><code class="docutils literal notranslate"><span class="pre">KerasConvBackend</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.core.keras.model.KerasLoadedModel"><code class="docutils literal notranslate"><span class="pre">KerasLoadedModel</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.core.keras.model.KerasResNet"><code class="docutils literal notranslate"><span class="pre">KerasResNet</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.core.keras.model.KerasSingleCNN"><code class="docutils literal notranslate"><span class="pre">KerasSingleCNN</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.core.keras.model.build_fully_connect_keras_head"><code class="docutils literal notranslate"><span class="pre">build_fully_connect_keras_head()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="ctlearn.html#module-ctlearn.core.keras.attention">ctlearn.core.keras.attention module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.core.keras.attention.channel_squeeze_excite_block"><code class="docutils literal notranslate"><span class="pre">channel_squeeze_excite_block()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.core.keras.attention.dual_squeeze_excite_block"><code class="docutils literal notranslate"><span class="pre">dual_squeeze_excite_block()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.core.keras.attention.spatial_squeeze_excite_block"><code class="docutils literal notranslate"><span class="pre">spatial_squeeze_excite_block()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="ctlearn.html#module-ctlearn.core.keras.sequence">ctlearn.core.keras.sequence module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.core.keras.sequence.KerasSequence"><code class="docutils literal notranslate"><span class="pre">KerasSequence</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.core.keras.sequence.KerasSequence.on_epoch_end"><code class="docutils literal notranslate"><span class="pre">KerasSequence.on_epoch_end()</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="ctlearn.html#module-ctlearn.core.pytorch.model">ctlearn.core.pytorch.model module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.core.pytorch.model.BasicBlock"><code class="docutils literal notranslate"><span class="pre">BasicBlock</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.core.pytorch.model.BasicBlock.forward"><code class="docutils literal notranslate"><span class="pre">BasicBlock.forward()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.core.pytorch.model.BasicBlock.setup_attention"><code class="docutils literal notranslate"><span class="pre">BasicBlock.setup_attention()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.core.pytorch.model.BottleneckBlock"><code class="docutils literal notranslate"><span class="pre">BottleneckBlock</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.core.pytorch.model.BottleneckBlock.forward"><code class="docutils literal notranslate"><span class="pre">BottleneckBlock.forward()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.core.pytorch.model.BottleneckBlock.setup_attention"><code class="docutils literal notranslate"><span class="pre">BottleneckBlock.setup_attention()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.core.pytorch.model.MultiFullyConnectedHead"><code class="docutils literal notranslate"><span class="pre">MultiFullyConnectedHead</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.core.pytorch.model.MultiFullyConnectedHead.forward"><code class="docutils literal notranslate"><span class="pre">MultiFullyConnectedHead.forward()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.core.pytorch.model.PyTorchConvBackend"><code class="docutils literal notranslate"><span class="pre">PyTorchConvBackend</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.core.pytorch.model.PyTorchLoadedModel"><code class="docutils literal notranslate"><span class="pre">PyTorchLoadedModel</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.core.pytorch.model.PyTorchResNet"><code class="docutils literal notranslate"><span class="pre">PyTorchResNet</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.core.pytorch.model.PyTorchSingleCNN"><code class="docutils literal notranslate"><span class="pre">PyTorchSingleCNN</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.core.pytorch.model.build_fully_connect_pytorch_head"><code class="docutils literal notranslate"><span class="pre">build_fully_connect_pytorch_head()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="ctlearn.html#module-ctlearn.core.pytorch.attention">ctlearn.core.pytorch.attention module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.core.pytorch.attention.ChannelSqueezeExciteBlock"><code class="docutils literal notranslate"><span class="pre">ChannelSqueezeExciteBlock</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.core.pytorch.attention.ChannelSqueezeExciteBlock.forward"><code class="docutils literal notranslate"><span class="pre">ChannelSqueezeExciteBlock.forward()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.core.pytorch.attention.DualSqueezeExciteBlock"><code class="docutils literal notranslate"><span class="pre">DualSqueezeExciteBlock</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.core.pytorch.attention.DualSqueezeExciteBlock.forward"><code class="docutils literal notranslate"><span class="pre">DualSqueezeExciteBlock.forward()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.core.pytorch.attention.SpatialSqueezeExciteBlock"><code class="docutils literal notranslate"><span class="pre">SpatialSqueezeExciteBlock</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="ctlearn.html#ctlearn.core.pytorch.attention.SpatialSqueezeExciteBlock.forward"><code class="docutils literal notranslate"><span class="pre">SpatialSqueezeExciteBlock.forward()</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="ctlearn.html#module-ctlearn.core.pytorch.dataset">ctlearn.core.pytorch.dataset module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.core.pytorch.dataset.PyTorchDataset"><code class="docutils literal notranslate"><span class="pre">PyTorchDataset</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="ctlearn.html#module-ctlearn">Module contents</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="ctlearn.html#ctlearn.get_repository_url"><code class="docutils literal notranslate"><span class="pre">get_repository_url()</span></code></a></li>
-</ul>
-</li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="core/index.html">Core Structures (<cite>~ctlearn.core</cite>)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tools/index.html">Command-line Tools (<cite>~ctlearn.tools</cite>)</a></li>
 </ul>
 </div>
 </section>
@@ -772,11 +521,11 @@
       </div>
     </a>
     <a class="right-next"
-       href="ctlearn.html"
+       href="core/index.html"
        title="next page">
       <div class="prev-next-info">
         <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">ctlearn package</p>
+        <p class="prev-next-title">Core Structures (<cite>~ctlearn.core</cite>)</p>
       </div>
       <i class="fa-solid fa-angle-right"></i>
     </a>
@@ -825,7 +574,7 @@
 
   <p class="copyright">
     
-      © Copyright CTLearn devs.  Last updated 18 Nov 2026 13:09.
+      © Copyright CTLearn devs.  Last updated 18 Nov 2026 18:00.
       <br/>
     
   </p>

@@ -1,0 +1,71 @@
+TrainCTLearnModel
+=================
+
+.. currentmodule:: ctlearn.tools
+
+.. autoclass:: TrainCTLearnModel
+   :show-inheritance:
+
+   .. rubric:: Attributes Summary
+
+   .. autosummary::
+
+      ~TrainCTLearnModel.aliases
+      ~TrainCTLearnModel.batch_size
+      ~TrainCTLearnModel.classes
+      ~TrainCTLearnModel.dl1dh_reader_type
+      ~TrainCTLearnModel.early_stopping
+      ~TrainCTLearnModel.file_pattern_background
+      ~TrainCTLearnModel.file_pattern_signal
+      ~TrainCTLearnModel.input_dir_background
+      ~TrainCTLearnModel.input_dir_signal
+      ~TrainCTLearnModel.lr_reducing
+      ~TrainCTLearnModel.model_type
+      ~TrainCTLearnModel.n_epochs
+      ~TrainCTLearnModel.optimizer
+      ~TrainCTLearnModel.output_dir
+      ~TrainCTLearnModel.random_seed
+      ~TrainCTLearnModel.reco_tasks
+      ~TrainCTLearnModel.save_best_validation_only
+      ~TrainCTLearnModel.sort_by_intensity
+      ~TrainCTLearnModel.stack_telescope_images
+      ~TrainCTLearnModel.validation_split
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~TrainCTLearnModel.finish
+      ~TrainCTLearnModel.setup
+      ~TrainCTLearnModel.setup_framework
+      ~TrainCTLearnModel.write_provenance
+
+   .. rubric:: Attributes Documentation
+
+   .. autoattribute:: aliases
+   .. autoattribute:: batch_size
+   .. autoattribute:: classes
+   .. autoattribute:: dl1dh_reader_type
+   .. autoattribute:: early_stopping
+   .. autoattribute:: file_pattern_background
+   .. autoattribute:: file_pattern_signal
+   .. autoattribute:: input_dir_background
+   .. autoattribute:: input_dir_signal
+   .. autoattribute:: lr_reducing
+   .. autoattribute:: model_type
+   .. autoattribute:: n_epochs
+   .. autoattribute:: optimizer
+   .. autoattribute:: output_dir
+   .. autoattribute:: random_seed
+   .. autoattribute:: reco_tasks
+   .. autoattribute:: save_best_validation_only
+   .. autoattribute:: sort_by_intensity
+   .. autoattribute:: stack_telescope_images
+   .. autoattribute:: validation_split
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: finish
+   .. automethod:: setup
+   .. automethod:: setup_framework
+   .. automethod:: write_provenance

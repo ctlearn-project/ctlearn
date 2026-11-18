@@ -1,0 +1,7 @@
+KerasSingleCNN
+==============
+
+.. currentmodule:: ctlearn.core.keras.model
+
+.. autoclass:: KerasSingleCNN
+   :show-inheritance:

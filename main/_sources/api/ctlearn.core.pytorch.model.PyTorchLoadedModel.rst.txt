@@ -1,0 +1,7 @@
+PyTorchLoadedModel
+==================
+
+.. currentmodule:: ctlearn.core.pytorch.model
+
+.. autoclass:: PyTorchLoadedModel
+   :show-inheritance:

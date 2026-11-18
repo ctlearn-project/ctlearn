@@ -1,0 +1,7 @@
+PyTorchDataset
+==============
+
+.. currentmodule:: ctlearn.core
+
+.. autoclass:: PyTorchDataset
+   :show-inheritance:

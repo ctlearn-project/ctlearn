@@ -1,0 +1,25 @@
+ResNet
+======
+
+.. currentmodule:: ctlearn.core.model
+
+.. autoclass:: ResNet
+   :show-inheritance:
+
+   .. rubric:: Attributes Summary
+
+   .. autosummary::
+
+      ~ResNet.architecture
+      ~ResNet.init_layer
+      ~ResNet.init_max_pool
+      ~ResNet.name
+      ~ResNet.residual_block_type
+
+   .. rubric:: Attributes Documentation
+
+   .. autoattribute:: architecture
+   .. autoattribute:: init_layer
+   .. autoattribute:: init_max_pool
+   .. autoattribute:: name
+   .. autoattribute:: residual_block_type

@@ -1,0 +1,17 @@
+MultiFullyConnectedHead
+=======================
+
+.. currentmodule:: ctlearn.core.pytorch.model
+
+.. autoclass:: MultiFullyConnectedHead
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~MultiFullyConnectedHead.forward
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: forward

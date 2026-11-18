@@ -1,0 +1,27 @@
+SingleCNN
+=========
+
+.. currentmodule:: ctlearn.core
+
+.. autoclass:: SingleCNN
+   :show-inheritance:
+
+   .. rubric:: Attributes Summary
+
+   .. autosummary::
+
+      ~SingleCNN.architecture
+      ~SingleCNN.batchnorm
+      ~SingleCNN.bottleneck_filters
+      ~SingleCNN.name
+      ~SingleCNN.pooling_parameters
+      ~SingleCNN.pooling_type
+
+   .. rubric:: Attributes Documentation
+
+   .. autoattribute:: architecture
+   .. autoattribute:: batchnorm
+   .. autoattribute:: bottleneck_filters
+   .. autoattribute:: name
+   .. autoattribute:: pooling_parameters
+   .. autoattribute:: pooling_type

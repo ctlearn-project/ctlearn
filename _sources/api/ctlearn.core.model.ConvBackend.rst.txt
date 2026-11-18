@@ -1,0 +1,7 @@
+ConvBackend
+===========
+
+.. currentmodule:: ctlearn.core.model
+
+.. autoclass:: ConvBackend
+   :show-inheritance:

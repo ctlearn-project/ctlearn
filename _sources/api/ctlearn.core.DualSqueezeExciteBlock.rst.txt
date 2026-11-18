@@ -1,0 +1,17 @@
+DualSqueezeExciteBlock
+======================
+
+.. currentmodule:: ctlearn.core
+
+.. autoclass:: DualSqueezeExciteBlock
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~DualSqueezeExciteBlock.forward
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: forward

@@ -1,0 +1,17 @@
+LoggingModelCheckpoint
+======================
+
+.. currentmodule:: ctlearn.tools
+
+.. autoclass:: LoggingModelCheckpoint
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~LoggingModelCheckpoint.on_epoch_end
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: on_epoch_end

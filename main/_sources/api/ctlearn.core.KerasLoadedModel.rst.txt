@@ -1,0 +1,7 @@
+KerasLoadedModel
+================
+
+.. currentmodule:: ctlearn.core
+
+.. autoclass:: KerasLoadedModel
+   :show-inheritance:

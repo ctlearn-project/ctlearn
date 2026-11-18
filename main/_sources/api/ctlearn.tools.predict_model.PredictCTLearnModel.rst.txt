@@ -1,0 +1,63 @@
+PredictCTLearnModel
+===================
+
+.. currentmodule:: ctlearn.tools.predict_model
+
+.. autoclass:: PredictCTLearnModel
+   :show-inheritance:
+
+   .. rubric:: Attributes Summary
+
+   .. autosummary::
+
+      ~PredictCTLearnModel.aliases
+      ~PredictCTLearnModel.batch_size
+      ~PredictCTLearnModel.classes
+      ~PredictCTLearnModel.dl1_features
+      ~PredictCTLearnModel.dl1dh_reader_type
+      ~PredictCTLearnModel.dl2_subarray
+      ~PredictCTLearnModel.dl2_telescope
+      ~PredictCTLearnModel.flags
+      ~PredictCTLearnModel.input_url
+      ~PredictCTLearnModel.load_cameradirection_model_from
+      ~PredictCTLearnModel.load_energy_model_from
+      ~PredictCTLearnModel.load_skydirection_model_from
+      ~PredictCTLearnModel.load_type_model_from
+      ~PredictCTLearnModel.output_path
+      ~PredictCTLearnModel.prefixes
+      ~PredictCTLearnModel.sort_by_intensity
+      ~PredictCTLearnModel.stack_telescope_images
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~PredictCTLearnModel.deduplicate_first_valid
+      ~PredictCTLearnModel.finish
+      ~PredictCTLearnModel.setup
+
+   .. rubric:: Attributes Documentation
+
+   .. autoattribute:: aliases
+   .. autoattribute:: batch_size
+   .. autoattribute:: classes
+   .. autoattribute:: dl1_features
+   .. autoattribute:: dl1dh_reader_type
+   .. autoattribute:: dl2_subarray
+   .. autoattribute:: dl2_telescope
+   .. autoattribute:: flags
+   .. autoattribute:: input_url
+   .. autoattribute:: load_cameradirection_model_from
+   .. autoattribute:: load_energy_model_from
+   .. autoattribute:: load_skydirection_model_from
+   .. autoattribute:: load_type_model_from
+   .. autoattribute:: output_path
+   .. autoattribute:: prefixes
+   .. autoattribute:: sort_by_intensity
+   .. autoattribute:: stack_telescope_images
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: deduplicate_first_valid
+   .. automethod:: finish
+   .. automethod:: setup

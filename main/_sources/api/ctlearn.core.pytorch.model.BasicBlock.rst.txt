@@ -1,0 +1,19 @@
+BasicBlock
+==========
+
+.. currentmodule:: ctlearn.core.pytorch.model
+
+.. autoclass:: BasicBlock
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~BasicBlock.forward
+      ~BasicBlock.setup_attention
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: forward
+   .. automethod:: setup_attention

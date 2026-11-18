@@ -1,0 +1,37 @@
+TrainCTLearnPyTorchModel
+========================
+
+.. currentmodule:: ctlearn.tools.pytorch.train_model
+
+.. autoclass:: TrainCTLearnPyTorchModel
+   :show-inheritance:
+
+   .. rubric:: Attributes Summary
+
+   .. autosummary::
+
+      ~TrainCTLearnPyTorchModel.description
+      ~TrainCTLearnPyTorchModel.examples
+      ~TrainCTLearnPyTorchModel.name
+      ~TrainCTLearnPyTorchModel.num_workers
+      ~TrainCTLearnPyTorchModel.persistent_workers
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~TrainCTLearnPyTorchModel.setup_framework
+      ~TrainCTLearnPyTorchModel.start
+
+   .. rubric:: Attributes Documentation
+
+   .. autoattribute:: description
+   .. autoattribute:: examples
+   .. autoattribute:: name
+   .. autoattribute:: num_workers
+   .. autoattribute:: persistent_workers
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: setup_framework
+   .. automethod:: start

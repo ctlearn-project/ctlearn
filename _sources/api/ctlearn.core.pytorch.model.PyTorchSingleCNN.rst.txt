@@ -1,0 +1,7 @@
+PyTorchSingleCNN
+================
+
+.. currentmodule:: ctlearn.core.pytorch.model
+
+.. autoclass:: PyTorchSingleCNN
+   :show-inheritance:

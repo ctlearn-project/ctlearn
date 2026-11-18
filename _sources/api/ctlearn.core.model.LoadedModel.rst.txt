@@ -1,0 +1,21 @@
+LoadedModel
+===========
+
+.. currentmodule:: ctlearn.core.model
+
+.. autoclass:: LoadedModel
+   :show-inheritance:
+
+   .. rubric:: Attributes Summary
+
+   .. autosummary::
+
+      ~LoadedModel.load_model_from
+      ~LoadedModel.overwrite_head
+      ~LoadedModel.trainable_backbone
+
+   .. rubric:: Attributes Documentation
+
+   .. autoattribute:: load_model_from
+   .. autoattribute:: overwrite_head
+   .. autoattribute:: trainable_backbone

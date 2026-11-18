@@ -6,7 +6,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ctlearn.core.keras.attention &#8212; ctlearn 0.11.1.dev74+g5237fdbf0 documentation</title>
+    <title>ctlearn.core.keras.attention &#8212; ctlearn 0.11.1.dev76+g983cf3354 documentation</title>
   
   
   
@@ -29,6 +29,7 @@
 <link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=75c7c72ae941e8b558d8" rel="stylesheet" />
 
     <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=4ae1632d" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery.css?v=c83e6b79" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
@@ -43,7 +44,7 @@
   <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8" />
 <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8" />
 
-    <script src="../../../../_static/documentation_options.js?v=5d984b10"></script>
+    <script src="../../../../_static/documentation_options.js?v=b45de6ec"></script>
     <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -63,7 +64,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="color-scheme" content="light dark"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.11.1.dev74+g5237fdbf0" />
+  <meta name="docsearch:version" content="0.11.1.dev76+g983cf3354" />
   
     
     <script src="../../../../_static/searchtools.js"></script>
@@ -140,8 +141,8 @@
     
     
     
-    <img src="../../../../_static/ctlearn_logo_transparent.png" class="logo__image only-dark" alt="ctlearn 0.11.1.dev74+g5237fdbf0 documentation - Home"/>
-    <img src="../../../../_static/ctlearn_logo_transparent.png" class="logo__image only-light pst-js-only" alt="ctlearn 0.11.1.dev74+g5237fdbf0 documentation - Home"/>
+    <img src="../../../../_static/ctlearn_logo_transparent.png" class="logo__image only-dark" alt="ctlearn 0.11.1.dev76+g983cf3354 documentation - Home"/>
+    <img src="../../../../_static/ctlearn_logo_transparent.png" class="logo__image only-light pst-js-only" alt="ctlearn 0.11.1.dev76+g983cf3354 documentation - Home"/>
   
   
 </a></div>
@@ -471,9 +472,6 @@
     
     <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
     
-    
-    <li class="breadcrumb-item"><a href="../../../ctlearn.html" class="nav-link">ctlearn</a></li>
-    
     <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">ctlearn.core.keras.attention</span></li>
   </ul>
 </nav>
@@ -506,7 +504,7 @@
 
 
 <div class="viewcode-block" id="dual_squeeze_excite_block">
-<a class="viewcode-back" href="../../../../api-reference/ctlearn.html#ctlearn.core.keras.attention.dual_squeeze_excite_block">[docs]</a>
+<a class="viewcode-back" href="../../../../api/ctlearn.core.keras.attention.dual_squeeze_excite_block.html#ctlearn.core.dual_squeeze_excite_block">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">dual_squeeze_excite_block</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">ratio</span><span class="o">=</span><span class="mi">16</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    A channel &amp; spatial (dual) squeeze-excite block.</span>
@@ -548,7 +546,7 @@
 
 
 <div class="viewcode-block" id="channel_squeeze_excite_block">
-<a class="viewcode-back" href="../../../../api-reference/ctlearn.html#ctlearn.core.keras.attention.channel_squeeze_excite_block">[docs]</a>
+<a class="viewcode-back" href="../../../../api/ctlearn.core.keras.attention.channel_squeeze_excite_block.html#ctlearn.core.channel_squeeze_excite_block">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">channel_squeeze_excite_block</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">ratio</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    A channel-wise squeeze-excite block.</span>
@@ -590,7 +588,7 @@
 
 
 <div class="viewcode-block" id="spatial_squeeze_excite_block">
-<a class="viewcode-back" href="../../../../api-reference/ctlearn.html#ctlearn.core.keras.attention.spatial_squeeze_excite_block">[docs]</a>
+<a class="viewcode-back" href="../../../../api/ctlearn.core.spatial_squeeze_excite_block.html#ctlearn.core.spatial_squeeze_excite_block">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">spatial_squeeze_excite_block</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">"""</span>
 <span class="sd">    A spatial squeeze-excite block.</span>
@@ -661,7 +659,7 @@
 
   <p class="copyright">
     
-      © Copyright CTLearn devs.  Last updated 18 Nov 2026 13:09.
+      © Copyright CTLearn devs.  Last updated 18 Nov 2026 18:00.
       <br/>
     
   </p>

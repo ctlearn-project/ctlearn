@@ -1,0 +1,7 @@
+PyTorchConvBackend
+==================
+
+.. currentmodule:: ctlearn.core.pytorch.model
+
+.. autoclass:: PyTorchConvBackend
+   :show-inheritance:

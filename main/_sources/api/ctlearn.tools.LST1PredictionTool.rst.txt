@@ -1,0 +1,71 @@
+LST1PredictionTool
+==================
+
+.. currentmodule:: ctlearn.tools
+
+.. autoclass:: LST1PredictionTool
+   :show-inheritance:
+
+   .. rubric:: Attributes Summary
+
+   .. autosummary::
+
+      ~LST1PredictionTool.aliases
+      ~LST1PredictionTool.batch_size
+      ~LST1PredictionTool.channels
+      ~LST1PredictionTool.classes
+      ~LST1PredictionTool.description
+      ~LST1PredictionTool.dl1_features
+      ~LST1PredictionTool.dl2_subarray
+      ~LST1PredictionTool.dl2_telescope
+      ~LST1PredictionTool.examples
+      ~LST1PredictionTool.flags
+      ~LST1PredictionTool.focal_length_choice
+      ~LST1PredictionTool.image_mapper_type
+      ~LST1PredictionTool.input_url
+      ~LST1PredictionTool.load_cameradirection_model_from
+      ~LST1PredictionTool.load_energy_model_from
+      ~LST1PredictionTool.load_type_model_from
+      ~LST1PredictionTool.name
+      ~LST1PredictionTool.output_path
+      ~LST1PredictionTool.override_obs_id
+      ~LST1PredictionTool.overwrite
+      ~LST1PredictionTool.prefixes
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~LST1PredictionTool.finish
+      ~LST1PredictionTool.setup
+      ~LST1PredictionTool.start
+
+   .. rubric:: Attributes Documentation
+
+   .. autoattribute:: aliases
+   .. autoattribute:: batch_size
+   .. autoattribute:: channels
+   .. autoattribute:: classes
+   .. autoattribute:: description
+   .. autoattribute:: dl1_features
+   .. autoattribute:: dl2_subarray
+   .. autoattribute:: dl2_telescope
+   .. autoattribute:: examples
+   .. autoattribute:: flags
+   .. autoattribute:: focal_length_choice
+   .. autoattribute:: image_mapper_type
+   .. autoattribute:: input_url
+   .. autoattribute:: load_cameradirection_model_from
+   .. autoattribute:: load_energy_model_from
+   .. autoattribute:: load_type_model_from
+   .. autoattribute:: name
+   .. autoattribute:: output_path
+   .. autoattribute:: override_obs_id
+   .. autoattribute:: overwrite
+   .. autoattribute:: prefixes
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: finish
+   .. automethod:: setup
+   .. automethod:: start

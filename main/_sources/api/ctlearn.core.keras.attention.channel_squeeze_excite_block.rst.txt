@@ -1,0 +1,6 @@
+channel_squeeze_excite_block
+============================
+
+.. currentmodule:: ctlearn.core.keras.attention
+
+.. autofunction:: channel_squeeze_excite_block
