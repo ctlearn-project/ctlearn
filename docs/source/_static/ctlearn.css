@@ -1,0 +1,29 @@
+.version-switcher__container a[data-version-name*="stable"] {
+  background-color: #E9F6EC;
+  color: #28A745;
+}
+
+.version-switcher__container a[data-version-name*="dev"] {
+  background-color: #FDF4EB;
+  color: #EE9040;
+}
+
+.version-switcher__container a[data-version-name*="legacy"] {
+  background-color: #FCE8E8;
+  color: #C62828;
+}
+
+html[data-theme="dark"] .version-switcher__container a[data-version-name*="stable"] {
+  background-color: #222924;
+  color: #28A745;
+}
+
+html[data-theme="dark"] .version-switcher__container a[data-version-name*="dev"] {
+  background-color: #332A21;
+  color: #EE9040;
+}
+
+html[data-theme="dark"] .version-switcher__container a[data-version-name*="legacy"] {
+  background-color: #352323;
+  color: #F08080;
+}
