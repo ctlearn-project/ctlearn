@@ -26,7 +26,6 @@ from urllib.parse import quote, urlencode
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src"))
 )
-
 from sphinx_gallery.sorting import ExplicitOrder
 
 import ctlearn
@@ -147,10 +146,12 @@ html_theme = "pydata_sphinx_theme"
 
 version_match = os.getenv("CTLEARN_DOCS_VERSION", "main")
 version_switcher_url = "https://ctlearn-project.github.io/ctlearn/_static/switcher.json"
-maintainer_emails = ",".join(
+maintainer_emails = [
     quote(maintainer["email"], safe="@")
     for maintainer in pyproject["project"]["maintainers"]
-)
+]
+if not maintainer_emails or any(not email for email in maintainer_emails):
+    raise ValueError("Each maintainer must have an email address")
 slack_request_query = urlencode(
     {
         "subject": "Request access to the CTLearn Slack workspace",
@@ -194,7 +195,7 @@ html_theme_options = {
         },
         {
             "name": "Request Slack access",
-            "url": f"mailto:{maintainer_emails}?{slack_request_query}",
+            "url": f"mailto:{','.join(maintainer_emails)}?{slack_request_query}",
             "icon": "fab fa-slack",
         },
     ],
