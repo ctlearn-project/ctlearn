@@ -1,4 +1,5 @@
 sphinx
+sphinx-automodapi
 pydata-sphinx-theme
 sphinx-changelog
 sphinx-design
