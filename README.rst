@@ -10,6 +10,10 @@ CTLearn: Deep Learning for IACT Event Reconstruction
     :target: https://pypi.org/project/ctlearn/
     :alt: Latest Release
 
+.. image:: https://img.shields.io/badge/Slack-request%20access-4A154B?logo=slack
+    :target: mailto:tmiener@iaa.csic.es,d.nieto@ucm.es?subject=Request%20access%20to%20the%20CTLearn%20Slack%20workspace&body=Hello%20CTLearn%20maintainers%2C%0A%0AI%20would%20like%20to%20request%20access%20to%20the%20CTLearn%20Slack%20workspace.%0A
+    :alt: Request Slack access
+
 .. image:: https://github.com/ctlearn-project/ctlearn/actions/workflows/ci.yml/badge.svg
     :target: https://github.com/ctlearn-project/ctlearn/actions/workflows/ci.yml
     :alt: Continuous Integration
