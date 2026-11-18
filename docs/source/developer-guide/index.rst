@@ -74,7 +74,7 @@ versions where specified. We recommend installing the latest releases.
 * ``keras``>=3.0
 * ``astropy``
 * ``ctapipe``>=0.29.0
-* ``dl1_data_handler``>=0.14.13
+* ``dl1_data_handler``>=0.14.13,<0.15.0
 * ``numba``
 * ``numpy``
 * ``pandas``
