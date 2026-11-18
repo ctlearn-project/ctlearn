@@ -89,6 +89,7 @@ docs = [
   "ctaplot",
   "scikit-learn",
   "sphinx",
+  "sphinx-automodapi",
   "sphinx-gallery >= 0.16.0",
   "sphinx-changelog",
   "sphinx-design",

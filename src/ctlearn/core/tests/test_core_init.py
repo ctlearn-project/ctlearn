@@ -8,6 +8,7 @@ import ctlearn.core as core
 @pytest.mark.parametrize(
     ("name", "module_name"),
     [
+        ("ConvBackend", "ctlearn.core.model"),
         ("CTLearnModel", "ctlearn.core.model"),
         ("SingleCNN", "ctlearn.core.model"),
         ("ResNet", "ctlearn.core.model"),

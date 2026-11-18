@@ -35,7 +35,7 @@ __all__ = [
 
 _LAZY_MODULES = {
     **dict.fromkeys(
-        ("CTLearnModel", "SingleCNN", "ResNet", "LoadedModel"),
+        ("ConvBackend", "CTLearnModel", "SingleCNN", "ResNet", "LoadedModel"),
         ".model",
     ),
     **dict.fromkeys(

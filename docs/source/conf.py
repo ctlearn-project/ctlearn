@@ -78,6 +78,7 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx.ext.viewcode",
     "sphinx.ext.githubpages",
+    "sphinx_automodapi.automodapi",
     "sphinx_changelog",
     "sphinx_design",
     "sphinx_gallery.gen_gallery",
@@ -221,7 +222,15 @@ html_context = {"default_mode": "dark"}
 # default: ``['localtoc.html', 'relations.html', 'sourcelink.html',
 # 'searchbox.html']``.
 #
-# html_sidebars = {}
+html_sidebars = {
+    "changelog": [],
+    "api-reference/*": [],
+    "developer-guide/*": [],
+    "api-reference/core/*": [],
+    "api-reference/tools/*": [],
+    "api/ctlearn.core.*": [],
+    "api/ctlearn.tools.*": [],
+}
 
 
 # -- Options for HTMLHelp output ---------------------------------------------

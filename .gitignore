@@ -32,6 +32,7 @@ dist
 .pytest_cache/*.log
 # Sphinx documentation
 docs/build/
+docs/source/api/
 docs/source/auto_tutorials/
 docs/source/user-guide/auto_tutorials/
 docs/source/sg_execution_times.rst
