@@ -1,0 +1,7 @@
+html[data-theme="dark"] .navbar-icon-links a[href="https://doi.org/10.5281/zenodo.3342952"] img.icon-link-image {
+    filter: brightness(1.2);
+}
+
+html[data-theme="light"] .navbar-icon-links a[href="https://doi.org/10.5281/zenodo.3342952"] img.icon-link-image {
+    filter: brightness(0.6);
+}
