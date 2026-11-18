@@ -6,7 +6,7 @@
 
 Computation times
 =================
-**28:29.494** total execution time for 3 files **from all galleries**:
+**20:35.576** total execution time for 3 files **from all galleries**:
 
 .. container::
 
@@ -33,11 +33,11 @@ Computation times
      - Time
      - Mem (MB)
    * - :ref:`sphx_glr_user-guide_auto_tutorials_train_ctlearn_model.py` (``../../examples/tutorials/train_ctlearn_model.py``)
-     - 21:38.339
+     - 16:10.470
      - 0.0
    * - :ref:`sphx_glr_user-guide_auto_tutorials_predict_ctlearn_model.py` (``../../examples/tutorials/predict_ctlearn_model.py``)
-     - 04:49.674
+     - 03:32.294
      - 0.0
    * - :ref:`sphx_glr_user-guide_auto_tutorials_explore_public_data.py` (``../../examples/tutorials/explore_public_data.py``)
-     - 02:01.481
+     - 00:52.813
      - 0.0
