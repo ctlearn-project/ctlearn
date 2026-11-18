@@ -174,7 +174,8 @@ html_theme_options = {
         {
             "name": "Zenodo",
             "url": "https://doi.org/10.5281/zenodo.3342952",
-            "icon": "fab fa-zenodo",
+            "icon": "_static/zenodo-icon-grey.ico",
+            "type": "local",
         },
     ],
     "announcement": """
@@ -188,6 +189,7 @@ html_theme_options = {
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
+html_css_files = ["ctlearn.css", "zenodo-icon.css"]
 html_context = {"default_mode": "dark"}
 
 # Custom sidebar templates, must be a dictionary that maps document names
