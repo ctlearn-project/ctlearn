@@ -1,8 +1,8 @@
 .. _core:
 
-**************************************************
-Core Structures and Base Classes (`~ctlearn.core`)
-**************************************************
+*********************************
+Core Structures (`~ctlearn.core`)
+*********************************
 
 .. currentmodule:: ctlearn.core
 
