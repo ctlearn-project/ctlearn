@@ -171,6 +171,11 @@ html_theme_options = {
             "url": "https://pypi.org/project/ctlearn/",
             "icon": "fab fa-python",
         },
+        {
+            "name": "Zenodo",
+            "url": "https://doi.org/10.5281/zenodo.3342952",
+            "icon": "fab fa-zenodo",
+        },
     ],
     "announcement": """
         <p>This is not production-ready code yet. Although stable
