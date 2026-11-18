@@ -20,6 +20,7 @@ import tempfile
 import tomllib
 import zipfile
 from pathlib import Path
+from urllib.parse import quote, urlencode
 
 # Point Sphinx to the source directory where `ctlearn` lives
 sys.path.insert(
@@ -146,6 +147,20 @@ html_theme = "pydata_sphinx_theme"
 
 version_match = os.getenv("CTLEARN_DOCS_VERSION", "main")
 version_switcher_url = "https://ctlearn-project.github.io/ctlearn/_static/switcher.json"
+maintainer_emails = ",".join(
+    quote(maintainer["email"], safe="@")
+    for maintainer in pyproject["project"]["maintainers"]
+)
+slack_request_query = urlencode(
+    {
+        "subject": "Request access to the CTLearn Slack workspace",
+        "body": (
+            "Hello CTLearn maintainers,\n\n"
+            "I would like to request access to the CTLearn Slack workspace.\n"
+        ),
+    },
+    quote_via=quote,
+)
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -176,6 +191,11 @@ html_theme_options = {
             "url": "https://doi.org/10.5281/zenodo.3342952",
             "icon": "_static/zenodo-icon-grey.ico",
             "type": "local",
+        },
+        {
+            "name": "Request Slack access",
+            "url": f"mailto:{maintainer_emails}?{slack_request_query}",
+            "icon": "fab fa-slack",
         },
     ],
     "announcement": """
