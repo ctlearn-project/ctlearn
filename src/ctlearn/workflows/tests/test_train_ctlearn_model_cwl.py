@@ -6,14 +6,13 @@ import os
 import shutil
 import subprocess
 import sys
+from importlib.resources import as_file, files
 from pathlib import Path
 from urllib.parse import urlparse
 from urllib.request import url2pathname
 
 import pytest
 from ctapipe.core.provenance import json_config_handler
-
-WORKFLOW = Path(__file__).resolve().parents[1] / "workflow" / "train_ctlearn_model.cwl"
 
 
 @pytest.fixture
@@ -94,20 +93,22 @@ def test_train_ctlearn_model(
     outdir = tmp_path / "results"
     env = os.environ.copy()
     env["PATH"] = f"{Path(sys.executable).parent}{os.pathsep}{env['PATH']}"
-    result = subprocess.run(
-        [
-            cwltool,
-            "--no-container",
-            "--outdir",
-            str(outdir),
-            str(WORKFLOW),
-            str(job_path),
-        ],
-        capture_output=True,
-        text=True,
-        env=env,
-        check=False,
-    )
+    workflow = files("ctlearn").joinpath("workflows", "train_ctlearn_model.cwl")
+    with as_file(workflow) as workflow_path:
+        result = subprocess.run(
+            [
+                cwltool,
+                "--no-container",
+                "--outdir",
+                str(outdir),
+                str(workflow_path),
+                str(job_path),
+            ],
+            capture_output=True,
+            text=True,
+            env=env,
+            check=False,
+        )
     assert result.returncode == 0, result.stderr
     outputs = json.loads(result.stdout)
     training_dir = outdir / "cwl_training"

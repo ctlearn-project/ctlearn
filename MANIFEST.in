@@ -1,1 +1,2 @@
 include src/ctlearn/resources/*
+recursive-include src/ctlearn/workflows *.cwl
