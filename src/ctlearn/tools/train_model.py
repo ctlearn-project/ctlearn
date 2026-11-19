@@ -211,7 +211,7 @@ class TrainCTLearnModel(Tool):
         help=(
             "Path to additionally save the tensorboard training log. "
             "Tensorboard training log is always saved in the output directory. "
-            "The training directory must contain exactly one event file."
+            "The filename must contain 'tfevents' for TensorBoard to discover it."
         ),
     ).tag(config=True)
 
@@ -224,7 +224,7 @@ class TrainCTLearnModel(Tool):
         help=(
             "Path to additionally save the tensorboard validation log. "
             "Tensorboard validation log is always saved in the output directory. "
-            "The validation directory must contain exactly one event file."
+            "The filename must contain 'tfevents' for TensorBoard to discover it."
         ),
     ).tag(config=True)
 
@@ -255,6 +255,15 @@ class TrainCTLearnModel(Tool):
         to ensure everything is ready before the core processing begins.
         """
         self.log.info("ctlearn version %s", ctlearn_version)
+        for option, path in (
+            ("--tensorboard-train-log", self.tensorboard_train_log_path),
+            ("--tensorboard-val-log", self.tensorboard_val_log_path),
+        ):
+            if path is not None and "tfevents" not in path.name:
+                raise ToolConfigurationError(
+                    f"{option} filename must contain 'tfevents' for TensorBoard "
+                    "to discover it."
+                )
         # Check if the output directory exists
         if self.output_dir.exists():
             raise ToolConfigurationError(
@@ -406,6 +415,7 @@ class TrainCTLearnModel(Tool):
             source_dir = self.output_dir / directory
             event_file = [path for path in source_dir.glob("events.out.tfevents.*")][0]
             if event_file.resolve() != destination.resolve():
+                destination.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(event_file, destination)
 
     def write_provenance(self):

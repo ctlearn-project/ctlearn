@@ -30,6 +30,7 @@ requires-python = ">=3.12"
 dependencies = [
     "astropy",
     "ctapipe>=0.29",
+    "cwltool",
     "dl1_data_handler>=0.14.13,<0.15.0",
     "numba",
     "numpy",
@@ -121,7 +122,7 @@ ctlearn-predict-LST1= "ctlearn.tools.predict_LST1:main"
 version_file = "src/ctlearn/_version.py"
 
 [tool.pytest.ini_options]
-testpaths = ["src/ctlearn"]
+testpaths = ["src/ctlearn", "workflow_tests"]
 markers = [
     "verifies_usecase(usecase_id): mark test as verifying a specific use case",
 ]

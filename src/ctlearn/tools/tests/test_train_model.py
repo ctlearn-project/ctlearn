@@ -168,8 +168,8 @@ def test_train_model_different_options(
     shutil.copy(dl1_gamma_file, signal_dir)
     output_dir = tmp_path / "trained_model"
     model_path = tmp_path / f"custom_model.{MODEL_FILE_FORMATS[framework]}"
-    train_log = tmp_path / "custom_train_log"
-    val_log = tmp_path / "custom_val_log"
+    train_log = tmp_path / "custom_train.tfevents"
+    val_log = tmp_path / "custom_val.tfevents"
     csv_summary = tmp_path / "custom_summary.csv"
     early_stopping = {
         "monitor": "val_loss",
@@ -295,6 +295,25 @@ def test_train_model_rejects_existing_output_directory(tmp_path, monkeypatch):
     tool.output_dir.mkdir()
 
     with pytest.raises(ToolConfigurationError, match="already exists"):
+        tool.setup()
+
+
+@pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
+@pytest.mark.parametrize(
+    ("attribute", "option"),
+    [
+        ("tensorboard_train_log_path", "--tensorboard-train-log"),
+        ("tensorboard_val_log_path", "--tensorboard-val-log"),
+    ],
+)
+def test_train_model_rejects_invalid_tensorboard_filename(
+    tmp_path, framework, attribute, option
+):
+    tool = TRAINING_TOOLS[framework]()
+    tool.output_dir = tmp_path / "output"
+    setattr(tool, attribute, tmp_path / "tfevents-directory" / "invalid.log")
+
+    with pytest.raises(ToolConfigurationError, match=f"{option}.*tfevents"):
         tool.setup()
 
 
