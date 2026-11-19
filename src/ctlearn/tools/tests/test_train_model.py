@@ -160,13 +160,17 @@ def test_train_ctlearn_model(
 
 @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
 @pytest.mark.parametrize("save_best_validation_only", [True, False])
-def test_train_model_early_stopping_and_checkpoint_options(
+def test_train_model_different_options(
     framework, save_best_validation_only, dl1_gamma_file, tmp_path
 ):
     signal_dir = tmp_path / "gamma_dl1"
     signal_dir.mkdir()
     shutil.copy(dl1_gamma_file, signal_dir)
     output_dir = tmp_path / "trained_model"
+    model_path = tmp_path / f"custom_model.{MODEL_FILE_FORMATS[framework]}"
+    train_log = tmp_path / "custom_train_log"
+    val_log = tmp_path / "custom_val_log"
+    csv_summary = tmp_path / "custom_summary.csv"
     early_stopping = {
         "monitor": "val_loss",
         "patience": 0,
@@ -178,6 +182,10 @@ def test_train_model_early_stopping_and_checkpoint_options(
         f"--signal={signal_dir}",
         "--pattern-signal=*.dl1.h5",
         f"--output={output_dir}",
+        f"--model-path={model_path}",
+        f"--csv-summary={csv_summary}",
+        f"--tensorboard-train-log={train_log}",
+        f"--tensorboard-val-log={val_log}",
         f"--TrainCTLearnModel.provenance_log={output_dir}/{tool.name}.provenance.log",
         "--reco=energy",
         "--TrainCTLearnModel.model_type=SingleCNN",
@@ -192,6 +200,15 @@ def test_train_model_early_stopping_and_checkpoint_options(
     assert run_tool(tool, argv=argv, cwd=tmp_path) == 0
     assert tool.save_best_validation_only is save_best_validation_only
     assert tool.early_stopping == early_stopping
+    assert (
+        model_path.read_bytes()
+        == (output_dir / f"ctlearn_model.{MODEL_FILE_FORMATS[framework]}").read_bytes()
+    )
+    assert csv_summary.read_bytes() == (output_dir / "training_log.csv").read_bytes()
+    for subfolder, custom_log in (("train", train_log), ("validation", val_log)):
+        event_files = list((output_dir / subfolder).glob("events.out.tfevents.*"))
+        assert len(event_files) == 1
+        assert custom_log.read_bytes() == event_files[0].read_bytes()
     provenance_file = output_dir / f"{tool.name}.provenance.log"
     assert provenance_file.exists(), f"Provenance log not found in {output_dir}"
 
@@ -214,12 +231,13 @@ def test_train_model_early_stopping_and_checkpoint_options(
         assert len(pd.read_csv(output_dir / "training_log.csv")) == 1
 
 
-def test_pytorch_workers_configuration_error():
+def test_pytorch_workers_configuration_error(tmp_path):
     """
     Test that TrainCTLearnPyTorchModel raises a ToolConfigurationError
     when persistent_workers=True and num_workers=0.
     """
     tool = TRAINING_TOOLS["PyTorch"]()
+    tool.output_dir = tmp_path
     tool.num_workers = 0
     tool.persistent_workers = True
 
@@ -227,6 +245,22 @@ def test_pytorch_workers_configuration_error():
         ToolConfigurationError,
         match="Cannot set persistent_workers=True when num_workers=0",
     ):
+        tool.setup_framework()
+
+
+@pytest.mark.parametrize(
+    ("framework", "invalid_path", "message"),
+    [
+        ("PyTorch", "model.keras", "must have a .pth extension"),
+        ("Keras", "model.pth", "must have a .keras extension"),
+    ],
+)
+def test_model_path_extension_error(framework, invalid_path, message, tmp_path):
+    tool = TRAINING_TOOLS[framework]()
+    tool.output_dir = tmp_path
+    tool.model_path = str(tmp_path / invalid_path)
+
+    with pytest.raises(ToolConfigurationError, match=message):
         tool.setup_framework()
 
 
