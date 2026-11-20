@@ -1,0 +1,7 @@
+KerasResNet
+===========
+
+.. currentmodule:: ctlearn.core
+
+.. autoclass:: KerasResNet
+   :show-inheritance:

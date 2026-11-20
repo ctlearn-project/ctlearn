@@ -1,0 +1,27 @@
+CTLearnModel
+============
+
+.. currentmodule:: ctlearn.core.model
+
+.. autoclass:: CTLearnModel
+   :show-inheritance:
+
+   .. rubric:: Attributes Summary
+
+   .. autosummary::
+
+      ~CTLearnModel.attention_mechanism
+      ~CTLearnModel.attention_reduction_ratio
+      ~CTLearnModel.conv_backend
+      ~CTLearnModel.head_activation_function
+      ~CTLearnModel.head_layers
+      ~CTLearnModel.init_padding
+
+   .. rubric:: Attributes Documentation
+
+   .. autoattribute:: attention_mechanism
+   .. autoattribute:: attention_reduction_ratio
+   .. autoattribute:: conv_backend
+   .. autoattribute:: head_activation_function
+   .. autoattribute:: head_layers
+   .. autoattribute:: init_padding

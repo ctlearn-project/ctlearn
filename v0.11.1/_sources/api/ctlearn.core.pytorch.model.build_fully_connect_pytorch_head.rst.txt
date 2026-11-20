@@ -1,0 +1,6 @@
+build_fully_connect_pytorch_head
+================================
+
+.. currentmodule:: ctlearn.core.pytorch.model
+
+.. autofunction:: build_fully_connect_pytorch_head

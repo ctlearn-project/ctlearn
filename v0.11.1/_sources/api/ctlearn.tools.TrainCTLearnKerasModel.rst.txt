@@ -1,0 +1,33 @@
+TrainCTLearnKerasModel
+======================
+
+.. currentmodule:: ctlearn.tools
+
+.. autoclass:: TrainCTLearnKerasModel
+   :show-inheritance:
+
+   .. rubric:: Attributes Summary
+
+   .. autosummary::
+
+      ~TrainCTLearnKerasModel.description
+      ~TrainCTLearnKerasModel.examples
+      ~TrainCTLearnKerasModel.name
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~TrainCTLearnKerasModel.setup_framework
+      ~TrainCTLearnKerasModel.start
+
+   .. rubric:: Attributes Documentation
+
+   .. autoattribute:: description
+   .. autoattribute:: examples
+   .. autoattribute:: name
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: setup_framework
+   .. automethod:: start

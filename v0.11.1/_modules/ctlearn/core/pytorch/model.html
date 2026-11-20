@@ -1,0 +1,1517 @@
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" data-theme="dark">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ctlearn.core.pytorch.model &#8212; ctlearn 0.11.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "dark";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "dark";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=75c7c72ae941e8b558d8" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=75c7c72ae941e8b558d8" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery.css?v=c83e6b79" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-design.min.css?v=6a604523" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/ctlearn.css?v=cb75ed94" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/zenodo-icon.css?v=3f44c43a" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../../../_static/scripts/fontawesome.js?digest=75c7c72ae941e8b558d8"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8" />
+
+    <script src="../../../../_static/documentation_options.js?v=57cbeb03"></script>
+    <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../../_static/sg-tags.js?v=d80f6fa4"></script>
+    <script data-sd-tabs-storage-prefix="sphinx-design-tab-id-" src="../../../../_static/design-tabs.js?v=fcb327ea"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/ctlearn/core/pytorch/model';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.24.0';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://ctlearn-project.github.io/ctlearn/_static/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.11.1';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="icon" href="../../../../_static/ctlearn_favicon.ico"/>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="color-scheme" content="light dark"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.11.1" />
+  
+    
+    <script src="../../../../_static/searchtools.js"></script>
+    <script src="../../../../_static/language_data.js"></script>
+    <script src="../../../../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="dark">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+<aside class="bd-header-announcement" aria-label="Announcement">
+  <div class="bd-header-announcement__content">
+        <p>This is not production-ready code yet. Although stable
+        releases are available, users should expect changes to the code
+        before a 1.0 release arrives.</p>
+    </div>
+</aside>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button type="button" class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation" aria-expanded="false" aria-controls="pst-primary-sidebar-modal">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+    
+    <img src="../../../../_static/ctlearn_logo_transparent.png" class="logo__image only-dark" alt="ctlearn 0.11.1 documentation - Home"/>
+    <img src="../../../../_static/ctlearn_logo_transparent.png" class="logo__image only-light pst-js-only" alt="ctlearn 0.11.1 documentation - Home"/>
+  
+  
+</a></div>
+    
+      <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../user-guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../developer-guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../api-reference/index.html">
+    API Docs
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../changelog.html">
+    Change Log
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Quick Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/ctlearn-project/ctlearn" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/ctlearn/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://doi.org/10.5281/zenodo.3342952" title="Zenodo" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><img src="../../../../_static/zenodo-icon-grey.ico" class="icon-link-image" alt="Zenodo"/></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="mailto:tmiener@iaa.csic.es,d.nieto@ucm.es?subject=Request%20access%20to%20the%20CTLearn%20Slack%20workspace&body=Hello%20CTLearn%20maintainers%2C%0A%0AI%20would%20like%20to%20request%20access%20to%20the%20CTLearn%20Slack%20workspace.%0A" title="Request Slack access" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-slack fa-lg" aria-hidden="true"></i><span class="visually-hidden">Request Slack access</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal" tabindex="-1"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../user-guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../developer-guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../api-reference/index.html">
+    API Docs
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../changelog.html">
+    Change Log
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Quick Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/ctlearn-project/ctlearn" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/ctlearn/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://doi.org/10.5281/zenodo.3342952" title="Zenodo" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><img src="../../../../_static/zenodo-icon-grey.ico" class="icon-link-image" alt="Zenodo"/></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="mailto:tmiener@iaa.csic.es,d.nieto@ucm.es?subject=Request%20access%20to%20the%20CTLearn%20Slack%20workspace&body=Hello%20CTLearn%20maintainers%2C%0A%0AI%20would%20like%20to%20request%20access%20to%20the%20CTLearn%20Slack%20workspace.%0A" title="Request Slack access" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-slack fa-lg" aria-hidden="true"></i><span class="visually-hidden">Request Slack access</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-house"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">ctlearn.core.pytorch.model</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for ctlearn.core.pytorch.model</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""</span>
+<span class="sd">This module defines the ``CTLearnModel`` classes, which holds the basic functionality for creating a PyTorch model to be used in CTLearn.</span>
+<span class="sd">"""</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">"BasicBlock"</span><span class="p">,</span>
+    <span class="s2">"BottleneckBlock"</span><span class="p">,</span>
+    <span class="s2">"MultiFullyConnectedHead"</span><span class="p">,</span>
+    <span class="s2">"build_fully_connect_pytorch_head"</span><span class="p">,</span>
+    <span class="s2">"PyTorchConvBackend"</span><span class="p">,</span>
+    <span class="s2">"PyTorchSingleCNN"</span><span class="p">,</span>
+    <span class="s2">"PyTorchResNet"</span><span class="p">,</span>
+    <span class="s2">"PyTorchLoadedModel"</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">partial</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">pytorch_hexagdly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">phgly</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn.functional</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">F</span>
+
+<span class="c1"># Assuming these custom attention blocks are updated to return torch.nn.Module or used dynamically</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctlearn.core.model</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ConvBackend</span><span class="p">,</span>
+    <span class="n">LoadedModel</span><span class="p">,</span>
+    <span class="n">ResNet</span><span class="p">,</span>
+    <span class="n">SingleCNN</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctlearn.core.pytorch.attention</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ChannelSqueezeExciteBlock</span><span class="p">,</span>
+    <span class="n">DualSqueezeExciteBlock</span><span class="p">,</span>
+    <span class="n">SpatialSqueezeExciteBlock</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="MultiFullyConnectedHead">
+<a class="viewcode-back" href="../../../../api/ctlearn.core.pytorch.model.MultiFullyConnectedHead.html#ctlearn.core.MultiFullyConnectedHead">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">MultiFullyConnectedHead</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    A PyTorch container module to hold the multi-task fully connected heads.</span>
+<span class="sd">    """</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">heads_dict</span><span class="p">,</span> <span class="n">single_output_task</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Initialize the MultiFullyConnectedHead.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        heads_dict : dict of torch.nn.Module</span>
+<span class="sd">            Dictionary mapping task names to their respective fully connected head modules.</span>
+<span class="sd">        single_output_task : str, optional</span>
+<span class="sd">            Task name if only a single task output should be returned directly (default: None).</span>
+<span class="sd">        """</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="c1"># Save the dict with tasks info in an attribute</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">heads_dict</span> <span class="o">=</span> <span class="n">heads_dict</span>
+        <span class="c1"># Sanitize keys because 'type' conflicts with nn.Module.type() method</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_task_mapping</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">task</span><span class="p">:</span> <span class="sa">f</span><span class="s2">"head_</span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2">"</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="n">task</span><span class="p">)</span> <span class="k">else</span> <span class="n">task</span>
+            <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">heads_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+        <span class="p">}</span>
+        <span class="n">sanitized_heads</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_task_mapping</span><span class="p">[</span><span class="n">task</span><span class="p">]:</span> <span class="n">module</span> <span class="k">for</span> <span class="n">task</span><span class="p">,</span> <span class="n">module</span> <span class="ow">in</span> <span class="n">heads_dict</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">heads</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">ModuleDict</span><span class="p">(</span><span class="n">sanitized_heads</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">single_output_task</span> <span class="o">=</span> <span class="n">single_output_task</span>
+
+<div class="viewcode-block" id="MultiFullyConnectedHead.forward">
+<a class="viewcode-back" href="../../../../api/ctlearn.core.pytorch.model.MultiFullyConnectedHead.html#ctlearn.core.MultiFullyConnectedHead.forward">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Perform the forward pass of the neural network.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        x : torch.Tensor</span>
+<span class="sd">            The input tensor.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        torch.Tensor</span>
+<span class="sd">            The output tensor after processing.</span>
+<span class="sd">        """</span>
+        <span class="c1"># Flatten backbone output if spatially aggregated (B, C, 1, 1) -&gt; (B, C)</span>
+        <span class="k">if</span> <span class="n">x</span><span class="o">.</span><span class="n">dim</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">flatten</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">start_dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="n">outputs</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">original_task</span><span class="p">,</span> <span class="n">internal_key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_task_mapping</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">head</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">heads</span><span class="p">[</span><span class="n">internal_key</span><span class="p">]</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="n">head</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+            <span class="c1"># Return raw logits for all tasks, including 'type',</span>
+            <span class="c1"># because CrossEntropyLoss expects logits during training.</span>
+            <span class="n">outputs</span><span class="p">[</span><span class="n">original_task</span><span class="p">]</span> <span class="o">=</span> <span class="n">out</span>
+
+        <span class="c1"># If only a single task is present, return a single output tensor or dictionary</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">single_output_task</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">outputs</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">single_output_task</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">outputs</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="build_fully_connect_pytorch_head">
+<a class="viewcode-back" href="../../../../api/ctlearn.core.pytorch.model.build_fully_connect_pytorch_head.html#ctlearn.core.build_fully_connect_pytorch_head">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">build_fully_connect_pytorch_head</span><span class="p">(</span><span class="n">in_features</span><span class="p">,</span> <span class="n">layers</span><span class="p">,</span> <span class="n">activation_function</span><span class="p">,</span> <span class="n">tasks</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Build the fully connected head for the PyTorch-based CTLearn model.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    in_features : int</span>
+<span class="sd">        Number of input features entering the fully connected head.</span>
+<span class="sd">    layers : dict of list of int</span>
+<span class="sd">        Dictionary specifying the hidden unit sizes for each task head.</span>
+<span class="sd">    activation_function : dict of str</span>
+<span class="sd">        Dictionary specifying the activation function for each task head.</span>
+<span class="sd">    tasks : list of str</span>
+<span class="sd">        List of active prediction tasks (e.g., ['type'], ['energy']).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    head : MultiFullyConnectedHead</span>
+<span class="sd">        Constructed PyTorch multi-task head module.</span>
+<span class="sd">    """</span>
+    <span class="n">heads</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="c1"># Activation mapping from Keras string to PyTorch Module</span>
+    <span class="n">act_map</span> <span class="o">=</span> <span class="p">{</span><span class="s2">"relu"</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">,</span> <span class="s2">"tanh"</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Tanh</span><span class="p">,</span> <span class="s2">"sigmoid"</span><span class="p">:</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sigmoid</span><span class="p">}</span>
+
+    <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="n">tasks</span><span class="p">:</span>
+        <span class="n">task_layers</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">current_features</span> <span class="o">=</span> <span class="n">in_features</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">units</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">layers</span><span class="p">[</span><span class="n">task</span><span class="p">]):</span>
+            <span class="n">task_layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="n">current_features</span><span class="p">,</span> <span class="n">units</span><span class="p">))</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">layers</span><span class="p">[</span><span class="n">task</span><span class="p">])</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">act_cls</span> <span class="o">=</span> <span class="n">act_map</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">activation_function</span><span class="p">[</span><span class="n">task</span><span class="p">]</span><span class="o">.</span><span class="n">lower</span><span class="p">(),</span> <span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">)</span>
+                <span class="n">task_layers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">act_cls</span><span class="p">())</span>
+            <span class="n">current_features</span> <span class="o">=</span> <span class="n">units</span>
+
+        <span class="n">heads</span><span class="p">[</span><span class="n">task</span><span class="p">]</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span><span class="o">*</span><span class="n">task_layers</span><span class="p">)</span>
+
+    <span class="n">single_output_task</span> <span class="o">=</span> <span class="n">tasks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">tasks</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">tasks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"type"</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">MultiFullyConnectedHead</span><span class="p">(</span><span class="n">heads</span><span class="p">,</span> <span class="n">single_output_task</span><span class="o">=</span><span class="n">single_output_task</span><span class="p">)</span></div>
+
+
+
+<span class="k">class</span><span class="w"> </span><span class="nc">FullModelPipeline</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Combines the backbone and multi-task heads into a unified executable nn.Module pipeline.</span>
+<span class="sd">    """</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">backbone</span><span class="p">,</span> <span class="n">head</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Initialize the FullModelPipeline.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        backbone : torch.nn.Module</span>
+<span class="sd">            Feature extractor backbone module.</span>
+<span class="sd">        head : MultiFullyConnectedHead</span>
+<span class="sd">            Multi-task output head module.</span>
+<span class="sd">        """</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">backbone</span> <span class="o">=</span> <span class="n">backbone</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">head</span> <span class="o">=</span> <span class="n">head</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Perform the forward pass of the neural network.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        x : torch.Tensor</span>
+<span class="sd">            The input tensor.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        torch.Tensor</span>
+<span class="sd">            The output tensor after processing.</span>
+<span class="sd">        """</span>
+        <span class="n">features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">backbone</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="n">features</span><span class="p">),</span> <span class="n">features</span>
+
+
+<span class="c1"># The hexagonal layers read ``kernel_size`` as a square-kernel width, like the</span>
+<span class="c1"># square layers do, instead of counting hexagonal rings (their default): 3 is</span>
+<span class="c1"># the 7-cell hexagon and 1 a plain 1x1. The same configuration then describes</span>
+<span class="c1"># comparable models on both grids.</span>
+<span class="n">_HexConv2d</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">phgly</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">,</span> <span class="n">kernel_size_unit</span><span class="o">=</span><span class="s2">"pixels"</span><span class="p">)</span>
+<span class="n">_HexMaxPool2d</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">phgly</span><span class="o">.</span><span class="n">MaxPool2d</span><span class="p">,</span> <span class="n">kernel_size_unit</span><span class="o">=</span><span class="s2">"pixels"</span><span class="p">)</span>
+<span class="n">_HexAvgPool2d</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">phgly</span><span class="o">.</span><span class="n">AvgPool2d</span><span class="p">,</span> <span class="n">kernel_size_unit</span><span class="o">=</span><span class="s2">"pixels"</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="PyTorchConvBackend">
+<a class="viewcode-back" href="../../../../api/ctlearn.core.pytorch.model.PyTorchConvBackend.html#ctlearn.core.PyTorchConvBackend">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PyTorchConvBackend</span><span class="p">(</span><span class="n">ConvBackend</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Select PyTorch layers for square or hexagonal model backbones.</span>
+
+<span class="sd">    The ``conv_backend`` trait selects native PyTorch layers for square-mapped</span>
+<span class="sd">    inputs or ``pytorch_hexagdly`` layers for hex-addressed inputs.</span>
+<span class="sd">    """</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_conv_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Convolution layer class for ``conv_backend``.</span>
+
+<span class="sd">        Both are built with the same arguments, and ``kernel_size`` has the same</span>
+<span class="sd">        meaning for both: a square-kernel width. The hex grid is always padded</span>
+<span class="sd">        so every cell is a window centre, whatever ``padding`` says.</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="n">_HexConv2d</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv_backend</span> <span class="o">==</span> <span class="s2">"hexagdly"</span> <span class="k">else</span> <span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_pool_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Max-pooling layer class for ``conv_backend``."""</span>
+        <span class="k">return</span> <span class="n">_HexMaxPool2d</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv_backend</span> <span class="o">==</span> <span class="s2">"hexagdly"</span> <span class="k">else</span> <span class="n">nn</span><span class="o">.</span><span class="n">MaxPool2d</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_avg_pool_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Average-pooling layer class for ``conv_backend``."""</span>
+        <span class="k">return</span> <span class="n">_HexAvgPool2d</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv_backend</span> <span class="o">==</span> <span class="s2">"hexagdly"</span> <span class="k">else</span> <span class="n">nn</span><span class="o">.</span><span class="n">AvgPool2d</span></div>
+
+
+
+<div class="viewcode-block" id="PyTorchSingleCNN">
+<a class="viewcode-back" href="../../../../api/ctlearn.core.pytorch.model.PyTorchSingleCNN.html#ctlearn.core.PyTorchSingleCNN">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PyTorchSingleCNN</span><span class="p">(</span><span class="n">SingleCNN</span><span class="p">,</span> <span class="n">PyTorchConvBackend</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    ``SingleCNN`` is a simple convolutional neural network model implemented in PyTorch.</span>
+<span class="sd">    """</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_shape</span><span class="p">,</span> <span class="n">tasks</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Initialize the PyTorchSingleCNN model component.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        input_shape : tuple</span>
+<span class="sd">            Input image tensor dimensions (channels, height, width).</span>
+<span class="sd">        tasks : list of str</span>
+<span class="sd">            List of target prediction tasks.</span>
+<span class="sd">        config : traitlets.config.Config, optional</span>
+<span class="sd">            Configuration specified by config file or cmdline arguments.</span>
+<span class="sd">        parent : ctapipe.core.Component or ctapipe.core.Tool, optional</span>
+<span class="sd">            Parent component in hierarchy.</span>
+<span class="sd">        **kwargs : dict, optional</span>
+<span class="sd">            Additional keyword arguments.</span>
+<span class="sd">        """</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">tasks</span><span class="o">=</span><span class="n">tasks</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">parent</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c1"># Build modules</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">backbone_model</span><span class="p">,</span> <span class="n">out_features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_backbone</span><span class="p">(</span><span class="n">input_shape</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logits_head</span> <span class="o">=</span> <span class="n">build_fully_connect_pytorch_head</span><span class="p">(</span>
+            <span class="n">out_features</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">head_layers</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">head_activation_function</span><span class="p">,</span> <span class="n">tasks</span>
+        <span class="p">)</span>
+        <span class="c1"># Final native PyTorch module pipeline saved into self.model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">FullModelPipeline</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">backbone_model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">logits_head</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_build_backbone</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_shape</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Construct the feature extraction backbone of the network.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        input_shape : tuple</span>
+<span class="sd">            The shape of the input image tensor (channels, height, width).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        tuple</span>
+<span class="sd">            A tuple containing the constructed nn.Module backbone and the number of output channels.</span>
+<span class="sd">        """</span>
+        <span class="c1"># input_shape format: (channels, height, width)</span>
+        <span class="n">in_channels</span> <span class="o">=</span> <span class="n">input_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">modules</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">batchnorm</span><span class="p">:</span>
+            <span class="n">modules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="n">nn</span><span class="o">.</span><span class="n">BatchNorm2d</span><span class="p">(</span><span class="n">in_channels</span><span class="p">,</span> <span class="n">momentum</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">)</span>
+            <span class="p">)</span>  <span class="c1"># PyTorch momentum = 1 - Keras momentum</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">layer</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">architecture</span><span class="p">):</span>
+            <span class="n">filters</span> <span class="o">=</span> <span class="n">layer</span><span class="p">[</span><span class="s2">"filters"</span><span class="p">]</span>
+            <span class="n">kernel_size</span> <span class="o">=</span> <span class="n">layer</span><span class="p">[</span><span class="s2">"kernel_size"</span><span class="p">]</span>
+            <span class="n">number</span> <span class="o">=</span> <span class="n">layer</span><span class="p">[</span><span class="s2">"number"</span><span class="p">]</span>
+
+            <span class="k">for</span> <span class="n">nr</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">number</span><span class="p">):</span>
+                <span class="c1"># padding="same" calculates padding dynamically in PyTorch based on kernel size</span>
+                <span class="n">padding</span> <span class="o">=</span> <span class="n">kernel_size</span> <span class="o">//</span> <span class="mi">2</span>
+                <span class="n">modules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_conv_layer</span><span class="p">(</span>
+                        <span class="n">in_channels</span><span class="p">,</span> <span class="n">filters</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="n">kernel_size</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="n">padding</span>
+                    <span class="p">)</span>
+                <span class="p">)</span>
+                <span class="n">modules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">())</span>
+                <span class="n">in_channels</span> <span class="o">=</span> <span class="n">filters</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pooling_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">p_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pooling_parameters</span><span class="p">[</span><span class="s2">"size"</span><span class="p">]</span>
+                <span class="n">p_stride</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">pooling_parameters</span><span class="p">[</span><span class="s2">"strides"</span><span class="p">]</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pooling_type</span> <span class="o">==</span> <span class="s2">"max"</span><span class="p">:</span>
+                    <span class="n">modules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_pool_layer</span><span class="p">(</span><span class="n">kernel_size</span><span class="o">=</span><span class="n">p_size</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="n">p_stride</span><span class="p">)</span>
+                    <span class="p">)</span>
+                <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">pooling_type</span> <span class="o">==</span> <span class="s2">"average"</span><span class="p">:</span>
+                    <span class="n">modules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                        <span class="bp">self</span><span class="o">.</span><span class="n">_avg_pool_layer</span><span class="p">(</span><span class="n">kernel_size</span><span class="o">=</span><span class="n">p_size</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="n">p_stride</span><span class="p">)</span>
+                    <span class="p">)</span>
+
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">batchnorm</span><span class="p">:</span>
+                <span class="n">modules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">BatchNorm2d</span><span class="p">(</span><span class="n">in_channels</span><span class="p">,</span> <span class="n">momentum</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">bottleneck_filters</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">modules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_conv_layer</span><span class="p">(</span><span class="n">in_channels</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bottleneck_filters</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">modules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">())</span>
+            <span class="n">in_channels</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bottleneck_filters</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">batchnorm</span><span class="p">:</span>
+                <span class="n">modules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">BatchNorm2d</span><span class="p">(</span><span class="n">in_channels</span><span class="p">,</span> <span class="n">momentum</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span> <span class="n">eps</span><span class="o">=</span><span class="mf">1e-3</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">attention</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">mech</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">attention</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"mechanism"</span><span class="p">)</span>
+            <span class="n">ratio</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">attention</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"reduction_ratio"</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">mech</span> <span class="o">==</span> <span class="s2">"Dual-SE"</span><span class="p">:</span>
+                <span class="n">attention_layer</span> <span class="o">=</span> <span class="n">DualSqueezeExciteBlock</span><span class="p">(</span>
+                    <span class="n">in_channels</span><span class="o">=</span><span class="n">in_channels</span><span class="p">,</span> <span class="n">ratio</span><span class="o">=</span><span class="n">ratio</span>
+                <span class="p">)</span>
+            <span class="k">elif</span> <span class="n">mech</span> <span class="o">==</span> <span class="s2">"Channel-SE"</span><span class="p">:</span>
+                <span class="n">attention_layer</span> <span class="o">=</span> <span class="n">ChannelSqueezeExciteBlock</span><span class="p">(</span>
+                    <span class="n">in_channels</span><span class="o">=</span><span class="n">in_channels</span><span class="p">,</span> <span class="n">ratio</span><span class="o">=</span><span class="n">ratio</span>
+                <span class="p">)</span>
+            <span class="k">elif</span> <span class="n">mech</span> <span class="o">==</span> <span class="s2">"Spatial-SE"</span><span class="p">:</span>
+                <span class="n">attention_layer</span> <span class="o">=</span> <span class="n">SpatialSqueezeExciteBlock</span><span class="p">(</span><span class="n">in_channels</span><span class="o">=</span><span class="n">in_channels</span><span class="p">)</span>
+            <span class="n">modules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">attention_layer</span><span class="p">)</span>
+
+        <span class="c1"># Perform global 2D average pooling</span>
+        <span class="n">modules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">AdaptiveAvgPool2d</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)))</span>
+        <span class="n">modules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Flatten</span><span class="p">(</span><span class="n">start_dim</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span><span class="o">*</span><span class="n">modules</span><span class="p">),</span> <span class="n">in_channels</span></div>
+
+
+
+<div class="viewcode-block" id="BasicBlock">
+<a class="viewcode-back" href="../../../../api/ctlearn.core.pytorch.model.BasicBlock.html#ctlearn.core.BasicBlock">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BasicBlock</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Basic block for ResNet architectures.</span>
+<span class="sd">    """</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">in_channels</span><span class="p">,</span>
+        <span class="n">out_channels</span><span class="p">,</span>
+        <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">conv_shortcut</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">attention</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">conv_layer</span><span class="o">=</span><span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Initialize the BasicBlock module.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        in_channels : int</span>
+<span class="sd">            Number of input feature channels.</span>
+<span class="sd">        out_channels : int</span>
+<span class="sd">            Number of output feature channels.</span>
+<span class="sd">        stride : int, optional</span>
+<span class="sd">            Stride size for convolution and shortcut (default: 1).</span>
+<span class="sd">        conv_shortcut : bool, optional</span>
+<span class="sd">            Whether to use a 1x1 convolution in the shortcut connection (default: True).</span>
+<span class="sd">        attention : dict or None, optional</span>
+<span class="sd">            Configuration dictionary for attention mechanism (default: None).</span>
+<span class="sd">        conv_layer : callable, optional</span>
+<span class="sd">            Convolution layer class to use (default: nn.Conv2d).</span>
+<span class="sd">        """</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv_shortcut</span> <span class="o">=</span> <span class="n">conv_shortcut</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">attention_config</span> <span class="o">=</span> <span class="n">attention</span>
+        <span class="c1"># Projection Shortcut Branch</span>
+        <span class="k">if</span> <span class="n">conv_shortcut</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">shortcut</span> <span class="o">=</span> <span class="n">conv_layer</span><span class="p">(</span>
+                <span class="n">in_channels</span><span class="p">,</span> <span class="n">out_channels</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="n">stride</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">shortcut</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="c1"># Main Branch Convolutions (Matching Keras _1_conv and _2_conv)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv1</span> <span class="o">=</span> <span class="n">conv_layer</span><span class="p">(</span>
+            <span class="n">in_channels</span><span class="p">,</span>
+            <span class="n">out_channels</span><span class="p">,</span>
+            <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+            <span class="n">stride</span><span class="o">=</span><span class="n">stride</span><span class="p">,</span>
+            <span class="n">padding</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">bias</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv2</span> <span class="o">=</span> <span class="n">conv_layer</span><span class="p">(</span>
+            <span class="n">out_channels</span><span class="p">,</span> <span class="n">out_channels</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+        <span class="c1"># Setup the attention mechanism</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setup_attention</span><span class="p">(</span><span class="n">out_channels</span><span class="p">)</span>
+
+<div class="viewcode-block" id="BasicBlock.setup_attention">
+<a class="viewcode-back" href="../../../../api/ctlearn.core.pytorch.model.BasicBlock.html#ctlearn.core.BasicBlock.setup_attention">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setup_attention</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channels</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Initialize and configure the attention mechanism for the block.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        channels : int</span>
+<span class="sd">            The number of feature channels to apply attention on.</span>
+<span class="sd">        """</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">attn_layer</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">attention_config</span><span class="p">:</span>
+            <span class="n">mech</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">attention_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"mechanism"</span><span class="p">)</span>
+            <span class="n">ratio</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">attention_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"reduction_ratio"</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">mech</span> <span class="o">==</span> <span class="s2">"Dual-SE"</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">attn_layer</span> <span class="o">=</span> <span class="n">DualSqueezeExciteBlock</span><span class="p">(</span>
+                    <span class="n">in_channels</span><span class="o">=</span><span class="n">channels</span><span class="p">,</span> <span class="n">ratio</span><span class="o">=</span><span class="n">ratio</span>
+                <span class="p">)</span>
+            <span class="k">elif</span> <span class="n">mech</span> <span class="o">==</span> <span class="s2">"Channel-SE"</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">attn_layer</span> <span class="o">=</span> <span class="n">ChannelSqueezeExciteBlock</span><span class="p">(</span>
+                    <span class="n">in_channels</span><span class="o">=</span><span class="n">channels</span><span class="p">,</span> <span class="n">ratio</span><span class="o">=</span><span class="n">ratio</span>
+                <span class="p">)</span>
+            <span class="k">elif</span> <span class="n">mech</span> <span class="o">==</span> <span class="s2">"Spatial-SE"</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">attn_layer</span> <span class="o">=</span> <span class="n">SpatialSqueezeExciteBlock</span><span class="p">(</span><span class="n">in_channels</span><span class="o">=</span><span class="n">channels</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="BasicBlock.forward">
+<a class="viewcode-back" href="../../../../api/ctlearn.core.pytorch.model.BasicBlock.html#ctlearn.core.BasicBlock.forward">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Perform the forward pass of the neural network.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        x : torch.Tensor</span>
+<span class="sd">            The input tensor.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        torch.Tensor</span>
+<span class="sd">            The output tensor after processing.</span>
+<span class="sd">        """</span>
+        <span class="c1"># Shortcut path</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv_shortcut</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">shortcut</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">identity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shortcut</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">identity</span> <span class="o">=</span> <span class="n">x</span>
+
+        <span class="c1"># Main path (Matches Keras activation order: conv1 -&gt; relu -&gt; conv2)</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">relu</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">conv1</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv2</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">attn_layer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">attn_layer</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+
+        <span class="n">out</span> <span class="o">+=</span> <span class="n">identity</span>
+        <span class="k">return</span> <span class="n">F</span><span class="o">.</span><span class="n">relu</span><span class="p">(</span><span class="n">out</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="BottleneckBlock">
+<a class="viewcode-back" href="../../../../api/ctlearn.core.pytorch.model.BottleneckBlock.html#ctlearn.core.BottleneckBlock">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">BottleneckBlock</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Bottleneck block for deeper ResNet architectures.</span>
+<span class="sd">    """</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">in_channels</span><span class="p">,</span>
+        <span class="n">base_filters</span><span class="p">,</span>
+        <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">conv_shortcut</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">attention</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">conv_layer</span><span class="o">=</span><span class="n">nn</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Initialize the BottleneckBlock module.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        in_channels : int</span>
+<span class="sd">            Number of input feature channels.</span>
+<span class="sd">        base_filters : int</span>
+<span class="sd">            Base number of filters (expanded to 4x at output).</span>
+<span class="sd">        stride : int, optional</span>
+<span class="sd">            Stride size for downsampling convolution (default: 1).</span>
+<span class="sd">        conv_shortcut : bool, optional</span>
+<span class="sd">            Whether to use a projection 1x1 convolution in the shortcut connection (default: True).</span>
+<span class="sd">        attention : dict or None, optional</span>
+<span class="sd">            Configuration dictionary for attention mechanism (default: None).</span>
+<span class="sd">        conv_layer : callable, optional</span>
+<span class="sd">            Convolution layer class to use (default: nn.Conv2d).</span>
+<span class="sd">        """</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv_shortcut</span> <span class="o">=</span> <span class="n">conv_shortcut</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">attention_config</span> <span class="o">=</span> <span class="n">attention</span>
+
+        <span class="c1"># Shortcut connection</span>
+        <span class="k">if</span> <span class="n">conv_shortcut</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">shortcut</span> <span class="o">=</span> <span class="n">conv_layer</span><span class="p">(</span>
+                <span class="n">in_channels</span><span class="p">,</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">base_filters</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="n">stride</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="kc">False</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">shortcut</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Identity</span><span class="p">()</span>
+        <span class="c1"># Main branch convolutions matching Keras layout:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv1</span> <span class="o">=</span> <span class="n">conv_layer</span><span class="p">(</span>
+            <span class="n">in_channels</span><span class="p">,</span> <span class="n">base_filters</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="n">stride</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+        <span class="c1"># Keras _2_conv is 3x3 spatial convolution with stride=1 (since stride is handled in _1_conv)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv2</span> <span class="o">=</span> <span class="n">conv_layer</span><span class="p">(</span>
+            <span class="n">base_filters</span><span class="p">,</span> <span class="n">base_filters</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+        <span class="c1"># Keras _3_conv restores channels back to 4 * base_filters</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">conv3</span> <span class="o">=</span> <span class="n">conv_layer</span><span class="p">(</span>
+            <span class="n">base_filters</span><span class="p">,</span> <span class="mi">4</span> <span class="o">*</span> <span class="n">base_filters</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">bias</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+        <span class="c1"># Setup the attention mechanism</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">setup_attention</span><span class="p">(</span><span class="mi">4</span> <span class="o">*</span> <span class="n">base_filters</span><span class="p">)</span>
+
+<div class="viewcode-block" id="BottleneckBlock.setup_attention">
+<a class="viewcode-back" href="../../../../api/ctlearn.core.pytorch.model.BottleneckBlock.html#ctlearn.core.BottleneckBlock.setup_attention">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">setup_attention</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">channels</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Initialize and configure the attention mechanism for the block.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        channels : int</span>
+<span class="sd">            The number of feature channels to apply attention on.</span>
+<span class="sd">        """</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">attn_layer</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">attention_config</span><span class="p">:</span>
+            <span class="n">mech</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">attention_config</span><span class="p">[</span><span class="s2">"mechanism"</span><span class="p">]</span>
+            <span class="n">ratio</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">attention_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"reduction_ratio"</span><span class="p">,</span> <span class="mi">16</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">mech</span> <span class="o">==</span> <span class="s2">"Dual-SE"</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">attn_layer</span> <span class="o">=</span> <span class="n">DualSqueezeExciteBlock</span><span class="p">(</span>
+                    <span class="n">in_channels</span><span class="o">=</span><span class="n">channels</span><span class="p">,</span> <span class="n">ratio</span><span class="o">=</span><span class="n">ratio</span>
+                <span class="p">)</span>
+            <span class="k">elif</span> <span class="n">mech</span> <span class="o">==</span> <span class="s2">"Channel-SE"</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">attn_layer</span> <span class="o">=</span> <span class="n">ChannelSqueezeExciteBlock</span><span class="p">(</span>
+                    <span class="n">in_channels</span><span class="o">=</span><span class="n">channels</span><span class="p">,</span> <span class="n">ratio</span><span class="o">=</span><span class="n">ratio</span>
+                <span class="p">)</span>
+            <span class="k">elif</span> <span class="n">mech</span> <span class="o">==</span> <span class="s2">"Spatial-SE"</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">attn_layer</span> <span class="o">=</span> <span class="n">SpatialSqueezeExciteBlock</span><span class="p">(</span><span class="n">in_channels</span><span class="o">=</span><span class="n">channels</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="BottleneckBlock.forward">
+<a class="viewcode-back" href="../../../../api/ctlearn.core.pytorch.model.BottleneckBlock.html#ctlearn.core.BottleneckBlock.forward">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Perform the forward pass of the neural network.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        x : torch.Tensor</span>
+<span class="sd">            The input tensor.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        torch.Tensor</span>
+<span class="sd">            The output tensor after processing.</span>
+<span class="sd">        """</span>
+        <span class="n">identity</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">shortcut</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+        <span class="c1"># Matches Keras sequence: conv1 (with stride) -&gt; relu -&gt; conv2 -&gt; relu -&gt; conv3</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">relu</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">conv1</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">relu</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">conv2</span><span class="p">(</span><span class="n">out</span><span class="p">))</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv3</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">attn_layer</span><span class="p">:</span>
+            <span class="n">out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">attn_layer</span><span class="p">(</span><span class="n">out</span><span class="p">)</span>
+
+        <span class="n">out</span> <span class="o">+=</span> <span class="n">identity</span>
+        <span class="k">return</span> <span class="n">F</span><span class="o">.</span><span class="n">relu</span><span class="p">(</span><span class="n">out</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="PyTorchResNet">
+<a class="viewcode-back" href="../../../../api/ctlearn.core.pytorch.model.PyTorchResNet.html#ctlearn.core.PyTorchResNet">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PyTorchResNet</span><span class="p">(</span><span class="n">ResNet</span><span class="p">,</span> <span class="n">PyTorchConvBackend</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    ``PyTorchResNet`` is a residual neural network model implemented in PyTorch.</span>
+<span class="sd">    """</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_shape</span><span class="p">,</span> <span class="n">tasks</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Initialize the PyTorchResNet model component.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        input_shape : tuple</span>
+<span class="sd">            Input image tensor dimensions (channels, height, width).</span>
+<span class="sd">        tasks : list of str</span>
+<span class="sd">            List of target prediction tasks.</span>
+<span class="sd">        config : traitlets.config.Config, optional</span>
+<span class="sd">            Configuration specified by config file or cmdline arguments.</span>
+<span class="sd">        parent : ctapipe.core.Component or ctapipe.core.Tool, optional</span>
+<span class="sd">            Parent component in hierarchy.</span>
+<span class="sd">        **kwargs : dict, optional</span>
+<span class="sd">            Additional keyword arguments.</span>
+<span class="sd">        """</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">tasks</span><span class="o">=</span><span class="n">tasks</span><span class="p">,</span> <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">,</span> <span class="n">parent</span><span class="o">=</span><span class="n">parent</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="c1"># Build PyTorch backbone and track final out_features channel size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">backbone_model</span><span class="p">,</span> <span class="n">out_features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_backbone</span><span class="p">(</span><span class="n">input_shape</span><span class="p">)</span>
+        <span class="c1"># Build the fully connected head</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logits_head</span> <span class="o">=</span> <span class="n">build_fully_connect_pytorch_head</span><span class="p">(</span>
+            <span class="n">out_features</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">head_layers</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">head_activation_function</span><span class="p">,</span> <span class="n">tasks</span>
+        <span class="p">)</span>
+        <span class="c1"># Unify into our structural pipeline wrapper module</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">FullModelPipeline</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">backbone_model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">logits_head</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_build_backbone</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_shape</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Construct the feature extraction backbone of the network.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        input_shape : tuple</span>
+<span class="sd">            The shape of the input image tensor (channels, height, width).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        tuple</span>
+<span class="sd">            A tuple containing the constructed nn.Module backbone and the number of output channels.</span>
+<span class="sd">        """</span>
+        <span class="n">in_channels</span> <span class="o">=</span> <span class="n">input_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">modules</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="c1"># Initial Zero Padding</span>
+        <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"init_padding"</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">modules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">ZeroPad2d</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">init_padding</span><span class="p">))</span>
+
+        <span class="c1"># Initial Conv Layer</span>
+        <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"init_layer"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">out_ch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_layer</span><span class="p">[</span><span class="s2">"filters"</span><span class="p">]</span>
+            <span class="n">k_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_layer</span><span class="p">[</span><span class="s2">"kernel_size"</span><span class="p">]</span>
+            <span class="n">stride</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_layer</span><span class="p">[</span><span class="s2">"strides"</span><span class="p">]</span>
+            <span class="n">padding</span> <span class="o">=</span> <span class="n">k_size</span> <span class="o">//</span> <span class="mi">2</span>
+
+            <span class="n">modules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_conv_layer</span><span class="p">(</span>
+                    <span class="n">in_channels</span><span class="p">,</span>
+                    <span class="n">out_ch</span><span class="p">,</span>
+                    <span class="n">kernel_size</span><span class="o">=</span><span class="n">k_size</span><span class="p">,</span>
+                    <span class="n">stride</span><span class="o">=</span><span class="n">stride</span><span class="p">,</span>
+                    <span class="n">padding</span><span class="o">=</span><span class="n">padding</span><span class="p">,</span>
+                    <span class="n">bias</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># Match Keras default bias if applicable</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">modules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">ReLU</span><span class="p">())</span>
+            <span class="n">in_channels</span> <span class="o">=</span> <span class="n">out_ch</span>
+
+        <span class="c1"># Initial Max Pooling</span>
+        <span class="k">if</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s2">"init_max_pool"</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">p_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_max_pool</span><span class="p">[</span><span class="s2">"size"</span><span class="p">]</span>
+            <span class="n">p_stride</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_max_pool</span><span class="p">[</span><span class="s2">"strides"</span><span class="p">]</span>
+            <span class="n">modules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_pool_layer</span><span class="p">(</span><span class="n">kernel_size</span><span class="o">=</span><span class="n">p_size</span><span class="p">,</span> <span class="n">stride</span><span class="o">=</span><span class="n">p_stride</span><span class="p">,</span> <span class="n">padding</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Assemble Stacked Residual Architecture blocks</span>
+        <span class="n">res_blocks</span><span class="p">,</span> <span class="n">final_channels</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stacked_res_blocks</span><span class="p">(</span>
+            <span class="n">in_channels</span><span class="p">,</span>
+            <span class="n">architecture</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">architecture</span><span class="p">,</span>
+            <span class="n">residual_block_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">residual_block_type</span><span class="p">,</span>
+            <span class="n">attention</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">attention</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">modules</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">res_blocks</span><span class="p">)</span>
+
+        <span class="c1"># Perform global 2D average pooling</span>
+        <span class="n">modules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">AdaptiveAvgPool2d</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)))</span>
+        <span class="n">modules</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Flatten</span><span class="p">(</span><span class="n">start_dim</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">nn</span><span class="o">.</span><span class="n">Sequential</span><span class="p">(</span><span class="o">*</span><span class="n">modules</span><span class="p">),</span> <span class="n">final_channels</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_stacked_res_blocks</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">in_channels</span><span class="p">,</span> <span class="n">architecture</span><span class="p">,</span> <span class="n">residual_block_type</span><span class="p">,</span> <span class="n">attention</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Assemble the full sequence of residual blocks for the ResNet architecture.</span>
+
+<span class="sd">        This method iterates over the network architecture configuration, grouping</span>
+<span class="sd">        blocks by their output filter sizes and downsampling strides. It uses</span>
+<span class="sd">        `_stack_fn` to create each stack of blocks and maintains the current channel count.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        in_channels : int</span>
+<span class="sd">            Number of input channels to the first block.</span>
+<span class="sd">        architecture : list of dict</span>
+<span class="sd">            A list specifying the configuration (filters, blocks) for each layer block stack.</span>
+<span class="sd">        residual_block_type : str</span>
+<span class="sd">            The type of residual block to use ('basic' or 'bottleneck').</span>
+<span class="sd">        attention : dict or None</span>
+<span class="sd">            Configuration dictionary for the attention mechanism, if any.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        list of nn.Module</span>
+<span class="sd">            The list of instantiated residual blocks.</span>
+<span class="sd">        int</span>
+<span class="sd">            The final number of output channels after all blocks.</span>
+<span class="sd">        """</span>
+        <span class="n">blocks_list</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">current_channels</span> <span class="o">=</span> <span class="n">in_channels</span>
+
+        <span class="n">filters_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">layer</span><span class="p">[</span><span class="s2">"filters"</span><span class="p">]</span> <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="n">architecture</span><span class="p">]</span>
+        <span class="n">blocks_count</span> <span class="o">=</span> <span class="p">[</span><span class="n">layer</span><span class="p">[</span><span class="s2">"blocks"</span><span class="p">]</span> <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="n">architecture</span><span class="p">]</span>
+
+        <span class="c1"># First layer block sequence (stride=1)</span>
+        <span class="n">blocks_list</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_stack_fn</span><span class="p">(</span>
+                <span class="n">current_channels</span><span class="p">,</span>
+                <span class="n">filters_list</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                <span class="n">blocks_count</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                <span class="n">residual_block_type</span><span class="p">,</span>
+                <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                <span class="n">attention</span><span class="o">=</span><span class="n">attention</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+        <span class="n">multiplier</span> <span class="o">=</span> <span class="mi">4</span> <span class="k">if</span> <span class="n">residual_block_type</span> <span class="o">==</span> <span class="s2">"bottleneck"</span> <span class="k">else</span> <span class="mi">1</span>
+        <span class="n">current_channels</span> <span class="o">=</span> <span class="n">filters_list</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">multiplier</span>
+
+        <span class="c1"># Subsequent downsampling levels (stride=2)</span>
+        <span class="k">for</span> <span class="n">filters</span><span class="p">,</span> <span class="n">blocks</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">filters_list</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">blocks_count</span><span class="p">[</span><span class="mi">1</span><span class="p">:]):</span>
+            <span class="n">blocks_list</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_stack_fn</span><span class="p">(</span>
+                    <span class="n">current_channels</span><span class="p">,</span>
+                    <span class="n">filters</span><span class="p">,</span>
+                    <span class="n">blocks</span><span class="p">,</span>
+                    <span class="n">residual_block_type</span><span class="p">,</span>
+                    <span class="n">stride</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+                    <span class="n">attention</span><span class="o">=</span><span class="n">attention</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">current_channels</span> <span class="o">=</span> <span class="n">filters</span> <span class="o">*</span> <span class="n">multiplier</span>
+
+        <span class="k">return</span> <span class="n">blocks_list</span><span class="p">,</span> <span class="n">current_channels</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_stack_fn</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">in_channels</span><span class="p">,</span>
+        <span class="n">filters</span><span class="p">,</span>
+        <span class="n">blocks</span><span class="p">,</span>
+        <span class="n">residual_block_type</span><span class="p">,</span>
+        <span class="n">stride</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="n">attention</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Create a stack of identical residual blocks for a specific layer in the ResNet.</span>
+
+<span class="sd">        The first block in the stack is responsible for adapting the channel dimensions</span>
+<span class="sd">        and spatial resolution (via stride). The subsequent blocks maintain the same</span>
+<span class="sd">        dimensions and stride (stride=1).</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        in_channels : int</span>
+<span class="sd">            Number of input channels to the stack.</span>
+<span class="sd">        filters : int</span>
+<span class="sd">            Base number of filters for the blocks (bottleneck blocks expand this by 4x).</span>
+<span class="sd">        blocks : int</span>
+<span class="sd">            The number of blocks to instantiate in this stack.</span>
+<span class="sd">        residual_block_type : str</span>
+<span class="sd">            The type of residual block ('basic' or 'bottleneck').</span>
+<span class="sd">        stride : int, default=2</span>
+<span class="sd">            The stride used in the first block for downsampling.</span>
+<span class="sd">        attention : dict or None</span>
+<span class="sd">            Configuration dictionary for the attention mechanism.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        list of nn.Module</span>
+<span class="sd">            A list containing the constructed residual blocks for this stack.</span>
+<span class="sd">        """</span>
+        <span class="n">stack</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="c1"># Bottleneck blocks expand channels by 4x; Basic blocks do not expand.</span>
+        <span class="n">multiplier</span> <span class="o">=</span> <span class="mi">4</span> <span class="k">if</span> <span class="n">residual_block_type</span> <span class="o">==</span> <span class="s2">"bottleneck"</span> <span class="k">else</span> <span class="mi">1</span>
+        <span class="n">out_channels</span> <span class="o">=</span> <span class="n">filters</span> <span class="o">*</span> <span class="n">multiplier</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">build_block</span><span class="p">(</span><span class="n">in_c</span><span class="p">,</span> <span class="n">s</span><span class="p">):</span>
+<span class="w">            </span><span class="sd">"""</span>
+<span class="sd">            Construct a single residual block configured for this level of the ResNet.</span>
+<span class="sd">            """</span>
+            <span class="c1"># Only use a conv shortcut if channels change or if downsampling (stride &gt; 1)</span>
+            <span class="n">needs_shortcut</span> <span class="o">=</span> <span class="p">(</span><span class="n">in_c</span> <span class="o">!=</span> <span class="n">out_channels</span><span class="p">)</span> <span class="ow">or</span> <span class="p">(</span><span class="n">s</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">residual_block_type</span> <span class="o">==</span> <span class="s2">"basic"</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">BasicBlock</span><span class="p">(</span>
+                    <span class="n">in_channels</span><span class="o">=</span><span class="n">in_c</span><span class="p">,</span>
+                    <span class="n">out_channels</span><span class="o">=</span><span class="n">filters</span><span class="p">,</span>
+                    <span class="n">stride</span><span class="o">=</span><span class="n">s</span><span class="p">,</span>
+                    <span class="n">conv_shortcut</span><span class="o">=</span><span class="n">needs_shortcut</span><span class="p">,</span>
+                    <span class="n">attention</span><span class="o">=</span><span class="n">attention</span><span class="p">,</span>
+                    <span class="n">conv_layer</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_conv_layer</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">BottleneckBlock</span><span class="p">(</span>
+                    <span class="n">in_channels</span><span class="o">=</span><span class="n">in_c</span><span class="p">,</span>
+                    <span class="n">base_filters</span><span class="o">=</span><span class="n">filters</span><span class="p">,</span>
+                    <span class="n">stride</span><span class="o">=</span><span class="n">s</span><span class="p">,</span>
+                    <span class="n">conv_shortcut</span><span class="o">=</span><span class="n">needs_shortcut</span><span class="p">,</span>
+                    <span class="n">attention</span><span class="o">=</span><span class="n">attention</span><span class="p">,</span>
+                    <span class="n">conv_layer</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_conv_layer</span><span class="p">,</span>
+                <span class="p">)</span>
+
+        <span class="c1"># First block transition</span>
+        <span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">build_block</span><span class="p">(</span><span class="n">in_channels</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="n">stride</span><span class="p">))</span>
+
+        <span class="c1"># Remaining blocks in the layer</span>
+        <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">blocks</span><span class="p">):</span>
+            <span class="n">stack</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">build_block</span><span class="p">(</span><span class="n">out_channels</span><span class="p">,</span> <span class="n">s</span><span class="o">=</span><span class="mi">1</span><span class="p">))</span>
+
+        <span class="k">return</span> <span class="n">stack</span></div>
+
+
+
+<div class="viewcode-block" id="PyTorchLoadedModel">
+<a class="viewcode-back" href="../../../../api/ctlearn.core.pytorch.model.PyTorchLoadedModel.html#ctlearn.core.PyTorchLoadedModel">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">PyTorchLoadedModel</span><span class="p">(</span><span class="n">LoadedModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    ``PyTorchLoadedModel`` is a pre-trained PyTorch model wrapper.</span>
+
+<span class="sd">    This class loads a pre-trained PyTorch ``nn.Module`` object directly from disk</span>
+<span class="sd">    and uses its backbone and feature representation.</span>
+<span class="sd">    """</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">input_shape</span><span class="p">,</span>
+        <span class="n">tasks</span><span class="p">,</span>
+        <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">parent</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Initialize the PyTorchLoadedModel component.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        input_shape : tuple</span>
+<span class="sd">            Input image tensor dimensions (channels, height, width).</span>
+<span class="sd">        tasks : list of str</span>
+<span class="sd">            List of target prediction tasks.</span>
+<span class="sd">        config : traitlets.config.Config, optional</span>
+<span class="sd">            Configuration specified by config file or cmdline arguments.</span>
+<span class="sd">        parent : ctapipe.core.Component or ctapipe.core.Tool, optional</span>
+<span class="sd">            Parent component in hierarchy.</span>
+<span class="sd">        **kwargs : dict, optional</span>
+<span class="sd">            Additional keyword arguments.</span>
+<span class="sd">        """</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">tasks</span><span class="o">=</span><span class="n">tasks</span><span class="p">,</span>
+            <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">,</span>
+            <span class="n">parent</span><span class="o">=</span><span class="n">parent</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># 1. Load object directly from disk</span>
+        <span class="n">loaded_object</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">load</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">load_model_from</span><span class="p">,</span> <span class="n">map_location</span><span class="o">=</span><span class="s2">"cpu"</span><span class="p">,</span> <span class="n">weights_only</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Extract model and check config if it's a checkpoint dictionary</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">loaded_object</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="ow">and</span> <span class="s2">"model"</span> <span class="ow">in</span> <span class="n">loaded_object</span><span class="p">:</span>
+            <span class="n">saved_config</span> <span class="o">=</span> <span class="n">loaded_object</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ctlearn_config"</span><span class="p">,</span> <span class="p">{})</span>
+            <span class="n">current_config</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">config</span><span class="p">)</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">config</span> <span class="k">else</span> <span class="p">{}</span>
+
+            <span class="k">if</span> <span class="s2">"DLDataReader"</span> <span class="ow">in</span> <span class="n">saved_config</span> <span class="ow">and</span> <span class="s2">"DLDataReader"</span> <span class="ow">in</span> <span class="n">current_config</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">saved_val</span> <span class="ow">in</span> <span class="n">saved_config</span><span class="p">[</span><span class="s2">"DLDataReader"</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="n">current_val</span> <span class="o">=</span> <span class="n">current_config</span><span class="p">[</span><span class="s2">"DLDataReader"</span><span class="p">]</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">current_val</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">current_val</span> <span class="o">!=</span> <span class="n">saved_val</span><span class="p">:</span>
+                        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                            <span class="sa">f</span><span class="s2">"Configuration mismatch: The model was trained with DLDataReader.</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">saved_val</span><span class="si">}</span><span class="s2">, "</span>
+                            <span class="sa">f</span><span class="s2">"but you are trying to load it with </span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s2">=</span><span class="si">{</span><span class="n">current_val</span><span class="si">}</span><span class="s2">. "</span>
+                            <span class="s2">"Adjust the configuration to match."</span>
+                        <span class="p">)</span>
+            <span class="n">loaded_object</span> <span class="o">=</span> <span class="n">loaded_object</span><span class="p">[</span><span class="s2">"model"</span><span class="p">]</span>
+
+        <span class="c1"># 2. Strict validation: ensure the loaded object is an nn.Module</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">loaded_object</span><span class="p">,</span> <span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"Expected a PyTorch 'nn.Module' object at '</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">load_model_from</span><span class="si">}</span><span class="s2">', "</span>
+                <span class="sa">f</span><span class="s2">"but got '</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">loaded_object</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">'. "</span>
+                <span class="s2">"Ensure the model was saved via 'torch.save(model, path)' rather than 'torch.save(model.state_dict(), path)'."</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">loaded_model</span> <span class="o">=</span> <span class="n">loaded_object</span>
+
+        <span class="c1"># 3. Extract backbone and feature depth</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">backbone_model</span><span class="p">,</span> <span class="n">out_features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_backbone</span><span class="p">(</span><span class="n">input_shape</span><span class="p">)</span>
+
+        <span class="c1"># 4. Construct output pipeline</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">overwrite_head</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logits_head</span> <span class="o">=</span> <span class="n">build_fully_connect_pytorch_head</span><span class="p">(</span>
+                <span class="n">out_features</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">head_layers</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">head_activation_function</span><span class="p">,</span> <span class="n">tasks</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">FullModelPipeline</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">backbone_model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">logits_head</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loaded_model</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_build_backbone</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_shape</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Extract the backbone from the loaded nn.Module and set parameter trainability.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        input_shape : tuple</span>
+<span class="sd">            Shape of the input data (channels, height, width).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        backbone_model : nn.Module</span>
+<span class="sd">            PyTorch module representing the backbone.</span>
+<span class="sd">        out_features : int</span>
+<span class="sd">            Number of output feature channels from the backbone.</span>
+<span class="sd">        """</span>
+        <span class="c1"># Extract backbone attribute if present, otherwise use full model</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">loaded_model</span><span class="p">,</span> <span class="s2">"backbone"</span><span class="p">):</span>
+            <span class="n">backbone_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loaded_model</span><span class="o">.</span><span class="n">backbone</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">backbone_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">loaded_model</span>
+
+        <span class="c1"># Configure parameter trainability</span>
+        <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="n">backbone_model</span><span class="o">.</span><span class="n">parameters</span><span class="p">():</span>
+            <span class="n">param</span><span class="o">.</span><span class="n">requires_grad</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trainable_backbone</span>
+
+        <span class="c1"># Extract output dimensions for head construction</span>
+        <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">loaded_model</span><span class="p">,</span> <span class="s2">"head"</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">hasattr</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">loaded_model</span><span class="o">.</span><span class="n">head</span><span class="p">,</span> <span class="s2">"heads"</span>
+        <span class="p">):</span>
+            <span class="n">first_head</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">loaded_model</span><span class="o">.</span><span class="n">head</span><span class="o">.</span><span class="n">heads</span><span class="o">.</span><span class="n">values</span><span class="p">()))</span>
+            <span class="n">out_features</span> <span class="o">=</span> <span class="n">first_head</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">in_features</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">out_features</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">head_layers</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">tasks</span><span class="p">[</span><span class="mi">0</span><span class="p">]][</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">backbone_model</span><span class="p">,</span> <span class="n">out_features</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright CTLearn devs.  Last updated 20 Nov 2026 15:32.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.1.1.
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.24.0.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

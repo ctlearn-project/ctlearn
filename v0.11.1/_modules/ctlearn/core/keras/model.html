@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" data-theme="dark">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ctlearn.core.keras.model &#8212; ctlearn 0.11.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "dark";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "dark";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=75c7c72ae941e8b558d8" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=75c7c72ae941e8b558d8" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery.css?v=c83e6b79" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-design.min.css?v=6a604523" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/ctlearn.css?v=cb75ed94" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/zenodo-icon.css?v=3f44c43a" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../../../_static/scripts/fontawesome.js?digest=75c7c72ae941e8b558d8"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8" />
+
+    <script src="../../../../_static/documentation_options.js?v=57cbeb03"></script>
+    <script src="../../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../../_static/sg-tags.js?v=d80f6fa4"></script>
+    <script data-sd-tabs-storage-prefix="sphinx-design-tab-id-" src="../../../../_static/design-tabs.js?v=fcb327ea"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/ctlearn/core/keras/model';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.24.0';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://ctlearn-project.github.io/ctlearn/_static/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.11.1';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="icon" href="../../../../_static/ctlearn_favicon.ico"/>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="color-scheme" content="light dark"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.11.1" />
+  
+    
+    <script src="../../../../_static/searchtools.js"></script>
+    <script src="../../../../_static/language_data.js"></script>
+    <script src="../../../../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="dark">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+<aside class="bd-header-announcement" aria-label="Announcement">
+  <div class="bd-header-announcement__content">
+        <p>This is not production-ready code yet. Although stable
+        releases are available, users should expect changes to the code
+        before a 1.0 release arrives.</p>
+    </div>
+</aside>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button type="button" class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation" aria-expanded="false" aria-controls="pst-primary-sidebar-modal">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+    
+    <img src="../../../../_static/ctlearn_logo_transparent.png" class="logo__image only-dark" alt="ctlearn 0.11.1 documentation - Home"/>
+    <img src="../../../../_static/ctlearn_logo_transparent.png" class="logo__image only-light pst-js-only" alt="ctlearn 0.11.1 documentation - Home"/>
+  
+  
+</a></div>
+    
+      <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../user-guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../developer-guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../api-reference/index.html">
+    API Docs
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../changelog.html">
+    Change Log
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Quick Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/ctlearn-project/ctlearn" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/ctlearn/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://doi.org/10.5281/zenodo.3342952" title="Zenodo" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><img src="../../../../_static/zenodo-icon-grey.ico" class="icon-link-image" alt="Zenodo"/></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="mailto:tmiener@iaa.csic.es,d.nieto@ucm.es?subject=Request%20access%20to%20the%20CTLearn%20Slack%20workspace&body=Hello%20CTLearn%20maintainers%2C%0A%0AI%20would%20like%20to%20request%20access%20to%20the%20CTLearn%20Slack%20workspace.%0A" title="Request Slack access" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-slack fa-lg" aria-hidden="true"></i><span class="visually-hidden">Request Slack access</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal" tabindex="-1"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../user-guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../developer-guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../api-reference/index.html">
+    API Docs
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../../changelog.html">
+    Change Log
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Quick Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/ctlearn-project/ctlearn" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/ctlearn/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://doi.org/10.5281/zenodo.3342952" title="Zenodo" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><img src="../../../../_static/zenodo-icon-grey.ico" class="icon-link-image" alt="Zenodo"/></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="mailto:tmiener@iaa.csic.es,d.nieto@ucm.es?subject=Request%20access%20to%20the%20CTLearn%20Slack%20workspace&body=Hello%20CTLearn%20maintainers%2C%0A%0AI%20would%20like%20to%20request%20access%20to%20the%20CTLearn%20Slack%20workspace.%0A" title="Request Slack access" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-slack fa-lg" aria-hidden="true"></i><span class="visually-hidden">Request Slack access</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-house"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">ctlearn.core.keras.model</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for ctlearn.core.keras.model</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""</span>
+<span class="sd">This module defines the ``CTLearnModel`` classes, which holds the basic functionality for creating a Keras model to be used in CTLearn.</span>
+<span class="sd">"""</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">"build_fully_connect_keras_head"</span><span class="p">,</span>
+    <span class="s2">"KerasConvBackend"</span><span class="p">,</span>
+    <span class="s2">"KerasSingleCNN"</span><span class="p">,</span>
+    <span class="s2">"KerasResNet"</span><span class="p">,</span>
+    <span class="s2">"KerasLoadedModel"</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">functools</span><span class="w"> </span><span class="kn">import</span> <span class="n">partial</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">keras</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">keras_hexagdly</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">hgly</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctlearn.core.keras.attention</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">channel_squeeze_excite_block</span><span class="p">,</span>
+    <span class="n">dual_squeeze_excite_block</span><span class="p">,</span>
+    <span class="n">spatial_squeeze_excite_block</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctlearn.core.model</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ConvBackend</span><span class="p">,</span>
+    <span class="n">LoadedModel</span><span class="p">,</span>
+    <span class="n">ResNet</span><span class="p">,</span>
+    <span class="n">SingleCNN</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="build_fully_connect_keras_head">
+<a class="viewcode-back" href="../../../../api/ctlearn.core.keras.model.build_fully_connect_keras_head.html#ctlearn.core.build_fully_connect_keras_head">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">build_fully_connect_keras_head</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">layers</span><span class="p">,</span> <span class="n">activation_function</span><span class="p">,</span> <span class="n">tasks</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Build the fully connected head for the Keras-based CTLearn model.</span>
+
+<span class="sd">    Function to build the fully connected head of the Keras-based CTLearn model using the specified parameters.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    inputs : keras.layers.Layer</span>
+<span class="sd">        Keras layer of the model.</span>
+<span class="sd">    layers : dict</span>
+<span class="sd">        Dictionary containing the number of neurons (as value) in the fully connected head for each task (as key).</span>
+<span class="sd">    activation_function : dict</span>
+<span class="sd">        Dictionary containing the activation function (as value) for the fully connected head for each task (as key).</span>
+<span class="sd">    tasks : list</span>
+<span class="sd">        List of tasks to build the head for.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    logits : dict</span>
+<span class="sd">        Dictionary containing the logits for each task.</span>
+<span class="sd">    """</span>
+    <span class="n">logits</span> <span class="o">=</span> <span class="p">{}</span>
+    <span class="k">for</span> <span class="n">task</span> <span class="ow">in</span> <span class="n">tasks</span><span class="p">:</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">inputs</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">units</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">layers</span><span class="p">[</span><span class="n">task</span><span class="p">]):</span>
+            <span class="k">if</span> <span class="n">i</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">layers</span><span class="p">[</span><span class="n">task</span><span class="p">])</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span>
+                    <span class="n">units</span><span class="o">=</span><span class="n">units</span><span class="p">,</span>
+                    <span class="n">activation</span><span class="o">=</span><span class="n">activation_function</span><span class="p">[</span><span class="n">task</span><span class="p">],</span>
+                    <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">"fc_</span><span class="si">{</span><span class="n">task</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span><span class="n">units</span><span class="o">=</span><span class="n">units</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">task</span><span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">logits</span><span class="p">[</span><span class="n">task</span><span class="p">]</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Softmax</span><span class="p">()(</span><span class="n">x</span><span class="p">)</span> <span class="k">if</span> <span class="n">task</span> <span class="o">==</span> <span class="s2">"type"</span> <span class="k">else</span> <span class="n">x</span>
+    <span class="c1"># Temp fix till keras support class weights for multiple outputs or I wrote custom loss</span>
+    <span class="c1"># https://github.com/keras-team/keras/issues/11735</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">tasks</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">tasks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"type"</span><span class="p">:</span>
+        <span class="n">logits</span> <span class="o">=</span> <span class="n">logits</span><span class="p">[</span><span class="n">tasks</span><span class="p">[</span><span class="mi">0</span><span class="p">]]</span>
+    <span class="k">return</span> <span class="n">logits</span></div>
+
+
+
+<span class="c1"># The hexagonal layers read ``kernel_size`` as a square-kernel width, like the</span>
+<span class="c1"># square layers do, instead of counting hexagonal rings (their default): 3 is</span>
+<span class="c1"># the 7-cell hexagon and 1 a plain 1x1. The same configuration then describes</span>
+<span class="c1"># comparable models on both grids.</span>
+<span class="n">_HexConv2d</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">hgly</span><span class="o">.</span><span class="n">Conv2d</span><span class="p">,</span> <span class="n">kernel_size_unit</span><span class="o">=</span><span class="s2">"pixels"</span><span class="p">)</span>
+<span class="n">_HexMaxPool2d</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">hgly</span><span class="o">.</span><span class="n">MaxPool2d</span><span class="p">,</span> <span class="n">kernel_size_unit</span><span class="o">=</span><span class="s2">"pixels"</span><span class="p">)</span>
+<span class="n">_HexAvgPool2d</span> <span class="o">=</span> <span class="n">partial</span><span class="p">(</span><span class="n">hgly</span><span class="o">.</span><span class="n">AvgPool2d</span><span class="p">,</span> <span class="n">kernel_size_unit</span><span class="o">=</span><span class="s2">"pixels"</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="KerasConvBackend">
+<a class="viewcode-back" href="../../../../api/ctlearn.core.keras.model.KerasConvBackend.html#ctlearn.core.KerasConvBackend">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">KerasConvBackend</span><span class="p">(</span><span class="n">ConvBackend</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""Select Keras layers for square or hexagonal model backbones.</span>
+
+<span class="sd">    The ``conv_backend`` trait selects native Keras layers for square-mapped</span>
+<span class="sd">    inputs or ``keras_hexagdly`` layers for hex-addressed inputs.</span>
+<span class="sd">    """</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_conv_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Convolution layer class for ``conv_backend``.</span>
+
+<span class="sd">        Both are built with the same keyword arguments, and ``kernel_size`` has</span>
+<span class="sd">        the same meaning for both: a square-kernel width. The hex grid is</span>
+<span class="sd">        always padded (``"same"``), including where the square call leaves</span>
+<span class="sd">        Keras' default ``"valid"``.</span>
+<span class="sd">        """</span>
+        <span class="k">return</span> <span class="n">_HexConv2d</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv_backend</span> <span class="o">==</span> <span class="s2">"hexagdly"</span> <span class="k">else</span> <span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Conv2D</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_pool_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Max-pooling layer class for ``conv_backend``."""</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">_HexMaxPool2d</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv_backend</span> <span class="o">==</span> <span class="s2">"hexagdly"</span> <span class="k">else</span> <span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">MaxPool2D</span>
+        <span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_avg_pool_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""Average-pooling layer class for ``conv_backend``."""</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">_HexAvgPool2d</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">conv_backend</span> <span class="o">==</span> <span class="s2">"hexagdly"</span>
+            <span class="k">else</span> <span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">AveragePooling2D</span>
+        <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="KerasSingleCNN">
+<a class="viewcode-back" href="../../../../api/ctlearn.core.keras.model.KerasSingleCNN.html#ctlearn.core.KerasSingleCNN">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">KerasSingleCNN</span><span class="p">(</span><span class="n">SingleCNN</span><span class="p">,</span> <span class="n">KerasConvBackend</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    ``SingleCNN`` is a simple convolutional neural network model.</span>
+
+<span class="sd">    This class extends the functionality of ``CTLearnModel`` by implementing</span>
+<span class="sd">    methods to build a simple convolutional neural network model.</span>
+<span class="sd">    """</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">input_shape</span><span class="p">,</span>
+        <span class="n">tasks</span><span class="p">,</span>
+        <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">parent</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Initialize the KerasSingleCNN model component.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        input_shape : tuple</span>
+<span class="sd">            Input image tensor dimensions (height, width, channels).</span>
+<span class="sd">        tasks : list of str</span>
+<span class="sd">            List of target prediction tasks.</span>
+<span class="sd">        config : traitlets.config.Config, optional</span>
+<span class="sd">            Configuration specified by config file or cmdline arguments.</span>
+<span class="sd">        parent : ctapipe.core.Component or ctapipe.core.Tool, optional</span>
+<span class="sd">            Parent component in hierarchy.</span>
+<span class="sd">        **kwargs : dict, optional</span>
+<span class="sd">            Additional keyword arguments.</span>
+<span class="sd">        """</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">tasks</span><span class="o">=</span><span class="n">tasks</span><span class="p">,</span>
+            <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">,</span>
+            <span class="n">parent</span><span class="o">=</span><span class="n">parent</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Build the ResNet model backbone</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">backbone_model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_backbone</span><span class="p">(</span><span class="n">input_shape</span><span class="p">)</span>
+        <span class="n">backbone_output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">backbone_model</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input_layer</span><span class="p">)</span>
+        <span class="c1"># Build the fully connected head depending on the tasks</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logits</span> <span class="o">=</span> <span class="n">build_fully_connect_keras_head</span><span class="p">(</span>
+            <span class="n">backbone_output</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">head_layers</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">head_activation_function</span><span class="p">,</span> <span class="n">tasks</span>
+        <span class="p">)</span>
+        <span class="c1"># Build the full pipeline model∫</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">Model</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input_layer</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">logits</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"CTLearn_model"</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_build_backbone</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_shape</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Build the SingleCNN model backbone.</span>
+
+<span class="sd">        Function to build the backbone of the SingleCNN model using the specified parameters.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        input_shape : tuple</span>
+<span class="sd">            Shape of the input data (batch_size, height, width, channels).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        backbone_model : keras.Model</span>
+<span class="sd">            Keras model object representing the backbone of the SingleCNN model.</span>
+<span class="sd">        network_input : keras.Input</span>
+<span class="sd">            Keras input layer object for the backbone model.</span>
+<span class="sd">        """</span>
+
+        <span class="c1"># Define the input layer from the input shape</span>
+        <span class="n">network_input</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">input_shape</span><span class="p">)</span>
+        <span class="c1"># Get model arcihtecture parameters for the backbone</span>
+        <span class="n">filters_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">layer</span><span class="p">[</span><span class="s2">"filters"</span><span class="p">]</span> <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">architecture</span><span class="p">]</span>
+        <span class="n">kernel_sizes</span> <span class="o">=</span> <span class="p">[</span><span class="n">layer</span><span class="p">[</span><span class="s2">"kernel_size"</span><span class="p">]</span> <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">architecture</span><span class="p">]</span>
+        <span class="n">numbers_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">layer</span><span class="p">[</span><span class="s2">"number"</span><span class="p">]</span> <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">architecture</span><span class="p">]</span>
+
+        <span class="n">x</span> <span class="o">=</span> <span class="n">network_input</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">batchnorm</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">BatchNormalization</span><span class="p">(</span><span class="n">momentum</span><span class="o">=</span><span class="mf">0.99</span><span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">filters</span><span class="p">,</span> <span class="n">kernel_size</span><span class="p">,</span> <span class="n">number</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span>
+            <span class="nb">zip</span><span class="p">(</span><span class="n">filters_list</span><span class="p">,</span> <span class="n">kernel_sizes</span><span class="p">,</span> <span class="n">numbers_list</span><span class="p">)</span>
+        <span class="p">):</span>
+            <span class="k">for</span> <span class="n">nr</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">number</span><span class="p">):</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_conv_layer</span><span class="p">(</span>
+                    <span class="n">filters</span><span class="o">=</span><span class="n">filters</span><span class="p">,</span>
+                    <span class="n">kernel_size</span><span class="o">=</span><span class="n">kernel_size</span><span class="p">,</span>
+                    <span class="n">padding</span><span class="o">=</span><span class="s2">"same"</span><span class="p">,</span>
+                    <span class="n">activation</span><span class="o">=</span><span class="s2">"relu"</span><span class="p">,</span>
+                    <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">backbone_name</span><span class="si">}</span><span class="s2">_conv_</span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">nr</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pooling_type</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">pooling_type</span> <span class="o">==</span> <span class="s2">"max"</span><span class="p">:</span>
+                    <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pool_layer</span><span class="p">(</span>
+                        <span class="n">pool_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pooling_parameters</span><span class="p">[</span><span class="s2">"size"</span><span class="p">],</span>
+                        <span class="n">strides</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pooling_parameters</span><span class="p">[</span><span class="s2">"strides"</span><span class="p">],</span>
+                        <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">backbone_name</span><span class="si">}</span><span class="s2">_pool_</span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                    <span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+                <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">pooling_type</span> <span class="o">==</span> <span class="s2">"average"</span><span class="p">:</span>
+                    <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_avg_pool_layer</span><span class="p">(</span>
+                        <span class="n">pool_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pooling_parameters</span><span class="p">[</span><span class="s2">"size"</span><span class="p">],</span>
+                        <span class="n">strides</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">pooling_parameters</span><span class="p">[</span><span class="s2">"strides"</span><span class="p">],</span>
+                        <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">backbone_name</span><span class="si">}</span><span class="s2">_pool_</span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                    <span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">batchnorm</span><span class="p">:</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">BatchNormalization</span><span class="p">(</span><span class="n">momentum</span><span class="o">=</span><span class="mf">0.99</span><span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+
+        <span class="c1"># bottleneck layer -- a 1x1 conv is a pure per-cell channel projection</span>
+        <span class="c1"># with no spatial mixing. It is built with the backend's conv class like</span>
+        <span class="c1"># every other conv: kernel_size=1 is a plain 1x1 for both backends.</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">bottleneck_filters</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_conv_layer</span><span class="p">(</span>
+                <span class="n">filters</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">bottleneck_filters</span><span class="p">,</span>
+                <span class="n">kernel_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                <span class="n">padding</span><span class="o">=</span><span class="s2">"same"</span><span class="p">,</span>
+                <span class="n">activation</span><span class="o">=</span><span class="s2">"relu"</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">backbone_name</span><span class="si">}</span><span class="s2">_bottleneck"</span><span class="p">,</span>
+            <span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">batchnorm</span><span class="p">:</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">BatchNormalization</span><span class="p">(</span><span class="n">momentum</span><span class="o">=</span><span class="mf">0.99</span><span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+
+        <span class="c1"># Attention mechanism</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">attention</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">attention</span><span class="p">[</span><span class="s2">"mechanism"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"Dual-SE"</span><span class="p">:</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">dual_squeeze_excite_block</span><span class="p">(</span>
+                    <span class="n">x</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">attention</span><span class="p">[</span><span class="s2">"reduction_ratio"</span><span class="p">],</span>
+                    <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">backbone_name</span><span class="si">}</span><span class="s2">_dse"</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">attention</span><span class="p">[</span><span class="s2">"mechanism"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"Channel-SE"</span><span class="p">:</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">channel_squeeze_excite_block</span><span class="p">(</span>
+                    <span class="n">x</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">attention</span><span class="p">[</span><span class="s2">"reduction_ratio"</span><span class="p">],</span>
+                    <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">backbone_name</span><span class="si">}</span><span class="s2">_cse"</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">attention</span><span class="p">[</span><span class="s2">"mechanism"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"Spatial-SE"</span><span class="p">:</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">spatial_squeeze_excite_block</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">backbone_name</span><span class="si">}</span><span class="s2">_sse"</span><span class="p">)</span>
+
+        <span class="c1"># Apply global average pooling as the final layer of the backbone</span>
+        <span class="n">network_output</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">GlobalAveragePooling2D</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">backbone_name</span> <span class="o">+</span> <span class="s2">"_global_avgpool"</span>
+        <span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+        <span class="c1"># Create the backbone model</span>
+        <span class="n">backbone_model</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">Model</span><span class="p">(</span>
+            <span class="n">network_input</span><span class="p">,</span> <span class="n">network_output</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">backbone_name</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">backbone_model</span><span class="p">,</span> <span class="n">network_input</span></div>
+
+
+
+<div class="viewcode-block" id="KerasResNet">
+<a class="viewcode-back" href="../../../../api/ctlearn.core.keras.model.KerasResNet.html#ctlearn.core.KerasResNet">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">KerasResNet</span><span class="p">(</span><span class="n">ResNet</span><span class="p">,</span> <span class="n">KerasConvBackend</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    ``ResNet`` is a residual neural network model.</span>
+
+<span class="sd">    This class extends the functionality of ``CTLearnModel`` by implementing</span>
+<span class="sd">    methods to build a residual neural network model.</span>
+<span class="sd">    """</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">input_shape</span><span class="p">,</span>
+        <span class="n">tasks</span><span class="p">,</span>
+        <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">parent</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Initialize the KerasResNet model component.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        input_shape : tuple</span>
+<span class="sd">            Input image tensor dimensions (height, width, channels).</span>
+<span class="sd">        tasks : list of str</span>
+<span class="sd">            List of target prediction tasks.</span>
+<span class="sd">        config : traitlets.config.Config, optional</span>
+<span class="sd">            Configuration specified by config file or cmdline arguments.</span>
+<span class="sd">        parent : ctapipe.core.Component or ctapipe.core.Tool, optional</span>
+<span class="sd">            Parent component in hierarchy.</span>
+<span class="sd">        **kwargs : dict, optional</span>
+<span class="sd">            Additional keyword arguments.</span>
+<span class="sd">        """</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">tasks</span><span class="o">=</span><span class="n">tasks</span><span class="p">,</span>
+            <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">,</span>
+            <span class="n">parent</span><span class="o">=</span><span class="n">parent</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="c1"># Build the ResNet model backbone</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">backbone_model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_backbone</span><span class="p">(</span><span class="n">input_shape</span><span class="p">)</span>
+        <span class="n">backbone_output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">backbone_model</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input_layer</span><span class="p">)</span>
+        <span class="c1"># Build the fully connected head depending on the tasks</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">logits</span> <span class="o">=</span> <span class="n">build_fully_connect_keras_head</span><span class="p">(</span>
+            <span class="n">backbone_output</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">head_layers</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">head_activation_function</span><span class="p">,</span> <span class="n">tasks</span>
+        <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">Model</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input_layer</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">logits</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"CTLearn_model"</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_build_backbone</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_shape</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Build the ResNet model backbone.</span>
+
+<span class="sd">        Function to build the backbone of the ResNet model using the specified parameters.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        input_shape : tuple</span>
+<span class="sd">            Shape of the input data (batch_size, height, width, channels).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        backbone_model : keras.Model</span>
+<span class="sd">            Keras model object representing the ResNet backbone.</span>
+<span class="sd">        network_input : keras.Input</span>
+<span class="sd">            Keras input layer object for the backbone model.</span>
+<span class="sd">        """</span>
+        <span class="c1"># Define the input layer from the input shape</span>
+        <span class="n">network_input</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">input_shape</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">network_input</span>
+        <span class="c1"># Apply initial padding if specified</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_padding</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">ZeroPadding2D</span><span class="p">(</span>
+                <span class="n">padding</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">init_padding</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">backbone_name</span> <span class="o">+</span> <span class="s2">"_padding"</span><span class="p">,</span>
+            <span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+        <span class="c1"># Apply initial convolutional layer if specified</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_layer</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_conv_layer</span><span class="p">(</span>
+                <span class="n">filters</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">init_layer</span><span class="p">[</span><span class="s2">"filters"</span><span class="p">],</span>
+                <span class="n">kernel_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">init_layer</span><span class="p">[</span><span class="s2">"kernel_size"</span><span class="p">],</span>
+                <span class="n">strides</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">init_layer</span><span class="p">[</span><span class="s2">"strides"</span><span class="p">],</span>
+                <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">backbone_name</span> <span class="o">+</span> <span class="s2">"_conv1_conv"</span><span class="p">,</span>
+            <span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+        <span class="c1"># Apply max pooling if specified</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_max_pool</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pool_layer</span><span class="p">(</span>
+                <span class="n">pool_size</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">init_max_pool</span><span class="p">[</span><span class="s2">"size"</span><span class="p">],</span>
+                <span class="n">strides</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">init_max_pool</span><span class="p">[</span><span class="s2">"strides"</span><span class="p">],</span>
+                <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">backbone_name</span> <span class="o">+</span> <span class="s2">"_pool1_pool"</span><span class="p">,</span>
+            <span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+        <span class="c1"># Build the residual blocks</span>
+        <span class="n">engine_output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stacked_res_blocks</span><span class="p">(</span>
+            <span class="n">x</span><span class="p">,</span>
+            <span class="n">architecture</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">architecture</span><span class="p">,</span>
+            <span class="n">residual_block_type</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">residual_block_type</span><span class="p">,</span>
+            <span class="n">attention</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">attention</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">backbone_name</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="c1"># Apply global average pooling as the final layer of the backbone</span>
+        <span class="n">network_output</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">GlobalAveragePooling2D</span><span class="p">(</span>
+            <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">backbone_name</span> <span class="o">+</span> <span class="s2">"_global_avgpool"</span>
+        <span class="p">)(</span><span class="n">engine_output</span><span class="p">)</span>
+        <span class="c1"># Create the backbone model</span>
+        <span class="n">backbone_model</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">Model</span><span class="p">(</span>
+            <span class="n">network_input</span><span class="p">,</span> <span class="n">network_output</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">backbone_name</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">backbone_model</span><span class="p">,</span> <span class="n">network_input</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_stacked_res_blocks</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">inputs</span><span class="p">,</span> <span class="n">architecture</span><span class="p">,</span> <span class="n">residual_block_type</span><span class="p">,</span> <span class="n">attention</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Build a stack of residual blocks for the CTLearn model.</span>
+
+<span class="sd">        This function constructs a stack of residual blocks, which are used to build the backbone of the CTLearn model.</span>
+<span class="sd">        Each residual block consists of a series of convolutional layers with skip connections.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        inputs : keras.layers.Layer</span>
+<span class="sd">            Input Keras layer to the residual blocks.</span>
+<span class="sd">        architecture : list of dict</span>
+<span class="sd">            List of dictionaries containing the architecture of the ResNet model, which includes:</span>
+<span class="sd">            - Number of filters for the convolutional layers in the residual blocks.</span>
+<span class="sd">            - Number of residual blocks to stack.</span>
+<span class="sd">        residual_block_type : str</span>
+<span class="sd">            Type of residual block to use. Options are 'basic' or 'bottleneck'.</span>
+<span class="sd">        attention : dict</span>
+<span class="sd">            Dictionary containing the configuration parameters for the attention mechanism.</span>
+<span class="sd">        name : str, optional</span>
+<span class="sd">            Label for the model.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        x : keras.layers.Layer</span>
+<span class="sd">            Output Keras layer after passing through the stack of residual blocks.</span>
+<span class="sd">        """</span>
+
+        <span class="c1"># Get hyperparameters for the model architecture</span>
+        <span class="n">filters_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">layer</span><span class="p">[</span><span class="s2">"filters"</span><span class="p">]</span> <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="n">architecture</span><span class="p">]</span>
+        <span class="n">blocks_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">layer</span><span class="p">[</span><span class="s2">"blocks"</span><span class="p">]</span> <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="n">architecture</span><span class="p">]</span>
+        <span class="c1"># Build the ResNet model</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stack_fn</span><span class="p">(</span>
+            <span class="n">inputs</span><span class="p">,</span>
+            <span class="n">filters_list</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+            <span class="n">blocks_list</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+            <span class="n">residual_block_type</span><span class="p">,</span>
+            <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">attention</span><span class="o">=</span><span class="n">attention</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">name</span> <span class="o">+</span> <span class="s2">"_conv2"</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="p">(</span><span class="n">filters</span><span class="p">,</span> <span class="n">blocks</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">filters_list</span><span class="p">[</span><span class="mi">1</span><span class="p">:],</span> <span class="n">blocks_list</span><span class="p">[</span><span class="mi">1</span><span class="p">:])):</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_stack_fn</span><span class="p">(</span>
+                <span class="n">x</span><span class="p">,</span>
+                <span class="n">filters</span><span class="p">,</span>
+                <span class="n">blocks</span><span class="p">,</span>
+                <span class="n">residual_block_type</span><span class="p">,</span>
+                <span class="n">attention</span><span class="o">=</span><span class="n">attention</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="n">name</span> <span class="o">+</span> <span class="s2">"_conv"</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">3</span><span class="p">),</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">x</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_stack_fn</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">inputs</span><span class="p">,</span>
+        <span class="n">filters</span><span class="p">,</span>
+        <span class="n">blocks</span><span class="p">,</span>
+        <span class="n">residual_block_type</span><span class="p">,</span>
+        <span class="n">stride</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="n">attention</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Stack residual blocks for the CTLearn model.</span>
+
+<span class="sd">        This function constructs a stack of residual blocks, which are used to build the backbone of the CTLearn model.</span>
+<span class="sd">        Each residual block can be of different types (e.g., basic or bottleneck) and can include attention mechanisms.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        inputs : keras.layers.Layer</span>
+<span class="sd">            Input tensor to the residual blocks.</span>
+<span class="sd">        filters : int</span>
+<span class="sd">            Number of filters for the bottleneck layer in a block.</span>
+<span class="sd">        blocks : int</span>
+<span class="sd">            Number of residual blocks to stack.</span>
+<span class="sd">        residual_block_type : str</span>
+<span class="sd">            Type of residual block ('basic' or 'bottleneck').</span>
+<span class="sd">        stride : int, optional</span>
+<span class="sd">            Stride for the first layer in the first block. Default is 2.</span>
+<span class="sd">        attention : dict, optional</span>
+<span class="sd">            Configuration parameters for the attention mechanism. Default is None.</span>
+<span class="sd">        name : str, optional</span>
+<span class="sd">            Label for the stack. Default is None.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        keras.layers.Layer</span>
+<span class="sd">            Output tensor for the stacked blocks.</span>
+<span class="sd">        """</span>
+
+        <span class="n">res_blocks</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">"basic"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_basic_residual_block</span><span class="p">,</span>
+            <span class="s2">"bottleneck"</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bottleneck_residual_block</span><span class="p">,</span>
+        <span class="p">}</span>
+
+        <span class="n">x</span> <span class="o">=</span> <span class="n">res_blocks</span><span class="p">[</span><span class="n">residual_block_type</span><span class="p">](</span>
+            <span class="n">inputs</span><span class="p">,</span>
+            <span class="n">filters</span><span class="p">,</span>
+            <span class="n">stride</span><span class="o">=</span><span class="n">stride</span><span class="p">,</span>
+            <span class="n">attention</span><span class="o">=</span><span class="n">attention</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">name</span> <span class="o">+</span> <span class="s2">"_block1"</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">blocks</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">x</span> <span class="o">=</span> <span class="n">res_blocks</span><span class="p">[</span><span class="n">residual_block_type</span><span class="p">](</span>
+                <span class="n">x</span><span class="p">,</span>
+                <span class="n">filters</span><span class="p">,</span>
+                <span class="n">conv_shortcut</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+                <span class="n">attention</span><span class="o">=</span><span class="n">attention</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="n">name</span> <span class="o">+</span> <span class="s2">"_block"</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">i</span><span class="p">),</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">x</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_basic_residual_block</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">inputs</span><span class="p">,</span>
+        <span class="n">filters</span><span class="p">,</span>
+        <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+        <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">conv_shortcut</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">attention</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Build a basic residual block for the CTLearn model.</span>
+
+<span class="sd">        This function constructs a basic residual block, which is a fundamental building block</span>
+<span class="sd">        of ResNet architectures. The block consists of two convolutional layers with an optional</span>
+<span class="sd">        convolutional shortcut, and can include attention mechanisms.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        inputs : keras.layers.Layer</span>
+<span class="sd">            Input tensor to the residual block.</span>
+<span class="sd">        filters : int</span>
+<span class="sd">            Number of filters for the convolutional layers.</span>
+<span class="sd">        kernel_size : int, optional</span>
+<span class="sd">            Size of the convolutional kernel. Default is 3.</span>
+<span class="sd">        stride : int, optional</span>
+<span class="sd">            Stride for the convolutional layers. Default is 1.</span>
+<span class="sd">        conv_shortcut : bool, optional</span>
+<span class="sd">            Whether to use a convolutional layer for the shortcut connection. Default is True.</span>
+<span class="sd">        attention : dict, optional</span>
+<span class="sd">            Configuration parameters for the attention mechanism. Default is None.</span>
+<span class="sd">        name : str, optional</span>
+<span class="sd">            Name for the residual block. Default is None.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        keras.layers.Layer</span>
+<span class="sd">            Output tensor after applying the residual block.</span>
+<span class="sd">        """</span>
+
+        <span class="k">if</span> <span class="n">conv_shortcut</span><span class="p">:</span>
+            <span class="n">shortcut</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_conv_layer</span><span class="p">(</span>
+                <span class="n">filters</span><span class="o">=</span><span class="n">filters</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">strides</span><span class="o">=</span><span class="n">stride</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span> <span class="o">+</span> <span class="s2">"_0_conv"</span>
+            <span class="p">)(</span><span class="n">inputs</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">shortcut</span> <span class="o">=</span> <span class="n">inputs</span>
+
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_conv_layer</span><span class="p">(</span>
+            <span class="n">filters</span><span class="o">=</span><span class="n">filters</span><span class="p">,</span>
+            <span class="n">kernel_size</span><span class="o">=</span><span class="n">kernel_size</span><span class="p">,</span>
+            <span class="n">strides</span><span class="o">=</span><span class="n">stride</span><span class="p">,</span>
+            <span class="n">padding</span><span class="o">=</span><span class="s2">"same"</span><span class="p">,</span>
+            <span class="n">activation</span><span class="o">=</span><span class="s2">"relu"</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">name</span> <span class="o">+</span> <span class="s2">"_1_conv"</span><span class="p">,</span>
+        <span class="p">)(</span><span class="n">inputs</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_conv_layer</span><span class="p">(</span>
+            <span class="n">filters</span><span class="o">=</span><span class="n">filters</span><span class="p">,</span>
+            <span class="n">kernel_size</span><span class="o">=</span><span class="n">kernel_size</span><span class="p">,</span>
+            <span class="n">padding</span><span class="o">=</span><span class="s2">"same"</span><span class="p">,</span>
+            <span class="n">activation</span><span class="o">=</span><span class="s2">"relu"</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">name</span> <span class="o">+</span> <span class="s2">"_2_conv"</span><span class="p">,</span>
+        <span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+
+        <span class="c1"># Attention mechanism</span>
+        <span class="k">if</span> <span class="n">attention</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">attention</span><span class="p">[</span><span class="s2">"mechanism"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"Dual-SE"</span><span class="p">:</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">dual_squeeze_excite_block</span><span class="p">(</span>
+                    <span class="n">x</span><span class="p">,</span> <span class="n">attention</span><span class="p">[</span><span class="s2">"reduction_ratio"</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span> <span class="o">+</span> <span class="s2">"_dse"</span>
+                <span class="p">)</span>
+            <span class="k">elif</span> <span class="n">attention</span><span class="p">[</span><span class="s2">"mechanism"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"Channel-SE"</span><span class="p">:</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">channel_squeeze_excite_block</span><span class="p">(</span>
+                    <span class="n">x</span><span class="p">,</span> <span class="n">attention</span><span class="p">[</span><span class="s2">"reduction_ratio"</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span> <span class="o">+</span> <span class="s2">"_cse"</span>
+                <span class="p">)</span>
+            <span class="k">elif</span> <span class="n">attention</span><span class="p">[</span><span class="s2">"mechanism"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"Spatial-SE"</span><span class="p">:</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">spatial_squeeze_excite_block</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span> <span class="o">+</span> <span class="s2">"_sse"</span><span class="p">)</span>
+
+        <span class="n">x</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Add</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span> <span class="o">+</span> <span class="s2">"_add"</span><span class="p">)([</span><span class="n">x</span><span class="p">,</span> <span class="n">shortcut</span><span class="p">])</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">ReLU</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span> <span class="o">+</span> <span class="s2">"_out"</span><span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">x</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_bottleneck_residual_block</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">inputs</span><span class="p">,</span>
+        <span class="n">filters</span><span class="p">,</span>
+        <span class="n">kernel_size</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span>
+        <span class="n">stride</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+        <span class="n">conv_shortcut</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">attention</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Build a bottleneck residual block for the CTLearn model.</span>
+
+<span class="sd">        This function constructs a bottleneck residual block, which is a fundamental building block of</span>
+<span class="sd">        ResNet architectures. The block consists of three convolutional layers: a 1x1 convolution to reduce</span>
+<span class="sd">        dimensionality, a 3x3 convolution for main computation, and another 1x1 convolution to restore dimensionality.</span>
+<span class="sd">        It also includes an optional shortcut connection and can include attention mechanisms.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        inputs : keras.layers.Layer</span>
+<span class="sd">            Input tensor to the residual block.</span>
+<span class="sd">        filters : int</span>
+<span class="sd">            Number of filters for the convolutional layers.</span>
+<span class="sd">        kernel_size : int, optional</span>
+<span class="sd">            Size of the convolutional kernel. Default is 3.</span>
+<span class="sd">        stride : int, optional</span>
+<span class="sd">            Stride for the convolutional layers. Default is 1.</span>
+<span class="sd">        conv_shortcut : bool, optional</span>
+<span class="sd">            Whether to use a convolutional layer for the shortcut connection. Default is True.</span>
+<span class="sd">        attention : dict, optional</span>
+<span class="sd">            Configuration parameters for the attention mechanism. Default is None.</span>
+<span class="sd">        name : str, optional</span>
+<span class="sd">            Name for the residual block. Default is None.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        output : keras.layers.Layer</span>
+<span class="sd">            Output layer of the residual block.</span>
+<span class="sd">        """</span>
+
+        <span class="k">if</span> <span class="n">conv_shortcut</span><span class="p">:</span>
+            <span class="n">shortcut</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_conv_layer</span><span class="p">(</span>
+                <span class="n">filters</span><span class="o">=</span><span class="mi">4</span> <span class="o">*</span> <span class="n">filters</span><span class="p">,</span>
+                <span class="n">kernel_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+                <span class="n">strides</span><span class="o">=</span><span class="n">stride</span><span class="p">,</span>
+                <span class="n">name</span><span class="o">=</span><span class="n">name</span> <span class="o">+</span> <span class="s2">"_0_conv"</span><span class="p">,</span>
+            <span class="p">)(</span><span class="n">inputs</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">shortcut</span> <span class="o">=</span> <span class="n">inputs</span>
+
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_conv_layer</span><span class="p">(</span>
+            <span class="n">filters</span><span class="o">=</span><span class="n">filters</span><span class="p">,</span>
+            <span class="n">kernel_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+            <span class="n">strides</span><span class="o">=</span><span class="n">stride</span><span class="p">,</span>
+            <span class="n">activation</span><span class="o">=</span><span class="s2">"relu"</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">name</span> <span class="o">+</span> <span class="s2">"_1_conv"</span><span class="p">,</span>
+        <span class="p">)(</span><span class="n">inputs</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_conv_layer</span><span class="p">(</span>
+            <span class="n">filters</span><span class="o">=</span><span class="n">filters</span><span class="p">,</span>
+            <span class="n">kernel_size</span><span class="o">=</span><span class="n">kernel_size</span><span class="p">,</span>
+            <span class="n">padding</span><span class="o">=</span><span class="s2">"same"</span><span class="p">,</span>
+            <span class="n">activation</span><span class="o">=</span><span class="s2">"relu"</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="n">name</span> <span class="o">+</span> <span class="s2">"_2_conv"</span><span class="p">,</span>
+        <span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_conv_layer</span><span class="p">(</span><span class="n">filters</span><span class="o">=</span><span class="mi">4</span> <span class="o">*</span> <span class="n">filters</span><span class="p">,</span> <span class="n">kernel_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span> <span class="o">+</span> <span class="s2">"_3_conv"</span><span class="p">)(</span>
+            <span class="n">x</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Attention mechanism</span>
+        <span class="k">if</span> <span class="n">attention</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">attention</span><span class="p">[</span><span class="s2">"mechanism"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"Dual-SE"</span><span class="p">:</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">dual_squeeze_excite_block</span><span class="p">(</span>
+                    <span class="n">x</span><span class="p">,</span> <span class="n">attention</span><span class="p">[</span><span class="s2">"reduction_ratio"</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span> <span class="o">+</span> <span class="s2">"_dse"</span>
+                <span class="p">)</span>
+            <span class="k">elif</span> <span class="n">attention</span><span class="p">[</span><span class="s2">"mechanism"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"Channel-SE"</span><span class="p">:</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">channel_squeeze_excite_block</span><span class="p">(</span>
+                    <span class="n">x</span><span class="p">,</span> <span class="n">attention</span><span class="p">[</span><span class="s2">"reduction_ratio"</span><span class="p">],</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span> <span class="o">+</span> <span class="s2">"_cse"</span>
+                <span class="p">)</span>
+            <span class="k">elif</span> <span class="n">attention</span><span class="p">[</span><span class="s2">"mechanism"</span><span class="p">]</span> <span class="o">==</span> <span class="s2">"Spatial-SE"</span><span class="p">:</span>
+                <span class="n">x</span> <span class="o">=</span> <span class="n">spatial_squeeze_excite_block</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span> <span class="o">+</span> <span class="s2">"_sse"</span><span class="p">)</span>
+
+        <span class="n">x</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Add</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span> <span class="o">+</span> <span class="s2">"_add"</span><span class="p">)([</span><span class="n">x</span><span class="p">,</span> <span class="n">shortcut</span><span class="p">])</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">ReLU</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span> <span class="o">+</span> <span class="s2">"_out"</span><span class="p">)(</span><span class="n">x</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">x</span></div>
+
+
+
+<div class="viewcode-block" id="KerasLoadedModel">
+<a class="viewcode-back" href="../../../../api/ctlearn.core.keras.model.KerasLoadedModel.html#ctlearn.core.KerasLoadedModel">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">KerasLoadedModel</span><span class="p">(</span><span class="n">LoadedModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    ``LoadedModel`` is a pre-trained Keras model.</span>
+
+<span class="sd">    This class extends the functionality of ``CTLearnModel`` by implementing</span>
+<span class="sd">    methods to load a pre-trained Keras model. The model can be used as a backbone</span>
+<span class="sd">    for the CTLearn model.</span>
+<span class="sd">    """</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">input_shape</span><span class="p">,</span>
+        <span class="n">tasks</span><span class="p">,</span>
+        <span class="n">config</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">parent</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Initialize the KerasLoadedModel component.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        input_shape : tuple</span>
+<span class="sd">            Input image tensor dimensions (height, width, channels).</span>
+<span class="sd">        tasks : list of str</span>
+<span class="sd">            List of target prediction tasks.</span>
+<span class="sd">        config : traitlets.config.Config, optional</span>
+<span class="sd">            Configuration specified by config file or cmdline arguments.</span>
+<span class="sd">        parent : ctapipe.core.Component or ctapipe.core.Tool, optional</span>
+<span class="sd">            Parent component in hierarchy.</span>
+<span class="sd">        **kwargs : dict, optional</span>
+<span class="sd">            Additional keyword arguments.</span>
+<span class="sd">        """</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">tasks</span><span class="o">=</span><span class="n">tasks</span><span class="p">,</span>
+            <span class="n">config</span><span class="o">=</span><span class="n">config</span><span class="p">,</span>
+            <span class="n">parent</span><span class="o">=</span><span class="n">parent</span><span class="p">,</span>
+            <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Load the model from the specified path</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">saving</span><span class="o">.</span><span class="n">load_model</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">load_model_from</span><span class="p">)</span>
+        <span class="c1"># Build the ResNet model backbone</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">backbone_model</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">input_layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_backbone</span><span class="p">(</span><span class="n">input_shape</span><span class="p">)</span>
+        <span class="c1"># Load the fully connected head from the loaded model or build a new one</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">overwrite_head</span><span class="p">:</span>
+            <span class="n">backbone_output</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">backbone_model</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">input_layer</span><span class="p">)</span>
+            <span class="c1"># Build the fully connected head depending on the tasks</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">logits</span> <span class="o">=</span> <span class="n">build_fully_connect_keras_head</span><span class="p">(</span>
+                <span class="n">backbone_output</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">head_layers</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">head_activation_function</span><span class="p">,</span> <span class="n">tasks</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">Model</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">input_layer</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">logits</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s2">"CTLearn_model"</span>
+            <span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_build_backbone</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_shape</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Build the LoadedModel backbone.</span>
+
+<span class="sd">        Function to build the backbone of the LoadedModel using the specified parameters.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        input_shape : tuple</span>
+<span class="sd">            Shape of the input data (batch_size, height, width, channels).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        backbone_model : keras.Model</span>
+<span class="sd">            Keras model object representing the LoadedModel backbone.</span>
+<span class="sd">        network_input : keras.Input</span>
+<span class="sd">            Keras input layer object for the backbone model.</span>
+<span class="sd">        """</span>
+
+        <span class="c1"># Define the input layer from the input shape</span>
+        <span class="n">network_input</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="n">input_shape</span><span class="p">)</span>
+        <span class="c1"># Set the backbone model to be trainable or not</span>
+        <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">layers</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">layer</span><span class="o">.</span><span class="n">name</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s2">"_block"</span><span class="p">):</span>
+                <span class="n">backbone_layer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">get_layer</span><span class="p">(</span><span class="n">layer</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">backbone_name</span> <span class="o">=</span> <span class="n">backbone_layer</span><span class="o">.</span><span class="n">name</span>
+                <span class="n">backbone_layer</span><span class="o">.</span><span class="n">trainable</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trainable_backbone</span>
+        <span class="n">network_output</span> <span class="o">=</span> <span class="n">backbone_layer</span><span class="p">(</span><span class="n">network_input</span><span class="p">)</span>
+        <span class="c1"># Create the backbone model</span>
+        <span class="n">backbone_model</span> <span class="o">=</span> <span class="n">keras</span><span class="o">.</span><span class="n">Model</span><span class="p">(</span>
+            <span class="n">network_input</span><span class="p">,</span> <span class="n">network_output</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">backbone_name</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">backbone_model</span><span class="p">,</span> <span class="n">network_input</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../../_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8"></script>
+<script defer src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright CTLearn devs.  Last updated 20 Nov 2026 15:32.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.1.1.
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.24.0.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

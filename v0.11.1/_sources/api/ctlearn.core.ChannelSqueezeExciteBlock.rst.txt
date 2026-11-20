@@ -1,0 +1,17 @@
+ChannelSqueezeExciteBlock
+=========================
+
+.. currentmodule:: ctlearn.core
+
+.. autoclass:: ChannelSqueezeExciteBlock
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~ChannelSqueezeExciteBlock.forward
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: forward

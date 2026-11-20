@@ -1,0 +1,19 @@
+BottleneckBlock
+===============
+
+.. currentmodule:: ctlearn.core
+
+.. autoclass:: BottleneckBlock
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~BottleneckBlock.forward
+      ~BottleneckBlock.setup_attention
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: forward
+   .. automethod:: setup_attention

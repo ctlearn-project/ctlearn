@@ -1,0 +1,31 @@
+StereoPredictCTLearnModel
+=========================
+
+.. currentmodule:: ctlearn.tools.predict_stereo_model
+
+.. autoclass:: StereoPredictCTLearnModel
+   :show-inheritance:
+
+   .. rubric:: Attributes Summary
+
+   .. autosummary::
+
+      ~StereoPredictCTLearnModel.description
+      ~StereoPredictCTLearnModel.examples
+      ~StereoPredictCTLearnModel.name
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~StereoPredictCTLearnModel.start
+
+   .. rubric:: Attributes Documentation
+
+   .. autoattribute:: description
+   .. autoattribute:: examples
+   .. autoattribute:: name
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: start

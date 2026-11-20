@@ -1,0 +1,17 @@
+SpatialSqueezeExciteBlock
+=========================
+
+.. currentmodule:: ctlearn.core.pytorch.attention
+
+.. autoclass:: SpatialSqueezeExciteBlock
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~SpatialSqueezeExciteBlock.forward
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: forward

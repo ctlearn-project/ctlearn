@@ -1,0 +1,33 @@
+MonoPredictCTLearnModel
+=======================
+
+.. currentmodule:: ctlearn.tools.predict_mono_model
+
+.. autoclass:: MonoPredictCTLearnModel
+   :show-inheritance:
+
+   .. rubric:: Attributes Summary
+
+   .. autosummary::
+
+      ~MonoPredictCTLearnModel.description
+      ~MonoPredictCTLearnModel.examples
+      ~MonoPredictCTLearnModel.name
+      ~MonoPredictCTLearnModel.stereo_combiner_cls
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~MonoPredictCTLearnModel.start
+
+   .. rubric:: Attributes Documentation
+
+   .. autoattribute:: description
+   .. autoattribute:: examples
+   .. autoattribute:: name
+   .. autoattribute:: stereo_combiner_cls
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: start

@@ -1,0 +1,17 @@
+KerasSequence
+=============
+
+.. currentmodule:: ctlearn.core.keras.sequence
+
+.. autoclass:: KerasSequence
+   :show-inheritance:
+
+   .. rubric:: Methods Summary
+
+   .. autosummary::
+
+      ~KerasSequence.on_epoch_end
+
+   .. rubric:: Methods Documentation
+
+   .. automethod:: on_epoch_end

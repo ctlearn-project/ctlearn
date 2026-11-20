@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" data-theme="dark">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ctlearn.tools.predict_stereo_model &#8212; ctlearn 0.11.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "dark";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "dark";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=75c7c72ae941e8b558d8" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=75c7c72ae941e8b558d8" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=c83e6b79" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=6a604523" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/ctlearn.css?v=cb75ed94" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/zenodo-icon.css?v=3f44c43a" />
+  
+  <!-- So that users can add custom icons -->
+  <script defer src="../../../_static/scripts/fontawesome.js?digest=75c7c72ae941e8b558d8"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8" />
+
+    <script src="../../../_static/documentation_options.js?v=57cbeb03"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
+    <script data-sd-tabs-storage-prefix="sphinx-design-tab-id-" src="../../../_static/design-tabs.js?v=fcb327ea"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/ctlearn/tools/predict_stereo_model';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.24.0';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://ctlearn-project.github.io/ctlearn/_static/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v0.11.1';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <script>DOCUMENTATION_OPTIONS.search_as_you_type = false;</script>
+    <link rel="icon" href="../../../_static/ctlearn_favicon.ico"/>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="color-scheme" content="light dark"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="0.11.1" />
+  
+    
+    <script src="../../../_static/searchtools.js"></script>
+    <script src="../../../_static/language_data.js"></script>
+    <script src="../../../searchindex.js"></script>
+  
+  </head>
+  <body data-default-mode="dark">
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+  
+  
+  
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+<aside class="bd-header-announcement" aria-label="Announcement">
+  <div class="bd-header-announcement__content">
+        <p>This is not production-ready code yet. Although stable
+        releases are available, users should expect changes to the code
+        before a 1.0 release arrives.</p>
+    </div>
+</aside>
+
+  
+    <header id="pst-header" class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button type="button" class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation" aria-expanded="false" aria-controls="pst-primary-sidebar-modal">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+    
+    <img src="../../../_static/ctlearn_logo_transparent.png" class="logo__image only-dark" alt="ctlearn 0.11.1 documentation - Home"/>
+    <img src="../../../_static/ctlearn_logo_transparent.png" class="logo__image only-light pst-js-only" alt="ctlearn 0.11.1 documentation - Home"/>
+  
+  
+</a></div>
+    
+      <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../user-guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../developer-guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api-reference/index.html">
+    API Docs
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../changelog.html">
+    Change Log
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Quick Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/ctlearn-project/ctlearn" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/ctlearn/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://doi.org/10.5281/zenodo.3342952" title="Zenodo" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><img src="../../../_static/zenodo-icon-grey.ico" class="icon-link-image" alt="Zenodo"/></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="mailto:tmiener@iaa.csic.es,d.nieto@ucm.es?subject=Request%20access%20to%20the%20CTLearn%20Slack%20workspace&body=Hello%20CTLearn%20maintainers%2C%0A%0AI%20would%20like%20to%20request%20access%20to%20the%20CTLearn%20Slack%20workspace.%0A" title="Request Slack access" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-slack fa-lg" aria-hidden="true"></i><span class="visually-hidden">Request Slack access</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button type="button" class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <dialog id="pst-primary-sidebar-modal" tabindex="-1"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../user-guide/index.html">
+    User Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../developer-guide/index.html">
+    Developer Guide
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../api-reference/index.html">
+    API Docs
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../../../changelog.html">
+    Change Log
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<div class="theme-switch-container dropdown pst-js-only" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Color mode">
+  <button type="button" class="btn btn-sm nav-link pst-navbar-icon theme-switch-button dropdown-toggle" aria-label="Color mode" data-bs-toggle="dropdown">
+    <i class="theme-switch fa-solid fa-sun fa-lg" data-mode="light" title="Light"></i>
+    <i class="theme-switch fa-solid fa-moon fa-lg" data-mode="dark" title="Dark"></i>
+    <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto" title="System Settings"></i>
+  </button>
+  <ul class="dropdown-menu dropdown-menu-end">
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg me-1"></i>System Settings</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="light"><i class="fa-solid fa-sun fa-lg me-1"></i>Light</button></li>
+    <li><button type="button" class="dropdown-item d-flex align-items-center theme-change-button" data-mode="dark"><i class="fa-solid fa-moon fa-lg me-1"></i>Dark</button></li>
+  </ul>
+</div></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Quick Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/ctlearn-project/ctlearn" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-github fa-lg" aria-hidden="true"></i><span class="visually-hidden">GitHub</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://pypi.org/project/ctlearn/" title="PyPI" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-python fa-lg" aria-hidden="true"></i><span class="visually-hidden">PyPI</span></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://doi.org/10.5281/zenodo.3342952" title="Zenodo" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><img src="../../../_static/zenodo-icon-grey.ico" class="icon-link-image" alt="Zenodo"/></a>
+        </li>
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="mailto:tmiener@iaa.csic.es,d.nieto@ucm.es?subject=Request%20access%20to%20the%20CTLearn%20Slack%20workspace&body=Hello%20CTLearn%20maintainers%2C%0A%0AI%20would%20like%20to%20request%20access%20to%20the%20CTLearn%20Slack%20workspace.%0A" title="Request Slack access" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fab fa-slack fa-lg" aria-hidden="true"></i><span class="visually-hidden">Request Slack access</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-house"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">ctlearn.tools.predict_stereo_model</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for ctlearn.tools.predict_stereo_model</h1><div class="highlight"><pre>
+<span></span><span class="sd">"""</span>
+<span class="sd">Tool to predict the gammaness, energy and arrival direction in stereoscopic mode using ``CTLearnModel`` on R1/DL1 data using the ``DLDataReader`` and ``KerasSequence``/``PyTorchDataset``.</span>
+<span class="sd">"""</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">"StereoPredictCTLearnModel"</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">astropy.table</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">Table</span><span class="p">,</span>
+    <span class="n">join</span><span class="p">,</span>
+    <span class="n">setdiff</span><span class="p">,</span>
+    <span class="n">unique</span><span class="p">,</span>
+    <span class="n">vstack</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctapipe.containers</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">ParticleClassificationContainer</span><span class="p">,</span>
+    <span class="n">ReconstructedEnergyContainer</span><span class="p">,</span>
+    <span class="n">ReconstructedGeometryContainer</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctapipe.io</span><span class="w"> </span><span class="kn">import</span> <span class="n">read_table</span><span class="p">,</span> <span class="n">write_table</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctapipe.io.hdf5dataformat</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">DL1_SUBARRAY_GROUP</span><span class="p">,</span>
+    <span class="n">DL1_SUBARRAY_POINTING_GROUP</span><span class="p">,</span>
+    <span class="n">DL2_EVENT_STATISTICS_GROUP</span><span class="p">,</span>
+    <span class="n">DL2_SUBARRAY_ENERGY_GROUP</span><span class="p">,</span>
+    <span class="n">DL2_SUBARRAY_GEOMETRY_GROUP</span><span class="p">,</span>
+    <span class="n">DL2_SUBARRAY_PARTICLETYPE_GROUP</span><span class="p">,</span>
+    <span class="n">SIMULATION_RUN_TABLE</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctapipe.reco.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">add_defaults_and_meta</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">dl1_data_handler.reader</span><span class="w"> </span><span class="kn">import</span> <span class="n">ProcessType</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">ctlearn.tools.predict_model</span><span class="w"> </span><span class="kn">import</span> <span class="n">PredictCTLearnModel</span>
+
+<span class="c1"># Convenient constants for column names and table keys</span>
+<span class="n">SUBARRAY_EVENT_KEYS</span> <span class="o">=</span> <span class="p">[</span><span class="s2">"obs_id"</span><span class="p">,</span> <span class="s2">"event_id"</span><span class="p">]</span>
+
+
+<div class="viewcode-block" id="StereoPredictCTLearnModel">
+<a class="viewcode-back" href="../../../api/ctlearn.tools.predict_stereo_model.StereoPredictCTLearnModel.html#ctlearn.tools.StereoPredictCTLearnModel">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">StereoPredictCTLearnModel</span><span class="p">(</span><span class="n">PredictCTLearnModel</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Tool to predict the gammaness, energy and arrival direction from R1/DL1 stereoscopic data using CTLearn models.</span>
+
+<span class="sd">    This tool extends the ``PredictCTLearnModel`` to specifically handle stereoscopic R1/DL1 data. The prediction</span>
+<span class="sd">    is performed using the CTLearn models. The data is stored in the output file following the ctapipe DL2 data format.</span>
+<span class="sd">    It also stores the telescope/subarray pointing monitoring and DL1 feature vectors (if selected) in the output file.</span>
+<span class="sd">    By default, waveforms and images are not copied to the DL2 output file unless explicitly enabled in the configuration.</span>
+
+<span class="sd">    Attributes</span>
+<span class="sd">    ----------</span>
+<span class="sd">    name : str</span>
+<span class="sd">        Name of the tool.</span>
+<span class="sd">    description : str</span>
+<span class="sd">        Description of the tool.</span>
+<span class="sd">    examples : str</span>
+<span class="sd">        Examples of how to use the tool.</span>
+
+<span class="sd">    Methods</span>
+<span class="sd">    -------</span>
+<span class="sd">    start()</span>
+<span class="sd">        Start the tool.</span>
+<span class="sd">    _store_mc_subarray_pointing(all_identifiers)</span>
+<span class="sd">        Store the subarray pointing table for the stereo mode for MC simulation.</span>
+<span class="sd">    """</span>
+
+    <span class="n">name</span> <span class="o">=</span> <span class="s2">"ctlearn-predict-stereo-model"</span>
+    <span class="n">description</span> <span class="o">=</span> <span class="vm">__doc__</span>
+
+    <span class="n">examples</span> <span class="o">=</span> <span class="s2">"""</span>
+<span class="s2">    To predict from pixel-wise image data in stereo mode using trained CTLearn models:</span>
+<span class="s2">    &gt; ctlearn-predict-stereo-model </span><span class="se">\</span>
+<span class="s2">        --input_url input.dl1.h5 </span><span class="se">\</span>
+<span class="s2">        --PredictCTLearnModel.batch_size=16 </span><span class="se">\</span>
+<span class="s2">        --PredictCTLearnModel.dl1dh_reader_type=DLImageReader </span><span class="se">\</span>
+<span class="s2">        --DLImageReader.channels=cleaned_image </span><span class="se">\</span>
+<span class="s2">        --DLImageReader.channels=cleaned_relative_peak_time </span><span class="se">\</span>
+<span class="s2">        --DLImageReader.image_mapper_type=BilinearMapper </span><span class="se">\</span>
+<span class="s2">        --DLImageReader.mode=stereo </span><span class="se">\</span>
+<span class="s2">        --DLImageReader.min_telescopes=2 </span><span class="se">\</span>
+<span class="s2">        --PredictCTLearnModel.stack_telescope_images=True </span><span class="se">\</span>
+<span class="s2">        --type_model="/path/to/your/stereo/type/ctlearn_model(.keras/.pth)" </span><span class="se">\</span>
+<span class="s2">        --energy_model="/path/to/your/stereo/energy/ctlearn_model(.keras/.pth)" </span><span class="se">\</span>
+<span class="s2">        --skydirection_model="/path/to/your/stereo/skydirection/ctlearn_model(.keras/.pth)" </span><span class="se">\</span>
+<span class="s2">        --output output.dl2.h5 </span><span class="se">\</span>
+<span class="s2">    """</span>
+
+<div class="viewcode-block" id="StereoPredictCTLearnModel.start">
+<a class="viewcode-back" href="../../../api/ctlearn.tools.predict_stereo_model.StereoPredictCTLearnModel.html#ctlearn.tools.StereoPredictCTLearnModel.start">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Execute the core logic of the tool.</span>
+
+<span class="sd">        Depending on the tool, this method either orchestrates the training and validation</span>
+<span class="sd">        loops across epochs, or it iterates through the input dataset to generate</span>
+<span class="sd">        and save model predictions to the output file.</span>
+<span class="sd">        """</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Processing the telescope pointings..."</span><span class="p">)</span>
+        <span class="c1"># Retrieve the IDs from the dl1dh for the prediction tables</span>
+        <span class="n">example_identifiers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">dl1dh_reader</span><span class="o">.</span><span class="n">unique_example_identifiers</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">example_identifiers</span><span class="o">.</span><span class="n">keep_columns</span><span class="p">(</span><span class="n">SUBARRAY_EVENT_KEYS</span><span class="p">)</span>
+        <span class="n">all_identifiers</span> <span class="o">=</span> <span class="n">read_table</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">tel_trigger_table_path</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">all_identifiers</span><span class="o">.</span><span class="n">keep_columns</span><span class="p">(</span><span class="n">SUBARRAY_EVENT_KEYS</span> <span class="o">+</span> <span class="p">[</span><span class="s2">"time"</span><span class="p">])</span>
+        <span class="c1"># Unique example identifiers by events</span>
+        <span class="n">all_identifiers</span> <span class="o">=</span> <span class="n">unique</span><span class="p">(</span><span class="n">all_identifiers</span><span class="p">,</span> <span class="n">keys</span><span class="o">=</span><span class="n">SUBARRAY_EVENT_KEYS</span><span class="p">)</span>
+        <span class="n">nonexample_identifiers</span> <span class="o">=</span> <span class="n">setdiff</span><span class="p">(</span>
+            <span class="n">all_identifiers</span><span class="p">,</span> <span class="n">example_identifiers</span><span class="p">,</span> <span class="n">keys</span><span class="o">=</span><span class="n">SUBARRAY_EVENT_KEYS</span>
+        <span class="p">)</span>
+        <span class="n">nonexample_identifiers</span><span class="o">.</span><span class="n">remove_column</span><span class="p">(</span><span class="s2">"time"</span><span class="p">)</span>
+        <span class="c1"># Construct the survival telescopes for each event of the example_identifiers</span>
+        <span class="n">survival_telescopes</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">subarray_event</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">dl1dh_reader</span><span class="o">.</span><span class="n">example_identifiers_grouped</span><span class="o">.</span><span class="n">groups</span><span class="p">:</span>
+            <span class="n">survival_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dl1dh_reader</span><span class="o">.</span><span class="n">tel_ids</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+            <span class="n">survival_tels</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">dl1dh_reader</span><span class="o">.</span><span class="n">subarray</span><span class="o">.</span><span class="n">tel_indices</span><span class="p">[</span><span class="n">tel_id</span><span class="p">]</span>
+                <span class="k">for</span> <span class="n">tel_id</span> <span class="ow">in</span> <span class="n">subarray_event</span><span class="p">[</span><span class="s2">"tel_id"</span><span class="p">]</span><span class="o">.</span><span class="n">data</span>
+            <span class="p">]</span>
+            <span class="n">survival_mask</span><span class="p">[</span><span class="n">survival_tels</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">survival_telescopes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">survival_mask</span><span class="p">)</span>
+        <span class="c1"># Add the survival telescopes to the example_identifiers</span>
+        <span class="n">example_identifiers</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span>
+            <span class="n">survival_telescopes</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'all'</span><span class="p">]</span><span class="si">}</span><span class="s2">_telescopes"</span>
+        <span class="p">)</span>
+        <span class="c1"># Pointing table for the stereo mode for MC simulation</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dl1dh_reader</span><span class="o">.</span><span class="n">process_type</span> <span class="o">==</span> <span class="n">ProcessType</span><span class="o">.</span><span class="n">Simulation</span><span class="p">:</span>
+            <span class="n">pointing_info</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_store_mc_subarray_pointing</span><span class="p">(</span><span class="n">all_identifiers</span><span class="p">)</span>
+
+        <span class="c1"># Pointing table for the observation mode</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dl1dh_reader</span><span class="o">.</span><span class="n">process_type</span> <span class="o">==</span> <span class="n">ProcessType</span><span class="o">.</span><span class="n">Observation</span><span class="p">:</span>
+            <span class="n">pointing_info</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_store_pointing</span><span class="p">(</span><span class="n">all_identifiers</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Starting the prediction..."</span><span class="p">)</span>
+        <span class="n">particletype_feature_vectors</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_type_model_from</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Predict the classification of the primary particle</span>
+            <span class="n">particletype_table</span><span class="p">,</span> <span class="n">particletype_feature_vectors</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_predict_particletype</span><span class="p">(</span><span class="n">example_identifiers</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dl2_subarray</span><span class="p">:</span>
+                <span class="n">particletype_table</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'all'</span><span class="p">]</span><span class="si">}</span><span class="s2">_telescopes"</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'type'</span><span class="p">]</span><span class="si">}</span><span class="s2">_telescopes"</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="c1"># Produce output table with NaNs for missing predictions</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">nonexample_identifiers</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">nan_table</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_create_nan_table</span><span class="p">(</span>
+                        <span class="n">nonexample_identifiers</span><span class="p">,</span>
+                        <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'type'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_prediction"</span><span class="p">],</span>
+                        <span class="n">shapes</span><span class="o">=</span><span class="p">[(</span><span class="nb">len</span><span class="p">(</span><span class="n">nonexample_identifiers</span><span class="p">),)],</span>
+                        <span class="n">reco_task</span><span class="o">=</span><span class="s2">"type"</span><span class="p">,</span>
+                    <span class="p">)</span>
+                    <span class="n">particletype_table</span> <span class="o">=</span> <span class="n">vstack</span><span class="p">([</span><span class="n">particletype_table</span><span class="p">,</span> <span class="n">nan_table</span><span class="p">])</span>
+                <span class="c1"># Add is_valid column to the particletype table</span>
+                <span class="n">particletype_table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span>
+                    <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span>
+                        <span class="n">particletype_table</span><span class="p">[</span>
+                            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'type'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_prediction"</span>
+                        <span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">,</span>
+                        <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">,</span>
+                    <span class="p">),</span>
+                    <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'type'</span><span class="p">]</span><span class="si">}</span><span class="s2">_is_valid"</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="c1"># Rename the columns for the stereo mode</span>
+                <span class="n">particletype_table</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'type'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_prediction"</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'type'</span><span class="p">]</span><span class="si">}</span><span class="s2">_prediction"</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="c1"># Deduplicate the subarray particletype table to have only one entry per event</span>
+                <span class="n">particletype_table</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">deduplicate_first_valid</span><span class="p">(</span>
+                    <span class="n">table</span><span class="o">=</span><span class="n">particletype_table</span><span class="p">,</span>
+                    <span class="n">keys</span><span class="o">=</span><span class="n">SUBARRAY_EVENT_KEYS</span><span class="p">,</span>
+                    <span class="n">valid_col</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'type'</span><span class="p">]</span><span class="si">}</span><span class="s2">_is_valid"</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">particletype_table</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">SUBARRAY_EVENT_KEYS</span><span class="p">)</span>
+                <span class="c1"># Add the default values and meta data to the table</span>
+                <span class="n">add_defaults_and_meta</span><span class="p">(</span>
+                    <span class="n">particletype_table</span><span class="p">,</span>
+                    <span class="n">ParticleClassificationContainer</span><span class="p">,</span>
+                    <span class="n">prefix</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s2">"type"</span><span class="p">],</span>
+                <span class="p">)</span>
+                <span class="c1"># Save the prediction to the output file</span>
+                <span class="n">write_table</span><span class="p">(</span>
+                    <span class="n">particletype_table</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL2_SUBARRAY_PARTICLETYPE_GROUP</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'type'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="s2">"DL2 prediction data was stored in '</span><span class="si">%s</span><span class="s2">' under '</span><span class="si">%s</span><span class="s2">'"</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL2_SUBARRAY_PARTICLETYPE_GROUP</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'type'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="c1"># Store the telescope event statistics table</span>
+            <span class="n">write_table</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">dl1dh_reader</span><span class="o">.</span><span class="n">quality_query</span><span class="o">.</span><span class="n">to_table</span><span class="p">(</span><span class="n">functions</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL2_EVENT_STATISTICS_GROUP</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'type'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="n">append</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">"DL2 service telescope event statistics data was stored in '</span><span class="si">%s</span><span class="s2">' under '</span><span class="si">%s</span><span class="s2">'"</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL2_EVENT_STATISTICS_GROUP</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'type'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="n">energy_feature_vectors</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_energy_model_from</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Predict the energy of the primary particle</span>
+            <span class="n">energy_table</span><span class="p">,</span> <span class="n">energy_feature_vectors</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_predict_energy</span><span class="p">(</span>
+                <span class="n">example_identifiers</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dl2_subarray</span><span class="p">:</span>
+                <span class="n">energy_table</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'all'</span><span class="p">]</span><span class="si">}</span><span class="s2">_telescopes"</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'energy'</span><span class="p">]</span><span class="si">}</span><span class="s2">_telescopes"</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="c1"># Produce output table with NaNs for missing predictions</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">nonexample_identifiers</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">nan_table</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_create_nan_table</span><span class="p">(</span>
+                        <span class="n">nonexample_identifiers</span><span class="p">,</span>
+                        <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'energy'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_energy"</span><span class="p">],</span>
+                        <span class="n">shapes</span><span class="o">=</span><span class="p">[(</span><span class="nb">len</span><span class="p">(</span><span class="n">nonexample_identifiers</span><span class="p">),)],</span>
+                        <span class="n">reco_task</span><span class="o">=</span><span class="s2">"energy"</span><span class="p">,</span>
+                    <span class="p">)</span>
+                    <span class="n">energy_table</span> <span class="o">=</span> <span class="n">vstack</span><span class="p">([</span><span class="n">energy_table</span><span class="p">,</span> <span class="n">nan_table</span><span class="p">])</span>
+                <span class="c1"># Add is_valid column to the energy table</span>
+                <span class="n">energy_table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span>
+                    <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span>
+                        <span class="n">energy_table</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'energy'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_energy"</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">,</span>
+                        <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">,</span>
+                    <span class="p">),</span>
+                    <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'energy'</span><span class="p">]</span><span class="si">}</span><span class="s2">_is_valid"</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="c1"># Rename the columns for the stereo mode</span>
+                <span class="n">energy_table</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'energy'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_energy"</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'energy'</span><span class="p">]</span><span class="si">}</span><span class="s2">_energy"</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="c1"># Deduplicate the subarray energy table to have only one entry per event</span>
+                <span class="n">energy_table</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">deduplicate_first_valid</span><span class="p">(</span>
+                    <span class="n">table</span><span class="o">=</span><span class="n">energy_table</span><span class="p">,</span>
+                    <span class="n">keys</span><span class="o">=</span><span class="n">SUBARRAY_EVENT_KEYS</span><span class="p">,</span>
+                    <span class="n">valid_col</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'energy'</span><span class="p">]</span><span class="si">}</span><span class="s2">_is_valid"</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">energy_table</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">SUBARRAY_EVENT_KEYS</span><span class="p">)</span>
+                <span class="c1"># Add the default values and meta data to the table</span>
+                <span class="n">add_defaults_and_meta</span><span class="p">(</span>
+                    <span class="n">energy_table</span><span class="p">,</span>
+                    <span class="n">ReconstructedEnergyContainer</span><span class="p">,</span>
+                    <span class="n">prefix</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s2">"energy"</span><span class="p">],</span>
+                <span class="p">)</span>
+                <span class="c1"># Save the prediction to the output file</span>
+                <span class="n">write_table</span><span class="p">(</span>
+                    <span class="n">energy_table</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL2_SUBARRAY_ENERGY_GROUP</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'energy'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="s2">"DL2 prediction data was stored in '</span><span class="si">%s</span><span class="s2">' under '</span><span class="si">%s</span><span class="s2">'"</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL2_SUBARRAY_ENERGY_GROUP</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'energy'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="c1"># Store the telescope event statistics table</span>
+            <span class="n">write_table</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">dl1dh_reader</span><span class="o">.</span><span class="n">quality_query</span><span class="o">.</span><span class="n">to_table</span><span class="p">(</span><span class="n">functions</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL2_EVENT_STATISTICS_GROUP</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'energy'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="n">append</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">"DL2 service telescope event statistics data was stored in '</span><span class="si">%s</span><span class="s2">' under '</span><span class="si">%s</span><span class="s2">'"</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL2_EVENT_STATISTICS_GROUP</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'energy'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="n">direction_feature_vectors</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">load_skydirection_model_from</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Join the prediction table with the telescope pointing table</span>
+            <span class="n">example_identifiers</span> <span class="o">=</span> <span class="n">join</span><span class="p">(</span>
+                <span class="n">left</span><span class="o">=</span><span class="n">example_identifiers</span><span class="p">,</span>
+                <span class="n">right</span><span class="o">=</span><span class="n">pointing_info</span><span class="p">,</span>
+                <span class="n">keys</span><span class="o">=</span><span class="n">SUBARRAY_EVENT_KEYS</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="c1"># Predict the arrival direction of the primary particle</span>
+            <span class="n">direction_table</span><span class="p">,</span> <span class="n">direction_feature_vectors</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_predict_skydirection</span><span class="p">(</span>
+                <span class="n">example_identifiers</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dl2_subarray</span><span class="p">:</span>
+                <span class="n">direction_table</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'all'</span><span class="p">]</span><span class="si">}</span><span class="s2">_telescopes"</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'skydirection'</span><span class="p">]</span><span class="si">}</span><span class="s2">_telescopes"</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="c1"># Transform the spherical coordinate offsets to sky coordinates</span>
+                <span class="n">direction_table</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_transform_spher_coord_offsets_to_sky</span><span class="p">(</span>
+                    <span class="n">direction_table</span>
+                <span class="p">)</span>
+                <span class="c1"># Produce output table with NaNs for missing predictions</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">nonexample_identifiers</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">nan_table</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_create_nan_table</span><span class="p">(</span>
+                        <span class="n">nonexample_identifiers</span><span class="p">,</span>
+                        <span class="n">columns</span><span class="o">=</span><span class="p">[</span>
+                            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'skydirection'</span><span class="p">]</span><span class="si">}</span><span class="s2">_alt"</span><span class="p">,</span>
+                            <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'skydirection'</span><span class="p">]</span><span class="si">}</span><span class="s2">_az"</span><span class="p">,</span>
+                        <span class="p">],</span>
+                        <span class="n">shapes</span><span class="o">=</span><span class="p">[</span>
+                            <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">nonexample_identifiers</span><span class="p">),),</span>
+                            <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">nonexample_identifiers</span><span class="p">),),</span>
+                        <span class="p">],</span>
+                        <span class="n">reco_task</span><span class="o">=</span><span class="s2">"skydirection"</span><span class="p">,</span>
+                    <span class="p">)</span>
+                    <span class="n">direction_table</span> <span class="o">=</span> <span class="n">vstack</span><span class="p">([</span><span class="n">direction_table</span><span class="p">,</span> <span class="n">nan_table</span><span class="p">])</span>
+                <span class="c1"># Add is_valid column to the direction table</span>
+                <span class="n">direction_table</span><span class="o">.</span><span class="n">add_column</span><span class="p">(</span>
+                    <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span>
+                        <span class="n">direction_table</span><span class="p">[</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'skydirection'</span><span class="p">]</span><span class="si">}</span><span class="s2">_alt"</span><span class="p">]</span><span class="o">.</span><span class="n">data</span><span class="p">,</span>
+                        <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">,</span>
+                    <span class="p">),</span>
+                    <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'skydirection'</span><span class="p">]</span><span class="si">}</span><span class="s2">_is_valid"</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="c1"># Deduplicate the subarray direction table to have only one entry per event</span>
+                <span class="n">direction_table</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">deduplicate_first_valid</span><span class="p">(</span>
+                    <span class="n">table</span><span class="o">=</span><span class="n">direction_table</span><span class="p">,</span>
+                    <span class="n">keys</span><span class="o">=</span><span class="n">SUBARRAY_EVENT_KEYS</span><span class="p">,</span>
+                    <span class="n">valid_col</span><span class="o">=</span><span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'skydirection'</span><span class="p">]</span><span class="si">}</span><span class="s2">_is_valid"</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="n">direction_table</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">SUBARRAY_EVENT_KEYS</span><span class="p">)</span>
+                <span class="c1"># Add the default values and meta data to the table</span>
+                <span class="n">add_defaults_and_meta</span><span class="p">(</span>
+                    <span class="n">direction_table</span><span class="p">,</span>
+                    <span class="n">ReconstructedGeometryContainer</span><span class="p">,</span>
+                    <span class="n">prefix</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s2">"skydirection"</span><span class="p">],</span>
+                <span class="p">)</span>
+                <span class="c1"># Save the prediction to the output file</span>
+                <span class="n">write_table</span><span class="p">(</span>
+                    <span class="n">direction_table</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL2_SUBARRAY_GEOMETRY_GROUP</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'skydirection'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                    <span class="s2">"DL2 prediction data was stored in '</span><span class="si">%s</span><span class="s2">' under '</span><span class="si">%s</span><span class="s2">'"</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+                    <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL2_SUBARRAY_GEOMETRY_GROUP</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'skydirection'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="c1"># Store the telescope event statistics table</span>
+            <span class="n">write_table</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">dl1dh_reader</span><span class="o">.</span><span class="n">quality_query</span><span class="o">.</span><span class="n">to_table</span><span class="p">(</span><span class="n">functions</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL2_EVENT_STATISTICS_GROUP</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'skydirection'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+                <span class="n">append</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">"DL2 service telescope event statistics data was stored in '</span><span class="si">%s</span><span class="s2">' under '</span><span class="si">%s</span><span class="s2">'"</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL2_EVENT_STATISTICS_GROUP</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'skydirection'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="c1"># Create the feature vector table if the DL1 features are enabled</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dl1_features</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">"Processing and storing dl1 feature vectors..."</span><span class="p">)</span>
+            <span class="n">feature_vector_table</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">_create_feature_vectors_table</span><span class="p">(</span>
+                <span class="n">example_identifiers</span><span class="p">,</span>
+                <span class="n">nonexample_identifiers</span><span class="p">,</span>
+                <span class="n">particletype_feature_vectors</span><span class="p">,</span>
+                <span class="n">energy_feature_vectors</span><span class="p">,</span>
+                <span class="n">direction_feature_vectors</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="c1"># Loop over the selected telescopes and store the feature vectors</span>
+            <span class="c1"># for each telescope in the output file. The feature vectors are stored</span>
+            <span class="c1"># in the DL1_TEL_GROUP/features/{self.prefixes['all']}/tel_{tel_id:03d} table.</span>
+            <span class="c1"># Rename the columns for the stereo mode</span>
+            <span class="n">feature_vector_table</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'all'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_particletype_feature_vectors"</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'all'</span><span class="p">]</span><span class="si">}</span><span class="s2">_particletype_feature_vectors"</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">feature_vector_table</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'all'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_energy_feature_vectors"</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'all'</span><span class="p">]</span><span class="si">}</span><span class="s2">_energy_feature_vectors"</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">feature_vector_table</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'all'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_geometry_feature_vectors"</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'all'</span><span class="p">]</span><span class="si">}</span><span class="s2">_geometry_feature_vectors"</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">feature_vector_table</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'all'</span><span class="p">]</span><span class="si">}</span><span class="s2">_tel_is_valid"</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'all'</span><span class="p">]</span><span class="si">}</span><span class="s2">_is_valid"</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">feature_vector_table</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">SUBARRAY_EVENT_KEYS</span><span class="p">)</span>
+            <span class="c1"># Save the prediction to the output file</span>
+            <span class="n">write_table</span><span class="p">(</span>
+                <span class="n">feature_vector_table</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL1_SUBARRAY_GROUP</span><span class="si">}</span><span class="s2">/features/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'all'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                <span class="s2">"DL1 feature vectors was stored in '</span><span class="si">%s</span><span class="s2">' under '</span><span class="si">%s</span><span class="s2">'"</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+                <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">DL1_SUBARRAY_GROUP</span><span class="si">}</span><span class="s2">/features/</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">prefixes</span><span class="p">[</span><span class="s1">'all'</span><span class="p">]</span><span class="si">}</span><span class="s2">"</span><span class="p">,</span>
+            <span class="p">)</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_store_mc_subarray_pointing</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">all_identifiers</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">"""</span>
+<span class="sd">        Store the subarray pointing table from MC simulation to the output file.</span>
+
+<span class="sd">        Parameters:</span>
+<span class="sd">        -----------</span>
+<span class="sd">        all_identifiers : astropy.table.Table</span>
+<span class="sd">            Table containing the subarray pointing information.</span>
+<span class="sd">        """</span>
+        <span class="c1"># Read the subarray pointing table</span>
+        <span class="n">pointing_info</span> <span class="o">=</span> <span class="n">read_table</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">input_url</span><span class="p">,</span>
+            <span class="n">SIMULATION_RUN_TABLE</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="c1"># Assuming min_az = max_az and min_alt = max_alt</span>
+        <span class="n">pointing_info</span><span class="o">.</span><span class="n">keep_columns</span><span class="p">([</span><span class="s2">"obs_id"</span><span class="p">,</span> <span class="s2">"min_az"</span><span class="p">,</span> <span class="s2">"min_alt"</span><span class="p">])</span>
+        <span class="n">pointing_info</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span><span class="s2">"min_az"</span><span class="p">,</span> <span class="s2">"pointing_azimuth"</span><span class="p">)</span>
+        <span class="n">pointing_info</span><span class="o">.</span><span class="n">rename_column</span><span class="p">(</span><span class="s2">"min_alt"</span><span class="p">,</span> <span class="s2">"pointing_altitude"</span><span class="p">)</span>
+        <span class="c1"># Join the prediction table with the telescope pointing table</span>
+        <span class="n">pointing_info</span> <span class="o">=</span> <span class="n">join</span><span class="p">(</span>
+            <span class="n">left</span><span class="o">=</span><span class="n">pointing_info</span><span class="p">,</span>
+            <span class="n">right</span><span class="o">=</span><span class="n">all_identifiers</span><span class="p">,</span>
+            <span class="n">keys</span><span class="o">=</span><span class="p">[</span><span class="s2">"obs_id"</span><span class="p">],</span>
+        <span class="p">)</span>
+        <span class="c1"># TODO: use keep_order for astropy v7.0.0</span>
+        <span class="n">pointing_info</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">SUBARRAY_EVENT_KEYS</span><span class="p">)</span>
+        <span class="c1"># Create the pointing table</span>
+        <span class="n">pointing_table</span> <span class="o">=</span> <span class="n">Table</span><span class="p">(</span>
+            <span class="p">{</span>
+                <span class="s2">"time"</span><span class="p">:</span> <span class="n">pointing_info</span><span class="p">[</span><span class="s2">"time"</span><span class="p">],</span>
+                <span class="s2">"array_azimuth"</span><span class="p">:</span> <span class="n">pointing_info</span><span class="p">[</span><span class="s2">"pointing_azimuth"</span><span class="p">],</span>
+                <span class="s2">"array_altitude"</span><span class="p">:</span> <span class="n">pointing_info</span><span class="p">[</span><span class="s2">"pointing_altitude"</span><span class="p">],</span>
+                <span class="s2">"array_ra"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">pointing_info</span><span class="p">)),</span>
+                <span class="s2">"array_dec"</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">pointing_info</span><span class="p">)),</span>
+            <span class="p">}</span>
+        <span class="p">)</span>
+        <span class="c1"># Save the pointing table to the output file</span>
+        <span class="n">write_table</span><span class="p">(</span>
+            <span class="n">pointing_table</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+            <span class="n">DL1_SUBARRAY_POINTING_GROUP</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+            <span class="s2">"DL1 subarray pointing table was stored in '</span><span class="si">%s</span><span class="s2">' under '</span><span class="si">%s</span><span class="s2">'"</span><span class="p">,</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">output_path</span><span class="p">,</span>
+            <span class="n">DL1_SUBARRAY_POINTING_GROUP</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">pointing_info</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">main</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">"""</span>
+<span class="sd">    Main entry point for the command-line tool.</span>
+
+<span class="sd">    This function instantiates the Tool class and invokes its `run()` method,</span>
+<span class="sd">    which sequentially executes the `setup()`, `start()`, and `finish()` methods.</span>
+<span class="sd">    """</span>
+    <span class="c1"># Run the tool</span>
+    <span class="n">tool</span> <span class="o">=</span> <span class="n">StereoPredictCTLearnModel</span><span class="p">()</span>
+    <span class="n">tool</span><span class="o">.</span><span class="n">run</span><span class="p">()</span>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s2">"__main__"</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../../../_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8"></script>
+<script defer src="../../../_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright CTLearn devs.  Last updated 20 Nov 2026 15:32.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 9.1.1.
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.24.0.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
