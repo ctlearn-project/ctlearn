@@ -508,12 +508,6 @@ jobs:
           !contains(github.event.pull_request.labels.*.name, 'documentation-only')
         )
       )
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-      (
-        github.event_name == 'pull_request' &&
-        github.event.pull_request.head.repo.full_name == github.repository &&
-        !contains(github.event.pull_request.labels.*.name, 'documentation-only')
-      )
     runs-on: ubuntu-24.04
     permissions:
       contents: read
