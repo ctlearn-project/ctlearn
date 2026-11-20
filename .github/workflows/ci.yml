@@ -7,6 +7,16 @@ on:
   pull_request:
     types: [opened, reopened, synchronize, labeled, unlabeled]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to test"
+        required: true
+        type: string
+      upload:
+        description: "Deploy documentation to GitHub Pages"
+        required: true
+        type: boolean
+        default: false
   schedule:
     - cron: "0 2 * * *"  # Daily at 02:00 UTC
 
@@ -17,6 +27,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || '' }}
 
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
@@ -107,12 +118,13 @@ jobs:
       contents: read
     env:
       PIP_EXTRA_INDEX_URL: "https://download.pytorch.org/whl/cpu"
-      CTLEARN_DOCS_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || 'main' }}
+      CTLEARN_DOCS_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_type == 'tag' && github.ref_name || 'main' }}
       SKIP_DOCS_TUTORIALS: ${{ github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'skip-docs-tutorials') }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || '' }}
 
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
@@ -166,7 +178,7 @@ jobs:
       - name: Upload rendered documentation for review
         if: >-
           always() &&
-          (github.event_name == 'pull_request' || github.event_name == 'push')
+          (github.event_name == 'pull_request' || github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: docs-${{ github.event_name }}-${{ github.run_id }}
@@ -177,10 +189,12 @@ jobs:
 
   deploy-docs:
     if: >-
-      github.event_name == 'push' &&
       (
-        github.ref == 'refs/heads/main' ||
-        startsWith(github.ref, 'refs/tags/')
+        github.event_name == 'push' &&
+        (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+      ) ||
+      (
+        github.event_name == 'workflow_dispatch' && inputs.upload
       )
     needs: docs
     runs-on: ubuntu-24.04
@@ -201,6 +215,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || '' }}
 
       - name: Download rendered documentation
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
@@ -210,8 +225,8 @@ jobs:
 
       - name: Merge version into Pages site
         env:
-          VERSION: ${{ github.ref_name }}
-          REF: ${{ github.ref }}
+          VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          REF: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || github.ref }}
         run: |
           site_dir="$RUNNER_TEMP/gh-pages"
           if git ls-remote --exit-code origin refs/heads/gh-pages >/dev/null 2>&1; then
@@ -284,6 +299,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || '' }}
 
       - name: Restore ctapipe data cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
@@ -363,6 +379,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || '' }}
 
       - name: Restore ctapipe data cache
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
@@ -480,10 +497,13 @@ jobs:
   sonar:
     needs: pip
     if: >-
-      github.event_name != 'pull_request' ||
+      github.event_name != 'workflow_dispatch' &&
       (
-        github.event.pull_request.head.repo.full_name == github.repository &&
-        !contains(github.event.pull_request.labels.*.name, 'documentation-only')
+        github.event_name != 'pull_request' ||
+        (
+          github.event.pull_request.head.repo.full_name == github.repository &&
+          !contains(github.event.pull_request.labels.*.name, 'documentation-only')
+        )
       )
     runs-on: ubuntu-24.04
     permissions:
