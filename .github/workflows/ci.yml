@@ -499,11 +499,18 @@ jobs:
     if: >-
       github.event_name != 'workflow_dispatch' &&
       (
+        (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
         github.event_name == 'pull_request' &&
         (
           github.event.pull_request.head.repo.full_name == github.repository &&
           !contains(github.event.pull_request.labels.*.name, 'documentation-only')
         )
+      )
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      (
+        github.event_name == 'pull_request' &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        !contains(github.event.pull_request.labels.*.name, 'documentation-only')
       )
     runs-on: ubuntu-24.04
     permissions:
@@ -522,6 +529,7 @@ jobs:
           path: coverage
 
       - name: Scan pull request with SonarCloud
+        if: github.event_name == 'pull_request'
         uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2 # v7
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -532,3 +540,11 @@ jobs:
             -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
             -Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }}
             -Dsonar.pullrequest.base=${{ github.event.pull_request.base.ref }}
+
+      - name: Scan main branch with SonarCloud
+        if: github.event_name == 'push'
+        uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2 # v7
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: https://sonarcloud.io
