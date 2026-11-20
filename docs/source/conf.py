@@ -26,6 +26,7 @@ from urllib.parse import quote, urlencode
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../src"))
 )
+sys.path.insert(0, str(Path(__file__).parent / "_extensions"))
 from sphinx_gallery.sorting import ExplicitOrder
 
 import ctlearn
@@ -73,6 +74,7 @@ today = _release_date() if os.getenv("CTLEARN_DOCS_VERSION", "main") != "main" e
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
 extensions = [
+    "cwl_workflow",
     "sphinx.ext.autodoc",
     "sphinx.ext.coverage",
     "sphinx.ext.mathjax",
@@ -228,6 +230,7 @@ html_sidebars = {
     "developer-guide/*": [],
     "api-reference/core/*": [],
     "api-reference/tools/*": [],
+    "api-reference/cwl/*": [],
     "api/ctlearn.core.*": [],
     "api/ctlearn.tools.*": [],
 }
