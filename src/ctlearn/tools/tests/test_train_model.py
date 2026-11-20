@@ -37,8 +37,20 @@ def _make_setup_tool(tmp_path, monkeypatch, reader):
 
 @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
 @pytest.mark.parametrize("model", ["SingleCNN", "ResNet", "LoadedModel"])
-@pytest.mark.parametrize("reco_task", ["type", "energy", "cameradirection"])
-def test_train_ctlearn_model(
+@pytest.mark.parametrize(
+    "reco_task",
+    [
+        pytest.param("energy", marks=pytest.mark.verifies_usecase("DPPS-UC-130-1.3.1")),
+        pytest.param("type", marks=pytest.mark.verifies_usecase("DPPS-UC-130-1.3.2")),
+        pytest.param(
+            "cameradirection", marks=pytest.mark.verifies_usecase("DPPS-UC-130-1.3.3")
+        ),
+        pytest.param(
+            "skydirection", marks=pytest.mark.verifies_usecase("DPPS-UC-130-1.3.3")
+        ),
+    ],
+)
+def test_train_ctlearn_models_with_dl1_mono_data(
     framework,
     model,
     reco_task,
@@ -155,6 +167,138 @@ def test_train_ctlearn_model(
         assert event_files, (
             f"No TensorBoard event file starting with 'events.out.tfevents.' "
             f"found in {subfolder_path}"
+        )
+
+
+@pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
+@pytest.mark.parametrize(
+    "reco_task",
+    [
+        pytest.param("energy", marks=pytest.mark.verifies_usecase("DPPS-UC-130-1.3.1")),
+        pytest.param("type", marks=pytest.mark.verifies_usecase("DPPS-UC-130-1.3.2")),
+        pytest.param(
+            "cameradirection", marks=pytest.mark.verifies_usecase("DPPS-UC-130-1.3.3")
+        ),
+        pytest.param(
+            "skydirection", marks=pytest.mark.verifies_usecase("DPPS-UC-130-1.3.3")
+        ),
+    ],
+)
+def test_train_ctlearn_models_with_r1_mono_data(
+    framework,
+    reco_task,
+    r1_gamma_file,
+    r1_proton_file,
+    ctlearn_trained_r1_mono_models,
+    tmp_path,
+):
+    """
+    Test training CTLearn model using R1 waveform data with LST telescopes.
+    Tests DLWaveformReader for R1 data processing.
+    """
+    # Restrict to LST array for R1 tests
+    telescope_type = "LST"
+    allowed_tels = [1, 2]
+    # Temporary directories for signal and background
+    signal_dir = tmp_path / "gamma_r1"
+    signal_dir.mkdir(parents=True, exist_ok=True)
+    background_dir = tmp_path / "proton_r1"
+    background_dir.mkdir(parents=True, exist_ok=True)
+    # Hardcopy R1 gamma file to the signal directory
+    shutil.copy(r1_gamma_file, signal_dir)
+    # Hardcopy R1 proton file to the background directory
+    shutil.copy(r1_proton_file, background_dir)
+    # Hardcopy the trained models to the model directory
+    model_dir = tmp_path / "pretrained_model"
+    model_dir.mkdir(parents=True, exist_ok=True)
+    key = f"{framework}_{telescope_type}_{reco_task}"
+    shutil.copy(
+        ctlearn_trained_r1_mono_models[key],
+        model_dir / f"ctlearn_mono_model_{key}.{MODEL_FILE_FORMATS[framework]}",
+    )
+    model_file = model_dir / f"ctlearn_mono_model_{key}.{MODEL_FILE_FORMATS[framework]}"
+    assert model_file.exists(), (
+        f"Trained {framework} mono model file not found for R1 {key}"
+    )
+    # Output directory for trained model
+    output_dir = tmp_path / f"ctlearn_r1_{framework}_{reco_task}"
+    # Build command-line arguments
+    argv = [
+        f"--signal={signal_dir}",
+        "--pattern-signal=*.r1.h5",
+        f"--output={output_dir}",
+        f"--reco={reco_task}",
+        "--TrainCTLearnModel.n_epochs=1",
+        "--TrainCTLearnModel.batch_size=2",
+        "--TrainCTLearnModel.dl1dh_reader_type=DLWaveformReader",
+        "--DLWaveformReader.sequence_length=5",
+        "--DLWaveformReader.focal_length_choice=EQUIVALENT",
+        f"--DLWaveformReader.allowed_tels={allowed_tels}",
+    ]
+    # Include background only for classification task
+    if reco_task == "type":
+        argv.extend(
+            [
+                f"--background={background_dir}",
+                "--pattern-background=*.r1.h5",
+                "--DLWaveformReader.enforce_subarray_equality=False",
+            ]
+        )
+    argv.append("--TrainCTLearnModel.model_type=SingleCNN")
+    Provenance().clear()
+    assert run_tool(TRAINING_TOOLS[framework](), argv=argv, cwd=tmp_path) == 0
+    # --- Additional checks ---
+    # Check that the trained model exists
+    model_file = output_dir / f"ctlearn_model.{MODEL_FILE_FORMATS[framework]}"
+    assert model_file.exists(), f"Trained R1 model file not found for {reco_task}"
+    # Check training_log.csv exists
+    log_file = output_dir / "training_log.csv"
+    assert log_file.exists(), f"Training log file not found for R1 {reco_task}"
+    # Check that the provenance log was written to the output directory
+    tool_name = TRAINING_TOOLS[framework].name
+    provenance_file = output_dir / f"{tool_name}.provenance.log"
+    assert provenance_file.exists(), f"Provenance log not found in {output_dir}"
+    provenance = json.loads(provenance_file.read_text())
+    assert len(provenance) == 1
+    assert provenance[0]["activity_name"] == tool_name
+    # Check that the serialized tool configuration is present and readable.
+    config_file = output_dir / "config.json"
+    assert config_file.exists(), f"Configuration file not found in {output_dir}"
+    config = json.loads(config_file.read_text())
+    assert "TrainCTLearnModel" in config
+    # Verify DLWaveformReader configuration is in config
+    assert "DLWaveformReader" in config
+    # Read CSV and verify number of epochs
+    log_df = pd.read_csv(log_file)
+    num_epochs_logged = log_df.shape[0]
+    assert num_epochs_logged == 1, (
+        f"Expected one epoch for R1 test, found {num_epochs_logged} for {reco_task}"
+    )
+    # Check that val_loss column exists
+    assert "val_loss" in log_df.columns, (
+        f"'val_loss' column missing in training_log.csv for R1 {reco_task}"
+    )
+    val_loss = log_df["val_loss"].dropna()
+    assert not val_loss.empty, f"'val_loss' column is empty for R1 {reco_task}"
+    assert ((val_loss >= 0.0) & (val_loss <= 1.5)).all(), (
+        f"'val_loss' values out of range [0.0, 1.5] for R1 {reco_task}: "
+        f"{val_loss.tolist()}"
+    )
+    # Check that the event file for TensorBoard is created for train and validation
+    for subfolder in ["train", "validation"]:
+        subfolder_path = output_dir / subfolder
+        assert subfolder_path.is_dir(), (
+            f"TensorBoard '{subfolder}' directory missing in {output_dir} for R1"
+        )
+        # Check that at least one file starting with 'events.out.tfevents.' exists
+        event_files = [
+            f
+            for f in subfolder_path.iterdir()
+            if f.is_file() and f.name.startswith("events.out.tfevents.")
+        ]
+        assert event_files, (
+            f"No TensorBoard event file starting with 'events.out.tfevents.' "
+            f"found in {subfolder_path} for R1"
         )
 
 
