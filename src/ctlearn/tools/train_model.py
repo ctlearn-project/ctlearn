@@ -5,6 +5,7 @@ Base tool to train a ``CTLearnModel``on R1/DL1a data using the ``DLDataReader`` 
 __all__ = ["TrainCTLearnModel"]
 
 import json
+import shutil
 from abc import abstractmethod
 
 import numpy as np
@@ -189,6 +190,44 @@ class TrainCTLearnModel(Tool):
         ),
     ).tag(config=True)
 
+    csv_summary_path = Path(
+        default_value=None,
+        allow_none=True,
+        exists=False,
+        directory_ok=False,
+        file_ok=True,
+        help=(
+            "Path to additionally save the training summary. Requires a .csv extension. "
+            "Summary file is always saved in the output directory. "
+        ),
+    ).tag(config=True)
+
+    tensorboard_train_log_path = Path(
+        default_value=None,
+        allow_none=True,
+        exists=False,
+        directory_ok=False,
+        file_ok=True,
+        help=(
+            "Path to additionally save the tensorboard training log. "
+            "Tensorboard training log is always saved in the output directory. "
+            "The filename must contain 'tfevents' for TensorBoard to discover it."
+        ),
+    ).tag(config=True)
+
+    tensorboard_val_log_path = Path(
+        default_value=None,
+        allow_none=True,
+        exists=False,
+        directory_ok=False,
+        file_ok=True,
+        help=(
+            "Path to additionally save the tensorboard validation log. "
+            "Tensorboard validation log is always saved in the output directory. "
+            "The filename must contain 'tfevents' for TensorBoard to discover it."
+        ),
+    ).tag(config=True)
+
     aliases = {
         "signal": "TrainCTLearnModel.input_dir_signal",
         "background": "TrainCTLearnModel.input_dir_background",
@@ -199,6 +238,9 @@ class TrainCTLearnModel(Tool):
         "batch-size": "TrainCTLearnModel.batch_size",
         "random-seed": "TrainCTLearnModel.random_seed",
         "save-best-val": "TrainCTLearnModel.save_best_validation_only",
+        "csv-summary": "TrainCTLearnModel.csv_summary_path",
+        "tensorboard-train-log": "TrainCTLearnModel.tensorboard_train_log_path",
+        "tensorboard-val-log": "TrainCTLearnModel.tensorboard_val_log_path",
         ("o", "output"): "TrainCTLearnModel.output_dir",
     }
 
@@ -213,6 +255,15 @@ class TrainCTLearnModel(Tool):
         to ensure everything is ready before the core processing begins.
         """
         self.log.info("ctlearn version %s", ctlearn_version)
+        for option, path in (
+            ("--tensorboard-train-log", self.tensorboard_train_log_path),
+            ("--tensorboard-val-log", self.tensorboard_val_log_path),
+        ):
+            if path is not None and "tfevents" not in path.name:
+                raise ToolConfigurationError(
+                    f"{option} filename must contain 'tfevents' for TensorBoard "
+                    "to discover it."
+                )
         # Check if the output directory exists
         if self.output_dir.exists():
             raise ToolConfigurationError(
@@ -335,14 +386,37 @@ class TrainCTLearnModel(Tool):
         pass  # pragma: no cover
 
     def finish(self):
-        """
-        Perform final cleanup and save metadata after the core logic completes.
-
-        This method writes provenance data (such as configuration and execution context)
-        to the output file, finalizes tables, and ensures all file handlers are safely closed.
-        """
+        """Finalize the tool execution, copy outputs to custom paths, and write configuration and provenance logs."""
+        self._copy_outputs_to_custom_paths()
         self._write_config_file()
         self.log.info("Tool is shutting down")
+
+    def _copy_outputs_to_custom_paths(self):
+        """Copy selected outputs to their custom paths."""
+        # Copy the trained model to the custom path if selected
+        output_dir_model_path = (
+            self.output_dir / f"ctlearn_model{self.model_path.suffix}"
+        )
+        if self.model_path != output_dir_model_path:
+            shutil.copy2(output_dir_model_path, self.model_path)
+        # Copy the training log to the custom path if selected
+        csv_summary = self.output_dir / "training_log.csv"
+        if (
+            self.csv_summary_path is not None
+            and csv_summary.resolve() != self.csv_summary_path.resolve()
+        ):
+            shutil.copy2(csv_summary, self.csv_summary_path)
+        for directory, destination in (
+            ("train", self.tensorboard_train_log_path),
+            ("validation", self.tensorboard_val_log_path),
+        ):
+            if destination is None:
+                continue
+            source_dir = self.output_dir / directory
+            event_file = [path for path in source_dir.glob("events.out.tfevents.*")][0]
+            if event_file.resolve() != destination.resolve():
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(event_file, destination)
 
     def write_provenance(self):
         """Write the provenance log and a second one in the output directory."""

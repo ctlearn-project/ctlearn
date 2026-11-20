@@ -10,6 +10,7 @@ from ctapipe.core import run_tool
 from ctapipe.core.provenance import Provenance
 from ctapipe.core.tool import ToolConfigurationError
 from ctapipe.core.traits import TraitError
+from traitlets.config.loader import Config
 
 from ctlearn.conftest import MODEL_FILE_FORMATS, TRAINING_TOOLS
 from ctlearn.tools.keras.train_model import LoggingModelCheckpoint
@@ -37,8 +38,20 @@ def _make_setup_tool(tmp_path, monkeypatch, reader):
 
 @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
 @pytest.mark.parametrize("model", ["SingleCNN", "ResNet", "LoadedModel"])
-@pytest.mark.parametrize("reco_task", ["type", "energy", "cameradirection"])
-def test_train_ctlearn_model(
+@pytest.mark.parametrize(
+    "reco_task",
+    [
+        pytest.param("energy", marks=pytest.mark.verifies_usecase("DPPS-UC-130-1.3.1")),
+        pytest.param("type", marks=pytest.mark.verifies_usecase("DPPS-UC-130-1.3.2")),
+        pytest.param(
+            "cameradirection", marks=pytest.mark.verifies_usecase("DPPS-UC-130-1.3.3")
+        ),
+        pytest.param(
+            "skydirection", marks=pytest.mark.verifies_usecase("DPPS-UC-130-1.3.3")
+        ),
+    ],
+)
+def test_train_ctlearn_models_with_dl1_mono_data(
     framework,
     model,
     reco_task,
@@ -136,8 +149,9 @@ def test_train_ctlearn_model(
     )
     val_loss = log_df["val_loss"].dropna()
     assert not val_loss.empty, f"'val_loss' column is empty for {reco_task}"
-    assert ((val_loss >= 0.0) & (val_loss <= 1.5)).all(), (
-        f"'val_loss' values out of range [0.0, 1.5] for {reco_task}: "
+    max_val_loss = 3.5 if reco_task == "skydirection" else 1.5
+    assert ((val_loss >= 0.0) & (val_loss <= max_val_loss)).all(), (
+        f"'val_loss' values out of range [0.0, {max_val_loss}] for {reco_task}: "
         f"{val_loss.tolist()}"
     )
     # Check that the event file for TensorBoard is created for train and validation
@@ -159,14 +173,225 @@ def test_train_ctlearn_model(
 
 
 @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
+@pytest.mark.parametrize(
+    "reco_task",
+    [
+        pytest.param("energy", marks=pytest.mark.verifies_usecase("DPPS-UC-130-1.3.1")),
+        pytest.param("type", marks=pytest.mark.verifies_usecase("DPPS-UC-130-1.3.2")),
+        pytest.param(
+            "cameradirection", marks=pytest.mark.verifies_usecase("DPPS-UC-130-1.3.3")
+        ),
+        pytest.param(
+            "skydirection", marks=pytest.mark.verifies_usecase("DPPS-UC-130-1.3.3")
+        ),
+    ],
+)
+def test_train_ctlearn_models_with_r1_mono_data(
+    framework,
+    reco_task,
+    r1_gamma_file,
+    r1_proton_file,
+    ctlearn_trained_r1_mono_models,
+    tmp_path,
+):
+    """
+    Test training CTLearn model using R1 waveform data with LST telescopes.
+    Tests DLWaveformReader for R1 data processing.
+    """
+    # Restrict to LST array for R1 tests
+    telescope_type = "LST"
+    allowed_tels = [1, 2]
+    # Temporary directories for signal and background
+    signal_dir = tmp_path / "gamma_r1"
+    signal_dir.mkdir(parents=True, exist_ok=True)
+    background_dir = tmp_path / "proton_r1"
+    background_dir.mkdir(parents=True, exist_ok=True)
+    # Hardcopy R1 gamma file to the signal directory
+    shutil.copy(r1_gamma_file, signal_dir)
+    # Hardcopy R1 proton file to the background directory
+    shutil.copy(r1_proton_file, background_dir)
+    # Hardcopy the trained models to the model directory
+    model_dir = tmp_path / "pretrained_model"
+    model_dir.mkdir(parents=True, exist_ok=True)
+    key = f"{framework}_{telescope_type}_{reco_task}"
+    shutil.copy(
+        ctlearn_trained_r1_mono_models[key],
+        model_dir / f"ctlearn_mono_model_{key}.{MODEL_FILE_FORMATS[framework]}",
+    )
+    model_file = model_dir / f"ctlearn_mono_model_{key}.{MODEL_FILE_FORMATS[framework]}"
+    assert model_file.exists(), (
+        f"Trained {framework} mono model file not found for R1 {key}"
+    )
+    # Output directory for trained model
+    output_dir = tmp_path / f"ctlearn_r1_{framework}_{reco_task}"
+    # Build command-line arguments
+    argv = [
+        f"--signal={signal_dir}",
+        "--pattern-signal=*.r1.h5",
+        f"--output={output_dir}",
+        f"--reco={reco_task}",
+        "--TrainCTLearnModel.n_epochs=1",
+        "--TrainCTLearnModel.batch_size=2",
+        "--TrainCTLearnModel.dl1dh_reader_type=DLWaveformReader",
+        "--DLWaveformReader.sequence_length=5",
+        "--DLWaveformReader.focal_length_choice=EQUIVALENT",
+        f"--DLWaveformReader.allowed_tels={allowed_tels}",
+    ]
+    # Include background only for classification task
+    if reco_task == "type":
+        argv.extend(
+            [
+                f"--background={background_dir}",
+                "--pattern-background=*.r1.h5",
+                "--DLWaveformReader.enforce_subarray_equality=False",
+            ]
+        )
+    argv.append("--TrainCTLearnModel.model_type=SingleCNN")
+    Provenance().clear()
+    config = Config({"TableQualityQuery": {"quality_criteria": []}})
+    assert (
+        run_tool(TRAINING_TOOLS[framework](config=config), argv=argv, cwd=tmp_path) == 0
+    )
+    # --- Additional checks ---
+    # Check that the trained model exists
+    model_file = output_dir / f"ctlearn_model.{MODEL_FILE_FORMATS[framework]}"
+    assert model_file.exists(), f"Trained R1 model file not found for {reco_task}"
+    # Check training_log.csv exists
+    log_file = output_dir / "training_log.csv"
+    assert log_file.exists(), f"Training log file not found for R1 {reco_task}"
+    # Check that the provenance log was written to the output directory
+    tool_name = TRAINING_TOOLS[framework].name
+    provenance_file = output_dir / f"{tool_name}.provenance.log"
+    assert provenance_file.exists(), f"Provenance log not found in {output_dir}"
+    provenance = json.loads(provenance_file.read_text())
+    assert len(provenance) == 1
+    assert provenance[0]["activity_name"] == tool_name
+    # Check that the serialized tool configuration is present and readable.
+    config_file = output_dir / "config.json"
+    assert config_file.exists(), f"Configuration file not found in {output_dir}"
+    config = json.loads(config_file.read_text())
+    assert "TrainCTLearnModel" in config
+    # Verify DLWaveformReader configuration is in config
+    assert "DLWaveformReader" in config
+    # Read CSV and verify number of epochs
+    log_df = pd.read_csv(log_file)
+    num_epochs_logged = log_df.shape[0]
+    assert num_epochs_logged == 1, (
+        f"Expected one epoch for R1 test, found {num_epochs_logged} for {reco_task}"
+    )
+    # Check that val_loss column exists
+    assert "val_loss" in log_df.columns, (
+        f"'val_loss' column missing in training_log.csv for R1 {reco_task}"
+    )
+    val_loss = log_df["val_loss"].dropna()
+    assert not val_loss.empty, f"'val_loss' column is empty for R1 {reco_task}"
+    max_val_loss = 3.5 if reco_task == "skydirection" else 1.5
+    assert ((val_loss >= 0.0) & (val_loss <= max_val_loss)).all(), (
+        f"'val_loss' values out of range [0.0, {max_val_loss}] for R1 {reco_task}: "
+        f"{val_loss.tolist()}"
+    )
+    # Check that the event file for TensorBoard is created for train and validation
+    for subfolder in ["train", "validation"]:
+        subfolder_path = output_dir / subfolder
+        assert subfolder_path.is_dir(), (
+            f"TensorBoard '{subfolder}' directory missing in {output_dir} for R1"
+        )
+        # Check that at least one file starting with 'events.out.tfevents.' exists
+        event_files = [
+            f
+            for f in subfolder_path.iterdir()
+            if f.is_file() and f.name.startswith("events.out.tfevents.")
+        ]
+        assert event_files, (
+            f"No TensorBoard event file starting with 'events.out.tfevents.' "
+            f"found in {subfolder_path} for R1"
+        )
+
+
+@pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
+@pytest.mark.parametrize(
+    "reco_task",
+    [
+        pytest.param("energy", marks=pytest.mark.verifies_usecase("DPPS-UC-130-1.3.1")),
+        pytest.param("type", marks=pytest.mark.verifies_usecase("DPPS-UC-130-1.3.2")),
+        pytest.param(
+            "skydirection", marks=pytest.mark.verifies_usecase("DPPS-UC-130-1.3.3")
+        ),
+    ],
+)
+def test_train_ctlearn_models_with_dl1_stereo_data(
+    framework, reco_task, dl1_gamma_file, tmp_path, request
+):
+    """Train a stereo model using stacked DL1 images from three MSTs."""
+    signal_dir = tmp_path / "gamma_dl1"
+    signal_dir.mkdir()
+    shutil.copy(dl1_gamma_file, signal_dir)
+    output_dir = tmp_path / "stereo_model"
+    config = Config({"TableQualityQuery": {"quality_criteria": []}})
+    tool = TRAINING_TOOLS[framework](config=config)
+    argv = [
+        f"--signal={signal_dir}",
+        "--pattern-signal=*.dl1.h5",
+        f"--output={output_dir}",
+        f"--reco={reco_task}",
+        "--TrainCTLearnModel.model_type=SingleCNN",
+        "--TrainCTLearnModel.n_epochs=1",
+        "--TrainCTLearnModel.batch_size=2",
+        "--TrainCTLearnModel.stack_telescope_images=True",
+        "--DLImageReader.mode=stereo",
+        "--DLImageReader.focal_length_choice=EQUIVALENT",
+        "--DLImageReader.allowed_tels=[7, 13, 15]",
+    ]
+    if reco_task == "type":
+        background_dir = tmp_path / "proton_dl1"
+        background_dir.mkdir()
+        shutil.copy(request.getfixturevalue("dl1_proton_file"), background_dir)
+        argv.extend(
+            [
+                f"--background={background_dir}",
+                "--pattern-background=*.dl1.h5",
+                "--DLImageReader.enforce_subarray_equality=False",
+            ]
+        )
+
+    Provenance().clear()
+    assert run_tool(tool, argv=argv, cwd=tmp_path) == 0
+    assert tool.dl1dh_reader.mode == "stereo"
+    assert tool.stack_telescope_images
+    assert (output_dir / f"ctlearn_model.{MODEL_FILE_FORMATS[framework]}").is_file()
+    provenance = json.loads((output_dir / f"{tool.name}.provenance.log").read_text())
+    assert len(provenance) == 1
+    assert provenance[0]["activity_name"] == tool.name
+    saved_config = json.loads((output_dir / "config.json").read_text())
+    assert saved_config["TrainCTLearnModel"]["stack_telescope_images"] is True
+    assert saved_config["DLImageReader"]["mode"] == "stereo"
+    log_df = pd.read_csv(output_dir / "training_log.csv")
+    assert len(log_df) == 1
+    assert "val_loss" in log_df.columns
+    val_loss = log_df["val_loss"].dropna()
+    assert not val_loss.empty
+    max_val_loss = 3.5 if reco_task == "skydirection" else 1.5
+    assert ((val_loss >= 0.0) & (val_loss <= max_val_loss)).all(), (
+        f"'val_loss' values out of range [0.0, {max_val_loss}] for {reco_task}: "
+        f"{val_loss.tolist()}"
+    )
+    for subfolder in ("train", "validation"):
+        assert list((output_dir / subfolder).glob("events.out.tfevents.*"))
+
+
+@pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
 @pytest.mark.parametrize("save_best_validation_only", [True, False])
-def test_train_model_early_stopping_and_checkpoint_options(
+def test_train_model_different_options(
     framework, save_best_validation_only, dl1_gamma_file, tmp_path
 ):
     signal_dir = tmp_path / "gamma_dl1"
     signal_dir.mkdir()
     shutil.copy(dl1_gamma_file, signal_dir)
     output_dir = tmp_path / "trained_model"
+    model_path = tmp_path / f"custom_model.{MODEL_FILE_FORMATS[framework]}"
+    train_log = tmp_path / "custom_train.tfevents"
+    val_log = tmp_path / "custom_val.tfevents"
+    csv_summary = tmp_path / "custom_summary.csv"
     early_stopping = {
         "monitor": "val_loss",
         "patience": 0,
@@ -178,6 +403,10 @@ def test_train_model_early_stopping_and_checkpoint_options(
         f"--signal={signal_dir}",
         "--pattern-signal=*.dl1.h5",
         f"--output={output_dir}",
+        f"--model-path={model_path}",
+        f"--csv-summary={csv_summary}",
+        f"--tensorboard-train-log={train_log}",
+        f"--tensorboard-val-log={val_log}",
         f"--TrainCTLearnModel.provenance_log={output_dir}/{tool.name}.provenance.log",
         "--reco=energy",
         "--TrainCTLearnModel.model_type=SingleCNN",
@@ -192,6 +421,15 @@ def test_train_model_early_stopping_and_checkpoint_options(
     assert run_tool(tool, argv=argv, cwd=tmp_path) == 0
     assert tool.save_best_validation_only is save_best_validation_only
     assert tool.early_stopping == early_stopping
+    assert (
+        model_path.read_bytes()
+        == (output_dir / f"ctlearn_model.{MODEL_FILE_FORMATS[framework]}").read_bytes()
+    )
+    assert csv_summary.read_bytes() == (output_dir / "training_log.csv").read_bytes()
+    for subfolder, custom_log in (("train", train_log), ("validation", val_log)):
+        event_files = list((output_dir / subfolder).glob("events.out.tfevents.*"))
+        assert len(event_files) == 1
+        assert custom_log.read_bytes() == event_files[0].read_bytes()
     provenance_file = output_dir / f"{tool.name}.provenance.log"
     assert provenance_file.exists(), f"Provenance log not found in {output_dir}"
 
@@ -214,12 +452,13 @@ def test_train_model_early_stopping_and_checkpoint_options(
         assert len(pd.read_csv(output_dir / "training_log.csv")) == 1
 
 
-def test_pytorch_workers_configuration_error():
+def test_pytorch_workers_configuration_error(tmp_path):
     """
     Test that TrainCTLearnPyTorchModel raises a ToolConfigurationError
     when persistent_workers=True and num_workers=0.
     """
     tool = TRAINING_TOOLS["PyTorch"]()
+    tool.output_dir = tmp_path
     tool.num_workers = 0
     tool.persistent_workers = True
 
@@ -227,6 +466,22 @@ def test_pytorch_workers_configuration_error():
         ToolConfigurationError,
         match="Cannot set persistent_workers=True when num_workers=0",
     ):
+        tool.setup_framework()
+
+
+@pytest.mark.parametrize(
+    ("framework", "invalid_path", "message"),
+    [
+        ("PyTorch", "model.keras", "must have a .pth extension"),
+        ("Keras", "model.pth", "must have a .keras extension"),
+    ],
+)
+def test_model_path_extension_error(framework, invalid_path, message, tmp_path):
+    tool = TRAINING_TOOLS[framework]()
+    tool.output_dir = tmp_path
+    tool.model_path = str(tmp_path / invalid_path)
+
+    with pytest.raises(ToolConfigurationError, match=message):
         tool.setup_framework()
 
 
@@ -261,6 +516,25 @@ def test_train_model_rejects_existing_output_directory(tmp_path, monkeypatch):
     tool.output_dir.mkdir()
 
     with pytest.raises(ToolConfigurationError, match="already exists"):
+        tool.setup()
+
+
+@pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
+@pytest.mark.parametrize(
+    ("attribute", "option"),
+    [
+        ("tensorboard_train_log_path", "--tensorboard-train-log"),
+        ("tensorboard_val_log_path", "--tensorboard-val-log"),
+    ],
+)
+def test_train_model_rejects_invalid_tensorboard_filename(
+    tmp_path, framework, attribute, option
+):
+    tool = TRAINING_TOOLS[framework]()
+    tool.output_dir = tmp_path / "output"
+    setattr(tool, attribute, tmp_path / "tfevents-directory" / "invalid.log")
+
+    with pytest.raises(ToolConfigurationError, match=f"{option}.*tfevents"):
         tool.setup()
 
 

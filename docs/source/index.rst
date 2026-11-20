@@ -21,11 +21,12 @@
 
    user-guide/index
    developer-guide/index
+   workflows/index
    api-reference/index
    changelog
 
-.. grid:: 1 2 3 3
-   :gutter: 3
+.. grid:: 1 2 2 2
+   :gutter: 4
 
    .. grid-item-card:: User Guide
       :link: user-guide/index
@@ -38,6 +39,12 @@
       :link-type: doc
 
       Set up a development environment and contribute to CTLearn.
+
+   .. grid-item-card:: CWL workflows
+      :link: workflows/index
+      :link-type: doc
+
+      Learn how to use the CTLearn CWL workflows.
 
    .. grid-item-card:: API Docs
       :link: api-reference/index

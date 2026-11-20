@@ -11,7 +11,7 @@ import torch
 import torch.nn as nn
 import torchmetrics
 from ctapipe.core.tool import ToolConfigurationError
-from ctapipe.core.traits import Bool, Int
+from ctapipe.core.traits import Bool, Int, Path
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
@@ -47,6 +47,7 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
         --background /path/to/your/protons_dl1_dir/ \
         --pattern-background "proton_*_run1.dl1.h5" \
         --pattern-background "proton_*_run10.dl1.h5" \
+        --model_path /path/to/your/ctlearn_type_model.pth \
         --output /path/to/your/type/ \
         --reco type \
 
@@ -56,6 +57,7 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
         --pattern-signal "gamma_*_run1.dl1.h5" \
         --pattern-signal "gamma_*_run10.dl1.h5" \
         --output /path/to/your/energy/ \
+        --model_path /path/to/your/ctlearn_energy_model.pth \
         --reco energy \
 
     To train a PyTorch-based CTLearn model for the regression of the primary particle
@@ -65,6 +67,7 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
         --pattern-signal "gamma_*_run1.dl1.h5" \
         --pattern-signal "gamma_*_run10.dl1.h5" \
         --output /path/to/your/direction/ \
+        --model_path /path/to/your/ctlearn_cameradirection_model.pth \
         --reco cameradirection \
 
     To train a PyTorch-based CTLearn model for the regression of the primary particle
@@ -74,8 +77,18 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
         --pattern-signal "gamma_*_run1.dl1.h5" \
         --pattern-signal "gamma_*_run10.dl1.h5" \
         --output /path/to/your/direction/ \
+        --model_path /path/to/your/ctlearn_skydirection_model.pth \
         --reco skydirection \
     """
+
+    model_path = Path(
+        default_value=None,
+        allow_none=True,
+        exists=False,
+        directory_ok=False,
+        file_ok=True,
+        help="Model path to save the trained pytorch reconstructor model. Requires a .pth extension.",
+    ).tag(config=True)
 
     num_workers = Int(
         default_value=0,
@@ -89,6 +102,11 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
         help="Set whether to keep data loader worker processes alive between epochs.",
     ).tag(config=True)
 
+    aliases = {
+        **TrainCTLearnModel.aliases,
+        "model-path": "TrainCTLearnPyTorchModel.model_path",
+    }
+
     def setup_framework(self):
         """
         Initialize the backend-specific parameters (e.g., PyTorch or Keras devices and distributed strategies).
@@ -96,6 +114,15 @@ class TrainCTLearnPyTorchModel(TrainCTLearnModel):
         This method ensures that the hardware accelerators (like GPUs) are properly allocated
         and configures things like precision mixed-training and multi-processing workers.
         """
+        # Set the model path if not provided
+        if self.model_path is None:
+            self.model_path = os.path.join(self.output_dir, "ctlearn_model.pth")
+        # Ensure it has the correct .pth extension
+        if self.model_path.suffix != ".pth":
+            raise ToolConfigurationError(
+                "The model path must have a .pth extension for PyTorch models."
+            )
+
         if self.persistent_workers and self.num_workers == 0:
             raise ToolConfigurationError(
                 "Cannot set persistent_workers=True when num_workers=0. "

@@ -5,10 +5,13 @@ Tool to train a Keras-based ``CTLearnModel``on R1/DL1a data using the ``DLDataRe
 __all__ = ["LoggingModelCheckpoint", "TrainCTLearnKerasModel"]
 
 import atexit
+import os
 import time
 
 import keras
 import tensorflow as tf
+from ctapipe.core.tool import ToolConfigurationError
+from ctapipe.core.traits import Path
 
 from ctlearn.core.keras.sequence import KerasSequence
 from ctlearn.core.model import CTLearnModel
@@ -100,6 +103,7 @@ class TrainCTLearnKerasModel(TrainCTLearnModel):
         --pattern-background "proton_*_run1.dl1.h5" \
         --pattern-background "proton_*_run10.dl1.h5" \
         --output /path/to/your/type/ \
+        --model-path /path/to/your/ctlearn_type_model.keras \
         --reco type \
 
     To train a Keras-based CTLearn model for the regression of the primary particle energy:
@@ -108,6 +112,7 @@ class TrainCTLearnKerasModel(TrainCTLearnModel):
         --pattern-signal "gamma_*_run1.dl1.h5" \
         --pattern-signal "gamma_*_run10.dl1.h5" \
         --output /path/to/your/energy/ \
+        --model-path /path/to/your/ctlearn_energy_model.keras \
         --reco energy \
 
     To train a Keras-based CTLearn model for the regression of the primary particle
@@ -117,6 +122,7 @@ class TrainCTLearnKerasModel(TrainCTLearnModel):
         --pattern-signal "gamma_*_run1.dl1.h5" \
         --pattern-signal "gamma_*_run10.dl1.h5" \
         --output /path/to/your/direction/ \
+        --model-path /path/to/your/ctlearn_cameradirection_model.keras \
         --reco cameradirection \
 
     To train a Keras-based CTLearn model for the regression of the primary particle
@@ -126,8 +132,23 @@ class TrainCTLearnKerasModel(TrainCTLearnModel):
         --pattern-signal "gamma_*_run1.dl1.h5" \
         --pattern-signal "gamma_*_run10.dl1.h5" \
         --output /path/to/your/direction/ \
+        --model-path /path/to/your/ctlearn_skydirection_model.keras \
         --reco skydirection \
     """
+
+    model_path = Path(
+        default_value=None,
+        allow_none=True,
+        exists=False,
+        directory_ok=False,
+        file_ok=True,
+        help="Model path to save the trained keras reconstructor model. Requires a .keras extension.",
+    ).tag(config=True)
+
+    aliases = {
+        **TrainCTLearnModel.aliases,
+        "model-path": "TrainCTLearnKerasModel.model_path",
+    }
 
     def setup_framework(self):
         """
@@ -136,6 +157,14 @@ class TrainCTLearnKerasModel(TrainCTLearnModel):
         This method ensures that the hardware accelerators (like GPUs) are properly allocated
         and configures things like precision mixed-training and multi-processing workers.
         """
+        # Set the model path if not provided
+        if self.model_path is None:
+            self.model_path = os.path.join(self.output_dir, "ctlearn_model.keras")
+        # Ensure it has the correct .keras extension
+        if self.model_path.suffix != ".keras":
+            raise ToolConfigurationError(
+                "The model path must have a .keras extension for Keras models."
+            )
         # Create a MirroredStrategy.
         self.strategy = tf.distribute.MirroredStrategy()
         atexit.register(self.strategy._extended._collective_ops._lock.locked)  # type: ignore
