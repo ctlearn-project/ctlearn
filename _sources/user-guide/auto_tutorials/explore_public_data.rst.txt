@@ -157,6 +157,7 @@ produce calibrated waveforms and images for the monoscopic examples.
  .. code-block:: none
 
     Using existing download: /home/runner/.cache/ctlearn/tutorial-data/gamma_prod5.simtel.zst
+    Using existing processed file: /home/runner/.cache/ctlearn/tutorial-data/gamma_prod5-max500.r1.dl1.h5
 
 
 
@@ -449,42 +450,42 @@ each telescope type.
            </style>
 
            <div class="animation">
-             <img id="_anim_img44c538d5eace43babfd4672899fee57d">
+             <img id="_anim_img70b3ebd2bdec473fa9667385ce7d0966">
              <div class="anim-controls">
-               <input id="_anim_slider44c538d5eace43babfd4672899fee57d" type="range" class="anim-slider"
+               <input id="_anim_slider70b3ebd2bdec473fa9667385ce7d0966" type="range" class="anim-slider"
                       name="points" min="0" max="1" step="1" value="0"
-                      oninput="anim44c538d5eace43babfd4672899fee57d.set_frame(parseInt(this.value));">
+                      oninput="anim70b3ebd2bdec473fa9667385ce7d0966.set_frame(parseInt(this.value));">
                <div class="anim-buttons">
-                 <button title="Decrease speed" aria-label="Decrease speed" onclick="anim44c538d5eace43babfd4672899fee57d.slower()">
+                 <button title="Decrease speed" aria-label="Decrease speed" onclick="anim70b3ebd2bdec473fa9667385ce7d0966.slower()">
                      <i class="fa fa-minus"></i></button>
-                 <button title="First frame" aria-label="First frame" onclick="anim44c538d5eace43babfd4672899fee57d.first_frame()">
+                 <button title="First frame" aria-label="First frame" onclick="anim70b3ebd2bdec473fa9667385ce7d0966.first_frame()">
                    <i class="fa fa-fast-backward"></i></button>
-                 <button title="Previous frame" aria-label="Previous frame" onclick="anim44c538d5eace43babfd4672899fee57d.previous_frame()">
+                 <button title="Previous frame" aria-label="Previous frame" onclick="anim70b3ebd2bdec473fa9667385ce7d0966.previous_frame()">
                      <i class="fa fa-step-backward"></i></button>
-                 <button title="Play backwards" aria-label="Play backwards" onclick="anim44c538d5eace43babfd4672899fee57d.reverse_animation()">
+                 <button title="Play backwards" aria-label="Play backwards" onclick="anim70b3ebd2bdec473fa9667385ce7d0966.reverse_animation()">
                      <i class="fa fa-play fa-flip-horizontal"></i></button>
-                 <button title="Pause" aria-label="Pause" onclick="anim44c538d5eace43babfd4672899fee57d.pause_animation()">
+                 <button title="Pause" aria-label="Pause" onclick="anim70b3ebd2bdec473fa9667385ce7d0966.pause_animation()">
                      <i class="fa fa-pause"></i></button>
-                 <button title="Play" aria-label="Play" onclick="anim44c538d5eace43babfd4672899fee57d.play_animation()">
+                 <button title="Play" aria-label="Play" onclick="anim70b3ebd2bdec473fa9667385ce7d0966.play_animation()">
                      <i class="fa fa-play"></i></button>
-                 <button title="Next frame" aria-label="Next frame" onclick="anim44c538d5eace43babfd4672899fee57d.next_frame()">
+                 <button title="Next frame" aria-label="Next frame" onclick="anim70b3ebd2bdec473fa9667385ce7d0966.next_frame()">
                      <i class="fa fa-step-forward"></i></button>
-                 <button title="Last frame" aria-label="Last frame" onclick="anim44c538d5eace43babfd4672899fee57d.last_frame()">
+                 <button title="Last frame" aria-label="Last frame" onclick="anim70b3ebd2bdec473fa9667385ce7d0966.last_frame()">
                      <i class="fa fa-fast-forward"></i></button>
-                 <button title="Increase speed" aria-label="Increase speed" onclick="anim44c538d5eace43babfd4672899fee57d.faster()">
+                 <button title="Increase speed" aria-label="Increase speed" onclick="anim70b3ebd2bdec473fa9667385ce7d0966.faster()">
                      <i class="fa fa-plus"></i></button>
                </div>
-               <form title="Repetition mode" aria-label="Repetition mode" action="#n" name="_anim_loop_select44c538d5eace43babfd4672899fee57d"
+               <form title="Repetition mode" aria-label="Repetition mode" action="#n" name="_anim_loop_select70b3ebd2bdec473fa9667385ce7d0966"
                      class="anim-state">
-                 <input type="radio" name="state" value="once" id="_anim_radio1_44c538d5eace43babfd4672899fee57d"
+                 <input type="radio" name="state" value="once" id="_anim_radio1_70b3ebd2bdec473fa9667385ce7d0966"
                         >
-                 <label for="_anim_radio1_44c538d5eace43babfd4672899fee57d">Once</label>
-                 <input type="radio" name="state" value="loop" id="_anim_radio2_44c538d5eace43babfd4672899fee57d"
+                 <label for="_anim_radio1_70b3ebd2bdec473fa9667385ce7d0966">Once</label>
+                 <input type="radio" name="state" value="loop" id="_anim_radio2_70b3ebd2bdec473fa9667385ce7d0966"
                         checked>
-                 <label for="_anim_radio2_44c538d5eace43babfd4672899fee57d">Loop</label>
-                 <input type="radio" name="state" value="reflect" id="_anim_radio3_44c538d5eace43babfd4672899fee57d"
+                 <label for="_anim_radio2_70b3ebd2bdec473fa9667385ce7d0966">Loop</label>
+                 <input type="radio" name="state" value="reflect" id="_anim_radio3_70b3ebd2bdec473fa9667385ce7d0966"
                         >
-                 <label for="_anim_radio3_44c538d5eace43babfd4672899fee57d">Reflect</label>
+                 <label for="_anim_radio3_70b3ebd2bdec473fa9667385ce7d0966">Reflect</label>
                </form>
              </div>
            </div>
@@ -494,9 +495,9 @@ each telescope type.
              /* Instantiate the Animation class. */
              /* The IDs given should match those used in the template above. */
              (function() {
-               var img_id = "_anim_img44c538d5eace43babfd4672899fee57d";
-               var slider_id = "_anim_slider44c538d5eace43babfd4672899fee57d";
-               var loop_select_id = "_anim_loop_select44c538d5eace43babfd4672899fee57d";
+               var img_id = "_anim_img70b3ebd2bdec473fa9667385ce7d0966";
+               var slider_id = "_anim_slider70b3ebd2bdec473fa9667385ce7d0966";
+               var loop_select_id = "_anim_loop_select70b3ebd2bdec473fa9667385ce7d0966";
                var frames = new Array(40);
     
              frames[0] = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAfQAAAH0CAYAAADL1t+KAAAAOnRFWHRTb2Z0d2FyZQBNYXRwbG90\
@@ -31609,7 +31610,7 @@ each telescope type.
                /* set a timeout to make sure all the above elements are created before
                   the object is initialized. */
                setTimeout(function() {
-                   anim44c538d5eace43babfd4672899fee57d = new Animation(frames, img_id, slider_id, 500.0,
+                   anim70b3ebd2bdec473fa9667385ce7d0966 = new Animation(frames, img_id, slider_id, 500.0,
                                             loop_select_id);
                }, 0);
              })()
@@ -31807,42 +31808,42 @@ each telescope type.
            </style>
 
            <div class="animation">
-             <img id="_anim_img3e76eeb03c064c20bf25b7f4dde4cf49">
+             <img id="_anim_imgb3bd920be4d14f898779451f1ba8986b">
              <div class="anim-controls">
-               <input id="_anim_slider3e76eeb03c064c20bf25b7f4dde4cf49" type="range" class="anim-slider"
+               <input id="_anim_sliderb3bd920be4d14f898779451f1ba8986b" type="range" class="anim-slider"
                       name="points" min="0" max="1" step="1" value="0"
-                      oninput="anim3e76eeb03c064c20bf25b7f4dde4cf49.set_frame(parseInt(this.value));">
+                      oninput="animb3bd920be4d14f898779451f1ba8986b.set_frame(parseInt(this.value));">
                <div class="anim-buttons">
-                 <button title="Decrease speed" aria-label="Decrease speed" onclick="anim3e76eeb03c064c20bf25b7f4dde4cf49.slower()">
+                 <button title="Decrease speed" aria-label="Decrease speed" onclick="animb3bd920be4d14f898779451f1ba8986b.slower()">
                      <i class="fa fa-minus"></i></button>
-                 <button title="First frame" aria-label="First frame" onclick="anim3e76eeb03c064c20bf25b7f4dde4cf49.first_frame()">
+                 <button title="First frame" aria-label="First frame" onclick="animb3bd920be4d14f898779451f1ba8986b.first_frame()">
                    <i class="fa fa-fast-backward"></i></button>
-                 <button title="Previous frame" aria-label="Previous frame" onclick="anim3e76eeb03c064c20bf25b7f4dde4cf49.previous_frame()">
+                 <button title="Previous frame" aria-label="Previous frame" onclick="animb3bd920be4d14f898779451f1ba8986b.previous_frame()">
                      <i class="fa fa-step-backward"></i></button>
-                 <button title="Play backwards" aria-label="Play backwards" onclick="anim3e76eeb03c064c20bf25b7f4dde4cf49.reverse_animation()">
+                 <button title="Play backwards" aria-label="Play backwards" onclick="animb3bd920be4d14f898779451f1ba8986b.reverse_animation()">
                      <i class="fa fa-play fa-flip-horizontal"></i></button>
-                 <button title="Pause" aria-label="Pause" onclick="anim3e76eeb03c064c20bf25b7f4dde4cf49.pause_animation()">
+                 <button title="Pause" aria-label="Pause" onclick="animb3bd920be4d14f898779451f1ba8986b.pause_animation()">
                      <i class="fa fa-pause"></i></button>
-                 <button title="Play" aria-label="Play" onclick="anim3e76eeb03c064c20bf25b7f4dde4cf49.play_animation()">
+                 <button title="Play" aria-label="Play" onclick="animb3bd920be4d14f898779451f1ba8986b.play_animation()">
                      <i class="fa fa-play"></i></button>
-                 <button title="Next frame" aria-label="Next frame" onclick="anim3e76eeb03c064c20bf25b7f4dde4cf49.next_frame()">
+                 <button title="Next frame" aria-label="Next frame" onclick="animb3bd920be4d14f898779451f1ba8986b.next_frame()">
                      <i class="fa fa-step-forward"></i></button>
-                 <button title="Last frame" aria-label="Last frame" onclick="anim3e76eeb03c064c20bf25b7f4dde4cf49.last_frame()">
+                 <button title="Last frame" aria-label="Last frame" onclick="animb3bd920be4d14f898779451f1ba8986b.last_frame()">
                      <i class="fa fa-fast-forward"></i></button>
-                 <button title="Increase speed" aria-label="Increase speed" onclick="anim3e76eeb03c064c20bf25b7f4dde4cf49.faster()">
+                 <button title="Increase speed" aria-label="Increase speed" onclick="animb3bd920be4d14f898779451f1ba8986b.faster()">
                      <i class="fa fa-plus"></i></button>
                </div>
-               <form title="Repetition mode" aria-label="Repetition mode" action="#n" name="_anim_loop_select3e76eeb03c064c20bf25b7f4dde4cf49"
+               <form title="Repetition mode" aria-label="Repetition mode" action="#n" name="_anim_loop_selectb3bd920be4d14f898779451f1ba8986b"
                      class="anim-state">
-                 <input type="radio" name="state" value="once" id="_anim_radio1_3e76eeb03c064c20bf25b7f4dde4cf49"
+                 <input type="radio" name="state" value="once" id="_anim_radio1_b3bd920be4d14f898779451f1ba8986b"
                         >
-                 <label for="_anim_radio1_3e76eeb03c064c20bf25b7f4dde4cf49">Once</label>
-                 <input type="radio" name="state" value="loop" id="_anim_radio2_3e76eeb03c064c20bf25b7f4dde4cf49"
+                 <label for="_anim_radio1_b3bd920be4d14f898779451f1ba8986b">Once</label>
+                 <input type="radio" name="state" value="loop" id="_anim_radio2_b3bd920be4d14f898779451f1ba8986b"
                         checked>
-                 <label for="_anim_radio2_3e76eeb03c064c20bf25b7f4dde4cf49">Loop</label>
-                 <input type="radio" name="state" value="reflect" id="_anim_radio3_3e76eeb03c064c20bf25b7f4dde4cf49"
+                 <label for="_anim_radio2_b3bd920be4d14f898779451f1ba8986b">Loop</label>
+                 <input type="radio" name="state" value="reflect" id="_anim_radio3_b3bd920be4d14f898779451f1ba8986b"
                         >
-                 <label for="_anim_radio3_3e76eeb03c064c20bf25b7f4dde4cf49">Reflect</label>
+                 <label for="_anim_radio3_b3bd920be4d14f898779451f1ba8986b">Reflect</label>
                </form>
              </div>
            </div>
@@ -31852,9 +31853,9 @@ each telescope type.
              /* Instantiate the Animation class. */
              /* The IDs given should match those used in the template above. */
              (function() {
-               var img_id = "_anim_img3e76eeb03c064c20bf25b7f4dde4cf49";
-               var slider_id = "_anim_slider3e76eeb03c064c20bf25b7f4dde4cf49";
-               var loop_select_id = "_anim_loop_select3e76eeb03c064c20bf25b7f4dde4cf49";
+               var img_id = "_anim_imgb3bd920be4d14f898779451f1ba8986b";
+               var slider_id = "_anim_sliderb3bd920be4d14f898779451f1ba8986b";
+               var loop_select_id = "_anim_loop_selectb3bd920be4d14f898779451f1ba8986b";
                var frames = new Array(25);
     
              frames[0] = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAfQAAAH0CAYAAADL1t+KAAAAOnRFWHRTb2Z0d2FyZQBNYXRwbG90\
@@ -46521,7 +46522,7 @@ each telescope type.
                /* set a timeout to make sure all the above elements are created before
                   the object is initialized. */
                setTimeout(function() {
-                   anim3e76eeb03c064c20bf25b7f4dde4cf49 = new Animation(frames, img_id, slider_id, 500.0,
+                   animb3bd920be4d14f898779451f1ba8986b = new Animation(frames, img_id, slider_id, 500.0,
                                             loop_select_id);
                }, 0);
              })()
@@ -46719,42 +46720,42 @@ each telescope type.
            </style>
 
            <div class="animation">
-             <img id="_anim_imgbbbb0371d8f243b49f7e2dd2120f56d0">
+             <img id="_anim_img158b625d2a9145e2bbcd2eadbad572b3">
              <div class="anim-controls">
-               <input id="_anim_sliderbbbb0371d8f243b49f7e2dd2120f56d0" type="range" class="anim-slider"
+               <input id="_anim_slider158b625d2a9145e2bbcd2eadbad572b3" type="range" class="anim-slider"
                       name="points" min="0" max="1" step="1" value="0"
-                      oninput="animbbbb0371d8f243b49f7e2dd2120f56d0.set_frame(parseInt(this.value));">
+                      oninput="anim158b625d2a9145e2bbcd2eadbad572b3.set_frame(parseInt(this.value));">
                <div class="anim-buttons">
-                 <button title="Decrease speed" aria-label="Decrease speed" onclick="animbbbb0371d8f243b49f7e2dd2120f56d0.slower()">
+                 <button title="Decrease speed" aria-label="Decrease speed" onclick="anim158b625d2a9145e2bbcd2eadbad572b3.slower()">
                      <i class="fa fa-minus"></i></button>
-                 <button title="First frame" aria-label="First frame" onclick="animbbbb0371d8f243b49f7e2dd2120f56d0.first_frame()">
+                 <button title="First frame" aria-label="First frame" onclick="anim158b625d2a9145e2bbcd2eadbad572b3.first_frame()">
                    <i class="fa fa-fast-backward"></i></button>
-                 <button title="Previous frame" aria-label="Previous frame" onclick="animbbbb0371d8f243b49f7e2dd2120f56d0.previous_frame()">
+                 <button title="Previous frame" aria-label="Previous frame" onclick="anim158b625d2a9145e2bbcd2eadbad572b3.previous_frame()">
                      <i class="fa fa-step-backward"></i></button>
-                 <button title="Play backwards" aria-label="Play backwards" onclick="animbbbb0371d8f243b49f7e2dd2120f56d0.reverse_animation()">
+                 <button title="Play backwards" aria-label="Play backwards" onclick="anim158b625d2a9145e2bbcd2eadbad572b3.reverse_animation()">
                      <i class="fa fa-play fa-flip-horizontal"></i></button>
-                 <button title="Pause" aria-label="Pause" onclick="animbbbb0371d8f243b49f7e2dd2120f56d0.pause_animation()">
+                 <button title="Pause" aria-label="Pause" onclick="anim158b625d2a9145e2bbcd2eadbad572b3.pause_animation()">
                      <i class="fa fa-pause"></i></button>
-                 <button title="Play" aria-label="Play" onclick="animbbbb0371d8f243b49f7e2dd2120f56d0.play_animation()">
+                 <button title="Play" aria-label="Play" onclick="anim158b625d2a9145e2bbcd2eadbad572b3.play_animation()">
                      <i class="fa fa-play"></i></button>
-                 <button title="Next frame" aria-label="Next frame" onclick="animbbbb0371d8f243b49f7e2dd2120f56d0.next_frame()">
+                 <button title="Next frame" aria-label="Next frame" onclick="anim158b625d2a9145e2bbcd2eadbad572b3.next_frame()">
                      <i class="fa fa-step-forward"></i></button>
-                 <button title="Last frame" aria-label="Last frame" onclick="animbbbb0371d8f243b49f7e2dd2120f56d0.last_frame()">
+                 <button title="Last frame" aria-label="Last frame" onclick="anim158b625d2a9145e2bbcd2eadbad572b3.last_frame()">
                      <i class="fa fa-fast-forward"></i></button>
-                 <button title="Increase speed" aria-label="Increase speed" onclick="animbbbb0371d8f243b49f7e2dd2120f56d0.faster()">
+                 <button title="Increase speed" aria-label="Increase speed" onclick="anim158b625d2a9145e2bbcd2eadbad572b3.faster()">
                      <i class="fa fa-plus"></i></button>
                </div>
-               <form title="Repetition mode" aria-label="Repetition mode" action="#n" name="_anim_loop_selectbbbb0371d8f243b49f7e2dd2120f56d0"
+               <form title="Repetition mode" aria-label="Repetition mode" action="#n" name="_anim_loop_select158b625d2a9145e2bbcd2eadbad572b3"
                      class="anim-state">
-                 <input type="radio" name="state" value="once" id="_anim_radio1_bbbb0371d8f243b49f7e2dd2120f56d0"
+                 <input type="radio" name="state" value="once" id="_anim_radio1_158b625d2a9145e2bbcd2eadbad572b3"
                         >
-                 <label for="_anim_radio1_bbbb0371d8f243b49f7e2dd2120f56d0">Once</label>
-                 <input type="radio" name="state" value="loop" id="_anim_radio2_bbbb0371d8f243b49f7e2dd2120f56d0"
+                 <label for="_anim_radio1_158b625d2a9145e2bbcd2eadbad572b3">Once</label>
+                 <input type="radio" name="state" value="loop" id="_anim_radio2_158b625d2a9145e2bbcd2eadbad572b3"
                         checked>
-                 <label for="_anim_radio2_bbbb0371d8f243b49f7e2dd2120f56d0">Loop</label>
-                 <input type="radio" name="state" value="reflect" id="_anim_radio3_bbbb0371d8f243b49f7e2dd2120f56d0"
+                 <label for="_anim_radio2_158b625d2a9145e2bbcd2eadbad572b3">Loop</label>
+                 <input type="radio" name="state" value="reflect" id="_anim_radio3_158b625d2a9145e2bbcd2eadbad572b3"
                         >
-                 <label for="_anim_radio3_bbbb0371d8f243b49f7e2dd2120f56d0">Reflect</label>
+                 <label for="_anim_radio3_158b625d2a9145e2bbcd2eadbad572b3">Reflect</label>
                </form>
              </div>
            </div>
@@ -46764,9 +46765,9 @@ each telescope type.
              /* Instantiate the Animation class. */
              /* The IDs given should match those used in the template above. */
              (function() {
-               var img_id = "_anim_imgbbbb0371d8f243b49f7e2dd2120f56d0";
-               var slider_id = "_anim_sliderbbbb0371d8f243b49f7e2dd2120f56d0";
-               var loop_select_id = "_anim_loop_selectbbbb0371d8f243b49f7e2dd2120f56d0";
+               var img_id = "_anim_img158b625d2a9145e2bbcd2eadbad572b3";
+               var slider_id = "_anim_slider158b625d2a9145e2bbcd2eadbad572b3";
+               var loop_select_id = "_anim_loop_select158b625d2a9145e2bbcd2eadbad572b3";
                var frames = new Array(60);
     
              frames[0] = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAfQAAAH0CAYAAADL1t+KAAAAOnRFWHRTb2Z0d2FyZQBNYXRwbG90\
@@ -78967,7 +78968,7 @@ each telescope type.
                /* set a timeout to make sure all the above elements are created before
                   the object is initialized. */
                setTimeout(function() {
-                   animbbbb0371d8f243b49f7e2dd2120f56d0 = new Animation(frames, img_id, slider_id, 500.0,
+                   anim158b625d2a9145e2bbcd2eadbad572b3 = new Animation(frames, img_id, slider_id, 500.0,
                                             loop_select_id);
                }, 0);
              })()
@@ -79165,42 +79166,42 @@ each telescope type.
            </style>
 
            <div class="animation">
-             <img id="_anim_imgbb8c2c386b39460e90356127d925bdbc">
+             <img id="_anim_img02df1fa7a65446e98b1de4cdad39da08">
              <div class="anim-controls">
-               <input id="_anim_sliderbb8c2c386b39460e90356127d925bdbc" type="range" class="anim-slider"
+               <input id="_anim_slider02df1fa7a65446e98b1de4cdad39da08" type="range" class="anim-slider"
                       name="points" min="0" max="1" step="1" value="0"
-                      oninput="animbb8c2c386b39460e90356127d925bdbc.set_frame(parseInt(this.value));">
+                      oninput="anim02df1fa7a65446e98b1de4cdad39da08.set_frame(parseInt(this.value));">
                <div class="anim-buttons">
-                 <button title="Decrease speed" aria-label="Decrease speed" onclick="animbb8c2c386b39460e90356127d925bdbc.slower()">
+                 <button title="Decrease speed" aria-label="Decrease speed" onclick="anim02df1fa7a65446e98b1de4cdad39da08.slower()">
                      <i class="fa fa-minus"></i></button>
-                 <button title="First frame" aria-label="First frame" onclick="animbb8c2c386b39460e90356127d925bdbc.first_frame()">
+                 <button title="First frame" aria-label="First frame" onclick="anim02df1fa7a65446e98b1de4cdad39da08.first_frame()">
                    <i class="fa fa-fast-backward"></i></button>
-                 <button title="Previous frame" aria-label="Previous frame" onclick="animbb8c2c386b39460e90356127d925bdbc.previous_frame()">
+                 <button title="Previous frame" aria-label="Previous frame" onclick="anim02df1fa7a65446e98b1de4cdad39da08.previous_frame()">
                      <i class="fa fa-step-backward"></i></button>
-                 <button title="Play backwards" aria-label="Play backwards" onclick="animbb8c2c386b39460e90356127d925bdbc.reverse_animation()">
+                 <button title="Play backwards" aria-label="Play backwards" onclick="anim02df1fa7a65446e98b1de4cdad39da08.reverse_animation()">
                      <i class="fa fa-play fa-flip-horizontal"></i></button>
-                 <button title="Pause" aria-label="Pause" onclick="animbb8c2c386b39460e90356127d925bdbc.pause_animation()">
+                 <button title="Pause" aria-label="Pause" onclick="anim02df1fa7a65446e98b1de4cdad39da08.pause_animation()">
                      <i class="fa fa-pause"></i></button>
-                 <button title="Play" aria-label="Play" onclick="animbb8c2c386b39460e90356127d925bdbc.play_animation()">
+                 <button title="Play" aria-label="Play" onclick="anim02df1fa7a65446e98b1de4cdad39da08.play_animation()">
                      <i class="fa fa-play"></i></button>
-                 <button title="Next frame" aria-label="Next frame" onclick="animbb8c2c386b39460e90356127d925bdbc.next_frame()">
+                 <button title="Next frame" aria-label="Next frame" onclick="anim02df1fa7a65446e98b1de4cdad39da08.next_frame()">
                      <i class="fa fa-step-forward"></i></button>
-                 <button title="Last frame" aria-label="Last frame" onclick="animbb8c2c386b39460e90356127d925bdbc.last_frame()">
+                 <button title="Last frame" aria-label="Last frame" onclick="anim02df1fa7a65446e98b1de4cdad39da08.last_frame()">
                      <i class="fa fa-fast-forward"></i></button>
-                 <button title="Increase speed" aria-label="Increase speed" onclick="animbb8c2c386b39460e90356127d925bdbc.faster()">
+                 <button title="Increase speed" aria-label="Increase speed" onclick="anim02df1fa7a65446e98b1de4cdad39da08.faster()">
                      <i class="fa fa-plus"></i></button>
                </div>
-               <form title="Repetition mode" aria-label="Repetition mode" action="#n" name="_anim_loop_selectbb8c2c386b39460e90356127d925bdbc"
+               <form title="Repetition mode" aria-label="Repetition mode" action="#n" name="_anim_loop_select02df1fa7a65446e98b1de4cdad39da08"
                      class="anim-state">
-                 <input type="radio" name="state" value="once" id="_anim_radio1_bb8c2c386b39460e90356127d925bdbc"
+                 <input type="radio" name="state" value="once" id="_anim_radio1_02df1fa7a65446e98b1de4cdad39da08"
                         >
-                 <label for="_anim_radio1_bb8c2c386b39460e90356127d925bdbc">Once</label>
-                 <input type="radio" name="state" value="loop" id="_anim_radio2_bb8c2c386b39460e90356127d925bdbc"
+                 <label for="_anim_radio1_02df1fa7a65446e98b1de4cdad39da08">Once</label>
+                 <input type="radio" name="state" value="loop" id="_anim_radio2_02df1fa7a65446e98b1de4cdad39da08"
                         checked>
-                 <label for="_anim_radio2_bb8c2c386b39460e90356127d925bdbc">Loop</label>
-                 <input type="radio" name="state" value="reflect" id="_anim_radio3_bb8c2c386b39460e90356127d925bdbc"
+                 <label for="_anim_radio2_02df1fa7a65446e98b1de4cdad39da08">Loop</label>
+                 <input type="radio" name="state" value="reflect" id="_anim_radio3_02df1fa7a65446e98b1de4cdad39da08"
                         >
-                 <label for="_anim_radio3_bb8c2c386b39460e90356127d925bdbc">Reflect</label>
+                 <label for="_anim_radio3_02df1fa7a65446e98b1de4cdad39da08">Reflect</label>
                </form>
              </div>
            </div>
@@ -79210,9 +79211,9 @@ each telescope type.
              /* Instantiate the Animation class. */
              /* The IDs given should match those used in the template above. */
              (function() {
-               var img_id = "_anim_imgbb8c2c386b39460e90356127d925bdbc";
-               var slider_id = "_anim_sliderbb8c2c386b39460e90356127d925bdbc";
-               var loop_select_id = "_anim_loop_selectbb8c2c386b39460e90356127d925bdbc";
+               var img_id = "_anim_img02df1fa7a65446e98b1de4cdad39da08";
+               var slider_id = "_anim_slider02df1fa7a65446e98b1de4cdad39da08";
+               var loop_select_id = "_anim_loop_select02df1fa7a65446e98b1de4cdad39da08";
                var frames = new Array(128);
     
              frames[0] = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAfQAAAH0CAYAAADL1t+KAAAAOnRFWHRTb2Z0d2FyZQBNYXRwbG90\
@@ -142798,7 +142799,7 @@ each telescope type.
                /* set a timeout to make sure all the above elements are created before
                   the object is initialized. */
                setTimeout(function() {
-                   animbb8c2c386b39460e90356127d925bdbc = new Animation(frames, img_id, slider_id, 500.0,
+                   anim02df1fa7a65446e98b1de4cdad39da08 = new Animation(frames, img_id, slider_id, 500.0,
                                             loop_select_id);
                }, 0);
              })()
@@ -142812,7 +142813,7 @@ each telescope type.
 
     /opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/astropy/utils/metadata/merge.py:289: MergeConflictWarning: In merged column 'obs_id' the 'description' attribute does not match (Observation Block ID != Simulation Run Identifier).  Using Simulation Run Identifier for merged output
       warnings.warn(
-    DLWaveformReader: <dl1_data_handler.reader.DLWaveformReader object at 0x7fe96327c1d0>
+    DLWaveformReader: <dl1_data_handler.reader.DLWaveformReader object at 0x7f3c3be9fcb0>
     Subarray information for LST:
     Subarray : MonteCarloArray_3,4
     Num Tels : 2
@@ -142832,7 +142833,7 @@ each telescope type.
         0          0           0      1           0     5105      4 0.0 .. 0.0 1.7454713582992554 69.99999967119774 359.999982697156 -324.859130859375 398.5491027832031  20947.525390625 286.7567443847656                      0                        0.0                   1.2217305 -1.7711440204833211e-06 -2.291954672042717e-06 2.896550942067524e-06         1.2217305     7.987575e-08 -7.483191294330021e-06 3.305921525315792e-07 7.490488175341835e-06 0.24191272680551626 514.1739416112068                         1
     /opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/astropy/utils/metadata/merge.py:289: MergeConflictWarning: In merged column 'obs_id' the 'description' attribute does not match (Observation Block ID != Simulation Run Identifier).  Using Simulation Run Identifier for merged output
       warnings.warn(
-    DLWaveformReader: <dl1_data_handler.reader.DLWaveformReader object at 0x7fe9d3fb5eb0>
+    DLWaveformReader: <dl1_data_handler.reader.DLWaveformReader object at 0x7f3c37139010>
     Subarray information for MST_FlashCam:
     Subarray : MonteCarloArray_8,9,14
     Num Tels : 3
@@ -142852,7 +142853,7 @@ each telescope type.
         0          0           0      1           0     4009      9 0.0 .. 0.0 0.07287972420454025 69.99999967119774 359.999982697156 -146.42298889160156 341.6435852050781   32396.98828125 159.41175842285156                      0                        0.0                   1.2217305 -7.46347422920838e-07 -1.4773488972808342e-06 1.655171966895728e-06         1.2217305     7.987575e-08 -7.483191294330021e-06 3.305921525315792e-07 7.490488175341835e-06 -1.1373932795130073 371.69884447994934                         1
     /opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/astropy/utils/metadata/merge.py:289: MergeConflictWarning: In merged column 'obs_id' the 'description' attribute does not match (Observation Block ID != Simulation Run Identifier).  Using Simulation Run Identifier for merged output
       warnings.warn(
-    DLWaveformReader: <dl1_data_handler.reader.DLWaveformReader object at 0x7fe9ce9cb350>
+    DLWaveformReader: <dl1_data_handler.reader.DLWaveformReader object at 0x7f3c371cf650>
     Subarray information for MST_NectarCam:
     Subarray : MonteCarloArray_109,112,118,119,121,122,124
     Num Tels : 7
@@ -142872,7 +142873,7 @@ each telescope type.
         0          0           0      1           0     5101    121 0.0 .. 0.0 1.7454713582992554 69.99999967119774 359.999982697156 -737.0097045898438 -266.6009521484375  20947.525390625 286.7567443847656                      0                        0.0                   1.2217305 -1.0120822974190406e-06 -1.3096883840244097e-06 1.655171966895728e-06         1.2217305     7.987575e-08 -7.483191294330021e-06 3.305921525315792e-07 7.490488175341835e-06 0.24191272680551626 783.7470078705642                         1
     /opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/astropy/utils/metadata/merge.py:289: MergeConflictWarning: In merged column 'obs_id' the 'description' attribute does not match (Observation Block ID != Simulation Run Identifier).  Using Simulation Run Identifier for merged output
       warnings.warn(
-    DLWaveformReader: <dl1_data_handler.reader.DLWaveformReader object at 0x7fe9cea43350>
+    DLWaveformReader: <dl1_data_handler.reader.DLWaveformReader object at 0x7f3c37128a40>
     Subarray information for SST:
     Subarray : MonteCarloArray_43,46,53,57,92,98
     Num Tels : 6
@@ -143016,7 +143017,7 @@ The mapper is selected for each camera type.
 
     /opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/astropy/utils/metadata/merge.py:289: MergeConflictWarning: In merged column 'obs_id' the 'description' attribute does not match (Observation Block ID != Simulation Run Identifier).  Using Simulation Run Identifier for merged output
       warnings.warn(
-    DLImageReader: <dl1_data_handler.reader.DLImageReader object at 0x7fe9cea36060>
+    DLImageReader: <dl1_data_handler.reader.DLImageReader object at 0x7f3c3bced3a0>
     Subarray information for LST:
     Subarray : MonteCarloArray_3,4
     Num Tels : 2
@@ -143036,7 +143037,7 @@ The mapper is selected for each camera type.
         0          0           0      1           0     5105      4 0.0 .. 0.0 1.7454713582992554 69.99999967119774 359.999982697156 -324.859130859375 398.5491027832031  20947.525390625 286.7567443847656                      0                        0.0                   1.2217305 -1.7711440204833211e-06 -2.291954672042717e-06 2.896550942067524e-06         1.2217305     7.987575e-08 -7.483191294330021e-06 3.305921525315792e-07 7.490488175341835e-06 0.24191272680551626 514.1739416112068                         1
     /opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/astropy/utils/metadata/merge.py:289: MergeConflictWarning: In merged column 'obs_id' the 'description' attribute does not match (Observation Block ID != Simulation Run Identifier).  Using Simulation Run Identifier for merged output
       warnings.warn(
-    DLImageReader: <dl1_data_handler.reader.DLImageReader object at 0x7fe9d3ef0950>
+    DLImageReader: <dl1_data_handler.reader.DLImageReader object at 0x7f3c37dbfb30>
     Subarray information for MST_FlashCam:
     Subarray : MonteCarloArray_8,9,14
     Num Tels : 3
@@ -143056,7 +143057,7 @@ The mapper is selected for each camera type.
         0          0           0      1           0     4009      9 0.0 .. 0.0 0.07287972420454025 69.99999967119774 359.999982697156 -146.42298889160156 341.6435852050781   32396.98828125 159.41175842285156                      0                        0.0                   1.2217305 -7.46347422920838e-07 -1.4773488972808342e-06 1.655171966895728e-06         1.2217305     7.987575e-08 -7.483191294330021e-06 3.305921525315792e-07 7.490488175341835e-06 -1.1373932795130073 371.69884447994934                         1
     /opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/astropy/utils/metadata/merge.py:289: MergeConflictWarning: In merged column 'obs_id' the 'description' attribute does not match (Observation Block ID != Simulation Run Identifier).  Using Simulation Run Identifier for merged output
       warnings.warn(
-    DLImageReader: <dl1_data_handler.reader.DLImageReader object at 0x7fe9d3e87080>
+    DLImageReader: <dl1_data_handler.reader.DLImageReader object at 0x7f3c37461fd0>
     Subarray information for MST_NectarCam:
     Subarray : MonteCarloArray_109,112,118,119,121,122,124
     Num Tels : 7
@@ -143076,7 +143077,7 @@ The mapper is selected for each camera type.
         0          0           0      1           0     5101    121 0.0 .. 0.0 1.7454713582992554 69.99999967119774 359.999982697156 -737.0097045898438 -266.6009521484375  20947.525390625 286.7567443847656                      0                        0.0                   1.2217305 -1.0120822974190406e-06 -1.3096883840244097e-06 1.655171966895728e-06         1.2217305     7.987575e-08 -7.483191294330021e-06 3.305921525315792e-07 7.490488175341835e-06 0.24191272680551626 783.7470078705642                         1
     /opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/astropy/utils/metadata/merge.py:289: MergeConflictWarning: In merged column 'obs_id' the 'description' attribute does not match (Observation Block ID != Simulation Run Identifier).  Using Simulation Run Identifier for merged output
       warnings.warn(
-    DLImageReader: <dl1_data_handler.reader.DLImageReader object at 0x7fe9d3d0a360>
+    DLImageReader: <dl1_data_handler.reader.DLImageReader object at 0x7f3c3741b170>
     Subarray information for SST:
     Subarray : MonteCarloArray_43,46,53,57,92,98
     Num Tels : 6
@@ -143165,17 +143166,13 @@ original downloads.
  .. code-block:: none
 
     Using existing download: /home/runner/.cache/ctlearn/tutorial-data/gamma-diffuse_with_images_00.dl2.h5
-    /opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/ctapipe/io/metadata.py:1212: LegacyMetadataWarning: Legacy ctapipe metadata detected. If this file is not already being migrated, use ctapipe-merge to convert it to the current CTAO metadata format.
-      return _legacy_to_product(metadata)
+    Using existing ctapipe output: /home/runner/.cache/ctlearn/tutorial-data/ctapipe-0.33.0-max500/gamma-diffuse_with_images_00.dl2.h5
     Using existing download: /home/runner/.cache/ctlearn/tutorial-data/gamma-diffuse_with_images_01.dl2.h5
-    /opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/ctapipe/io/metadata.py:1212: LegacyMetadataWarning: Legacy ctapipe metadata detected. If this file is not already being migrated, use ctapipe-merge to convert it to the current CTAO metadata format.
-      return _legacy_to_product(metadata)
+    Using existing ctapipe output: /home/runner/.cache/ctlearn/tutorial-data/ctapipe-0.33.0-max500/gamma-diffuse_with_images_01.dl2.h5
     Using existing download: /home/runner/.cache/ctlearn/tutorial-data/proton_with_images_00.dl2.h5
-    /opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/ctapipe/io/metadata.py:1212: LegacyMetadataWarning: Legacy ctapipe metadata detected. If this file is not already being migrated, use ctapipe-merge to convert it to the current CTAO metadata format.
-      return _legacy_to_product(metadata)
+    Using existing ctapipe output: /home/runner/.cache/ctlearn/tutorial-data/ctapipe-0.33.0-max500/proton_with_images_00.dl2.h5
     Using existing download: /home/runner/.cache/ctlearn/tutorial-data/proton_with_images_01.dl2.h5
-    /opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/ctapipe/io/metadata.py:1212: LegacyMetadataWarning: Legacy ctapipe metadata detected. If this file is not already being migrated, use ctapipe-merge to convert it to the current CTAO metadata format.
-      return _legacy_to_product(metadata)
+    Using existing ctapipe output: /home/runner/.cache/ctlearn/tutorial-data/ctapipe-0.33.0-max500/proton_with_images_01.dl2.h5
 
 
 
@@ -143317,7 +143314,7 @@ integrated charge and relative peak-time image from each telescope.
       warnings.warn(
     /opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/astropy/utils/metadata/merge.py:289: MergeConflictWarning: Cannot merge meta key 'CTAPIPE_VERSION' types <class 'str'> and <class 'str'>, choosing CTAPIPE_VERSION='0.17.0'
       warnings.warn(
-    DLImageReader: <dl1_data_handler.reader.DLImageReader object at 0x7fe9d3e5d5e0>
+    DLImageReader: <dl1_data_handler.reader.DLImageReader object at 0x7f3c37c6ccb0>
     Subarray information:
     Subarray : MonteCarloArray_1-11,19,35_1-4
     Num Tels : 4
@@ -143383,7 +143380,7 @@ integrated charge and relative peak-time image from each telescope.
       warnings.warn(
     /opt/hostedtoolcache/Python/3.12.16/x64/lib/python3.12/site-packages/astropy/utils/metadata/merge.py:289: MergeConflictWarning: Cannot merge meta key 'CTAPIPE_VERSION' types <class 'str'> and <class 'str'>, choosing CTAPIPE_VERSION='0.17.0'
       warnings.warn(
-    DLImageReader: <dl1_data_handler.reader.DLImageReader object at 0x7fe9cfbbc560>
+    DLImageReader: <dl1_data_handler.reader.DLImageReader object at 0x7f3c36db2f00>
     Subarray information:
     Subarray : MonteCarloArray_1-11,19,35_5-11,19,35
     Num Tels : 9
@@ -143417,7 +143414,7 @@ integrated charge and relative peak-time image from each telescope.
 
 .. rst-class:: sphx-glr-timing
 
-   **Total running time of the script:** (1 minutes 12.566 seconds)
+   **Total running time of the script:** (0 minutes 36.161 seconds)
 
 
 .. _sphx_glr_download_user-guide_auto_tutorials_explore_public_data.py:
