@@ -1,3 +1,42 @@
+ctlearn v0.11.1 (2026-11-20)
+============================
+
+
+API Changes
+-----------
+
+
+Bug Fixes
+---------
+
+
+Data Model Changes
+------------------
+
+- Added support for ctapipe HDF5 data format v8.0.0, using the updated DL0 trigger-table paths while preserving compatibility with earlier data formats. [`#323 <https://github.com/ctlearn-project/ctlearn/pull/323>`__]
+
+
+New Features
+------------
+
+
+Maintenance
+-----------
+
+- Added Pixi-based installation and development environment setup, with Pixi environments tested in CI. [`#319 <https://github.com/ctlearn-project/ctlearn/pull/319>`__]
+
+- Added SonarCloud analysis to CI, including coverage reporting and quality-gate and coverage badges in the README. [`#320 <https://github.com/ctlearn-project/ctlearn/pull/320>`__]
+
+- Added manual release workflow inputs to build a repository tag and optionally publish the package to PyPI. [`#321 <https://github.com/ctlearn-project/ctlearn/pull/321>`__]
+
+- Build and publish the documentation with GitHub Actions. The CI documentation
+  job executes the Sphinx-Gallery tutorial, reuses cached tutorial data, and
+  deploys the generated HTML to GitHub Pages on pushes to ``main``. [`#322 <https://github.com/ctlearn-project/ctlearn/pull/322>`__]
+
+
+Refactoring and Optimization
+----------------------------
+
 ctlearn v0.11.0 (2026-10-30)
 ============================
 

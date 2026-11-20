@@ -1,1 +1,0 @@
-Added manual release workflow inputs to build a repository tag and optionally publish the package to PyPI.
