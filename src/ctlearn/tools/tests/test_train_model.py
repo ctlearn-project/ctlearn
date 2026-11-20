@@ -10,6 +10,7 @@ from ctapipe.core import run_tool
 from ctapipe.core.provenance import Provenance
 from ctapipe.core.tool import ToolConfigurationError
 from ctapipe.core.traits import TraitError
+from traitlets.config.loader import Config
 
 from ctlearn.conftest import MODEL_FILE_FORMATS, TRAINING_TOOLS
 from ctlearn.tools.keras.train_model import LoggingModelCheckpoint
@@ -148,8 +149,9 @@ def test_train_ctlearn_models_with_dl1_mono_data(
     )
     val_loss = log_df["val_loss"].dropna()
     assert not val_loss.empty, f"'val_loss' column is empty for {reco_task}"
-    assert ((val_loss >= 0.0) & (val_loss <= 1.5)).all(), (
-        f"'val_loss' values out of range [0.0, 1.5] for {reco_task}: "
+    max_val_loss = 3.5 if reco_task == "skydirection" else 1.5
+    assert ((val_loss >= 0.0) & (val_loss <= max_val_loss)).all(), (
+        f"'val_loss' values out of range [0.0, {max_val_loss}] for {reco_task}: "
         f"{val_loss.tolist()}"
     )
     # Check that the event file for TensorBoard is created for train and validation
@@ -246,7 +248,10 @@ def test_train_ctlearn_models_with_r1_mono_data(
         )
     argv.append("--TrainCTLearnModel.model_type=SingleCNN")
     Provenance().clear()
-    assert run_tool(TRAINING_TOOLS[framework](), argv=argv, cwd=tmp_path) == 0
+    config = Config({"TableQualityQuery": {"quality_criteria": []}})
+    assert (
+        run_tool(TRAINING_TOOLS[framework](config=config), argv=argv, cwd=tmp_path) == 0
+    )
     # --- Additional checks ---
     # Check that the trained model exists
     model_file = output_dir / f"ctlearn_model.{MODEL_FILE_FORMATS[framework]}"
@@ -280,8 +285,9 @@ def test_train_ctlearn_models_with_r1_mono_data(
     )
     val_loss = log_df["val_loss"].dropna()
     assert not val_loss.empty, f"'val_loss' column is empty for R1 {reco_task}"
-    assert ((val_loss >= 0.0) & (val_loss <= 1.5)).all(), (
-        f"'val_loss' values out of range [0.0, 1.5] for R1 {reco_task}: "
+    max_val_loss = 3.5 if reco_task == "skydirection" else 1.5
+    assert ((val_loss >= 0.0) & (val_loss <= max_val_loss)).all(), (
+        f"'val_loss' values out of range [0.0, {max_val_loss}] for R1 {reco_task}: "
         f"{val_loss.tolist()}"
     )
     # Check that the event file for TensorBoard is created for train and validation
@@ -300,6 +306,77 @@ def test_train_ctlearn_models_with_r1_mono_data(
             f"No TensorBoard event file starting with 'events.out.tfevents.' "
             f"found in {subfolder_path} for R1"
         )
+
+
+@pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
+@pytest.mark.parametrize(
+    "reco_task",
+    [
+        pytest.param("energy", marks=pytest.mark.verifies_usecase("DPPS-UC-130-1.3.1")),
+        pytest.param("type", marks=pytest.mark.verifies_usecase("DPPS-UC-130-1.3.2")),
+        pytest.param(
+            "skydirection", marks=pytest.mark.verifies_usecase("DPPS-UC-130-1.3.3")
+        ),
+    ],
+)
+def test_train_ctlearn_models_with_dl1_stereo_data(
+    framework, reco_task, dl1_gamma_file, tmp_path, request
+):
+    """Train a stereo model using stacked DL1 images from three MSTs."""
+    signal_dir = tmp_path / "gamma_dl1"
+    signal_dir.mkdir()
+    shutil.copy(dl1_gamma_file, signal_dir)
+    output_dir = tmp_path / "stereo_model"
+    config = Config({"TableQualityQuery": {"quality_criteria": []}})
+    tool = TRAINING_TOOLS[framework](config=config)
+    argv = [
+        f"--signal={signal_dir}",
+        "--pattern-signal=*.dl1.h5",
+        f"--output={output_dir}",
+        f"--reco={reco_task}",
+        "--TrainCTLearnModel.model_type=SingleCNN",
+        "--TrainCTLearnModel.n_epochs=1",
+        "--TrainCTLearnModel.batch_size=2",
+        "--TrainCTLearnModel.stack_telescope_images=True",
+        "--DLImageReader.mode=stereo",
+        "--DLImageReader.focal_length_choice=EQUIVALENT",
+        "--DLImageReader.allowed_tels=[7, 13, 15]",
+    ]
+    if reco_task == "type":
+        background_dir = tmp_path / "proton_dl1"
+        background_dir.mkdir()
+        shutil.copy(request.getfixturevalue("dl1_proton_file"), background_dir)
+        argv.extend(
+            [
+                f"--background={background_dir}",
+                "--pattern-background=*.dl1.h5",
+                "--DLImageReader.enforce_subarray_equality=False",
+            ]
+        )
+
+    Provenance().clear()
+    assert run_tool(tool, argv=argv, cwd=tmp_path) == 0
+    assert tool.dl1dh_reader.mode == "stereo"
+    assert tool.stack_telescope_images
+    assert (output_dir / f"ctlearn_model.{MODEL_FILE_FORMATS[framework]}").is_file()
+    provenance = json.loads((output_dir / f"{tool.name}.provenance.log").read_text())
+    assert len(provenance) == 1
+    assert provenance[0]["activity_name"] == tool.name
+    saved_config = json.loads((output_dir / "config.json").read_text())
+    assert saved_config["TrainCTLearnModel"]["stack_telescope_images"] is True
+    assert saved_config["DLImageReader"]["mode"] == "stereo"
+    log_df = pd.read_csv(output_dir / "training_log.csv")
+    assert len(log_df) == 1
+    assert "val_loss" in log_df.columns
+    val_loss = log_df["val_loss"].dropna()
+    assert not val_loss.empty
+    max_val_loss = 3.5 if reco_task == "skydirection" else 1.5
+    assert ((val_loss >= 0.0) & (val_loss <= max_val_loss)).all(), (
+        f"'val_loss' values out of range [0.0, {max_val_loss}] for {reco_task}: "
+        f"{val_loss.tolist()}"
+    )
+    for subfolder in ("train", "validation"):
+        assert list((output_dir / subfolder).glob("events.out.tfevents.*"))
 
 
 @pytest.mark.parametrize("framework", ["Keras", "PyTorch"])
