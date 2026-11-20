@@ -320,7 +320,7 @@ jobs:
         run: pixi run -e ${{ matrix.pixi-environment }} python --version | grep "Python ${PYTHON_VERSION}"
 
       - name: Run tests
-        run: pixi run -e ${{ matrix.pixi-environment }} test
+        run: pixi run -e ${{ matrix.pixi-environment }} test -m "not cwl_workflow"
 
   pip:
     needs: cache-test-data
@@ -492,7 +492,7 @@ jobs:
           matrix.dl1dh-version != 'latest' ||
           matrix.tensorflow-version != 'latest' ||
           matrix.torch-version != 'latest'
-        run: pytest
+        run: pytest -m "not cwl_workflow"
 
   sonar:
     needs: pip

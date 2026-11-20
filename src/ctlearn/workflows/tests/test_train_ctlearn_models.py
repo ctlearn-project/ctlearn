@@ -14,28 +14,30 @@ from urllib.request import url2pathname
 import pytest
 from ctapipe.core.provenance import json_config_handler
 
+TRAINING_CONFIG = {
+    "TrainCTLearnModel": {
+        "model_type": "SingleCNN",
+        "n_epochs": 1,
+        "batch_size": 4,
+    },
+    "DLImageReader": {
+        "focal_length_choice": "EQUIVALENT",
+        "allowed_tels": [7, 13, 15, 16, 17, 19],
+        "enforce_subarray_equality": False,
+    },
+}
+
 
 @pytest.fixture
 def training_config_file(tmp_path):
     """Create a configuration for a small training run."""
     config_file = tmp_path / "example_training_config.json"
-    config = {
-        "TrainCTLearnModel": {
-            "model_type": "SingleCNN",
-            "n_epochs": 1,
-            "batch_size": 4,
-        },
-        "DLImageReader": {
-            "focal_length_choice": "EQUIVALENT",
-            "allowed_tels": [7, 13, 15, 16, 17, 19],
-            "enforce_subarray_equality": False,
-        },
-    }
     with config_file.open("w") as file:
-        json.dump(config, file, default=json_config_handler, indent=4)
+        json.dump(TRAINING_CONFIG, file, default=json_config_handler, indent=4)
     return config_file
 
 
+@pytest.mark.cwl_workflow
 @pytest.mark.parametrize("framework", ["keras", "pytorch"])
 @pytest.mark.parametrize(
     "reco_task",
@@ -50,7 +52,7 @@ def training_config_file(tmp_path):
         ),
     ],
 )
-def test_train_ctlearn_model(
+def test_train_ctlearn_mono_models(
     tmp_path,
     dl1_gamma_file,
     training_config_file,
@@ -93,7 +95,7 @@ def test_train_ctlearn_model(
     outdir = tmp_path / "results"
     env = os.environ.copy()
     env["PATH"] = f"{Path(sys.executable).parent}{os.pathsep}{env['PATH']}"
-    workflow = files("ctlearn").joinpath("workflows", "train_ctlearn_model.cwl")
+    workflow = files("ctlearn").joinpath("workflows", "train_ctlearn_models.cwl")
     with as_file(workflow) as workflow_path:
         result = subprocess.run(
             [

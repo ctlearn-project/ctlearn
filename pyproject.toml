@@ -125,6 +125,7 @@ version_file = "src/ctlearn/_version.py"
 testpaths = ["src/ctlearn"]
 markers = [
     "verifies_usecase(usecase_id): mark test as verifying a specific use case",
+    "cwl_workflow: tests for Common Workflow Language workflows",
 ]
 
 norecursedirs = [
