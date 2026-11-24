@@ -1,0 +1,1 @@
+Fixed Keras prediction layer to correctly handle last batch predictions and prevent spurious 0.0 values. Additionally fixed table row misalignment when combining prediction tables.
