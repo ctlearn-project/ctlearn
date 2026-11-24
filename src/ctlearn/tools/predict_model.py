@@ -914,7 +914,7 @@ class PredictCTLearnModel(Tool):
             # Predict the last batch and stack the results to the prediction data
             if data_loader_last_batch is not None:
                 predict_data_last_batch = model.predict(data_loader_last_batch)
-                if model.layers[-1].name == "type":
+                if prediction_colname == "type":
                     predict_data_last_batch = Table(
                         {prediction_colname: predict_data_last_batch}
                     )

@@ -156,6 +156,7 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                     reco_task="type",
                 )
                 particletype_table = vstack([particletype_table, nan_table])
+                particletype_table.sort(TEL_EVENT_KEYS)
             # Add is_valid column to the particle type table
             particletype_table.add_column(
                 ~np.isnan(
@@ -310,6 +311,7 @@ class MonoPredictCTLearnModel(PredictCTLearnModel):
                     reco_task="energy",
                 )
                 energy_table = vstack([energy_table, nan_table])
+                energy_table.sort(TEL_EVENT_KEYS)
             # Add is_valid column to the energy table
             energy_table.add_column(
                 ~np.isnan(
