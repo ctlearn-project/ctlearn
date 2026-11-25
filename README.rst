@@ -26,8 +26,8 @@ CTLearn: Deep Learning for IACT Event Reconstruction
     :target: mailto:tmiener@iaa.csic.es,d.nieto@ucm.es?subject=Request%20access%20to%20the%20CTLearn%20Slack%20workspace&body=Hello%20CTLearn%20maintainers%2C%0A%0AI%20would%20like%20to%20request%20access%20to%20the%20CTLearn%20Slack%20workspace.%0A
     :alt: Request Slack access
 
-.. image:: images/CTLearnTextCTinBox_WhiteBkgd.png
-   :target: images/CTLearnTextCTinBox_WhiteBkgd.png
+.. image:: images/CTLearnTextCTinBox_Transparent.png
+   :target: images/CTLearnTextCTinBox_Transparent.png
    :alt: CTLearn Logo
 
 
