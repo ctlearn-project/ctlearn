@@ -7,7 +7,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>Change Log &#8212; ctlearn 0.11.2.dev3+g4ad3506cb documentation</title>
+    <title>Change Log &#8212; ctlearn 0.11.2.dev5+gab3e70b7c documentation</title>
   
   
   
@@ -45,7 +45,7 @@
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8" />
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8" />
 
-    <script src="_static/documentation_options.js?v=ef96fa16"></script>
+    <script src="_static/documentation_options.js?v=02502e8b"></script>
     <script src="_static/doctools.js?v=fd6eb6e6"></script>
     <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="_static/sg-tags.js?v=d80f6fa4"></script>
@@ -66,7 +66,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="color-scheme" content="light dark"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.11.2.dev3+g4ad3506cb" />
+  <meta name="docsearch:version" content="0.11.2.dev5+gab3e70b7c" />
   
     
     <script src="_static/searchtools.js"></script>
@@ -143,8 +143,8 @@
     
     
     
-    <img src="_static/ctlearn_logo_transparent.png" class="logo__image only-dark" alt="ctlearn 0.11.2.dev3+g4ad3506cb documentation - Home"/>
-    <img src="_static/ctlearn_logo_transparent.png" class="logo__image only-light pst-js-only" alt="ctlearn 0.11.2.dev3+g4ad3506cb documentation - Home"/>
+    <img src="_static/ctlearn_logo_transparent.png" class="logo__image only-dark" alt="ctlearn 0.11.2.dev5+gab3e70b7c documentation - Home"/>
+    <img src="_static/ctlearn_logo_transparent.png" class="logo__image only-light pst-js-only" alt="ctlearn 0.11.2.dev5+gab3e70b7c documentation - Home"/>
   
   
 </a></div>
@@ -492,25 +492,49 @@
                   
   <section id="change-log">
 <h1>Change Log<a class="headerlink" href="#change-log" title="Link to this heading">#</a></h1>
-<section id="ctlearn-v0-11-1-2026-11-20">
-<h2>ctlearn v0.11.1 (2026-11-20)<a class="headerlink" href="#ctlearn-v0-11-1-2026-11-20" title="Link to this heading">#</a></h2>
+<section id="ctlearn-0-11-2-dev5-gab3e70b7c-2026-11-26">
+<h2>ctlearn 0.11.2.dev5+gab3e70b7c (2026-11-26)<a class="headerlink" href="#ctlearn-0-11-2-dev5-gab3e70b7c-2026-11-26" title="Link to this heading">#</a></h2>
 <section id="api-changes">
 <h3>API Changes<a class="headerlink" href="#api-changes" title="Link to this heading">#</a></h3>
 </section>
 <section id="bug-fixes">
 <h3>Bug Fixes<a class="headerlink" href="#bug-fixes" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Fixed Keras prediction layer to correctly handle last batch predictions and prevent spurious 0.0 values. Additionally fixed table row misalignment when combining prediction tables. [<a class="reference external" href="https://github.com/ctlearn-project/ctlearn/pull/333">#333</a>]</p></li>
+</ul>
 </section>
 <section id="data-model-changes">
 <h3>Data Model Changes<a class="headerlink" href="#data-model-changes" title="Link to this heading">#</a></h3>
-<ul class="simple">
-<li><p>Added support for ctapipe HDF5 data format v8.0.0, using the updated DL0 trigger-table paths while preserving compatibility with earlier data formats. [<a class="reference external" href="https://github.com/ctlearn-project/ctlearn/pull/323">#323</a>]</p></li>
-</ul>
 </section>
 <section id="new-features">
 <h3>New Features<a class="headerlink" href="#new-features" title="Link to this heading">#</a></h3>
 </section>
 <section id="maintenance">
 <h3>Maintenance<a class="headerlink" href="#maintenance" title="Link to this heading">#</a></h3>
+</section>
+<section id="refactoring-and-optimization">
+<h3>Refactoring and Optimization<a class="headerlink" href="#refactoring-and-optimization" title="Link to this heading">#</a></h3>
+</section>
+</section>
+<section id="ctlearn-v0-11-1-2026-11-20">
+<h2>ctlearn v0.11.1 (2026-11-20)<a class="headerlink" href="#ctlearn-v0-11-1-2026-11-20" title="Link to this heading">#</a></h2>
+<section id="id1">
+<h3>API Changes<a class="headerlink" href="#id1" title="Link to this heading">#</a></h3>
+</section>
+<section id="id2">
+<h3>Bug Fixes<a class="headerlink" href="#id2" title="Link to this heading">#</a></h3>
+</section>
+<section id="id3">
+<h3>Data Model Changes<a class="headerlink" href="#id3" title="Link to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Added support for ctapipe HDF5 data format v8.0.0, using the updated DL0 trigger-table paths while preserving compatibility with earlier data formats. [<a class="reference external" href="https://github.com/ctlearn-project/ctlearn/pull/323">#323</a>]</p></li>
+</ul>
+</section>
+<section id="id4">
+<h3>New Features<a class="headerlink" href="#id4" title="Link to this heading">#</a></h3>
+</section>
+<section id="id5">
+<h3>Maintenance<a class="headerlink" href="#id5" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Added Pixi-based installation and development environment setup, with Pixi environments tested in CI. [<a class="reference external" href="https://github.com/ctlearn-project/ctlearn/pull/319">#319</a>]</p></li>
 <li><p>Added SonarCloud analysis to CI, including coverage reporting and quality-gate and coverage badges in the README. [<a class="reference external" href="https://github.com/ctlearn-project/ctlearn/pull/320">#320</a>]</p></li>
@@ -520,14 +544,14 @@ job executes the Sphinx-Gallery tutorial, reuses cached tutorial data, and
 deploys the generated HTML to GitHub Pages on pushes to <code class="docutils literal notranslate"><span class="pre">main</span></code>. [<a class="reference external" href="https://github.com/ctlearn-project/ctlearn/pull/322">#322</a>]</p></li>
 </ul>
 </section>
-<section id="refactoring-and-optimization">
-<h3>Refactoring and Optimization<a class="headerlink" href="#refactoring-and-optimization" title="Link to this heading">#</a></h3>
+<section id="id6">
+<h3>Refactoring and Optimization<a class="headerlink" href="#id6" title="Link to this heading">#</a></h3>
 </section>
 </section>
 <section id="ctlearn-v0-11-0-2026-10-30">
 <h2>ctlearn v0.11.0 (2026-10-30)<a class="headerlink" href="#ctlearn-v0-11-0-2026-10-30" title="Link to this heading">#</a></h2>
-<section id="id1">
-<h3>API Changes<a class="headerlink" href="#id1" title="Link to this heading">#</a></h3>
+<section id="id7">
+<h3>API Changes<a class="headerlink" href="#id7" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Introduced framework-specific model and training APIs, including the public PyTorch classes under <code class="docutils literal notranslate"><span class="pre">ctlearn.core.pytorch</span></code> and training tool under <code class="docutils literal notranslate"><span class="pre">ctlearn.tools.pytorch</span></code>. [<a class="reference external" href="https://github.com/ctlearn-project/ctlearn/pull/276">#276</a>]</p></li>
 <li><p>Removed legacy, non-core PyTorch architectures and utilities. Code importing those modules must migrate to the supported model and training APIs. [<a class="reference external" href="https://github.com/ctlearn-project/ctlearn/pull/280">#280</a>]</p></li>
@@ -535,8 +559,8 @@ deploys the generated HTML to GitHub Pages on pushes to <code class="docutils li
 <li><p>With <code class="docutils literal notranslate"><span class="pre">conv_backend=&quot;hexagdly&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">kernel_size</span></code> and the pooling size are now read as a square-kernel width, like for the square backend, instead of a number of hexagonal rings. The same configuration therefore describes comparable models on both grids: a <code class="docutils literal notranslate"><span class="pre">kernel_size</span></code> of 3 is the 7-cell hexagon and 1 is a plain 1x1, which also makes the hardcoded <code class="docutils literal notranslate"><span class="pre">kernel_size=1</span></code> projections of the ResNet true 1x1 convolutions. A hexagonal model built from a configuration now has smaller kernels than before, so it must be trained again; models saved with an earlier version still load unchanged. A hexagonal window is centred on a cell, so it has no even size: an even <code class="docutils literal notranslate"><span class="pre">kernel_size</span></code> or pooling size is rounded up to the next odd one (2 gives the 7-cell window of 3, not the identity of 1), and the hexagonal layers say so with a warning. Note that the default pooling size of 2 triggers it with <code class="docutils literal notranslate"><span class="pre">conv_backend=&quot;hexagdly&quot;</span></code>. Requires <code class="docutils literal notranslate"><span class="pre">keras-hexagdly&gt;=0.6.1</span></code> and <code class="docutils literal notranslate"><span class="pre">pytorch-hexagdly&gt;=0.4.1</span></code>. [<a class="reference external" href="https://github.com/ctlearn-project/ctlearn/pull/312">#312</a>]</p></li>
 </ul>
 </section>
-<section id="id2">
-<h3>Bug Fixes<a class="headerlink" href="#id2" title="Link to this heading">#</a></h3>
+<section id="id8">
+<h3>Bug Fixes<a class="headerlink" href="#id8" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Fixes the SingleCNN attention ratio configuration being read from the wrong key. [<a class="reference external" href="https://github.com/ctlearn-project/ctlearn/pull/287">#287</a>]</p></li>
 <li><p>Raise a clear <code class="docutils literal notranslate"><span class="pre">ToolConfigurationError</span></code> when signal or background file patterns match no files, instead of failing later during training. [<a class="reference external" href="https://github.com/ctlearn-project/ctlearn/pull/299">#299</a>]</p></li>
@@ -545,14 +569,14 @@ deploys the generated HTML to GitHub Pages on pushes to <code class="docutils li
 <li><p>Raise a <code class="docutils literal notranslate"><span class="pre">ToolConfigurationError</span></code> during <code class="docutils literal notranslate"><span class="pre">TrainCTLearnModel.setup()</span></code> when no reconstruction task (<code class="docutils literal notranslate"><span class="pre">--reco</span></code> / <code class="docutils literal notranslate"><span class="pre">reco_tasks</span></code>) is selected, instead of failing later in the training loop. [<a class="reference external" href="https://github.com/ctlearn-project/ctlearn/pull/315">#315</a>]</p></li>
 </ul>
 </section>
-<section id="id3">
-<h3>Data Model Changes<a class="headerlink" href="#id3" title="Link to this heading">#</a></h3>
+<section id="id9">
+<h3>Data Model Changes<a class="headerlink" href="#id9" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Added support for the new CTAO data product metadata model provided by ctapipe &gt; v0.32.0 and ctao_datamodel &gt;= v1.4.0. [<a class="reference external" href="https://github.com/ctlearn-project/ctlearn/pull/317">#317</a>]</p></li>
 </ul>
 </section>
-<section id="id4">
-<h3>New Features<a class="headerlink" href="#id4" title="Link to this heading">#</a></h3>
+<section id="id10">
+<h3>New Features<a class="headerlink" href="#id10" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Added PyTorch support for model training and prediction, including model architectures, data loading, and dedicated training tools. [<a class="reference external" href="https://github.com/ctlearn-project/ctlearn/pull/276">#276</a>]</p></li>
 <li><p>Added native hexagonal convolutions to PyTorch models through <code class="docutils literal notranslate"><span class="pre">pytorch-hexagdly</span></code>. [<a class="reference external" href="https://github.com/ctlearn-project/ctlearn/pull/305">#305</a>]</p></li>
@@ -560,8 +584,8 @@ deploys the generated HTML to GitHub Pages on pushes to <code class="docutils li
 <li><p>Added a script (<code class="docutils literal notranslate"><span class="pre">scripts/overwrite_metadata.py</span></code>) to migrate HDF5 product metadata to the current CTAO data model. [<a class="reference external" href="https://github.com/ctlearn-project/ctlearn/pull/317">#317</a>]</p></li>
 </ul>
 </section>
-<section id="id5">
-<h3>Maintenance<a class="headerlink" href="#id5" title="Link to this heading">#</a></h3>
+<section id="id11">
+<h3>Maintenance<a class="headerlink" href="#id11" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Added caching to CI to reuse dependencies and test data between runs. [<a class="reference external" href="https://github.com/ctlearn-project/ctlearn/pull/292">#292</a>]</p></li>
 <li><p>Write the provenance log and tool configuration additionally to the output directory. To ensure reproducibility, the provenance log includes information about the software versions, parameters used, and any relevant metadata. The tool configuration specifies the settings and options used during the execution of the training tool to be reused for the inference phase. Both the provenance log and tool configuration are saved in separate files in a structured format (e.g., JSON or YAML) within the output directory for easy access and reference. [<a class="reference external" href="https://github.com/ctlearn-project/ctlearn/pull/304">#304</a>]</p></li>
@@ -572,8 +596,8 @@ deploys the generated HTML to GitHub Pages on pushes to <code class="docutils li
 <li><p>Bumped the minimum supported <code class="docutils literal notranslate"><span class="pre">dl1_data_handler</span></code> version to 0.14.12. [<a class="reference external" href="https://github.com/ctlearn-project/ctlearn/pull/317">#317</a>]</p></li>
 </ul>
 </section>
-<section id="id6">
-<h3>Refactoring and Optimization<a class="headerlink" href="#id6" title="Link to this heading">#</a></h3>
+<section id="id12">
+<h3>Refactoring and Optimization<a class="headerlink" href="#id12" title="Link to this heading">#</a></h3>
 <ul class="simple">
 <li><p>Introduces <code class="docutils literal notranslate"><span class="pre">ConvBackend</span></code> classes that hold properties of the convolution backend. This allows selecting the square (standard) or hexagonal (<code class="docutils literal notranslate"><span class="pre">hexagdly</span></code>) model backbones for both frameworks (<code class="docutils literal notranslate"><span class="pre">Keras</span></code> or <code class="docutils literal notranslate"><span class="pre">PyTorch</span></code>). [<a class="reference external" href="https://github.com/ctlearn-project/ctlearn/pull/307">#307</a>]</p></li>
 </ul>
@@ -619,7 +643,7 @@ deploys the generated HTML to GitHub Pages on pushes to <code class="docutils li
   </div>
   <nav id="pst-page-toc-nav" class="page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="pst-show_toc_level nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ctlearn-v0-11-1-2026-11-20">ctlearn v0.11.1 (2026-11-20)</a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ctlearn-0-11-2-dev5-gab3e70b7c-2026-11-26">ctlearn 0.11.2.dev5+gab3e70b7c (2026-11-26)</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#api-changes">API Changes</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#bug-fixes">Bug Fixes</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#data-model-changes">Data Model Changes</a></li>
@@ -628,13 +652,22 @@ deploys the generated HTML to GitHub Pages on pushes to <code class="docutils li
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#refactoring-and-optimization">Refactoring and Optimization</a></li>
 </ul>
 </li>
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ctlearn-v0-11-0-2026-10-30">ctlearn v0.11.0 (2026-10-30)</a><ul class="nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ctlearn-v0-11-1-2026-11-20">ctlearn v0.11.1 (2026-11-20)</a><ul class="nav section-nav flex-column">
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id1">API Changes</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id2">Bug Fixes</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id3">Data Model Changes</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id4">New Features</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id5">Maintenance</a></li>
 <li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id6">Refactoring and Optimization</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#ctlearn-v0-11-0-2026-10-30">ctlearn v0.11.0 (2026-10-30)</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id7">API Changes</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id8">Bug Fixes</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id9">Data Model Changes</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id10">New Features</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id11">Maintenance</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#id12">Refactoring and Optimization</a></li>
 </ul>
 </li>
 </ul>
@@ -674,7 +707,7 @@ deploys the generated HTML to GitHub Pages on pushes to <code class="docutils li
 
   <p class="copyright">
     
-      © Copyright CTLearn devs.  Last updated 25 Nov 2026 14:53.
+      © Copyright CTLearn devs.  Last updated 26 Nov 2026 16:33.
       <br/>
     
   </p>

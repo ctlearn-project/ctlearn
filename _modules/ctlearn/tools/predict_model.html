@@ -6,7 +6,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ctlearn.tools.predict_model &#8212; ctlearn 0.11.2.dev3+g4ad3506cb documentation</title>
+    <title>ctlearn.tools.predict_model &#8212; ctlearn 0.11.2.dev5+gab3e70b7c documentation</title>
   
   
   
@@ -44,7 +44,7 @@
   <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=75c7c72ae941e8b558d8" />
 <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=75c7c72ae941e8b558d8" />
 
-    <script src="../../../_static/documentation_options.js?v=ef96fa16"></script>
+    <script src="../../../_static/documentation_options.js?v=02502e8b"></script>
     <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
     <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
     <script src="../../../_static/sg-tags.js?v=d80f6fa4"></script>
@@ -64,7 +64,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="color-scheme" content="light dark"/>
   <meta name="docsearch:language" content="en"/>
-  <meta name="docsearch:version" content="0.11.2.dev3+g4ad3506cb" />
+  <meta name="docsearch:version" content="0.11.2.dev5+gab3e70b7c" />
   
     
     <script src="../../../_static/searchtools.js"></script>
@@ -141,8 +141,8 @@
     
     
     
-    <img src="../../../_static/ctlearn_logo_transparent.png" class="logo__image only-dark" alt="ctlearn 0.11.2.dev3+g4ad3506cb documentation - Home"/>
-    <img src="../../../_static/ctlearn_logo_transparent.png" class="logo__image only-light pst-js-only" alt="ctlearn 0.11.2.dev3+g4ad3506cb documentation - Home"/>
+    <img src="../../../_static/ctlearn_logo_transparent.png" class="logo__image only-dark" alt="ctlearn 0.11.2.dev5+gab3e70b7c documentation - Home"/>
+    <img src="../../../_static/ctlearn_logo_transparent.png" class="logo__image only-light pst-js-only" alt="ctlearn 0.11.2.dev5+gab3e70b7c documentation - Home"/>
   
   
 </a></div>
@@ -1417,7 +1417,7 @@
             <span class="c1"># Predict the last batch and stack the results to the prediction data</span>
             <span class="k">if</span> <span class="n">data_loader_last_batch</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                 <span class="n">predict_data_last_batch</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">data_loader_last_batch</span><span class="p">)</span>
-                <span class="k">if</span> <span class="n">model</span><span class="o">.</span><span class="n">layers</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">name</span> <span class="o">==</span> <span class="s2">"type"</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">prediction_colname</span> <span class="o">==</span> <span class="s2">"type"</span><span class="p">:</span>
                     <span class="n">predict_data_last_batch</span> <span class="o">=</span> <span class="n">Table</span><span class="p">(</span>
                         <span class="p">{</span><span class="n">prediction_colname</span><span class="p">:</span> <span class="n">predict_data_last_batch</span><span class="p">}</span>
                     <span class="p">)</span>
@@ -2056,7 +2056,7 @@
 
   <p class="copyright">
     
-      © Copyright CTLearn devs.  Last updated 25 Nov 2026 14:53.
+      © Copyright CTLearn devs.  Last updated 26 Nov 2026 16:33.
       <br/>
     
   </p>
