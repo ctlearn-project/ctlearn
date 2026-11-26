@@ -235,10 +235,18 @@ class KerasSequence(Sequence):
         labels = {}
         if self.DLDataReader.process_type == ProcessType.Simulation:
             batch_grouped = batch.group_by(
-                ["obs_id", "event_id", "tel_type_id", "true_shower_primary_class"]
+                [
+                    "obs_id",
+                    "event_id",
+                    "file_index",
+                    "tel_type_id",
+                    "true_shower_primary_class",
+                ]
             )
         elif self.DLDataReader.process_type == ProcessType.Observation:
-            batch_grouped = batch.group_by(["obs_id", "event_id", "tel_type_id"])
+            batch_grouped = batch.group_by(
+                ["obs_id", "event_id", "file_index", "tel_type_id"]
+            )
         features, mono_feature_vectors, stereo_feature_vectors = [], [], []
         true_shower_primary_class = []
         log_true_energy = []
