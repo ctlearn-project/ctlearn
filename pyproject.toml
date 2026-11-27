@@ -30,6 +30,7 @@ requires-python = ">=3.12"
 dependencies = [
     "astropy",
     "ctapipe>=0.29",
+    "cwltool",
     "dl1_data_handler>=0.14.13,<0.15.0",
     "numba",
     "numpy",
@@ -63,7 +64,7 @@ where = ["src"]
 namespaces = false
 
 [tool.setuptools.package-data]
-ctlearn = ["resources/*"]
+ctlearn = ["resources/*", "workflows/*.cwl"]
 
 [project.optional-dependencies]
 
@@ -124,6 +125,7 @@ version_file = "src/ctlearn/_version.py"
 testpaths = ["src/ctlearn"]
 markers = [
     "verifies_usecase(usecase_id): mark test as verifying a specific use case",
+    "cwl_workflow: tests for Common Workflow Language workflows",
 ]
 
 norecursedirs = [

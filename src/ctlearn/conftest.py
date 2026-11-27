@@ -379,7 +379,7 @@ def ctlearn_trained_r1_mono_models(r1_gamma_file, r1_proton_file, tmp_path_facto
     telescope_type = "LST"
     # Loop over reconstruction tasks and train models for each combination
     ctlearn_trained_r1_mono_models = {}
-    for reco_task in ["type", "energy", "cameradirection"]:
+    for reco_task in ["type", "energy", "cameradirection", "skydirection"]:
         # Build command-line arguments
         argv = [
             f"--signal={signal_dir}",
@@ -471,7 +471,7 @@ def ctlearn_trained_dl1_mono_models(dl1_gamma_file, dl1_proton_file, tmp_path_fa
     # and train models for each combination
     ctlearn_trained_dl1_mono_models = {}
     for telescope_type, allowed_tels in telescope_types.items():
-        for reco_task in ["type", "energy", "cameradirection"]:
+        for reco_task in ["type", "energy", "cameradirection", "skydirection"]:
             # Build command-line arguments
             argv = [
                 f"--signal={signal_dir}",

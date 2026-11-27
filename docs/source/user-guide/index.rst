@@ -121,6 +121,31 @@ View training progress in real time with TensorBoard:
 
    $ tensorboard --logdir=/path/to/output_dir
 
+CWL training tool
+^^^^^^^^^^^^^^^^^
+
+The installed package includes a CWL training tool for both backends. Other
+Python projects can locate and execute it without relying on the source checkout:
+
+.. code-block:: python
+
+    import subprocess
+    from importlib.resources import as_file, files
+
+    workflow = files("ctlearn").joinpath("workflows", "train_ctlearn_model.cwl")
+    with as_file(workflow) as workflow_path:
+        subprocess.run(["cwltool", str(workflow_path), "job.yaml"], check=True)
+
+The ``as_file`` context must remain open until the CWL runner finishes.
+The installed CTLearn training commands must be available on the runner's
+``PATH``. Output filenames in the job must be relative to the CWL working
+directory; use ``cwltool --outdir`` to choose where results are collected.
+
+To reference the tool from another CWL workflow, materialize the installed
+``workflows`` directory before generating or running the parent workflow and
+set the step's ``run`` field to the resulting CWL file path or URI. Keep
+relative paths between any workflow files intact.
+
 Prediction tools
 ^^^^^^^^^^^^^^^^
 

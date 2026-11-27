@@ -30,6 +30,7 @@ pytest-xdist = "*"
 test = "pytest"
 
 [feature.doc.dependencies]
+graphviz = "*"
 sphinx = "*"
 sphinx-rtd-theme = "*"
 
